@@ -2,19 +2,21 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>SFEDUCASTLING — Pro Layout</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SFEDUCASTLING — AI Chess Platform</title>
     <style>
+        /* Общие настройки страницы */
         body { 
             background: #0F172A; 
             color: white; 
             margin: 0; 
-            font-family: 'Segoe UI', sans-serif; 
+            font-family: 'Segoe UI', Tahoma, sans-serif; 
             display: flex;
             height: 100vh;
             overflow: hidden;
         }
 
-        /* Левая часть (60% ширины) */
+        /* ЛЕВАЯ ЧАСТЬ: ДОСКА (60%) */
         .board-section { 
             width: 60%; 
             display: flex; 
@@ -25,11 +27,23 @@
             border-right: 1px solid #1E293B;
         }
 
-        /* Заголовок в левом верхнем углу */
+        /* ШАПКА С ЛОГОТИПОМ ЮФУ */
+        .header-container {
+            position: absolute;
+            top: 20px;
+            left: 30px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .sfedu-logo {
+            width: 50px;
+            height: auto;
+            filter: drop-shadow(0 0 5px rgba(34, 90, 115, 0.3));
+        }
+
         h1 { 
-            position: absolute; 
-            top: 20px; 
-            left: 30px; 
             color: #225A73; 
             font-size: 24px;
             margin: 0;
@@ -37,19 +51,11 @@
             letter-spacing: 3px;
         }
 
-        /* Правая часть (40% для чата) */
-        .chat-section { 
-            width: 40%; 
-            background: #0B1120;
-            padding: 40px 20px;
-            box-sizing: border-box;
-        }
-
-        /* КОНТЕЙНЕР ДОСКИ (Адаптивный размер) */
+        /* КОНТЕЙНЕР ДОСКИ (Адаптивный квадрат) */
         .board-container { 
             position: relative; 
-            width: 50vw; /* Занимает 50% от ширины всего окна браузера */
-            max-width: 85vh; /* Но не больше высоты экрана, чтобы не вылезать */
+            width: 50vw; 
+            max-width: 85vh; 
             aspect-ratio: 1 / 1;
         }
 
@@ -63,29 +69,80 @@
             box-shadow: 0 0 50px rgba(0,0,0,0.5);
         }
 
-        /* Клетки и цвета */
-        .sq { display: flex; justify-content: center; align-items: center; font-size: 4vw; position: relative; }
-        .w { background-color: #F8FAFC; }
-        .b { background-color: #225A73; }
+        /* КЛЕТКИ И ЦВЕТА */
+        .sq { 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            font-size: 4vw; 
+            position: relative; 
+        }
+        .w { background-color: #F8FAFC; } /* Белые клетки */
+        .b { background-color: #225A73; } /* Твой цвет #225A73 */
 
-        /* Нумерация (Координаты) */
-        .num-y { position: absolute; left: -30px; height: 100%; display: flex; flex-direction: column; justify-content: space-around; color: #475569; font-weight: bold; font-size: 1.2vw; }
-        .num-x { width: 100%; display: flex; justify-content: space-around; margin-top: 10px; color: #475569; font-weight: bold; font-size: 1.2vw; }
+        /* ШАХМАТНАЯ НУМЕРАЦИЯ */
+        .num-y { 
+            position: absolute; 
+            left: -35px; 
+            height: 100%; 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: space-around; 
+            color: #475569; 
+            font-weight: bold; 
+            font-size: 1.2vw; 
+        }
+        .num-x { 
+            width: 100%; 
+            display: flex; 
+            justify-content: space-around; 
+            margin-top: 10px; 
+            color: #475569; 
+            font-weight: bold; 
+            font-size: 1.2vw; 
+        }
 
-        /* Фигуры с четкой обводкой */
+        /* ФИГУРЫ */
         .pce { 
-            text-shadow: 0 0 5px rgba(0,0,0,0.8); 
+            text-shadow: 0 0 5px rgba(0,0,0,0.8); /* Черная обводка */
             cursor: pointer; 
             user-select: none;
             transition: 0.2s;
+            z-index: 10;
         }
         .pce:hover { transform: scale(1.1); }
+
+        /* ПРАВАЯ ЧАСТЬ: АНАЛИЗ (40%) */
+        .chat-section { 
+            width: 40%; 
+            background: #0B1120;
+            padding: 60px 30px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-title {
+            color: #225A73;
+            border-bottom: 1px solid #1E293B;
+            padding-bottom: 10px;
+            margin-top: 0;
+        }
+
+        .chat-status {
+            color: #475569;
+            font-style: italic;
+            margin-top: 20px;
+        }
     </style>
 </head>
 <body>
 
     <div class="board-section">
-        <h1>SFEDUCASTLING</h1>
+        <div class="header-container">
+            <img src="https://sfedu.ru/www/upload/files/61/logo_sfedu_white.svg" class="sfedu-logo">
+            <h1>SFEDUCASTLING</h1>
+        </div>
         
         <div class="board-container">
             <div class="num-y"><span>8</span><span>7</span><span>6</span><span>5</span><span>4</span><span>3</span><span>2</span><span>1</span></div>
@@ -97,34 +154,39 @@
     </div>
 
     <div class="chat-section">
-        <h2 style="color: #225A73; border-bottom: 1px solid #1E293B; padding-bottom: 10px;">Анализ GigaChat</h2>
-        <p style="color: #475569; font-style: italic;">Ожидание первого хода для анализа...</p>
+        <h2 class="chat-title">Анализ GigaChat</h2>
+        <div class="chat-status">
+            Ожидание первого хода для анализа позиции...
+        </div>
     </div>
 
     <script>
-        const b = document.getElementById('board');
-        // Начальная расстановка
-        const setup = {
+        const boardElement = document.getElementById('board');
+        
+        // Начальная расстановка фигур (Unicode-символы для стабильности без интернета)
+        const initialSetup = {
             0:'♜',1:'♞',2:'♝',3:'♛',4:'♚',5:'♝',6:'♞',7:'♜',
             8:'♟',9:'♟',10:'♟',11:'♟',12:'♟',13:'♟',14:'♟',15:'♟',
             48:'♙',49:'♙',50:'♙',51:'♙',52:'♙',53:'♙',54:'♙',55:'♙',
             56:'♖',57:'♘',58:'♗',59:'♕',60:'♔',61:'♗',62:'♘',63:'♖'
         };
 
+        // Генерация доски
         for (let i = 0; i < 64; i++) {
-            const s = document.createElement('div');
+            const square = document.createElement('div');
             const row = Math.floor(i / 8);
             const isDark = (row + i) % 2 !== 0;
-            s.className = `sq ${isDark ? 'b' : 'w'}`;
+            square.className = `sq ${isDark ? 'b' : 'w'}`;
             
-            if (setup[i]) {
-                const p = document.createElement('span');
-                p.className = 'pce';
-                p.style.color = row < 2 ? '#000' : '#fff';
-                p.innerText = setup[i];
-                s.appendChild(p);
+            if (initialSetup[i]) {
+                const piece = document.createElement('span');
+                piece.className = 'pce';
+                // Черные фигуры для верхних двух рядов, белые для нижних
+                piece.style.color = row < 2 ? '#000' : '#fff';
+                piece.innerText = initialSetup[i];
+                square.appendChild(piece);
             }
-            b.appendChild(s);
+            boardElement.appendChild(square);
         }
     </script>
 </body>
