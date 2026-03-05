@@ -10,8 +10,8 @@
 ### 👥 Команда
 * **Егор** — Project Lead (Архитектура, GigaChat API)
 * **Митя** — Backend Developer (Python, API)
-* **Илья №2** — Frontend Developer (Веб-интерфейс)
-* **Илья №1** — ML Engineer (Maia 2, Датасеты)
+* **Илья Бабченков** — Frontend Developer (Веб-интерфейс)
+* **Илья Слынько** — ML Engineer (Maia 2, Датасеты)
 * **Даниил** — ML Engineer (LLM Tuning, Промпты)
 * **Тима** — UI/UX Designer (Figma, Тестирование)
 
