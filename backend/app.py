@@ -6,6 +6,7 @@ import chess
 import chess.engine
 import random
 import os
+import sys
 
 app = FastAPI(title="SFEDUCASTLING API")
 
@@ -18,6 +19,42 @@ app.add_middleware(
 
 frontend_path = os.path.join(os.path.dirname(__file__), "..", "frontend")
 app.mount("/static", StaticFiles(directory=frontend_path), name="static")
+
+
+# --- Загрузка LLM (если модель обучена) ---
+chess_llm = None
+LORA_PATH = os.environ.get("LORA_PATH", os.path.join(os.path.dirname(__file__), "..", "chess-llm-lora"))
+
+if os.path.exists(LORA_PATH):
+    try:
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "ML"))
+        from inference import ChessLLM
+        chess_llm = ChessLLM(LORA_PATH)
+        print(f"LLM загружена из {LORA_PATH}")
+    except Exception as e:
+        print(f"Не удалось загрузить LLM: {e}")
+        print("Будет использована заглушка для анализа.")
+else:
+    print(f"Модель не найдена в {LORA_PATH} — используется заглушка.")
+    print("Обучите модель: python ML/train_qlora.py --dataset dataset.jsonl")
+
+
+# --- Загрузка Maia/Lc0 (если установлен) ---
+maia_engine = None
+MAIA_PATH = os.environ.get("MAIA_PATH", "")
+MAIA_WEIGHTS = os.environ.get("MAIA_WEIGHTS", "")
+
+if MAIA_PATH and os.path.exists(MAIA_PATH):
+    try:
+        maia_engine = chess.engine.SimpleEngine.popen_uci(MAIA_PATH)
+        if MAIA_WEIGHTS:
+            maia_engine.configure({"WeightsFile": MAIA_WEIGHTS})
+        print(f"Maia движок загружен: {MAIA_PATH}")
+    except Exception as e:
+        print(f"Не удалось запустить Maia: {e}")
+else:
+    print("Maia не настроена — используются случайные ходы.")
+    print("Установите: MAIA_PATH=/path/to/lc0 MAIA_WEIGHTS=/path/to/maia-1500.pb.gz")
 
 
 class FenSquare(BaseModel):
@@ -86,18 +123,19 @@ def make_move(req: MoveRequest):
 
 @app.post("/api/maia-move")
 def maia_move(req: FenRequest):
-    """Заглушка для Maia — пока выбирает случайный легальный ход."""
-    # TODO: подключить реальную Maia Chess модель
-    # engine = chess.engine.SimpleEngine.popen_uci("path/to/maia")
-    # result = engine.play(board, chess.engine.Limit(time=1.0))
-    # engine.quit()
-
     board = chess.Board(req.fen)
     if board.is_game_over():
         return {"error": "Game is over", "fen": req.fen}
 
-    move = random.choice(list(board.legal_moves))
+    if maia_engine:
+        result = maia_engine.play(board, chess.engine.Limit(time=1.0))
+        move = result.move
+    else:
+        move = random.choice(list(board.legal_moves))
+
     san = board.san(move)
+    from_name = chess.square_name(move.from_square)
+    to_name = chess.square_name(move.to_square)
     board.push(move)
 
     status = "playing"
@@ -111,8 +149,8 @@ def maia_move(req: FenRequest):
     return {
         "fen": board.fen(),
         "san": san,
-        "from": chess.square_name(move.from_square),
-        "to": chess.square_name(move.to_square),
+        "from": from_name,
+        "to": to_name,
         "status": status,
         "turn": "w" if board.turn == chess.WHITE else "b",
     }
@@ -120,13 +158,24 @@ def maia_move(req: FenRequest):
 
 @app.post("/api/analyze")
 def analyze(req: FenRequest):
-    """Заглушка для GigaChat анализа."""
-    # TODO: подключить GigaChat API
-    # response = gigachat.analyze(fen=req.fen, prompt="Опиши позицию...")
+    if chess_llm:
+        try:
+            message = chess_llm.analyze(req.fen)
+        except Exception as e:
+            message = f"Ошибка анализа: {str(e)}"
+    else:
+        message = "Модель анализа не загружена. Обучите LLM и перезапустите сервер."
+
     return {
-        "message": "Анализ позиции будет доступен после подключения GigaChat API.",
+        "message": message,
         "fen": req.fen,
     }
+
+
+@app.on_event("shutdown")
+def shutdown():
+    if maia_engine:
+        maia_engine.quit()
 
 
 if __name__ == "__main__":
