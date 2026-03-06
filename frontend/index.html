@@ -8,7 +8,7 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            background: #0F172A;
+            background: #0a2a3f;
             color: #E2E8F0;
             font-family: 'Segoe UI', Tahoma, sans-serif;
             display: flex;
@@ -20,38 +20,92 @@
         .top-bar {
             display: flex;
             align-items: center;
-            gap: 16px;
-            padding: 12px 30px;
+            gap: 0;
+            padding: 10px 30px;
             border-bottom: 2px solid #225A73;
-            background: linear-gradient(180deg, #0B1120 0%, #0F172A 100%);
+            background: #061b2c;
             flex-shrink: 0;
+            position: relative;
         }
 
         .sfedu-logo {
-            width: 52px;
+            width: 62px;
             height: auto;
-            filter: drop-shadow(0 0 8px rgba(34, 90, 115, 0.5));
+            filter: drop-shadow(0 0 10px rgba(34, 90, 115, 0.6));
+            margin-right: 14px;
+            position: relative;
+            z-index: 2;
         }
 
-        .top-bar h1 {
-            color: #E2E8F0;
-            font-size: 20px;
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@900&display=swap');
+
+        .top-bar .title-block {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .top-bar .title {
+            font-family: 'Orbitron', 'Segoe UI', sans-serif;
+            font-size: 28px;
+            font-weight: 900;
             text-transform: uppercase;
-            letter-spacing: 4px;
-            background: linear-gradient(135deg, #3d8da6, #225A73);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            letter-spacing: 5px;
+            line-height: 1;
+        }
+
+        .top-bar .title .t-knight {
+            color: #f4fafb;
+            font-family: serif;
+            font-size: 32px;
+            margin-right: -2px;
+            display: inline-block;
+            transform: scaleX(-1);
+            filter: drop-shadow(0 0 4px rgba(131, 180, 170, 0.4));
+        }
+
+        .top-bar .title .t-sfedu {
+            color: #f4fafb;
+        }
+
+        .top-bar .title .t-castling {
+            color: #83b4aa;
+        }
+
+        .top-bar .subtitle {
+            font-size: 10px;
+            color: #5a8a7e;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .top-bar .subtitle .ai-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #83b4aa;
+            animation: pulse 2s infinite;
+            display: inline-block;
         }
 
         .top-bar .version-tag {
-            font-size: 10px;
-            color: #475569;
-            border: 1px solid #1E293B;
-            padding: 2px 8px;
+            font-size: 11px;
+            color: #64748B;
+            border: 1px solid #225A73;
+            padding: 4px 12px;
             border-radius: 6px;
             margin-left: auto;
-            letter-spacing: 1px;
+            letter-spacing: 1.5px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .top-bar .version-tag .crown {
+            font-size: 14px;
         }
 
         .main-area {
@@ -61,11 +115,11 @@
         }
 
         .board-section {
-            width: 60%;
+            flex-shrink: 0;
             display: flex;
             align-items: center;
-            justify-content: center;
-            padding: 12px 16px;
+            justify-content: flex-start;
+            padding: 8px 12px 8px 24px;
         }
 
         .board-wrapper {
@@ -75,28 +129,15 @@
         }
 
         .player-bar {
-            display: flex;
-            align-items: center;
-            gap: 12px;
             width: 100%;
-            padding: 6px 4px;
+            padding: 4px 4px;
         }
 
-        .player-bar .avatar {
-            width: 34px;
-            height: 34px;
-            border-radius: 50%;
-            background: #1E293B;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 17px;
-            color: #94A3B8;
-            border: 2px solid #225A73;
+        .rating-label {
+            font-size: 13px;
+            color: #64748B;
+            letter-spacing: 0.5px;
         }
-
-        .player-bar .name { font-size: 14px; font-weight: 600; color: #CBD5E1; }
-        .player-bar .rating { font-size: 12px; color: #64748B; }
 
         .board-outer { position: relative; }
 
@@ -183,9 +224,59 @@
             padding: 6px 0;
         }
 
+        .middle-section {
+            width: 220px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            padding: 16px 14px;
+            border-left: 1px solid #0d3550;
+            border-right: 1px solid #0d3550;
+            background: #051a28;
+        }
+
+        .middle-section h3 {
+            font-size: 12px;
+            color: #64748B;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+        }
+
+        #move-list {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            overflow-y: auto;
+            flex: 1;
+            font-size: 13px;
+            color: #94A3B8;
+        }
+
+        #move-list::-webkit-scrollbar {
+            width: 6px;
+        }
+        #move-list::-webkit-scrollbar-track {
+            background: #051a28;
+            border-radius: 3px;
+        }
+        #move-list::-webkit-scrollbar-thumb {
+            background: #225A73;
+            border-radius: 3px;
+        }
+        #move-list::-webkit-scrollbar-thumb:hover {
+            background: #2d7a9c;
+        }
+        #move-list { scrollbar-color: #225A73 #051a28; scrollbar-width: thin; }
+
+        .move-pair { display: flex; gap: 4px; }
+        .move-pair .num { color: #475569; min-width: 24px; }
+        .move-pair span { padding: 2px 4px; border-radius: 3px; }
+        .move-pair span:hover { background: #0d3550; }
+
         .chat-section {
-            width: 40%;
-            background: #0B1120;
+            flex: 1;
+            background: #061b2c;
             display: flex;
             flex-direction: column;
             border-left: 2px solid #225A73;
@@ -193,7 +284,7 @@
 
         .chat-header {
             padding: 16px 24px;
-            border-bottom: 1px solid #1E293B;
+            border-bottom: 1px solid #0d3550;
             display: flex;
             align-items: center;
             gap: 12px;
@@ -226,7 +317,7 @@
             align-items: center;
             gap: 8px;
             padding: 10px 24px;
-            border-bottom: 1px solid #1E293B;
+            border-bottom: 1px solid #0d3550;
             font-size: 13px;
             color: #64748B;
         }
@@ -244,32 +335,6 @@
             50% { opacity: 0.4; }
         }
 
-        .move-history {
-            padding: 14px 24px;
-            border-bottom: 1px solid #1E293B;
-        }
-
-        .move-history h3 {
-            font-size: 13px;
-            color: #64748B;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 10px;
-        }
-
-        #move-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-            max-height: 80px;
-            overflow-y: auto;
-            font-size: 13px;
-            color: #94A3B8;
-        }
-
-        .move-pair .num { color: #475569; margin-right: 2px; }
-        .move-pair span { padding: 2px 4px; border-radius: 3px; }
-        .move-pair span:hover { background: #1E293B; }
 
         .chat-messages {
             flex: 1;
@@ -279,6 +344,12 @@
             flex-direction: column;
             gap: 14px;
         }
+
+        .chat-messages::-webkit-scrollbar { width: 6px; }
+        .chat-messages::-webkit-scrollbar-track { background: #061b2c; border-radius: 3px; }
+        .chat-messages::-webkit-scrollbar-thumb { background: #225A73; border-radius: 3px; }
+        .chat-messages::-webkit-scrollbar-thumb:hover { background: #2d7a9c; }
+        .chat-messages { scrollbar-color: #225A73 #061b2c; scrollbar-width: thin; }
 
         .chat-msg {
             display: flex;
@@ -299,7 +370,7 @@
         }
 
         .chat-msg .msg-body {
-            background: #131B2E;
+            background: #0a2838;
             padding: 12px 16px;
             border-radius: 0 12px 12px 12px;
             font-size: 14px;
@@ -311,15 +382,15 @@
 
         .chat-input-area {
             padding: 14px 24px;
-            border-top: 1px solid #1E293B;
+            border-top: 1px solid #0d3550;
             display: flex;
             gap: 10px;
         }
 
         .chat-input-area input {
             flex: 1;
-            background: #131B2E;
-            border: 1px solid #1E293B;
+            background: #0a2838;
+            border: 1px solid #0d3550;
             border-radius: 10px;
             padding: 12px 16px;
             color: #E2E8F0;
@@ -350,13 +421,13 @@
             display: flex;
             gap: 8px;
             align-items: center;
-            margin-top: 10px;
+            margin-top: 14px;
             width: 100%;
         }
 
         .fen-bar input {
             flex: 1;
-            background: #131B2E;
+            background: #0a2838;
             border: 1px solid #225A73;
             border-radius: 6px;
             padding: 8px 12px;
@@ -383,33 +454,32 @@
         .fen-bar button:hover { background: #2d7a9c; }
 
         .fen-bar .fen-file-btn {
-            background: #1E293B;
+            background: #0d3550;
             font-size: 15px;
             padding: 5px 10px;
             border-radius: 6px;
             cursor: pointer;
-            border: 1px solid #2a3a50;
+            border: 1px solid #225A73;
         }
 
-        .fen-bar .fen-file-btn:hover { background: #2a3a50; }
+        .fen-bar .fen-file-btn:hover { background: #164a63; }
     </style>
 </head>
 <body>
     <div class="top-bar">
         <img src="logo_sfedu_white.png" alt="ЮФУ" class="sfedu-logo">
-        <h1>SFEDUCASTLING</h1>
-        <span class="version-tag">AI CHESS PLATFORM</span>
+        <div class="title-block">
+            <div class="title"><span class="t-knight">♞</span><span class="t-sfedu">FEDU</span><span class="t-castling">CASTLING</span></div>
+            <div class="subtitle"><span class="ai-dot"></span> Powered by GigaChat</div>
+        </div>
+        <span class="version-tag"><span class="crown">♛</span> AI CHESS PLATFORM</span>
     </div>
 
     <div class="main-area">
         <div class="board-section">
             <div class="board-wrapper">
                 <div class="player-bar">
-                    <div class="avatar">♚</div>
-                    <div>
-                        <div class="name">Maia Chess</div>
-                        <div class="rating">~1500 ELO</div>
-                    </div>
+                    <div class="rating-label">Противник: ~1500 ELO</div>
                 </div>
 
                 <div class="board-outer">
@@ -425,11 +495,7 @@
                 </div>
 
                 <div class="player-bar">
-                    <div class="avatar">♔</div>
-                    <div>
-                        <div class="name">Студент ЮФУ</div>
-                        <div class="rating">Белые</div>
-                    </div>
+                    <div class="rating-label">Вы — Белые</div>
                 </div>
                 <div id="game-status">Ваш ход</div>
 
@@ -442,6 +508,11 @@
             </div>
         </div>
 
+        <div class="middle-section">
+            <h3>История ходов</h3>
+            <div id="move-list"></div>
+        </div>
+
         <div class="chat-section">
             <div class="chat-header">
                 <div class="icon">⚡</div>
@@ -452,11 +523,6 @@
             <div class="status-bar">
                 <span class="dot"></span>
                 <span>Maia Chess Engine подключён</span>
-            </div>
-
-            <div class="move-history">
-                <h3>История ходов</h3>
-                <div id="move-list"></div>
             </div>
 
             <div class="chat-messages" id="chat-messages">
@@ -521,6 +587,7 @@
             moveNumber = 1;
             castling = { wK: true, wQ: true, bK: true, bQ: true };
             enPassant = null;
+            halfmoveClock = 0;
             render();
             updateStatus();
         }
@@ -766,6 +833,12 @@
             if (tr === 7 && tc === 7) castling['wK'] = false;
             if (tr === 7 && tc === 0) castling['wQ'] = false;
 
+            if (type === 'P' || captured || special === 'enpassant') {
+                halfmoveClock = 0;
+            } else {
+                halfmoveClock++;
+            }
+
             lastFrom = sqName(fr, fc);
             lastTo = sqName(tr, tc);
 
@@ -805,7 +878,7 @@
             var topH = topBar ? topBar.offsetHeight : 58;
             var availH = window.innerHeight - topH;
             var availW = window.innerWidth * 0.6;
-            var size = Math.floor(Math.min(availW - 80, availH - 230) / 8) * 8;
+            var size = Math.floor(Math.min(availW - 60, availH - 160) / 8) * 8;
             boardEl.style.width = size + 'px';
             boardEl.style.height = size + 'px';
 
@@ -901,8 +974,36 @@
             }
         }
 
+        function isInsufficientMaterial() {
+            var dominated = { w: [], b: [] };
+            for (var r = 0; r < 8; r++) {
+                for (var c = 0; c < 8; c++) {
+                    var p = at(r, c);
+                    if (!p) continue;
+                    dominated[colorOf(p)].push(typeOf(p));
+                }
+            }
+            var w = dominated.w.sort().join('');
+            var b = dominated.b.sort().join('');
+            // Король vs Король
+            if (w === 'K' && b === 'K') return true;
+            // Король+слон vs Король
+            if (w === 'BK' && b === 'K') return true;
+            if (w === 'K' && b === 'BK') return true;
+            // Король+конь vs Король
+            if (w === 'KN' && b === 'K') return true;
+            if (w === 'K' && b === 'KN') return true;
+            // Король+слон vs Король+слон (одноцветные слоны)
+            if (w === 'BK' && b === 'BK') return true;
+            return false;
+        }
+
+        var halfmoveClock = 0;
+
         function isGameOver() {
             if (!hasAnyLegalMove(turn)) return true;
+            if (isInsufficientMaterial()) return true;
+            if (halfmoveClock >= 100) return true;
             return false;
         }
 
@@ -957,6 +1058,12 @@
             } else if (noMoves) {
                 el.textContent = 'Пат — ничья';
                 addChatMessage('Партия завершилась вничью (пат).');
+            } else if (isInsufficientMaterial()) {
+                el.textContent = 'Ничья — недостаточно материала';
+                addChatMessage('Ничья: недостаточно фигур для мата.');
+            } else if (halfmoveClock >= 100) {
+                el.textContent = 'Ничья — правило 50 ходов';
+                addChatMessage('Ничья по правилу 50 ходов без взятий и ходов пешками.');
             } else if (inCheck(turn)) {
                 el.textContent = turn === 'w' ? 'Шах! Ваш ход' : 'Шах! Maia думает...';
             } else {
@@ -992,7 +1099,7 @@
             var container = document.getElementById('chat-messages');
             var userMsg = document.createElement('div');
             userMsg.className = 'chat-msg';
-            userMsg.innerHTML = '<div class="msg-avatar" style="background:#1E293B">👤</div>'
+            userMsg.innerHTML = '<div class="msg-avatar" style="background:#0d3550">👤</div>'
                 + '<div class="msg-body" style="border-radius:12px 0 12px 12px">' + escapeHtml(text) + '</div>';
             container.appendChild(userMsg);
             container.scrollTop = container.scrollHeight;
@@ -1042,6 +1149,7 @@
                 if (c.indexOf('q') !== -1) castling.bQ = true;
             }
             enPassant = (parts.length > 3 && parts[3] !== '-') ? parts[3] : null;
+            halfmoveClock = (parts.length > 4) ? parseInt(parts[4]) || 0 : 0;
 
             document.getElementById('fen-input').value = fen;
             document.getElementById('move-list').innerHTML = '';
