@@ -37,31 +37,32 @@
             z-index: 2;
         }
 
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@900&family=Cormorant+Garamond:wght@300;400;500&display=swap');
 
         .top-bar .title-block {
             display: flex;
             flex-direction: column;
             gap: 2px;
+            margin-left: 10px;
         }
 
         .top-bar .title {
-            font-family: 'Orbitron', 'Segoe UI', sans-serif;
-            font-size: 28px;
-            font-weight: 900;
+            font-family: 'Cormorant Garamond', Georgia, serif;
+            font-size: 40px;
+            font-weight: 400;
             text-transform: uppercase;
-            letter-spacing: 5px;
+            letter-spacing: 8px;
             line-height: 1;
+            display: flex;
+            align-items: baseline;
         }
 
-        .top-bar .title .t-knight {
-            color: #f4fafb;
-            font-family: serif;
-            font-size: 32px;
-            margin-right: -2px;
+        .top-bar .title .t-knight-img {
+            height: 40px;
+            margin-right: -18px;
+            align-self: center;
             display: inline-block;
-            transform: scaleX(-1);
-            filter: drop-shadow(0 0 4px rgba(131, 180, 170, 0.4));
+            filter: brightness(0) invert(1) drop-shadow(0 0 6px rgba(131, 180, 170, 0.5));
         }
 
         .top-bar .title .t-sfedu {
@@ -73,13 +74,14 @@
         }
 
         .top-bar .subtitle {
-            font-size: 10px;
-            color: #5a8a7e;
-            letter-spacing: 3px;
+            font-size: 12px;
+            color: #83b4aa;
+            letter-spacing: 4px;
             text-transform: uppercase;
             display: flex;
             align-items: center;
             gap: 6px;
+            margin-top: 4px;
         }
 
         .top-bar .subtitle .ai-dot {
@@ -469,7 +471,7 @@
     <div class="top-bar">
         <img src="logo_sfedu_white.png" alt="ЮФУ" class="sfedu-logo">
         <div class="title-block">
-            <div class="title"><span class="t-knight">♞</span><span class="t-sfedu">FEDU</span><span class="t-castling">CASTLING</span></div>
+            <div class="title"><img src="knight-s.svg" alt="S" class="t-knight-img"><span class="t-sfedu">FEDU</span><span class="t-castling">CASTLING</span></div>
             <div class="subtitle"><span class="ai-dot"></span> Powered by GigaChat</div>
         </div>
         <span class="version-tag"><span class="crown">♛</span> AI CHESS PLATFORM</span>
@@ -478,8 +480,10 @@
     <div class="main-area">
         <div class="board-section">
             <div class="board-wrapper">
-                <div class="player-bar">
-                    <div class="rating-label">Противник: ~1500 ELO</div>
+                <div class="player-bar" style="display:flex;align-items:center;gap:12px;">
+                    <div class="rating-label">Противник (Maia2): <span id="elo-display">1500</span> ELO</div>
+                    <input type="range" id="elo-slider" min="1100" max="1900" step="100" value="1500"
+                        style="width:150px;accent-color:#225A73;cursor:pointer;">
                 </div>
 
                 <div class="board-outer">
@@ -497,7 +501,10 @@
                 <div class="player-bar">
                     <div class="rating-label">Вы — Белые</div>
                 </div>
-                <div id="game-status">Ваш ход</div>
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <div id="game-status" style="flex:1;">Ваш ход</div>
+                    <button id="new-game-btn" style="padding:4px 12px;background:#225A73;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;">Новая игра</button>
+                </div>
 
                 <div class="fen-bar">
                     <input type="text" id="fen-input" value="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1" placeholder="Вставьте FEN...">
@@ -590,6 +597,33 @@
             halfmoveClock = 0;
             render();
             updateStatus();
+        }
+
+        function toFEN() {
+            var fen = '';
+            for (var r = 0; r < 8; r++) {
+                var empty = 0;
+                for (var c = 0; c < 8; c++) {
+                    var p = position[r][c];
+                    if (!p) { empty++; continue; }
+                    if (empty > 0) { fen += empty; empty = 0; }
+                    var map = {wP:'P',wN:'N',wB:'B',wR:'R',wQ:'Q',wK:'K',bP:'p',bN:'n',bB:'b',bR:'r',bQ:'q',bK:'k'};
+                    fen += map[p] || '?';
+                }
+                if (empty > 0) fen += empty;
+                if (r < 7) fen += '/';
+            }
+            fen += ' ' + (turn === 'w' ? 'w' : 'b');
+            var c_str = '';
+            if (castling.wK) c_str += 'K';
+            if (castling.wQ) c_str += 'Q';
+            if (castling.bK) c_str += 'k';
+            if (castling.bQ) c_str += 'q';
+            fen += ' ' + (c_str || '-');
+            fen += ' ' + (enPassant || '-');
+            fen += ' ' + halfmoveClock;
+            fen += ' ' + moveNumber;
+            return fen;
         }
 
         function sqName(r, c) { return FILES[c] + (8 - r); }
@@ -1008,28 +1042,94 @@
         }
 
         function maiaMove() {
-            var allMoves = [];
-            for (var r = 0; r < 8; r++) {
-                for (var c = 0; c < 8; c++) {
-                    if (at(r, c) && colorOf(at(r, c)) === 'b') {
-                        var mvs = legalMoves(r, c);
-                        for (var i = 0; i < mvs.length; i++) {
-                            allMoves.push({ fr: r, fc: c, tr: mvs[i].r, tc: mvs[i].c, special: mvs[i].special });
+            var fen = toFEN();
+            var elo = parseInt(document.getElementById('elo-slider').value);
+
+            fetch('/api/maia-move', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({fen: fen, elo: elo})
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.error) return;
+                var from = rc(data.from);
+                var to = rc(data.to);
+                var special = null;
+                var piece = at(from.r, from.c);
+                // Определяем рокировку
+                if (piece && piece[1] === 'K' && Math.abs(from.c - to.c) === 2) {
+                    special = to.c > from.c ? 'castle-k' : 'castle-q';
+                }
+                // Определяем en passant
+                if (piece && piece[1] === 'P' && from.c !== to.c && !at(to.r, to.c)) {
+                    special = 'en-passant';
+                }
+                // Определяем превращение
+                if (piece && piece[1] === 'P' && (to.r === 0 || to.r === 7)) {
+                    special = 'promote';
+                }
+                makeMove(from.r, from.c, to.r, to.c, special);
+                selected = null;
+                render();
+                updateMoveList();
+                updateStatus();
+
+                if (moveHistory.length === 1 && moveHistory[0].b) {
+                    addChatMessage('Интересное начало! Посмотрим, как развернётся партия.');
+                }
+            })
+            .catch(function(err) {
+                console.error('Maia2 ошибка:', err);
+                // Фоллбэк — случайный ход
+                var allMoves = [];
+                for (var r = 0; r < 8; r++) {
+                    for (var c = 0; c < 8; c++) {
+                        if (at(r, c) && colorOf(at(r, c)) === 'b') {
+                            var mvs = legalMoves(r, c);
+                            for (var i = 0; i < mvs.length; i++) {
+                                allMoves.push({ fr: r, fc: c, tr: mvs[i].r, tc: mvs[i].c, special: mvs[i].special });
+                            }
                         }
                     }
                 }
-            }
-            if (allMoves.length === 0) return;
-            var pick = allMoves[Math.floor(Math.random() * allMoves.length)];
-            makeMove(pick.fr, pick.fc, pick.tr, pick.tc, pick.special);
-            selected = null;
-            render();
-            updateMoveList();
-            updateStatus();
+                if (allMoves.length === 0) return;
+                var pick = allMoves[Math.floor(Math.random() * allMoves.length)];
+                makeMove(pick.fr, pick.fc, pick.tr, pick.tc, pick.special);
+                selected = null;
+                render();
+                updateMoveList();
+                updateStatus();
+            });
+        }
 
-            if (moveHistory.length === 1 && moveHistory[0].b) {
-                addChatMessage('Интересное начало! Посмотрим, как развернётся партия.');
-            }
+        function updateFenDisplay() {
+            document.getElementById('fen-input').value = toFEN();
+        }
+
+        function saveGame() {
+            var state = {
+                fen: toFEN(),
+                moveHistory: moveHistory,
+                moveNumber: moveNumber
+            };
+            localStorage.setItem('sfeducastling_game', JSON.stringify(state));
+        }
+
+        function loadSavedGame() {
+            var saved = localStorage.getItem('sfeducastling_game');
+            if (!saved) return false;
+            try {
+                var state = JSON.parse(saved);
+                if (!state.fen) return false;
+                loadFen(state.fen);
+                if (state.moveHistory) {
+                    moveHistory = state.moveHistory;
+                    moveNumber = state.moveNumber || 1;
+                    updateMoveList();
+                }
+                return true;
+            } catch(e) { return false; }
         }
 
         function updateMoveList() {
@@ -1050,6 +1150,8 @@
         }
 
         function updateStatus() {
+            updateFenDisplay();
+            saveGame();
             var el = document.getElementById('game-status');
             var noMoves = !hasAnyLegalMove(turn);
             if (noMoves && inCheck(turn)) {
@@ -1071,11 +1173,31 @@
             }
         }
 
+        function formatMarkdown(text) {
+            // Экранируем HTML
+            var d = document.createElement('div');
+            d.textContent = text;
+            var s = d.innerHTML;
+            // ### Заголовки → жирный текст с отступом
+            s = s.replace(/^### (.+)$/gm, '<div style="font-weight:700;color:#83b4aa;margin-top:8px;">$1</div>');
+            s = s.replace(/^## (.+)$/gm, '<div style="font-weight:700;color:#83b4aa;font-size:15px;margin-top:8px;">$1</div>');
+            s = s.replace(/^# (.+)$/gm, '<div style="font-weight:700;color:#83b4aa;font-size:16px;margin-top:8px;">$1</div>');
+            // **жирный** → <b>
+            s = s.replace(/\*\*(.+?)\*\*/g, '<b style="color:#e2e8f0;">$1</b>');
+            // *курсив* → <i>
+            s = s.replace(/\*(.+?)\*/g, '<i>$1</i>');
+            // - списки → буллеты
+            s = s.replace(/^[-•] (.+)$/gm, '<div style="padding-left:12px;">• $1</div>');
+            // Переносы строк
+            s = s.replace(/\n/g, '<br>');
+            return s;
+        }
+
         function addChatMessage(text) {
             var container = document.getElementById('chat-messages');
             var msg = document.createElement('div');
             msg.className = 'chat-msg';
-            msg.innerHTML = '<div class="msg-avatar">⚡</div><div class="msg-body">' + text + '</div>';
+            msg.innerHTML = '<div class="msg-avatar">⚡</div><div class="msg-body">' + formatMarkdown(text) + '</div>';
             container.appendChild(msg);
             container.scrollTop = container.scrollHeight;
         }
@@ -1103,9 +1225,18 @@
                 + '<div class="msg-body" style="border-radius:12px 0 12px 12px">' + escapeHtml(text) + '</div>';
             container.appendChild(userMsg);
             container.scrollTop = container.scrollHeight;
-            setTimeout(function() {
-                addChatMessage('Анализ позиции будет доступен после подключения GigaChat API.');
-            }, 500);
+            fetch('/api/analyze', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({fen: toFEN()})
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                addChatMessage(data.message || 'Нет ответа от GigaChat.');
+            })
+            .catch(function() {
+                addChatMessage('Ошибка соединения с сервером.');
+            });
         }
 
         function loadFen(fen) {
@@ -1181,7 +1312,20 @@
 
         window.addEventListener('resize', function() { render(); });
 
-        init();
+        document.getElementById('new-game-btn').addEventListener('click', function() {
+            localStorage.removeItem('sfeducastling_game');
+            init();
+            document.getElementById('chat-messages').innerHTML = '';
+            addChatMessage('Новая игра начата. Удачи!');
+        });
+
+        document.getElementById('elo-slider').addEventListener('input', function() {
+            document.getElementById('elo-display').textContent = this.value;
+        });
+
+        if (!loadSavedGame()) {
+            init();
+        }
     })();
     </script>
 </body>
