@@ -891,6 +891,11 @@
         addChatMessage('Новая игра начата. Удачи!');
     });
 
+    document.getElementById('flip-board-btn').addEventListener('click', function() {
+        boardEl.classList.toggle('flipped');
+        boardEl.parentElement.classList.toggle('flipped');
+    });
+
     document.getElementById('elo-slider').addEventListener('input', function() {
         document.getElementById('elo-display').textContent = this.value;
     });

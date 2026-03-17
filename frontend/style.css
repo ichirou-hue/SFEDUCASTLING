@@ -179,6 +179,37 @@ body {
     position: relative;
 }
 
+#board {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    grid-template-rows: repeat(8, 1fr);
+    border: 3px solid #225A73;
+    box-shadow: 0 0 0 1px #1a4a5f, 0 10px 50px rgba(0, 0, 0, 0.7);
+    border-radius: 6px;
+    overflow: hidden;
+    position: relative;
+}
+
+#board.flipped {
+    transform: rotate(180deg);
+}
+
+#board.flipped .piece {
+    transform: rotate(180deg);
+}
+
+.board-outer.flipped .coords-rank {
+    flex-direction: column-reverse;
+}
+
+.board-outer.flipped .coords-file {
+    flex-direction: row-reverse;
+}
+
+#board.flipped .piece {
+    transform: rotate(180deg);
+}
+
 .sq {
     aspect-ratio: 1;
     display: flex;
