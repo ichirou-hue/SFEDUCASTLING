@@ -1,6 +1,8 @@
 # Maia2 model weights
+maia2_models/
 backend/maia2_models/
 *.pt
+*.part
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
