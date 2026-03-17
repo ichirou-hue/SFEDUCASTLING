@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 import chess
 import random
@@ -23,6 +24,11 @@ app.add_middleware(
 
 frontend_path = os.path.join(os.path.dirname(__file__), "..", "frontend")
 app.mount("/static", StaticFiles(directory=frontend_path), name="static")
+
+
+@app.get("/")
+def serve_index():
+    return FileResponse(os.path.join(frontend_path, "index.html"))
 
 
 # --- GigaChat ---
