@@ -121,12 +121,19 @@ def maia_move(req: FenRequest):
             move_probs, win_prob = maia2_inference.inference_each(
                 maia2, maia2_prepared, req.fen, req.elo, req.elo
             )
-            best_uci = max(move_probs, key=move_probs.get)
-            move = chess.Move.from_uci(best_uci)
+            if not move_probs:
+                print(f"[Maia2] WARNING: empty move_probs, using random")
+                move = random.choice(list(board.legal_moves))
+            else:
+                best_uci = max(move_probs, key=move_probs.get)
+                move = chess.Move.from_uci(best_uci)
         except Exception as e:
-            print(f"Maia2 ошибка: {e}")
+            print(f"[Maia2] Ошибка инференса: {e}")
+            import traceback
+            traceback.print_exc()
             move = random.choice(list(board.legal_moves))
     else:
+        print("[Maia2] ВНИМАНИЕ: maia2 не загружена, используется случайный ход")
         move = random.choice(list(board.legal_moves))
 
     san = board.san(move)
