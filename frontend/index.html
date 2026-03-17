@@ -21,20 +21,22 @@
             display: flex;
             align-items: center;
             gap: 0;
-            padding: 10px 30px;
+            padding: 8px 20px;
             border-bottom: 2px solid #225A73;
             background: #061b2c;
             flex-shrink: 0;
             position: relative;
+            overflow: auto;
         }
 
         .sfedu-logo {
-            width: 62px;
+            width: 50px;
             height: auto;
             filter: drop-shadow(0 0 10px rgba(34, 90, 115, 0.6));
-            margin-right: 14px;
+            margin-right: 10px;
             position: relative;
             z-index: 2;
+            flex-shrink: 0;
         }
 
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@900&family=Cormorant+Garamond:wght@300;400;500&display=swap');
@@ -48,18 +50,19 @@
 
         .top-bar .title {
             font-family: 'Cormorant Garamond', Georgia, serif;
-            font-size: 40px;
+            font-size: 32px;
             font-weight: 400;
             text-transform: uppercase;
-            letter-spacing: 8px;
+            letter-spacing: 6px;
             line-height: 1;
             display: flex;
             align-items: baseline;
+            flex-shrink: 0;
         }
 
         .top-bar .title .t-knight-img {
-            height: 40px;
-            margin-right: -18px;
+            height: 32px;
+            margin-right: -14px;
             align-self: center;
             display: inline-block;
             filter: brightness(0) invert(1) drop-shadow(0 0 6px rgba(131, 180, 170, 0.5));
@@ -74,14 +77,15 @@
         }
 
         .top-bar .subtitle {
-            font-size: 12px;
+            font-size: 10px;
             color: #83b4aa;
-            letter-spacing: 4px;
+            letter-spacing: 3px;
             text-transform: uppercase;
             display: flex;
             align-items: center;
             gap: 6px;
             margin-top: 4px;
+            flex-shrink: 0;
         }
 
         .top-bar .subtitle .ai-dot {
@@ -94,16 +98,17 @@
         }
 
         .top-bar .version-tag {
-            font-size: 11px;
+            font-size: 10px;
             color: #64748B;
             border: 1px solid #225A73;
-            padding: 4px 12px;
+            padding: 3px 8px;
             border-radius: 6px;
             margin-left: auto;
-            letter-spacing: 1.5px;
+            letter-spacing: 1px;
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 4px;
+            flex-shrink: 0;
         }
 
         .top-bar .version-tag .crown {
@@ -133,6 +138,10 @@
         .player-bar {
             width: 100%;
             padding: 4px 4px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
         }
 
         .rating-label {
@@ -432,11 +441,12 @@
             background: #0a2838;
             border: 1px solid #225A73;
             border-radius: 6px;
-            padding: 8px 12px;
+            padding: 6px 10px;
             color: #CBD5E1;
-            font-size: 12px;
+            font-size: 11px;
             font-family: 'Consolas', 'Courier New', monospace;
             outline: none;
+            min-width: 0;
         }
 
         .fen-bar input:focus { border-color: #3d8da6; color: #E2E8F0; }
@@ -445,9 +455,9 @@
             background: #225A73;
             border: none;
             border-radius: 6px;
-            padding: 7px 14px;
+            padding: 5px 10px;
             color: #E2E8F0;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 600;
             cursor: pointer;
             white-space: nowrap;
@@ -457,14 +467,55 @@
 
         .fen-bar .fen-file-btn {
             background: #0d3550;
-            font-size: 15px;
-            padding: 5px 10px;
+            font-size: 13px;
+            padding: 4px 8px;
             border-radius: 6px;
             cursor: pointer;
             border: 1px solid #225A73;
         }
 
         .fen-bar .fen-file-btn:hover { background: #164a63; }
+
+        .material-display {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            font-size: 12px;
+            padding: 4px 8px;
+            background: #0a2838;
+            border-radius: 6px;
+            flex-shrink: 0;
+        }
+
+        .material-display.white-adv { color: #4ade80; }
+        .material-display.black-adv { color: #f87171; }
+        .material-display.equal { color: #64748B; }
+
+        .material-display .mat-icon {
+            font-size: 16px;
+        }
+
+        .material-bar-container {
+            width: 120px;
+            height: 6px;
+            background: #1a4558;
+            border-radius: 3px;
+            overflow: hidden;
+            display: flex;
+        }
+
+        .material-bar-white {
+            height: 100%;
+            background: #4ade80;
+            transition: width 0.3s;
+        }
+
+        .material-bar-black {
+            height: 100%;
+            background: #f87171;
+            transition: width 0.3s;
+        }
     </style>
 </head>
 <body>
@@ -480,10 +531,11 @@
     <div class="main-area">
         <div class="board-section">
             <div class="board-wrapper">
-                <div class="player-bar" style="display:flex;align-items:center;gap:12px;">
+                <div class="player-bar">
                     <div class="rating-label">Противник (Maia2): <span id="elo-display">1500</span> ELO</div>
                     <input type="range" id="elo-slider" min="1100" max="1900" step="100" value="1500"
-                        style="width:150px;accent-color:#225A73;cursor:pointer;">
+                        style="width:100px;accent-color:#225A73;cursor:pointer;">
+                    <div id="material-display-top" class="material-display equal"></div>
                 </div>
 
                 <div class="board-outer">
@@ -500,6 +552,7 @@
 
                 <div class="player-bar">
                     <div class="rating-label">Вы — Белые</div>
+                    <div id="material-display-bottom" class="material-display equal"></div>
                 </div>
                 <div style="display:flex;align-items:center;gap:10px;">
                     <div id="game-status" style="flex:1;">Ваш ход</div>
@@ -576,6 +629,8 @@
         var moveNumber = 1;
         var castling = { wK: true, wQ: true, bK: true, bQ: true };
         var enPassant = null;
+        var capturedByWhite = [];
+        var capturedByBlack = [];
         var boardEl = document.getElementById('board');
 
         function init() {
@@ -594,9 +649,12 @@
             moveNumber = 1;
             castling = { wK: true, wQ: true, bK: true, bQ: true };
             enPassant = null;
+            capturedByWhite = [];
+            capturedByBlack = [];
             halfmoveClock = 0;
             render();
             updateStatus();
+            updateMaterialDisplay();
         }
 
         function toFEN() {
@@ -637,6 +695,63 @@
         function colorOf(p) { return p ? p[0] : null; }
         function typeOf(p) { return p ? p[1] : null; }
         function enemy() { return turn === 'w' ? 'b' : 'w'; }
+
+        var PIECE_VALUES = { P: 1, N: 3, B: 3, R: 5, Q: 9, K: 0 };
+
+        function getMaterial() {
+            var white = 0, black = 0;
+            for (var r = 0; r < 8; r++) {
+                for (var c = 0; c < 8; c++) {
+                    var p = position[r][c];
+                    if (!p) continue;
+                    var val = PIECE_VALUES[typeOf(p)];
+                    if (colorOf(p) === 'w') white += val;
+                    else black += val;
+                }
+            }
+            return { white: white, black: black, diff: white - black };
+        }
+
+        function updateMaterialDisplay() {
+            var m = getMaterial();
+            var topEl = document.getElementById('material-display-top');
+            var bottomEl = document.getElementById('material-display-bottom');
+            var diff = m.diff;
+
+            function getCapturedHtml(captures) {
+                var CAPTURED_ICONS = {
+                    'bP': '\u265F', 'bN': '\u265E', 'bB': '\u265D', 'bR': '\u265C', 'bQ': '\u265B', 'bK': '\u265A',
+                    'wP': '\u2659', 'wN': '\u2658', 'wB': '\u2657', 'wR': '\u2656', 'wQ': '\u2655', 'wK': '\u2654'
+                };
+                var html = '';
+                for (var i = 0; i < captures.length; i++) {
+                    var p = captures[i];
+                    var icon = CAPTURED_ICONS[p] || '';
+                    html += '<span style="font-size:16px;color:#fff;text-shadow:-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000">' + icon + '</span>';
+                }
+                return html;
+            }
+
+            var whiteCapturesHtml = getCapturedHtml(capturedByWhite);
+            var blackCapturesHtml = getCapturedHtml(capturedByBlack);
+
+            if (diff === 0) {
+                topEl.className = 'material-display equal';
+                topEl.innerHTML = blackCapturesHtml;
+                bottomEl.className = 'material-display equal';
+                bottomEl.innerHTML = whiteCapturesHtml;
+            } else if (diff > 0) {
+                topEl.className = 'material-display equal';
+                topEl.innerHTML = blackCapturesHtml;
+                bottomEl.className = 'material-display white-adv';
+                bottomEl.innerHTML = '<span style="font-weight:bold;">+' + diff + '</span> ' + whiteCapturesHtml;
+            } else {
+                topEl.className = 'material-display white-adv';
+                topEl.innerHTML = '<span style="font-weight:bold;">+' + Math.abs(diff) + '</span> ' + blackCapturesHtml;
+                bottomEl.className = 'material-display equal';
+                bottomEl.innerHTML = whiteCapturesHtml;
+            }
+        }
 
         function legalMoves(fromR, fromC) {
             var piece = at(fromR, fromC);
@@ -834,8 +949,16 @@
             position[tr][tc] = piece;
             position[fr][fc] = null;
 
+            if (captured) {
+                if (color === 'w') capturedByWhite.push(captured);
+                else capturedByBlack.push(captured);
+            }
+
             if (special === 'enpassant') {
                 var epRow = color === 'w' ? tr + 1 : tr - 1;
+                var epCaptured = color === 'w' ? 'bP' : 'wP';
+                if (color === 'w') capturedByWhite.push(epCaptured);
+                else capturedByBlack.push(epCaptured);
                 position[epRow][tc] = null;
             }
             if (special === 'castle-k') {
@@ -1111,7 +1234,9 @@
             var state = {
                 fen: toFEN(),
                 moveHistory: moveHistory,
-                moveNumber: moveNumber
+                moveNumber: moveNumber,
+                capturedByWhite: capturedByWhite,
+                capturedByBlack: capturedByBlack
             };
             localStorage.setItem('sfeducastling_game', JSON.stringify(state));
         }
@@ -1123,6 +1248,9 @@
                 var state = JSON.parse(saved);
                 if (!state.fen) return false;
                 loadFen(state.fen);
+                if (state.capturedByWhite) capturedByWhite = state.capturedByWhite;
+                if (state.capturedByBlack) capturedByBlack = state.capturedByBlack;
+                updateMaterialDisplay();
                 if (state.moveHistory) {
                     moveHistory = state.moveHistory;
                     moveNumber = state.moveNumber || 1;
@@ -1151,6 +1279,7 @@
 
         function updateStatus() {
             updateFenDisplay();
+            updateMaterialDisplay();
             saveGame();
             var el = document.getElementById('game-status');
             var noMoves = !hasAnyLegalMove(turn);
@@ -1271,6 +1400,8 @@
             lastTo = null;
             moveHistory = [];
             moveNumber = 1;
+            capturedByWhite = [];
+            capturedByBlack = [];
             castling = { wK: false, wQ: false, bK: false, bQ: false };
             if (parts.length > 2) {
                 var c = parts[2];
@@ -1286,6 +1417,7 @@
             document.getElementById('move-list').innerHTML = '';
             render();
             updateStatus();
+            updateMaterialDisplay();
             addChatMessage('Позиция загружена из FEN.');
         }
 
