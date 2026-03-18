@@ -16,6 +16,12 @@
         ['wR','wN','wB','wQ','wK','wB','wN','wR']
     ];
 
+    // Пользователь и игровые данные для датасета
+    var userId = localStorage.getItem('sfedu_user_id') || 'user_' + Math.random().toString(36).substr(2, 9);
+    localStorage.setItem('sfedu_user_id', userId);
+    var gameId = 'game_' + Date.now();
+    var moveCount = 0;
+
     var position = [];
     var selected = null;
     var lastFrom = null;
@@ -411,6 +417,38 @@
             }
             moveNumber++;
         }
+        
+        // === СОХРАНЕНИЕ В ДАТАСЕТ ===
+        // Сохраняем только ходы пользователя (белые)
+        if (color === 'w') {
+            moveCount++;
+            saveMoveToDataset(fr, fc, tr, tc);
+        }
+    }
+
+    // Функция сохранения хода в датасет
+    function saveMoveToDataset(fr, fc, tr, tc) {
+        // Конвертируем координаты в UCI нотацию (например "e2e4")
+        var fromSq = FILES[fc] + (8 - fr);
+        var toSq = FILES[tc] + (8 - tr);
+        var moveUci = fromSq + toSq;
+        
+        // Получаем текущий FEN
+        var fen = toFEN();
+        
+        // Отправляем на сервер (асинхронно, без ожидания ответа)
+        fetch('/api/save-move-to-dataset', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                fen: fen,
+                move: moveUci,
+                user_id: userId,
+                game_id: gameId
+            })
+        }).catch(function(err) {
+            console.log('Ошибка сохранения в датасет:', err);
+        });
     }
 
     function render(animate) {
