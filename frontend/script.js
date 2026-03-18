@@ -777,31 +777,56 @@
         if (e.key === 'Enter') sendChat();
     });
 
-    function sendChat() {
-        var input = document.getElementById('chat-input');
-        var text = input.value.trim();
-        if (!text) return;
-        input.value = '';
+    // === Кнопка анализа позиции ===
+    document.getElementById('analyze-btn').addEventListener('click', function() {
+        var fen = toFEN();
         var container = document.getElementById('chat-messages');
-        var userMsg = document.createElement('div');
-        userMsg.className = 'chat-msg';
-        userMsg.innerHTML = '<div class="msg-avatar" style="background:#0d3550">👤</div>'
-            + '<div class="msg-body" style="border-radius:12px 0 12px 12px">' + escapeHtml(text) + '</div>';
-        container.appendChild(userMsg);
+        
+        // Добавляем сообщение о начале анализа
+        var msg = document.createElement('div');
+        msg.className = 'chat-msg';
+        msg.innerHTML = '<div class="msg-avatar">🔍</div>'
+            + '<div class="msg-body">Анализ позиции через Stockfish...</div>';
+        container.appendChild(msg);
         container.scrollTop = container.scrollHeight;
-        fetch('/api/analyze', {
+        
+        // Отправляем запрос на анализ
+        fetch('/api/stockfish-analyze', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({fen: toFEN()})
+            body: JSON.stringify({fen: fen, elo: 1500})
         })
         .then(function(r) { return r.json(); })
         .then(function(data) {
-            addChatMessage(data.message || 'Нет ответа от GigaChat.');
+            if (data.error) {
+                addChatMessage('Ошибка: ' + data.error);
+            } else {
+                var evalText = '';
+                if (data.evaluation.type === 'cp') {
+                    evalText = data.evaluation.value > 0 
+                        ? '+' + (data.evaluation.value / 100).toFixed(1) 
+                        : (data.evaluation.value / 100).toFixed(1);
+                } else {
+                    evalText = 'Мат в ' + data.evaluation.value;
+                }
+                
+                var msg = document.createElement('div');
+                msg.className = 'chat-msg';
+                msg.innerHTML = '<div class="msg-avatar">🔍</div>'
+                    + '<div class="msg-body">'
+                    + '<b>Анализ Stockfish:</b><br>'
+                    + '• Лучший ход: <b>' + data.best_move + '</b><br>'
+                    + '• Оценка: <b>' + evalText + '</b><br>'
+                    + '• Варианты: ' + data.top_moves.slice(0, 3).map(m => m.move).join(', ')
+                    + '</div>';
+                container.appendChild(msg);
+                container.scrollTop = container.scrollHeight;
+            }
         })
         .catch(function() {
             addChatMessage('Ошибка соединения с сервером.');
         });
-    }
+    });
 
     function loadFen(fen) {
         fen = fen.trim();
