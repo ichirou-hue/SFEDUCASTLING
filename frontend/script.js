@@ -796,18 +796,35 @@
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({fen: fen, elo: 1500})
         })
-        .then(function(r) { return r.json(); })
+        .then(function(r) { 
+            if (!r.ok) {
+                throw new Error('HTTP ' + r.status);
+            }
+            return r.json(); 
+        })
         .then(function(data) {
+            console.log('Ответ от API:', data); // Отладка
+            
             if (data.error) {
                 addChatMessage('Ошибка: ' + data.error);
             } else {
                 var evalText = '';
-                if (data.evaluation.type === 'cp') {
+                if (data.evaluation && data.evaluation.type === 'cp') {
                     evalText = data.evaluation.value > 0 
                         ? '+' + (data.evaluation.value / 100).toFixed(1) 
                         : (data.evaluation.value / 100).toFixed(1);
-                } else {
+                } else if (data.evaluation && data.evaluation.type === 'mate') {
                     evalText = 'Мат в ' + data.evaluation.value;
+                } else {
+                    evalText = 'без оценки';
+                }
+                
+                // Форматируем варианты (учитываем разный регистр поля в API)
+                var variants = '';
+                if (data.top_moves && data.top_moves.length > 0) {
+                    variants = data.top_moves.slice(0, 3).map(function(m) {
+                        return m.Move || m.move;
+                    }).join(', ');
                 }
                 
                 var msg = document.createElement('div');
@@ -817,14 +834,15 @@
                     + '<b>Анализ Stockfish:</b><br>'
                     + '• Лучший ход: <b>' + data.best_move + '</b><br>'
                     + '• Оценка: <b>' + evalText + '</b><br>'
-                    + '• Варианты: ' + data.top_moves.slice(0, 3).map(m => m.move).join(', ')
+                    + '• Варианты: ' + variants
                     + '</div>';
                 container.appendChild(msg);
                 container.scrollTop = container.scrollHeight;
             }
         })
-        .catch(function() {
-            addChatMessage('Ошибка соединения с сервером.');
+        .catch(function(err) {
+            console.error('Ошибка анализа:', err);
+            addChatMessage('Ошибка: ' + err.message);
         });
     });
 
