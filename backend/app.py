@@ -10,6 +10,7 @@ import requests
 from dotenv import load_dotenv
 from gigachat import GigaChat
 from maia2 import model as maia2_model_loader, inference as maia2_inference
+from stockfish import Stockfish
 
 load_dotenv()
 
@@ -49,6 +50,18 @@ try:
 except Exception as e:
     print(f"Не удалось загрузить Maia2: {e}")
     print("Будут использоваться случайные ходы.")
+
+# --- Загрузка Stockfish ---
+STOCKFISH_PATH = os.path.join(os.path.dirname(__file__), "..", "stockfish", "stockfish.exe")
+stockfish = None
+try:
+    if os.path.exists(STOCKFISH_PATH):
+        stockfish = Stockfish(path=STOCKFISH_PATH, depth=20)
+        print(f"✅ Stockfish загружен: {STOCKFISH_PATH}")
+    else:
+        print(f"❌ Stockfish не найден по пути: {STOCKFISH_PATH}")
+except Exception as e:
+    print(f"Ошибка загрузки Stockfish: {e}")
 
 
 class FenSquare(BaseModel):
@@ -163,6 +176,101 @@ def maia_move(req: FenRequest):
         "status": status,
         "turn": "w" if board.turn == chess.WHITE else "b",
     }
+
+
+@app.post("/api/stockfish-analyze")
+def stockfish_analyze(req: FenRequest):
+    """Анализ позиции с помощью Stockfish"""
+    if not stockfish:
+        return {"error": "Stockfish не загружен"}
+    
+    try:
+        stockfish.set_fen_position(req.fen)
+        
+        # Получаем лучший ход и оценку
+        best_move = stockfish.get_best_move()
+        evaluation = stockfish.get_evaluation()
+        
+        # Получаем топ 5 вариантов
+        top_moves = stockfish.get_top_moves(5)
+        
+        return {
+            "fen": req.fen,
+            "best_move": best_move,
+            "evaluation": evaluation,
+            "top_moves": top_moves
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.post("/api/compare-maia-stockfish")
+def compare_engines(req: FenRequest):
+    """Сравнение ходов Maia2 и Stockfish"""
+    if not stockfish:
+        return {"error": "Stockfish не загружен"}
+    if not maia2 or not maia2_prepared:
+        return {"error": "Maia2 не загружена"}
+    
+    try:
+        # Анализ Stockfish
+        stockfish.set_fen_position(req.fen)
+        stockfish_best = stockfish.get_best_move()
+        stockfish_eval = stockfish.get_evaluation()
+        
+        # Анализ Maia2
+        move_probs, win_prob = maia2_inference.inference_each(
+            maia2, maia2_prepared, req.fen, req.elo, req.elo
+        )
+        maia_best = max(move_probs.items(), key=lambda x: x[1])[0]
+        
+        # Сравнение оценок после ходов - используем python-chess для симуляции
+        board1 = chess.Board(req.fen)
+        board2 = chess.Board(req.fen)
+        
+        try:
+            move1 = chess.Move.from_uci(stockfish_best)
+            board1.push(move1)
+            stockfish.set_fen_position(board1.fen())
+            eval_after_stockfish = stockfish.get_evaluation()
+        except:
+            eval_after_stockfish = {"type": "cp", "value": 0}
+        
+        try:
+            move2 = chess.Move.from_uci(maia_best)
+            board2.push(move2)
+            stockfish.set_fen_position(board2.fen())
+            eval_after_maia = stockfish.get_evaluation()
+        except:
+            eval_after_maia = {"type": "cp", "value": 0}
+        
+        # Вычисляем разницу
+        val1 = eval_after_stockfish.get("value", 0)
+        val2 = eval_after_maia.get("value", 0)
+        try:
+            difference = abs(int(val1) - int(val2))
+        except:
+            difference = 0
+        
+        return {
+            "fen": req.fen,
+            "stockfish": {
+                "move": stockfish_best,
+                "evaluation": stockfish_eval
+            },
+            "maia2": {
+                "move": maia_best,
+                "probability": move_probs[maia_best],
+                "win_probability": win_prob
+            },
+            "comparison": {
+                "eval_after_stockfish": eval_after_stockfish,
+                "eval_after_maia": eval_after_maia,
+                "difference": difference
+            }
+        }
+    except Exception as e:
+        return {"error": str(e)}
 
 
 def get_opening_info(fen):
