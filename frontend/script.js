@@ -772,6 +772,34 @@
         return d.innerHTML;
     }
 
+    // === Отправка сообщений в чат (GigaChat) ===
+    function sendChat() {
+        var input = document.getElementById('chat-input');
+        var text = input.value.trim();
+        if (!text) return;
+        input.value = '';
+        var container = document.getElementById('chat-messages');
+        var userMsg = document.createElement('div');
+        userMsg.className = 'chat-msg';
+        userMsg.innerHTML = '<div class="msg-avatar" style="background:#0d3550">👤</div>'
+            + '<div class="msg-body" style="border-radius:12px 0 12px 12px">' + escapeHtml(text) + '</div>';
+        container.appendChild(userMsg);
+        container.scrollTop = container.scrollHeight;
+        
+        fetch('/api/analyze', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({fen: toFEN()})
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            addChatMessage(data.message || 'Нет ответа от GigaChat.');
+        })
+        .catch(function() {
+            addChatMessage('Ошибка соединения с сервером.');
+        });
+    }
+
     document.getElementById('chat-send').addEventListener('click', sendChat);
     document.getElementById('chat-input').addEventListener('keydown', function(e) {
         if (e.key === 'Enter') sendChat();
