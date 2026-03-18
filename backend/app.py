@@ -7,6 +7,8 @@ import chess
 import random
 import os
 import requests
+import json
+from datetime import datetime
 from dotenv import load_dotenv
 from gigachat import GigaChat
 from maia2 import model as maia2_model_loader, inference as maia2_inference
@@ -79,6 +81,13 @@ class MoveRequest(BaseModel):
 class FenRequest(BaseModel):
     fen: str
     elo: int = 1500
+
+
+class DatasetMoveRequest(BaseModel):
+    fen: str
+    move: str  # ход пользователя (UCI, например "e2e4")
+    user_id: str = "anonymous"
+    game_id: str = ""
 
 
 @app.post("/api/legal-moves")
@@ -273,6 +282,59 @@ def compare_engines(req: FenRequest):
         return {"error": str(e)}
 
 
+@app.post("/api/save-move-to-dataset")
+def save_move_to_dataset(req: DatasetMoveRequest):
+    """
+    Сохраняет ход пользователя и лучший ход Stockfish в датасет.
+    Формат: JSONL (каждая строка — отдельный JSON)
+    """
+    if not stockfish:
+        return {"error": "Stockfish не загружен"}
+    
+    try:
+        # Анализ Stockfish для этой позиции
+        stockfish.set_fen_position(req.fen)
+        stockfish_best = stockfish.get_best_move()
+        stockfish_eval = stockfish.get_evaluation()
+        
+        # Готовим данные для сохранения
+        move_data = {
+            "fen": req.fen,
+            "user_move": req.move,  # ход пользователя (UCI)
+            "stockfish_move": stockfish_best,  # лучший ход от Stockfish
+            "stockfish_eval": stockfish_eval,  # оценка позиции
+            "user_id": req.user_id,
+            "game_id": req.game_id,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+        # Сохраняем в файл dataset.jsonl
+        dataset_path = os.path.join(os.path.dirname(__file__), "..", "dataset.jsonl")
+        with open(dataset_path, "a", encoding="utf-8") as f:
+            f.write(json.dumps(move_data, ensure_ascii=False) + "\n")
+        
+        # Также сохраняем отдельно для удобства чтения
+        readable_path = os.path.join(os.path.dirname(__file__), "..", "dataset_readable.json")
+        if os.path.exists(readable_path):
+            with open(readable_path, "r", encoding="utf-8") as f:
+                all_data = json.load(f)
+        else:
+            all_data = []
+        
+        all_data.append(move_data)
+        
+        with open(readable_path, "w", encoding="utf-8") as f:
+            json.dump(all_data, f, indent=2, ensure_ascii=False)
+        
+        return {
+            "status": "saved",
+            "dataset_size": len(all_data),
+            "data": move_data
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+
 def get_opening_info(fen):
     """Запрашиваем Lichess Opening Explorer — дебют + знаменитые партии."""
     try:
@@ -356,4 +418,4 @@ def analyze(req: FenRequest):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="127.0.0.1", port=8001)
