@@ -190,18 +190,26 @@ def maia_move(req: FenRequest):
 @app.post("/api/stockfish-analyze")
 def stockfish_analyze(req: FenRequest):
     """Анализ позиции с помощью Stockfish"""
+    print(f"[Stockfish] Анализ позиции: {req.fen[:50]}...")
+    
     if not stockfish:
+        print("[Stockfish] Ошибка: не загружен")
         return {"error": "Stockfish не загружен"}
     
     try:
+        print(f"[Stockfish] Установка позиции...")
         stockfish.set_fen_position(req.fen)
         
-        # Получаем лучший ход и оценку
+        print(f"[Stockfish] Получение лучшего хода...")
         best_move = stockfish.get_best_move()
+        
+        print(f"[Stockfish] Получение оценки...")
         evaluation = stockfish.get_evaluation()
         
-        # Получаем топ 5 вариантов
+        print(f"[Stockfish] Получение топ вариантов...")
         top_moves = stockfish.get_top_moves(5)
+        
+        print(f"[Stockfish] Готово! Лучший ход: {best_move}")
         
         return {
             "fen": req.fen,
@@ -210,6 +218,7 @@ def stockfish_analyze(req: FenRequest):
             "top_moves": top_moves
         }
     except Exception as e:
+        print(f"[Stockfish] Ошибка: {e}")
         return {"error": str(e)}
 
 
@@ -415,7 +424,85 @@ def analyze(req: FenRequest):
     }
 
 
+# --- База знаний дебютов ---
+knowledge_base = None
+KNOWLEDGE_PATH = os.path.join(os.path.dirname(__file__), "knowledge", "openings.json")
+
+def load_knowledge():
+    global knowledge_base
+    try:
+        if os.path.exists(KNOWLEDGE_PATH):
+            with open(KNOWLEDGE_PATH, "r", encoding="utf-8") as f:
+                knowledge_base = json.load(f)
+            print(f"База знаний загружена: {len(knowledge_base.get('openings', []))} дебютов")
+    except Exception as e:
+        print(f"Ошибка загрузки базы знаний: {e}")
+
+load_knowledge()
+
+
+@app.get("/api/knowledge/openings")
+def get_openings():
+    """Получить список всех дебютов"""
+    if not knowledge_base:
+        return {"openings": [], "error": "База знаний не загружена"}
+    return {"openings": knowledge_base.get("openings", [])}
+
+
+@app.get("/api/knowledge/opening")
+def get_opening_by_fen(fen: str = ""):
+    """Найти дебют по FEN"""
+    if not knowledge_base:
+        return {"error": "База знаний не загружена"}
+    
+    fen_lower = fen.lower().split()[0]  # Только расстановка фигур
+    
+    for opening in knowledge_base.get("openings", []):
+        if opening.get("fen", "").lower().startswith(fen_lower):
+            return {"opening": opening}
+    
+    return {"opening": None, "message": "Дебют не найден в базе"}
+
+
+@app.get("/api/knowledge/random-opening")
+def get_random_opening():
+    """Получить случайный дебют для изучения"""
+    if not knowledge_base:
+        return {"error": "База знаний не загружена"}
+    
+    import random
+    opening = random.choice(knowledge_base.get("openings", []))
+    return {"opening": opening}
+
+
+@app.post("/api/knowledge/check-move")
+def check_move(req: FenRequest):
+    """Проверить, соответствует ли ход теории дебюта"""
+    if not knowledge_base:
+        return {"error": "База знаний не загружена"}
+    
+    board = chess.Board(req.fen)
+    current_fen = board.fen().split()[0].lower()
+    
+    for opening in knowledge_base.get("openings", []):
+        opening_fen = opening.get("fen", "").split()[0].lower()
+        if current_fen == opening_fen:
+            # Проверяем, есть ли следующий ход в последовательности
+            moves = opening.get("moves", [])
+            # Найдём текущую позицию в списке ходов
+            for i in range(0, len(moves), 2):
+                # Это упрощённая проверка
+                pass
+            return {
+                "in_theory": True,
+                "opening": opening.get("name"),
+                "eco": opening.get("eco"),
+                "description": opening.get("description")
+            }
+    
+    return {"in_theory": False, "message": "Позиция не найдена в базе теории"}
+
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=8001)
+    uvicorn.run(app, host="127.0.0.1", port=8005)

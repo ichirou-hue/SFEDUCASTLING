@@ -35,6 +35,7 @@
     var capturedByBlack = [];
     var boardEl = document.getElementById('board');
     var lastMove = null;
+    var recommendedMove = null; // Рекомендация AI (например "e2e4")
 
     function init() {
         position = [];
@@ -451,6 +452,23 @@
         });
     }
 
+    function showRecommendedMove(uciMove) {
+        recommendedMove = uciMove;
+        render(false);
+        
+        // Добавляем подсказку в чат
+        if (uciMove && uciMove.length === 4) {
+            var from = uciMove.substring(0, 2);
+            var to = uciMove.substring(2, 4);
+            addChatMessage('💡 Рекомендую: <b>' + from + ' → ' + to + '</b>. Кликните на клетку ' + from + ' и сделайте ход.');
+        }
+    }
+
+    function clearRecommendedMove() {
+        recommendedMove = null;
+        render(false);
+    }
+
     function render(animate) {
         if (animate === undefined) animate = true;
 
@@ -500,6 +518,22 @@
                 sq.addEventListener('click', onSquareClick);
                 boardEl.appendChild(sq);
             }
+        }
+
+        if (recommendedMove && recommendedMove.length === 4) {
+            var recFrom = recommendedMove.substring(0, 2);
+            var recTo = recommendedMove.substring(2, 4);
+            var fromCoords = rc(recFrom);
+            var toCoords = rc(recTo);
+            var sqSize = size / 8;
+            var arrow = document.createElement('div');
+            arrow.className = 'ai-arrow';
+            arrow.style.left = (fromCoords.c * sqSize + sqSize/2) + 'px';
+            arrow.style.top = (fromCoords.r * sqSize + sqSize/2) + 'px';
+            arrow.style.width = '20%';
+            arrow.style.height = '20%';
+            arrow.style.transform = 'translate(-50%, -50%)';
+            boardEl.appendChild(arrow);
         }
 
         var animateFrom = null;
@@ -677,10 +711,6 @@
             render(true);
             updateMoveList();
             updateStatus();
-
-            if (moveHistory.length === 1 && moveHistory[0].b) {
-                addChatMessage('Интересное начало! Посмотрим, как развернётся партия.');
-            }
         })
         .catch(function(err) {
             console.error('Maia2 ошибка:', err);
@@ -810,6 +840,31 @@
         return d.innerHTML;
     }
 
+    // === Парсинг ходов из текста ===
+    function parseChessMove(text) {
+        // Ищем ходы в UCI формате (e2e4, d7d5, g1f3)
+        var uciMatch = text.match(/([a-h][1-8])([a-h][1-8])/i);
+        if (uciMatch) {
+            return uciMatch[1].toLowerCase() + uciMatch[2].toLowerCase();
+        }
+        
+        // Ищем ходы пешки (e4, d5)
+        var sanMatch = text.match(/([a-h][2-7])\s*[-→x]?\s*([a-h][1-8])/i);
+        if (sanMatch) {
+            return sanMatch[1].toLowerCase() + sanMatch[2].toLowerCase();
+        }
+        
+        // Ищем фигурные ходы (Nf3, Bxc6, O-O, O-O-O)
+        var pieceMatch = text.match(/([KQRBN])[a-h]?[1-8]?\s*[-→x]?\s*([a-h][1-8])/i);
+        if (pieceMatch) {
+            // Для точного преобразования нужно знать позицию, 
+            // но показываем хотя бы клетку назначения
+            return null;
+        }
+        
+        return null;
+    }
+
     // === Отправка сообщений в чат (GigaChat) ===
     function sendChat() {
         var input = document.getElementById('chat-input');
@@ -831,7 +886,14 @@
         })
         .then(function(r) { return r.json(); })
         .then(function(data) {
-            addChatMessage(data.message || 'Нет ответа от GigaChat.');
+            var response = data.message || 'Нет ответа от GigaChat.';
+            addChatMessage(response);
+            
+            // Пробуем найти ход в ответе и показать на доске
+            var move = parseChessMove(response);
+            if (move) {
+                showRecommendedMove(move);
+            }
         })
         .catch(function() {
             addChatMessage('Ошибка соединения с сервером.');
@@ -904,6 +966,11 @@
                     + '</div>';
                 container.appendChild(msg);
                 container.scrollTop = container.scrollHeight;
+                
+                // Показываем лучший ход на доске
+                if (data.best_move) {
+                    showRecommendedMove(data.best_move.toLowerCase());
+                }
             }
         })
         .catch(function(err) {
@@ -1008,6 +1075,58 @@
     document.getElementById('elo-slider').addEventListener('input', function() {
         document.getElementById('elo-display').textContent = this.value;
     });
+
+    // === Кнопка изучения дебюта ===
+    document.getElementById('learn-btn').addEventListener('click', function() {
+        var container = document.getElementById('chat-messages');
+        
+        // Показываем сообщение о начале
+        addChatMessage('📚 Хотите изучить дебют? Загружаю случайную позицию из базы...');
+        
+        // Запрашиваем случайный дебют
+        fetch('/api/knowledge/random-opening')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.error) {
+                addChatMessage('Ошибка: ' + data.error);
+                return;
+            }
+            
+            var opening = data.opening;
+            if (opening) {
+                var msg = '📚 <b>' + opening.name + '</b> (' + (opening.eco || 'ECO') + ')\n\n';
+                msg += opening.description + '\n\n';
+                msg += '<b>Идеи:</b>\n';
+                if (opening.ideas) {
+                    opening.ideas.forEach(function(idea) {
+                        msg += '• ' + idea + '\n';
+                    });
+                }
+                addChatMessage(msg);
+                
+                // Загружаем позицию на доску
+                if (opening.fen) {
+                    loadFen(opening.fen);
+                    addChatMessage('Позиция загружена. Попробуйте сделать ходы по теории!');
+                }
+            }
+        })
+        .catch(function(err) {
+            addChatMessage('Ошибка загрузки базы знаний: ' + err.message);
+        });
+    });
+
+    // Очищаем рекомендацию при клике на доску
+    boardEl.addEventListener('click', function() {
+        clearRecommendedMove();
+    });
+
+    // Экспортируем функции глобально для index.html
+    window.maiaMove = maiaMove;
+    window.loadFen = loadFen;
+    window.addChatMessage = addChatMessage;
+    window.init = init;
+    window.toFEN = toFEN;
 
     if (!loadSavedGame()) {
         init();
