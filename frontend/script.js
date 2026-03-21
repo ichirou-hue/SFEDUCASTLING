@@ -60,6 +60,9 @@
         render();
         updateStatus();
         updateMaterialDisplay();
+        positionSnapshots = []; viewIndex = -1; isViewMode = false;
+        takeSnapshot();
+        updateNavButtons();
     }
 
     function toFEN() {
@@ -425,6 +428,8 @@
             moveCount++;
             saveMoveToDataset(fr, fc, tr, tc);
         }
+        takeSnapshot();
+        updateNavButtons();
     }
 
     // Функция сохранения хода в датасет
@@ -673,6 +678,119 @@
     }
 
     var halfmoveClock = 0;
+    
+// === НАВИГАЦИЯ ПО ХОДАМ ===
+
+    var positionSnapshots = [];
+    var viewIndex = -1;
+    var isViewMode = false;
+
+    function takeSnapshot() {
+        var snap = {
+            position: position.map(function(row) { return row.slice(); }),
+            turn: turn,
+            castling: { wK: castling.wK, wQ: castling.wQ, bK: castling.bK, bQ: castling.bQ },
+            enPassant: enPassant,
+            halfmoveClock: halfmoveClock,
+            moveNumber: moveNumber,
+            lastFrom: lastFrom,
+            lastTo: lastTo
+        };
+        positionSnapshots.push(snap);
+    }
+
+    function restoreSnapshot(idx) {
+        var snap = positionSnapshots[idx];
+        position = snap.position.map(function(row) { return row.slice(); });
+        turn = snap.turn;
+        castling = { wK: snap.castling.wK, wQ: snap.castling.wQ, bK: snap.castling.bK, bQ: snap.castling.bQ };
+        enPassant = snap.enPassant;
+        halfmoveClock = snap.halfmoveClock;
+        moveNumber = snap.moveNumber;
+        lastFrom = snap.lastFrom;
+        lastTo = snap.lastTo;
+        selected = null;
+        lastMove = null;
+    }
+
+    function navFirst() {
+        if (positionSnapshots.length === 0) return;
+        isViewMode = true; viewIndex = 0;
+        restoreSnapshot(0);
+        render(false);
+        updateNavButtons();
+        updateMoveListHighlight();
+    }
+
+    function navPrev() {
+        if (positionSnapshots.length === 0) return;
+        if (!isViewMode) { isViewMode = true; viewIndex = positionSnapshots.length - 1; }
+        if (viewIndex > 0) viewIndex--;
+        restoreSnapshot(viewIndex);
+        render(false);
+        updateNavButtons();
+        updateMoveListHighlight();
+    }
+
+    function navNext() {
+        if (!isViewMode) return;
+        if (viewIndex < positionSnapshots.length - 1) {
+            viewIndex++;
+            restoreSnapshot(viewIndex);
+            render(false);
+        } else {
+            isViewMode = false; viewIndex = -1;
+            restoreSnapshot(positionSnapshots.length - 1);
+            render(false);
+        }
+        updateNavButtons();
+        updateMoveListHighlight();
+    }
+
+    function navLast() {
+        if (positionSnapshots.length === 0) return;
+        isViewMode = false; viewIndex = -1;
+        restoreSnapshot(positionSnapshots.length - 1);
+        render(false);
+        updateNavButtons();
+        updateMoveListHighlight();
+    }
+
+    function updateNavButtons() {
+        var atStart = (isViewMode && viewIndex === 0) || positionSnapshots.length === 0;
+        var atEnd = !isViewMode || viewIndex === positionSnapshots.length - 1;
+        var first = document.getElementById('nav-first');
+        var prev  = document.getElementById('nav-prev');
+        var next  = document.getElementById('nav-next');
+        var last  = document.getElementById('nav-last');
+        if (!first) return;
+        first.disabled = atStart; first.style.opacity = atStart ? '0.35' : '1';
+        prev.disabled  = atStart; prev.style.opacity  = atStart ? '0.35' : '1';
+        next.disabled  = atEnd;   next.style.opacity  = atEnd   ? '0.35' : '1';
+        last.disabled  = atEnd;   last.style.opacity  = atEnd   ? '0.35' : '1';
+    }
+
+    function updateMoveListHighlight() {
+        var spans = document.querySelectorAll('#move-list .move-pair span:not(.num)');
+        spans.forEach(function(s) { s.style.background = ''; s.style.color = ''; });
+        if (!isViewMode || positionSnapshots.length === 0) return;
+        var moveIdx = viewIndex - 1;
+        if (moveIdx < 0) return;
+        var pairIdx = Math.floor(moveIdx / 2);
+        var isWhiteMove = moveIdx % 2 === 0;
+        var pairs = document.querySelectorAll('#move-list .move-pair');
+        if (pairIdx >= pairs.length) return;
+        var movespans = pairs[pairIdx].querySelectorAll('span:not(.num)');
+        var target = movespans[isWhiteMove ? 0 : 1];
+        if (target) { target.style.background = '#225A73'; target.style.color = '#fff'; }
+    }
+
+    document.addEventListener('keydown', function(e) {
+        if (e.target.tagName === 'INPUT') return;
+        if (e.key === 'ArrowLeft')  { e.preventDefault(); navPrev(); }
+        if (e.key === 'ArrowRight') { e.preventDefault(); navNext(); }
+    });
+    // === КОНЕЦ НАВИГАЦИИ ===
 
     function isGameOver() {
         if (!hasAnyLegalMove(turn)) return true;
@@ -1127,6 +1245,10 @@
     window.addChatMessage = addChatMessage;
     window.init = init;
     window.toFEN = toFEN;
+    window.navFirst = navFirst;
+    window.navPrev  = navPrev;
+    window.navNext  = navNext;
+    window.navLast  = navLast;
 
     if (!loadSavedGame()) {
         init();

@@ -542,6 +542,12 @@
         <div class="middle-section">
             <h3>История ходов</h3>
             <div id="move-list"></div>
+            <div id="nav-controls" style="display:flex;gap:6px;justify-content:center;margin-top:10px;flex-shrink:0;">
+                <button onclick="navFirst()" id="nav-first" title="Начало" style="width:36px;height:32px;background:#0d3550;color:#E2E8F0;border:1px solid #225A73;border-radius:6px;cursor:pointer;font-size:14px;">⏮</button>
+                <button onclick="navPrev()"  id="nav-prev"  title="Назад (←)" style="width:36px;height:32px;background:#0d3550;color:#E2E8F0;border:1px solid #225A73;border-radius:6px;cursor:pointer;font-size:14px;">◀</button>
+                <button onclick="navNext()"  id="nav-next"  title="Вперёд (→)" style="width:36px;height:32px;background:#0d3550;color:#E2E8F0;border:1px solid #225A73;border-radius:6px;cursor:pointer;font-size:14px;">▶</button>
+                <button onclick="navLast()"  id="nav-last"  title="Конец" style="width:36px;height:32px;background:#0d3550;color:#E2E8F0;border:1px solid #225A73;border-radius:6px;cursor:pointer;font-size:14px;">⏭</button>
+            </div>
         </div>
 
         <div class="chat-section">
