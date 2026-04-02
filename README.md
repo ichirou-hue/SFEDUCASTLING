@@ -20,7 +20,7 @@
 - **Engine:** Maia 2 / Stockfish
 - **Web:** HTML/JS/CSS
 
-```plaintext```
+```plaintext
 └── 📁 project                                      # корневая директория проекта
     ├── 📁 analysis                                  # модуль шахматного анализа (движки, аннотации, базы данных)
     │   ├── 📁 annotators                            # аннотаторы ошибок и меток NAG
@@ -234,4 +234,4 @@
     ├── 📄 LICENSE                                     # лицензия проекта
     ├── 📄 pyproject.toml                              # зависимости и настройки (poetry/pip)
     └── 📄 README.md                                   # главный файл описания проекта
-```plaintext```
+plaintext```
