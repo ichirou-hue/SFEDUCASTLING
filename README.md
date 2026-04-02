@@ -234,4 +234,3 @@
     ├── 📄 LICENSE                                     # лицензия проекта
     ├── 📄 pyproject.toml                              # зависимости и настройки (poetry/pip)
     └── 📄 README.md                                   # главный файл описания проекта
-plaintext```
