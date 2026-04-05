@@ -552,3 +552,25 @@ body {
     background: #f87171;
     transition: width 0.3s;
 }
+.piece {
+    position: absolute;
+    width: 12.5%;
+    height: 12.5%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    pointer-events: none;
+    z-index: 10;
+    font-family: 'Segoe UI', 'Arial', sans-serif;
+    transition: left 0.2s ease-out, top 0.2s ease-out;
+}
+
+#board {
+    position: relative;
+}
+
+.sq {
+    position: relative;
+    z-index: 1;
+}
