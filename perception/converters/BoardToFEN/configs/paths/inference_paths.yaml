@@ -1,0 +1,11 @@
+final_model_path: final_model/model.pt
+
+app_paths:
+  active_color_image_paths:
+    white: src\app\assets\white_king.png
+    black: src\app\assets\black_king.png
+  screenshot_image_path: src\app\assets\screenshot.png
+  domain_logos:
+    chess: src\app\assets\chess.com_icon.png
+    lichess: src\app\assets\lichess_logo.png
+    pure_fen: src\app\assets\copy_icon.png
