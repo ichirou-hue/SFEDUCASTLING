@@ -1,7 +1,7 @@
 #BoardToFEN
 .idea/
 __pycache__/
-
+frontend/node_modules/
 outputs/
 dataset/
 old_data/
