@@ -7,7 +7,7 @@ dataset/
 old_data/
 progress_notes.docx
 .venv
-venv
+venv/
 .coverage
 .vscode/
 *.pyc
@@ -16,3 +16,4 @@ venv
 *.pt
 dataset.jsonl
 dataset_readable.json
+*.jsonl
