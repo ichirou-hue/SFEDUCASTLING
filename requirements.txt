@@ -1,15 +1,31 @@
-numpy==1.24.4
-Pillow==8.4.0
-matplotlib==3.5.3
-pynput==1.7.6
-opencv-python==4.8.0.74
+# === Core web ===
+fastapi>=0.100.0
+uvicorn>=0.20.0
+python-dotenv>=1.0.0
+python-multipart>=0.0.6
+requests>=2.28.0
+
+# === Validation & chess ===
+pydantic>=2.0.0
+python-chess>=1.999
+
+# === Testing ===
+pytest>=7.0.0
+pytest-cov>=4.0.0
+
+# === Original ML / Vision deps ===
+numpy>=1.24.4
+Pillow>=8.4.0
+matplotlib>=3.5.3
+pynput>=1.7.6
+opencv-python>=4.8.0.74
 opencv-contrib-python
-omegaconf==2.3.0
-PyYAML==6.0
-torchvision==0.14.0
-scipy==1.10.1
-hydra-core==1.3.2
-torch==1.13.0
-pyperclip==1.8.2
+omegaconf>=2.3.0
+PyYAML>=6.0
+torchvision>=0.14.0
+scipy>=1.10.1
+hydra-core>=1.3.2
+torch>=1.13.0
+pyperclip>=1.8.2
 faiss-cpu>=1.7.0
 scikit-learn>=1.3.0

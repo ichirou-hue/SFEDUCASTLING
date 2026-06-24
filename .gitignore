@@ -8,3 +8,11 @@ old_data/
 progress_notes.docx
 .venv
 venv
+.coverage
+.vscode/
+*.pyc
+.pytest_cache/
+.env
+*.pt
+dataset.jsonl
+dataset_readable.json
