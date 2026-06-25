@@ -34,3 +34,6 @@ scikit-learn>=1.3.0
 stockfish
 transformers
 gigachat
+
+# === Perception Embedder ===
+python-chess>=1.0.0
