@@ -17,3 +17,5 @@ venv/
 dataset.jsonl
 dataset_readable.json
 *.jsonl
+*.parquet
+*.csv
