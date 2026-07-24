@@ -10,8 +10,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
+# Импорт настроек
+from backend.config.settings import settings
+
+# Импорт из state (уже без GIGACHAT_AUTH_KEY)
 from backend.api_gateway.state import (
-    GIGACHAT_AUTH_KEY,
     load_maia2,
     load_stockfish,
     load_knowledge,
@@ -24,25 +27,25 @@ from backend.api_gateway.routes.knowledge import router as knowledge_router
 from backend.api_gateway.routes.data import router as data_router
 from backend.api_gateway.routes.vision import router as vision_router
 
-app = FastAPI(title="SFEDUCASTLING API")
+app = FastAPI(title=settings.app_name)
 
 # Разрешаем запросы с любых источников (для разработки)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=settings.cors.allowed_origins,
+    allow_methods=settings.cors.allow_methods,
+    allow_headers=settings.cors.allow_headers,
 )
 
 # Раздаём статику фронтенда
-frontend_path = os.path.join(os.path.dirname(__file__), "..", "frontend")
-app.mount("/static", StaticFiles(directory=frontend_path), name="static")
+frontend_path = settings.frontend_dir
+app.mount("/static", StaticFiles(directory=str(frontend_path)), name="static")
 
 
 @app.get("/")
 def serve_index():
     """Отдаёт index.html фронтенда."""
-    return FileResponse(os.path.join(frontend_path, "index.html"))
+    return FileResponse(str(frontend_path / "index.html"))
 
 
 # Подключаем маршруты, разбитые по доменам
@@ -54,7 +57,7 @@ app.include_router(vision_router)
 
 
 # Загружаем зависимости. Если модуль не установлен — сообщаем и работаем в fallback-режиме.
-if GIGACHAT_AUTH_KEY:
+if settings.gigachat.auth_key:
     print("GigaChat API ключ загружен.")
 else:
     print("GigaChat API ключ не найден! Добавьте GIGACHAT_AUTH_KEY в .env")
@@ -68,4 +71,4 @@ load_llava()
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=8005)
+    uvicorn.run(app, host=settings.server.host, port=settings.server.port)

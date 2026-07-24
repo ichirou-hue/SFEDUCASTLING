@@ -1,12 +1,12 @@
 """Endpoint'ы сбора данных и парсинга PGN."""
 
-import os
 import json
 import io
 from datetime import datetime
 import chess
 import chess.pgn
 from fastapi import APIRouter, UploadFile, File
+from backend.config.settings import settings
 
 from backend.api_gateway.models import DatasetMoveRequest, PGNTextRequest
 from backend.api_gateway.state import ensure_stockfish
@@ -36,13 +36,13 @@ def save_move_to_dataset(req: DatasetMoveRequest):
             "timestamp": datetime.now().isoformat(),
         }
 
-        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-        dataset_path = os.path.join(base_dir, "dataset.jsonl")
+        # Используем пути из настроек
+        dataset_path = str(settings.data.dataset_jsonl_path)
         with open(dataset_path, "a", encoding="utf-8") as f:
             f.write(json.dumps(move_data, ensure_ascii=False) + "\n")
 
-        readable_path = os.path.join(base_dir, "dataset_readable.json")
-        if os.path.exists(readable_path):
+        readable_path = str(settings.data.dataset_readable_path)
+        if readable_path.exists():
             with open(readable_path, "r", encoding="utf-8") as f:
                 all_data = json.load(f)
         else:
@@ -224,7 +224,8 @@ async def parse_pgn(file: UploadFile = File(...)):
                 "moves": moves_list,
             })
 
-            if game_num >= 10:
+            # Используем лимит из настроек
+            if game_num >= settings.data.max_games_to_parse:
                 break
 
         print(f"[PGN] Итого партий: {len(games)}")

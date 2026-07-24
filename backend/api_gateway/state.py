@@ -8,31 +8,29 @@
 import os
 import json
 import requests
-from dotenv import load_dotenv
+from backend.config.settings import settings
 
-load_dotenv()
-
-
-# --- GigaChat ---
-GIGACHAT_AUTH_KEY = os.environ.get("GIGACHAT_AUTH_KEY", "")
-
+# --- GigaChat (теперь используется через settings.gigachat.auth_key) ---
+# Удаляем глобальную переменную GIGACHAT_AUTH_KEY
 
 # --- Maia2 ---
 maia2 = None
 maia2_prepared = None
 
-
 # --- Stockfish ---
 stockfish = None
-
 
 # --- LLaVA ---
 llava_model = None
 
-
 # --- База знаний ---
 knowledge_base = None
-KNOWLEDGE_PATH = os.path.join(os.path.dirname(__file__), "..", "knowledge", "openings.json")
+# Используем путь из настроек, с fallback на старый путь
+KNOWLEDGE_PATH = (
+    str(settings.models.knowledge_path)
+    if settings.models.knowledge_path
+    else os.path.join(os.path.dirname(__file__), "..", "knowledge", "openings.json")
+)
 
 
 def load_maia2():
@@ -58,13 +56,18 @@ def load_stockfish():
         return True
     try:
         from stockfish import Stockfish
-        STOCKFISH_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "stockfish", "stockfish.exe")
-        if os.path.exists(STOCKFISH_PATH):
-            stockfish = Stockfish(path=STOCKFISH_PATH, depth=20)
-            print(f"Stockfish загружен: {STOCKFISH_PATH}")
+        # Используем путь из настроек или fallback
+        stockfish_path = (
+            str(settings.models.stockfish_path)
+            if settings.models.stockfish_path
+            else os.path.join(os.path.dirname(__file__), "..", "..", "stockfish", "stockfish.exe")
+        )
+        if os.path.exists(stockfish_path):
+            stockfish = Stockfish(path=stockfish_path, depth=settings.models.stockfish_depth)
+            print(f"Stockfish загружен: {stockfish_path}")
             return True
         else:
-            print(f"Stockfish не найден по пути: {STOCKFISH_PATH}")
+            print(f"Stockfish не найден по пути: {stockfish_path}")
             return False
     except Exception as e:
         print(f"Ошибка загрузки Stockfish: {e}")
@@ -97,10 +100,11 @@ def load_llava():
     try:
         import torch
         from transformers import pipeline
-        print("Загрузка LLaVA 1.5 7B через pipeline...")
+        model_id = settings.models.llava_model_id
+        print(f"Загрузка LLaVA модели {model_id} через pipeline...")
         llava_model = pipeline(
             "image-to-text",
-            model="llava-hf/llava-1.5-7b-hf",
+            model=model_id,
             torch_dtype=torch.float16,
             device_map="auto"
         )
@@ -122,9 +126,9 @@ def get_opening_info(fen: str) -> dict | None:
     """
     try:
         resp = requests.get(
-            "https://explorer.lichess.ovh/masters",
+            settings.lichess.explorer_url,
             params={"fen": fen},
-            timeout=5,
+            timeout=settings.lichess.timeout,
         )
         if resp.status_code != 200:
             return None

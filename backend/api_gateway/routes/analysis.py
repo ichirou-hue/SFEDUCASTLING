@@ -5,11 +5,11 @@ from fastapi import APIRouter
 
 from backend.api_gateway.models import FenRequest, SimilarityRequest
 from backend.api_gateway.state import (
-    GIGACHAT_AUTH_KEY,
     ensure_stockfish,
     ensure_maia2,
     get_opening_info,
 )
+from backend.config.settings import settings   # <-- импорт настроек
 
 router = APIRouter(tags=["analysis"])
 
@@ -25,7 +25,7 @@ def stockfish_analyze(req: FenRequest):
         stockfish.set_fen_position(req.fen)
         best_move = stockfish.get_best_move()
         evaluation = stockfish.get_evaluation()
-        top_moves = stockfish.get_top_moves(5)
+        top_moves = stockfish.get_top_moves(settings.models.stockfish_top_moves)  # <-- из настроек
 
         return {
             "fen": req.fen,
@@ -111,7 +111,7 @@ def compare_engines(req: FenRequest):
 @router.post("/api/analyze")
 def analyze(req: FenRequest):
     """Получает текстовый анализ позиции от GigaChat."""
-    if not GIGACHAT_AUTH_KEY:
+    if not settings.gigachat.auth_key:   # <-- используем настройки
         return {"message": "GigaChat API ключ не настроен.", "fen": req.fen}
 
     try:
@@ -144,10 +144,10 @@ def analyze(req: FenRequest):
         )
 
         with GigaChat(
-            credentials=GIGACHAT_AUTH_KEY,
-            scope="GIGACHAT_API_PERS",
-            model="GigaChat",
-            verify_ssl_certs=False,
+            credentials=settings.gigachat.auth_key,        # <-- из настроек
+            scope=settings.gigachat.scope,                 # <-- из настроек
+            model=settings.gigachat.model,                 # <-- из настроек
+            verify_ssl_certs=settings.gigachat.verify_ssl_certs,  # <-- из настроек
         ) as giga:
             response = giga.chat(prompt)
             message = response.choices[0].message.content
