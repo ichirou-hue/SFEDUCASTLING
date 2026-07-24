@@ -1,36 +1,30 @@
 """
 Клиент для скачивания шахматных партий с Lichess API.
 
-Используются эндпоинты:
-  GET /api/account               — проверка токена (требует токен)
-  GET /api/games/user/{username} — скачивание партий (публичный)
-  GET /api/player/top/{perf}     — топ игроков по рейтингу (публичный)
+Использует http.client с IPv4 (на Windows IPv6/SNI падает с корпоративным
+антивирусом — DECRYPTION_FAILED_OR_BAD_RECORD_MAC).
 
 Формат сохранения: JSONL (одна JSON-строка = одна игра).
-
-Пример использования:
-  from training_data.collectors.lichess_api import LichessClient
-
-  client = LichessClient()
-  games = client.fetch_games("alireza2003", max_games=100, perf_type="blitz")
-  client.save_jsonl(games, "data/alireza_blitz.jsonl")
-
-CLI:
-  python -m training_data.collectors.lichess_api --username alireza2003 --max 10
 """
 
 import os
 import json
 import time
 import logging
-import http.client
+import socket
 import ssl
+import http.client
 from pathlib import Path
 from typing import Optional
 
 logger = logging.getLogger(__name__)
 
 BASE_URL = "lichess.org"
+
+
+def _resolve_ipv4() -> str:
+    """Резолвит IPv4 адрес lichess.org."""
+    return socket.getaddrinfo(BASE_URL, 443, socket.AF_INET)[0][4][0]
 
 
 class LichessClient:
@@ -43,24 +37,11 @@ class LichessClient:
                    Если не указан, читается из переменной окружения LICHESS_API_TOKEN.
         """
         self.token = token or os.getenv("LICHESS_API_TOKEN")
-        # Отключаем проверку SSL-сертификата (нужно на Windows с корпоративным антивирусом)
-        self.ctx = ssl._create_unverified_context()
+        self._ip = _resolve_ipv4()
 
     def _request(self, path: str, params: Optional[dict] = None) -> str:
-        """Выполняет HTTPS GET запрос и возвращает тело ответа.
-
-        Args:
-            path: Путь к эндпоинту (начинается с /).
-            params: Query-параметры.
-
-        Returns:
-            Тело ответа в виде строки.
-
-        Raises:
-            RuntimeError: если статус ответа не 200.
-        """
-        conn = http.client.HTTPSConnection(BASE_URL, context=self.ctx, timeout=30)
-        headers = {"Accept": "application/x-ndjson"}
+        """Выполняет HTTPS GET запрос через IPv4 + Host header."""
+        headers = {"Accept": "application/x-ndjson", "Host": BASE_URL}
         if self.token:
             headers["Authorization"] = f"Bearer {self.token}"
 
@@ -70,6 +51,9 @@ class LichessClient:
         else:
             url = path
 
+        # Свежий SSL контекст на каждый запрос (антивирус режет кэшированные)
+        ctx = ssl._create_unverified_context()
+        conn = http.client.HTTPSConnection(self._ip, context=ctx, timeout=60)
         conn.request("GET", url, headers=headers)
         resp = conn.getresponse()
         body = resp.read().decode("utf-8")
@@ -83,14 +67,7 @@ class LichessClient:
     # ── 020: Проверка соединения ──
 
     def test_connection(self) -> dict:
-        """Проверяет, что токен работает, через GET /api/account.
-
-        Returns:
-            Информация об аккаунте: username, id, createdAt, profile и т.д.
-
-        Raises:
-            RuntimeError: если токен невалидный (401).
-        """
+        """Проверяет, что токен работает, через GET /api/account."""
         body = self._request("/api/account")
         account = json.loads(body)
         logger.info("Подключение к Lichess API — авторизован как %s", account["username"])
@@ -107,25 +84,7 @@ class LichessClient:
         since: Optional[int] = None,
         until: Optional[int] = None,
     ) -> list[dict]:
-        """Скачивает последние партии игрока с Lichess.
-
-        GET /api/games/user/{username} → NDJSON → list[dict].
-
-        Args:
-            username: Имя пользователя на Lichess (например "alireza2003").
-            max_games: Максимальное количество партий для скачивания.
-            rated: True — только рейтинговые, False — только тренировочные,
-                   None — все подряд.
-            perf_type: Тип/скорость игры: "bullet", "blitz", "rapid",
-                       "classical", "ultraBullet" и т.д.
-            since: Unix timestamp в миллисекундах — скачать партии ПОСЛЕ этой даты.
-            until: Unix timestamp в миллисекундах — скачать партии ДО этой даты.
-
-        Returns:
-            Список словарей с данными игр. Каждая игра содержит:
-            id, rated, perf, speed, players (с рейтингом), moves, status,
-            winner, createdAt и т.д.
-        """
+        """Скачивает последние партии игрока с Lichess."""
         params = {"max": max_games}
         if rated is not None:
             params["rated"] = str(rated).lower()
@@ -151,6 +110,44 @@ class LichessClient:
         logger.info("Скачано %d партий для '%s'", len(games), username)
         return games
 
+    def fetch_all_games(
+        self,
+        username: str,
+        total_games: int = 10000,
+        perf_type: Optional[str] = None,
+        max_per_req: int = 500,
+    ) -> list[dict]:
+        """Скачивает все партии пагинацией через `until`."""
+        all_games = []
+        seen = set()
+        until = None
+
+        logger.info("Скачиваю %d игр для %s (пагинация)...", total_games, username)
+
+        while len(all_games) < total_games:
+            need = min(max_per_req, total_games - len(all_games))
+            batch = self.fetch_games(username, max_games=need, perf_type=perf_type, until=until)
+
+            if not batch:
+                break
+
+            new = [g for g in batch if g.get("id") and g["id"] not in seen]
+            for g in new:
+                seen.add(g["id"])
+            all_games.extend(new)
+            logger.info("Накоплено %d игр для %s", len(all_games), username)
+
+            if not new:
+                break
+
+            until = new[-1].get("lastMoveAt") or new[-1].get("createdAt")
+            if not until or until <= 0:
+                break
+
+            time.sleep(1.0)
+
+        return all_games[:total_games]
+
     def fetch_by_rating(
         self,
         min_rating: int = 1500,
@@ -159,32 +156,10 @@ class LichessClient:
         perf_type: str = "blitz",
         max_players: int = 50,
     ) -> list[dict]:
-        """Скачивает партии игроков в заданном диапазоне рейтинга.
-
-        Стратегия:
-          1. Получаем топ-N игроков с лидерборда Lichess.
-          2. Фильтруем по рейтингу (min_rating .. max_rating).
-          3. С каждого отфильтрованного игрока скачиваем его последние партии.
-          4. Небольшая задержка между игроками, чтобы не получить бан по rate limit.
-
-        Lichess API не умеет фильтровать партии напрямую по рейтингу,
-        поэтому приходится действовать в обход.
-
-        Args:
-            min_rating: Минимальный рейтинг игрока (включительно).
-            max_rating: Максимальный рейтинг игрока (включительно).
-            max_games: Сколько всего партий собрать (суммарно по всем игрокам).
-            perf_type: Тип игры для лидерборда (blitz, rapid, classical).
-            max_players: Сколько топ-игроков запросить с лидерборда.
-
-        Returns:
-            Список словарей с данными игр (тот же формат, что и fetch_games).
-        """
-        # Шаг 1: получаем топ игроков
+        """Скачивает партии игроков в заданном диапазоне рейтинга."""
         body = self._request(f"/api/player/top/{perf_type}", {"nb": max_players})
         top = json.loads(body)
 
-        # Шаг 2: фильтруем по рейтингу
         target = []
         for p in top.get("users", []):
             rating = p["perfs"][perf_type]["rating"]
@@ -192,19 +167,12 @@ class LichessClient:
                 target.append((p["username"], rating))
 
         if not target:
-            logger.warning(
-                "Не найдено игроков с рейтингом %d-%d для %s",
-                min_rating, max_rating, perf_type,
-            )
+            logger.warning("Не найдено игроков с рейтингом %d-%d для %s", min_rating, max_rating, perf_type)
             return []
 
-        logger.info(
-            "Найдено %d игроков с рейтингом %d-%d (например %s с рейтингом %d)",
-            len(target), min_rating, max_rating,
-            target[0][0], target[0][1],
-        )
+        logger.info("Найдено %d игроков с рейтингом %d-%d (например %s %d)",
+                    len(target), min_rating, max_rating, target[0][0], target[0][1])
 
-        # Шаг 3: скачиваем партии с каждого игрока
         per_player = max(1, max_games // len(target))
         all_games = []
 
@@ -212,15 +180,13 @@ class LichessClient:
             if len(all_games) >= max_games:
                 break
             try:
-                games = self.fetch_games(username, max_games=per_player,
-                                         perf_type=perf_type)
+                games = self.fetch_games(username, max_games=per_player, perf_type=perf_type)
                 all_games.extend(games)
-                logger.info("Скачано %d партий с %s (рейтинг %d)",
-                            len(games), username, rating)
+                logger.info("Скачано %d партий с %s (рейтинг %d)", len(games), username, rating)
             except RuntimeError as e:
                 logger.warning("Пропускаю %s: %s", username, e)
                 continue
-            time.sleep(0.5)  # чтобы не заблокировали за частые запросы
+            time.sleep(0.5)
 
         logger.info("Всего собрано: %d партий", len(all_games))
         return all_games
@@ -228,18 +194,7 @@ class LichessClient:
     # ── Сохранение / Загрузка JSONL ──
 
     def save_jsonl(self, games: list[dict], output_path: str | Path) -> Path:
-        """Сохраняет список игр в JSONL-файл.
-
-        JSONL = одна JSON-строка на одну игру.
-        Преимущества: можно читать построчно, удобно для pandas и HuggingFace Datasets.
-
-        Args:
-            games: Список игр (словарей).
-            output_path: Путь к выходному .jsonl файлу.
-
-        Returns:
-            Путь к сохранённому файлу.
-        """
+        """Сохраняет список игр в JSONL-файл."""
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -251,14 +206,7 @@ class LichessClient:
         return output_path
 
     def load_jsonl(self, input_path: str | Path) -> list[dict]:
-        """Загружает игры из JSONL-файла.
-
-        Args:
-            input_path: Путь к .jsonl файлу.
-
-        Returns:
-            Список словарей с данными игр.
-        """
+        """Загружает игры из JSONL-файла."""
         games = []
         with open(input_path, "r", encoding="utf-8") as f:
             for line in f:
@@ -269,24 +217,9 @@ class LichessClient:
         return games
 
 
-# ── Точка входа для командной строки ──
+# ── CLI ──
 
 def main():
-    """CLI для быстрого тестирования и сбора данных.
-
-    Примеры:
-      # Проверить токен
-      python lichess_api.py --token lip_xxx --test
-
-      # Скачать 10 партий пользователя
-      python lichess_api.py --username alireza2003
-
-      # Скачать 100 рейтинговых blitz-партий
-      python lichess_api.py --username alireza2003 --max 100 --rated --perf-type blitz
-
-      # Скачать партии игроков с рейтингом 2000-2500
-      python lichess_api.py --by-rating 2000 2500 --max 500 --perf-type rapid
-    """
     logging.basicConfig(level=logging.INFO,
                         format="%(asctime)s [%(levelname)s] %(message)s")
 
@@ -297,19 +230,13 @@ def main():
     )
     parser.add_argument("--token", help="API токен Lichess")
     parser.add_argument("--username", help="Чьи партии скачать")
-    parser.add_argument("--test", action="store_true",
-                        help="Проверить соединение с API")
-    parser.add_argument("--output", "-o", default="games.jsonl",
-                        help="Выходной файл (.jsonl)")
-    parser.add_argument("--max", type=int, default=10,
-                        help="Максимум партий")
-    parser.add_argument("--perf-type", default=None,
-                        help="Тип игры (blitz, rapid, classical, ...)")
-    parser.add_argument("--rated", action=argparse.BooleanOptionalAction,
-                        help="Только рейтинговые партии")
-    parser.add_argument("--by-rating", nargs=2, type=int,
-                        metavar=("MIN", "MAX"),
-                        help="Диапазон рейтинга, например --by-rating 2000 2500")
+    parser.add_argument("--test", action="store_true", help="Проверить соединение с API")
+    parser.add_argument("--output", "-o", default="games.jsonl", help="Выходной файл (.jsonl)")
+    parser.add_argument("--max", type=int, default=10, help="Максимум партий")
+    parser.add_argument("--perf-type", default=None, help="Тип игры (blitz, rapid, classical, ...)")
+    parser.add_argument("--rated", action=argparse.BooleanOptionalAction, help="Только рейтинговые партии")
+    parser.add_argument("--by-rating", nargs=2, type=int, metavar=("MIN", "MAX"), help="Диапазон рейтинга")
+    parser.add_argument("--all", action="store_true", help="Скачать все партии (пагинация)")
 
     args = parser.parse_args()
     client = LichessClient(token=args.token)
@@ -326,10 +253,13 @@ def main():
             perf_type=args.perf_type or "blitz",
         )
     elif args.username:
-        games = client.fetch_games(
-            args.username, max_games=args.max,
-            rated=args.rated, perf_type=args.perf_type,
-        )
+        if args.all:
+            games = client.fetch_all_games(args.username, total_games=args.max, perf_type=args.perf_type)
+        else:
+            games = client.fetch_games(
+                args.username, max_games=args.max,
+                rated=args.rated, perf_type=args.perf_type,
+            )
     else:
         parser.print_help()
         return
