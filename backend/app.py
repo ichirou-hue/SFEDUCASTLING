@@ -8,7 +8,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+
 
 from backend.api_gateway.state import (
     load_stockfish,
@@ -32,23 +32,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Раздаём статику фронтенда
-frontend_path = os.path.join(os.path.dirname(__file__), "..", "frontend")
-app.mount("/static", StaticFiles(directory=frontend_path), name="static")
-
-
-@app.get("/")
-def serve_index():
-    """Отдаёт index.html фронтенда."""
-    return FileResponse(os.path.join(frontend_path, "index.html"))
-
-
 # Подключаем маршруты, разбитые по доменам
 app.include_router(game_router)
 app.include_router(analysis_router)
 app.include_router(knowledge_router)
 app.include_router(data_router)
 app.include_router(vision_router)
+
+# Раздаём статику фронтенда (собранный React в frontend/dist/)
+frontend_dist = os.path.join(os.path.dirname(__file__), "..", "frontend", "dist")
+app.mount("/", StaticFiles(directory=frontend_dist, html=True), name="frontend")
 
 load_stockfish()
 load_knowledge()

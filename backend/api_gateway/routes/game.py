@@ -60,6 +60,7 @@ def make_move(req: MoveRequest):
     }
 
 
+@router.post("/api/maia-move")
 @router.post("/api/stockfish-move")
 def ai_move(req: FenRequest):
     """Получает ход от Stockfish."""

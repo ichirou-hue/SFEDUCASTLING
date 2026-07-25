@@ -1,4 +1,4 @@
-"""Endpoint'ы анализа: оценка Stockfish, сравнение движков, комментарий GigaChat, поиск похожих."""
+"""Endpoint'ы анализа: оценка Stockfish, поиск похожих позиций."""
 
 import chess
 from fastapi import APIRouter
@@ -13,6 +13,7 @@ from backend.api_gateway.state import (
 router = APIRouter(tags=["analysis"])
 
 
+@router.post("/api/analyze")
 @router.post("/api/stockfish-analyze")
 def stockfish_analyze(req: FenRequest):
     """Анализирует позицию с помощью движка Stockfish."""

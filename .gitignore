@@ -1,13 +1,13 @@
 #BoardToFEN
 .idea/
 __pycache__/
-
+frontend/node_modules/
 outputs/
 dataset/
 old_data/
 progress_notes.docx
 .venv
-venv
+venv/
 .coverage
 .vscode/
 *.pyc
@@ -17,3 +17,6 @@ venv
 dataset.jsonl
 dataset_readable.json
 *.exe
+*.jsonl
+*.parquet
+*.csv

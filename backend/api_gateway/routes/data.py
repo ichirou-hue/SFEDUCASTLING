@@ -3,19 +3,65 @@
 import os
 import json
 import io
+from datetime import datetime
 import chess
 import chess.pgn
 from fastapi import APIRouter, UploadFile, File
+from backend.config.settings import settings
 
 from backend.api_gateway.models import DatasetMoveRequest, PGNTextRequest
+from backend.api_gateway.state import ensure_stockfish, stockfish_lock
 
 router = APIRouter(tags=["data"])
 
 
 @router.post("/api/save-move-to-dataset")
 def save_move_to_dataset(req: DatasetMoveRequest):
-    """Сохраняет ход пользователя в тренировочный датасет (отключено)."""
-    return {"status": "saved", "dataset_size": 0, "note": "Сбор датасета отключён"}
+    """Сохраняет ход пользователя в тренировочный датасет с оценкой Stockfish."""
+    stockfish = ensure_stockfish()
+    if not stockfish:
+        return {"error": "Stockfish не загружен"}
+
+    try:
+        with stockfish_lock:
+            stockfish.set_fen_position(req.fen)
+            stockfish_best = stockfish.get_best_move()
+            stockfish_eval = stockfish.get_evaluation()
+
+        move_data = {
+            "fen": req.fen,
+            "user_move": req.move,
+            "stockfish_move": stockfish_best,
+            "stockfish_eval": stockfish_eval,
+            "user_id": req.user_id,
+            "game_id": req.game_id,
+            "timestamp": datetime.now().isoformat(),
+        }
+
+        # Используем пути из настроек
+        dataset_path = str(settings.data.dataset_jsonl_path)
+        with open(dataset_path, "a", encoding="utf-8") as f:
+            f.write(json.dumps(move_data, ensure_ascii=False) + "\n")
+
+        readable_path = str(settings.data.dataset_readable_path)
+        if os.path.exists(readable_path):
+            with open(readable_path, "r", encoding="utf-8") as f:
+                all_data = json.load(f)
+        else:
+            all_data = []
+
+        all_data.append(move_data)
+
+        with open(readable_path, "w", encoding="utf-8") as f:
+            json.dump(all_data, f, indent=2, ensure_ascii=False)
+
+        return {
+            "status": "saved",
+            "dataset_size": len(all_data),
+            "data": move_data,
+        }
+    except Exception as e:
+        return {"error": str(e)}
 
 
 @router.post("/api/parse-pgn-text")
@@ -180,7 +226,8 @@ async def parse_pgn(file: UploadFile = File(...)):
                 "moves": moves_list,
             })
 
-            if game_num >= 10:
+            # Используем лимит из настроек
+            if game_num >= settings.data.max_games_to_parse:
                 break
 
         print(f"[PGN] Итого партий: {len(games)}")
