@@ -7,23 +7,76 @@
 
 import os
 import json
+import threading
 import requests
-from dotenv import load_dotenv
-
-load_dotenv()
 
 
-# --- GigaChat ---
-GIGACHAT_AUTH_KEY = os.environ.get("GIGACHAT_AUTH_KEY", "")
+class ModelManager:
+    """Менеджер ленивой загрузки ML-моделей и шахматных движков.
+
+    Предоставляет единую точку доступа к синглтонам,
+    загружая их при первом обращении (lazy loading).
+    """
+
+    def __init__(self):
+        self._stockfish = None
+        self._stockfish_loaded = False
+        self._sf_loading_lock = threading.Lock()
+
+    # --- Stockfish ---
+
+    def get_stockfish(self):
+        """Возвращает экземпляр Stockfish (ленивая загрузка)."""
+        if self._stockfish is not None:
+            return self._stockfish
+        with self._sf_loading_lock:
+            if self._stockfish is not None:
+                return self._stockfish
+            if self._stockfish_loaded:
+                return None
+            print("[ModelManager] Первый вызов get_stockfish — загружаем...")
+            self._load_stockfish()
+            if self._stockfish is not None:
+                self._stockfish_loaded = True
+            else:
+                print("[ModelManager] Не удалось загрузить Stockfish")
+        return self._stockfish
+
+    def _load_stockfish(self):
+        try:
+            from stockfish import Stockfish
+            path = os.path.join(os.path.dirname(__file__), "..", "..", "stockfish_engine", "stockfish.exe")
+            if os.path.exists(path):
+                self._stockfish = Stockfish(path=path, depth=12)
+                print(f"Stockfish loaded: {path}")
+            else:
+                print(f"Stockfish not found at path: {path}")
+        except Exception as e:
+            print(f"Error loading Stockfish: {e}")
 
 
-# --- Maia2 ---
-maia2 = None
-maia2_prepared = None
+# Глобальный экземпляр менеджера
+manager = ModelManager()
+
+# Мьютекс для защиты Stockfish от конкурентного доступа
+stockfish_lock = threading.Lock()
 
 
-# --- Stockfish ---
-stockfish = None
+def ensure_stockfish():
+    """Проверяет, что Stockfish загружен. Возвращает объект Stockfish или None."""
+    return manager.get_stockfish()
+
+
+def reset_stockfish():
+    """Сбрасывает Stockfish (при падении процесса)."""
+    with manager._sf_loading_lock:
+        manager._stockfish = None
+        manager._stockfish_loaded = False
+
+
+def load_stockfish():
+    """Загружает Stockfish. Возвращает True при успехе."""
+    return manager.get_stockfish() is not None
 
 
 # --- LLaVA ---
@@ -33,42 +86,6 @@ llava_model = None
 # --- База знаний ---
 knowledge_base = None
 KNOWLEDGE_PATH = os.path.join(os.path.dirname(__file__), "..", "knowledge", "openings.json")
-
-
-def load_maia2():
-    """Загружает Maia2 — нейросеть для человекообразных ходов."""
-    global maia2, maia2_prepared
-    if maia2 is not None:
-        return True
-    try:
-        from maia2 import model as maia2_model_loader, inference as maia2_inference
-        maia2 = maia2_model_loader.from_pretrained(type="rapid", device="cpu")
-        maia2_prepared = maia2_inference.prepare()
-        print("Maia2 загружена и готова к работе.")
-        return True
-    except Exception as e:
-        print(f"Не удалось загрузить Maia2: {e}")
-        return False
-
-
-def load_stockfish():
-    """Загружает движок Stockfish."""
-    global stockfish
-    if stockfish is not None:
-        return True
-    try:
-        from stockfish import Stockfish
-        STOCKFISH_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "stockfish", "stockfish.exe")
-        if os.path.exists(STOCKFISH_PATH):
-            stockfish = Stockfish(path=STOCKFISH_PATH, depth=20)
-            print(f"Stockfish загружен: {STOCKFISH_PATH}")
-            return True
-        else:
-            print(f"Stockfish не найден по пути: {STOCKFISH_PATH}")
-            return False
-    except Exception as e:
-        print(f"Ошибка загрузки Stockfish: {e}")
-        return False
 
 
 def load_knowledge():
@@ -91,24 +108,7 @@ def load_knowledge():
 
 def load_llava():
     """Загружает LLaVA — мультимодальную модель для распознавания досок."""
-    global llava_model
-    if llava_model is not None:
-        return True
-    try:
-        import torch
-        from transformers import pipeline
-        print("Загрузка LLaVA 1.5 7B через pipeline...")
-        llava_model = pipeline(
-            "image-to-text",
-            model="llava-hf/llava-1.5-7b-hf",
-            torch_dtype=torch.float16,
-            device_map="auto"
-        )
-        print("LLaVA загружена успешно!")
-        return True
-    except Exception as e:
-        print(f"Ошибка загрузки LLaVA: {e}")
-        return False
+    return False
 
 
 def get_opening_info(fen: str) -> dict | None:
@@ -187,18 +187,3 @@ def extract_fen_from_image(image_path: str) -> str:
 
     except Exception as e:
         return f"ERROR: {str(e)}"
-
-
-def ensure_stockfish():
-    """Проверяет, что Stockfish загружен; пробует загрузить, если нет. Возвращает объект Stockfish или None."""
-    if stockfish is None:
-        load_stockfish()
-    return stockfish
-
-
-def ensure_maia2():
-    """Проверяет, что Maia2 загружена; пробует загрузить, если нет. Возвращает (model, prepared) или (None, None)."""
-    global maia2, maia2_prepared
-    if maia2 is None:
-        load_maia2()
-    return maia2, maia2_prepared

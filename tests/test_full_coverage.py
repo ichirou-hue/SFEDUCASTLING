@@ -10,7 +10,7 @@ import chess
 from fastapi.testclient import TestClient
 from backend.app import app
 from backend.api_gateway import state as st
-from backend.api_gateway.routes.game import make_move, maia_move
+from backend.api_gateway.routes.game import make_move, ai_move
 from backend.api_gateway.models import MoveRequest, FenRequest
 
 client = TestClient(app)
@@ -18,11 +18,11 @@ START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
 
 # ============================
-# game.py — промоция, шах, пат, Maia с моком
+# game.py — промоция, шах, пат, Stockfish ход
 # ============================
 
 class TestGamePromotionAndStatus:
-    """Покрываем: промоция (36-37), шах (53), Maia inference (73-89)."""
+    """Покрываем: промоция (36-37), шах (53), AI move (73-89)."""
 
     def test_promotion_to_knight(self):
         """Ход с превращением пешки в коня."""
@@ -63,49 +63,12 @@ class TestGamePromotionAndStatus:
         board.turn = chess.BLACK
         assert board.is_stalemate()
 
-    def test_maia_with_mocked_inference(self):
-        """Maia2 загружена, inference возвращает ход."""
-        mock_model = MagicMock()
-        mock_prepared = MagicMock()
-        mock_inf = MagicMock()
-        mock_inf.inference_each.return_value = ({"e2e4": 0.8, "d2d4": 0.2}, 0.55)
-
-        with patch.dict("sys.modules", {"maia2": MagicMock(), "maia2.inference": mock_inf}):
-            with patch("backend.api_gateway.routes.game.ensure_maia2",
-                       return_value=(mock_model, mock_prepared)):
-                resp = client.post("/api/maia-move", json={"fen": START_FEN, "elo": 1500})
-
-        assert resp.status_code == 200
-        data = resp.json()
-        assert "san" in data
-
-    def test_maia_empty_probs(self):
-        """Maia2 загружена, move_probs пустой → fallback."""
-        mock_model = MagicMock()
-        mock_prepared = MagicMock()
-        mock_inf = MagicMock()
-        mock_inf.inference_each.return_value = ({}, 0.5)
-
-        with patch.dict("sys.modules", {"maia2": MagicMock(), "maia2.inference": mock_inf}):
-            with patch("backend.api_gateway.routes.game.ensure_maia2",
-                       return_value=(mock_model, mock_prepared)):
-                resp = client.post("/api/maia-move", json={"fen": START_FEN, "elo": 1500})
-
-        assert resp.status_code == 200
-        data = resp.json()
-        assert "san" in data
-
-    def test_maia_inference_exception(self):
-        """Maia2 загружена, inference падает → fallback."""
-        mock_model = MagicMock()
-        mock_prepared = MagicMock()
-        mock_inf = MagicMock()
-        mock_inf.inference_each.side_effect = RuntimeError("CUDA OOM")
-
-        with patch.dict("sys.modules", {"maia2": MagicMock(), "maia2.inference": mock_inf}):
-            with patch("backend.api_gateway.routes.game.ensure_maia2",
-                       return_value=(mock_model, mock_prepared)):
-                resp = client.post("/api/maia-move", json={"fen": START_FEN, "elo": 1500})
+    def test_ai_move_with_stockfish(self):
+        """Stockfish загружен, возвращает ход."""
+        mock_sf = MagicMock()
+        mock_sf.get_best_move_time.return_value = "e2e4"
+        with patch("backend.api_gateway.routes.game.ensure_stockfish", return_value=mock_sf):
+            resp = client.post("/api/stockfish-move", json={"fen": START_FEN, "elo": 1500})
 
         assert resp.status_code == 200
         data = resp.json()
@@ -113,7 +76,7 @@ class TestGamePromotionAndStatus:
 
 
 # ============================
-# analysis.py — с моками Stockfish, Maia2, GigaChat
+# analysis.py — с моками Stockfish
 # ============================
 
 class MockResponse:
@@ -126,12 +89,12 @@ class MockResponse:
 
 
 class TestAnalysisWithMocks:
-    """Покрываем success-пути analysis.py."""
+    """Покрываем success-пути analysis.py (Stockfish, similarity)."""
 
     def test_stockfish_analyze_with_mock(self):
         """Stockfish загружен, возвращает оценку."""
         mock_sf = MagicMock()
-        mock_sf.get_best_move.return_value = "e2e4"
+        mock_sf.get_best_move_time.return_value = "e2e4"
         mock_sf.get_evaluation.return_value = {"type": "cp", "value": 24}
         mock_sf.get_top_moves.return_value = [
             {"Move": "e2e4", "Centipawn": 24},
@@ -152,85 +115,6 @@ class TestAnalysisWithMocks:
             resp = client.post("/api/stockfish-analyze", json={"fen": START_FEN})
         assert resp.status_code == 200
         assert "error" in resp.json()
-
-    def test_compare_engines_with_mocks(self):
-        """Оба движка загружены, сравнение работает."""
-        mock_sf = MagicMock()
-        mock_sf.get_best_move.return_value = "e2e4"
-        mock_sf.get_evaluation.return_value = {"type": "cp", "value": 30}
-        mock_sf.set_fen_position.side_effect = None
-
-        mock_model = MagicMock()
-        mock_prep = MagicMock()
-        mock_inf = MagicMock()
-        mock_inf.inference_each.return_value = ({"e2e4": 0.7, "d2d4": 0.3}, 0.6)
-
-        mock_maia2 = MagicMock()
-        mock_maia2.inference = mock_inf
-        with patch.dict("sys.modules", {"maia2": mock_maia2}):
-            with patch("backend.api_gateway.routes.analysis.ensure_stockfish",
-                       return_value=mock_sf):
-                with patch("backend.api_gateway.routes.analysis.ensure_maia2",
-                           return_value=(mock_model, mock_prep)):
-                    resp = client.post("/api/compare-maia-stockfish",
-                                       json={"fen": START_FEN, "elo": 1500})
-
-        assert resp.status_code == 200
-        data = resp.json()
-        assert "stockfish" in data
-        assert "maia2" in data
-
-    def test_analyze_with_gigachat_key(self):
-        """GIGACHAT_AUTH_KEY установлен, GigaChat отвечает."""
-        import backend.api_gateway.routes.analysis as analysis_mod
-        original_key = analysis_mod.GIGACHAT_AUTH_KEY
-        analysis_mod.GIGACHAT_AUTH_KEY = "test-key"
-
-        mock_response = MagicMock()
-        mock_choice = MagicMock()
-        mock_choice.message.content = "Хорошая позиция у белых."
-        mock_response.choices = [mock_choice]
-
-        mock_giga_instance = MagicMock()
-        mock_giga_instance.chat.return_value = mock_response
-
-        mock_giga_cls = MagicMock()
-        mock_giga_cls.return_value.__enter__.return_value = mock_giga_instance
-
-        mock_giga_module = MagicMock()
-        mock_giga_module.GigaChat = mock_giga_cls
-
-        with patch("backend.api_gateway.routes.analysis.get_opening_info",
-                   return_value=None):
-            with patch.dict("sys.modules", {"gigachat": mock_giga_module}):
-                resp = client.post("/api/analyze", json={"fen": START_FEN})
-
-        assert resp.status_code == 200
-        data = resp.json()
-        assert "Хорошая позиция" in data["message"]
-
-        analysis_mod.GIGACHAT_AUTH_KEY = original_key
-
-    def test_analyze_gigachat_exception(self):
-        """GIGACHAT_AUTH_KEY установлен, но GigaChat падает."""
-        import backend.api_gateway.routes.analysis as analysis_mod
-        original_key = analysis_mod.GIGACHAT_AUTH_KEY
-        analysis_mod.GIGACHAT_AUTH_KEY = "test-key"
-
-        mock_giga_cls = MagicMock(side_effect=RuntimeError("Connection failed"))
-        mock_giga_module = MagicMock()
-        mock_giga_module.GigaChat = mock_giga_cls
-
-        with patch("backend.api_gateway.routes.analysis.get_opening_info",
-                   return_value=None):
-            with patch.dict("sys.modules", {"gigachat": mock_giga_module}):
-                resp = client.post("/api/analyze", json={"fen": START_FEN})
-
-        assert resp.status_code == 200
-        data = resp.json()
-        assert "Ошибка GigaChat" in data["message"]
-
-        analysis_mod.GIGACHAT_AUTH_KEY = original_key
 
     def test_similarity_search_success(self):
         """Модули perception найдены, поиск работает."""
@@ -330,7 +214,7 @@ class TestDataSaveSuccess:
     def test_save_move_success(self, tmp_path):
         """Stockfish загружен, сохраняем ход."""
         mock_sf = MagicMock()
-        mock_sf.get_best_move.return_value = "e2e4"
+        mock_sf.get_best_move_time.return_value = "e2e4"
         mock_sf.get_evaluation.return_value = {"type": "cp", "value": 30}
 
         with patch("backend.api_gateway.routes.data.ensure_stockfish", return_value=mock_sf):
@@ -429,39 +313,15 @@ class TestStateSuccess:
                             {"stockfish": MagicMock(), "stockfish.Stockfish": MagicMock()}):
                 result = st.load_stockfish()
         assert result is True
-        assert st.stockfish is not None
-        st.stockfish = None
+        assert st.manager._stockfish is not None
+        st.manager._stockfish = None
+        st.manager._stockfish_loaded = False
 
-    def test_load_maia2_success(self):
-        """maia2 установлена, загружаем."""
-        mock_model_mod = MagicMock()
-        mock_model_mod.from_pretrained.return_value = MagicMock()
-        mock_inf_mod = MagicMock()
-        mock_inf_mod.prepare.return_value = MagicMock()
-        mock_maia2 = MagicMock()
-        mock_maia2.model = mock_model_mod
-        mock_maia2.inference = mock_inf_mod
-        with patch.dict("sys.modules", {"maia2": mock_maia2}):
-            result = st.load_maia2()
-        assert result is True
-        assert st.maia2 is not None
-        assert st.maia2_prepared is not None
-        st.maia2 = None
-        st.maia2_prepared = None
-
-    def test_load_llava_success(self):
-        """transformers установлены, LLaVA загружается."""
-        mock_torch = MagicMock()
-        mock_pipe = MagicMock()
-        mock_pipe.return_value = MagicMock()
-        transformers = MagicMock()
-        transformers.pipeline = mock_pipe
-
-        with patch.dict("sys.modules", {"torch": mock_torch, "transformers": transformers}):
-            result = st.load_llava()
-        assert result is True
-        assert st.llava_model is not None
-        st.llava_model = None
+    def test_load_llava_disabled(self):
+        """LLaVA отключена — сразу возвращает False."""
+        result = st.load_llava()
+        assert result is False
+        assert st.llava_model is None
 
     def test_load_knowledge_bad_json(self, tmp_path):
         """Файл есть, но JSON битый."""
@@ -515,7 +375,7 @@ class TestStateSuccess:
 
 
 # ============================
-# app.py — serve_index и GIGACHAT key
+# app.py — serve_index
 # ============================
 
 class TestAppCoverage:

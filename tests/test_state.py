@@ -1,4 +1,4 @@
-"""Тесты модуля state.py: загрузка моделей, функции-помощники, fallback-поведение."""
+"""Тесты модуля state.py: ModelManager, загрузка моделей, fallback-поведение."""
 
 import os
 import json
@@ -8,69 +8,57 @@ import pytest
 from backend.api_gateway import state
 
 
-# --- Загрузка Stockfish ---
+@pytest.fixture(autouse=True)
+def reset_manager():
+    """Сбрасывает ModelManager перед каждым тестом."""
+    state.manager._stockfish = None
+    state.manager._stockfish_loaded = False
 
-class TestLoadStockfish:
-    def test_load_without_binary(self):
-        result = state.load_stockfish()
-        assert result is False
-        assert state.stockfish is None
 
-    def test_load_twice(self):
-        state.stockfish = MagicMock()
-        result = state.load_stockfish()
-        assert result is True
-        state.stockfish = None
+# --- ModelManager: Stockfish ---
+
+class TestModelManagerStockfish:
+    def test_get_stockfish_without_binary(self):
+        with patch.object(state.manager, "_load_stockfish"):
+            result = state.manager.get_stockfish()
+        assert result is None
+
+    def test_get_stockfish_twice(self):
+        state.manager._stockfish = MagicMock()
+        result = state.manager.get_stockfish()
+        assert result is not None
+
+    def test_get_stockfish_load_called_once(self):
+        def side_effect():
+            state.manager._stockfish = MagicMock()
+        with patch.object(state.manager, "_load_stockfish",
+                          side_effect=side_effect) as mock_load:
+            state.manager.get_stockfish()
+            state.manager.get_stockfish()
+        mock_load.assert_called_once()
 
     def test_ensure_stockfish_not_loaded(self):
-        state.stockfish = None
-        with patch("backend.api_gateway.state.load_stockfish", return_value=False):
+        with patch("backend.api_gateway.state.manager._load_stockfish"):
             result = state.ensure_stockfish()
             assert result is None
 
     def test_ensure_stockfish_already_loaded(self):
         mock = MagicMock()
-        state.stockfish = mock
+        state.manager._stockfish = mock
         result = state.ensure_stockfish()
         assert result is mock
-        state.stockfish = None
 
 
-# --- Загрузка Maia2 ---
-
-class TestLoadMaia2:
-    def test_load_without_maia2(self):
-        result = state.load_maia2()
+class TestBackwardCompatLoadStockfish:
+    def test_load_without_binary(self):
+        with patch.object(state.manager, "_load_stockfish"):
+            result = state.load_stockfish()
         assert result is False
-        assert state.maia2 is None
-        assert state.maia2_prepared is None
 
     def test_load_twice(self):
-        state.maia2 = MagicMock()
-        state.maia2_prepared = MagicMock()
-        result = state.load_maia2()
+        state.manager._stockfish = MagicMock()
+        result = state.load_stockfish()
         assert result is True
-        state.maia2 = None
-        state.maia2_prepared = None
-
-    def test_ensure_maia2_not_loaded(self):
-        state.maia2 = None
-        state.maia2_prepared = None
-        with patch("backend.api_gateway.state.load_maia2", return_value=False):
-            m, p = state.ensure_maia2()
-            assert m is None
-            assert p is None
-
-    def test_ensure_maia2_already_loaded(self):
-        mock_m = MagicMock()
-        mock_p = MagicMock()
-        state.maia2 = mock_m
-        state.maia2_prepared = mock_p
-        m, p = state.ensure_maia2()
-        assert m is mock_m
-        assert p is mock_p
-        state.maia2 = None
-        state.maia2_prepared = None
 
 
 # --- Загрузка LLaVA ---
@@ -82,10 +70,9 @@ class TestLoadLlava:
         assert state.llava_model is None
 
     def test_load_twice(self):
-        state.llava_model = MagicMock()
         result = state.load_llava()
-        assert result is True
-        state.llava_model = None
+        assert result is False
+        assert state.llava_model is None
 
 
 # --- Загрузка базы знаний ---
@@ -129,13 +116,3 @@ class TestExtractFenFromImage:
             result = state.extract_fen_from_image("nonexistent.png")
             assert "ERROR" in result.upper()
 
-
-# --- GIGACHAT_AUTH_KEY ---
-
-class TestGigachatKey:
-    def test_default_empty(self, monkeypatch):
-        monkeypatch.delenv("GIGACHAT_AUTH_KEY", raising=False)
-        import importlib
-        importlib.reload(state)
-        assert hasattr(state, "GIGACHAT_AUTH_KEY")
-        assert state.GIGACHAT_AUTH_KEY == ""

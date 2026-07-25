@@ -1,4 +1,4 @@
-"""Тесты игровых endpoint'ов: /api/legal-moves, /api/move, /api/maia-move."""
+"""Тесты игровых endpoint'ов: /api/legal-moves, /api/move, /api/stockfish-move."""
 
 import pytest
 from fastapi.testclient import TestClient
@@ -79,19 +79,19 @@ class TestMakeMove:
         assert resp.status_code == 422
 
 
-# --- /api/maia-move ---
+# --- /api/stockfish-move ---
 
-class TestMaiaMove:
+class TestAiMove:
     def test_game_over(self):
         # Scholar's mate — чёрные получили мат, игра окончена
         fen = "r1bqkb1r/pppp1Qpp/2n2n2/4p3/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 0 4"
-        resp = client.post("/api/maia-move", json={"fen": fen, "elo": 1500})
+        resp = client.post("/api/stockfish-move", json={"fen": fen, "elo": 1500})
         assert resp.status_code == 200
         data = resp.json()
         assert data.get("error") == "Партия окончена"
 
     def test_valid_request(self):
-        resp = client.post("/api/maia-move", json={"fen": START_FEN, "elo": 1500})
+        resp = client.post("/api/stockfish-move", json={"fen": START_FEN, "elo": 1500})
         assert resp.status_code == 200
         data = resp.json()
         assert "fen" in data
@@ -100,5 +100,5 @@ class TestMaiaMove:
         assert "to" in data
 
     def test_invalid_fen(self):
-        resp = client.post("/api/maia-move", json={"fen": "bad", "elo": 1500})
+        resp = client.post("/api/stockfish-move", json={"fen": "bad", "elo": 1500})
         assert resp.status_code == 422

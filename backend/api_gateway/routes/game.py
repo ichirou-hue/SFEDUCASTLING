@@ -1,10 +1,10 @@
-"""Игровые endpoint'ы: легальные ходы, выполнение хода, ход Maia."""
+"""Игровые endpoint'ы: легальные ходы, выполнение хода, ход AI."""
 
 import random
 import chess
 from fastapi import APIRouter
 from backend.api_gateway.models import FenSquare, MoveRequest, FenRequest
-from backend.api_gateway.state import ensure_maia2
+from backend.api_gateway.state import ensure_stockfish, reset_stockfish, stockfish_lock
 
 router = APIRouter(tags=["game"])
 
@@ -60,35 +60,32 @@ def make_move(req: MoveRequest):
     }
 
 
-@router.post("/api/maia-move")
-def maia_move(req: FenRequest):
-    """Получает человекообразный ход от движка Maia2."""
+@router.post("/api/stockfish-move")
+def ai_move(req: FenRequest):
+    """Получает ход от Stockfish."""
     board = chess.Board(req.fen)
     if board.is_game_over():
         return {"error": "Партия окончена", "fen": req.fen}
 
-    maia2_model, maia2_prepared = ensure_maia2()
-
-    if maia2_model and maia2_prepared:
+    stockfish = ensure_stockfish()
+    if stockfish:
         try:
-            from maia2 import inference as maia2_inference
-
-            move_probs, win_prob = maia2_inference.inference_each(
-                maia2_model, maia2_prepared, req.fen, req.elo, req.elo
-            )
-            if not move_probs:
-                print("[Maia2] WARNING: пустой move_probs, используем случайный ход")
-                move = random.choice(list(board.legal_moves))
-            else:
-                best_uci = max(move_probs, key=move_probs.get)
+            with stockfish_lock:
+                print(f"[AI] Начало расчёта хода...")
+                stockfish.set_fen_position(req.fen)
+                best_uci = stockfish.get_best_move_time(10000)
+                print(f"[AI] Ход: {best_uci}")
+            if best_uci:
                 move = chess.Move.from_uci(best_uci)
+            else:
+                print("[AI] Ход не получен — случайный")
+                move = random.choice(list(board.legal_moves))
         except Exception as e:
-            print(f"[Maia2] Ошибка инференса: {e}")
-            import traceback
-            traceback.print_exc()
+            print(f"[Stockfish] Ошибка хода: {e}")
+            reset_stockfish()
             move = random.choice(list(board.legal_moves))
     else:
-        print("[Maia2] ВНИМАНИЕ: maia2 не загружена, используется случайный ход")
+        print("[AI] Stockfish недоступен, случайный ход")
         move = random.choice(list(board.legal_moves))
 
     san = board.san(move)

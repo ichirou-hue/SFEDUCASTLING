@@ -1,5 +1,6 @@
-"""Тесты endpoint'ов анализа: /api/stockfish-analyze, /api/compare-maia-stockfish, /api/analyze, /api/similarity/search."""
+"""Тесты endpoint'ов анализа: /api/stockfish-analyze, /api/similarity/search."""
 
+from unittest.mock import patch
 import pytest
 from fastapi.testclient import TestClient
 from backend.app import app
@@ -13,7 +14,8 @@ START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
 class TestStockfishAnalyze:
     def test_without_stockfish(self):
-        resp = client.post("/api/stockfish-analyze", json={"fen": START_FEN})
+        with patch("backend.api_gateway.routes.analysis.ensure_stockfish", return_value=None):
+            resp = client.post("/api/stockfish-analyze", json={"fen": START_FEN})
         assert resp.status_code == 200
         data = resp.json()
         assert data.get("error") == "Stockfish не загружен"
@@ -24,42 +26,6 @@ class TestStockfishAnalyze:
 
     def test_default_elo(self):
         resp = client.post("/api/stockfish-analyze", json={"fen": START_FEN})
-        assert resp.status_code == 200
-
-
-# --- /api/compare-maia-stockfish ---
-
-class TestCompareEngines:
-    def test_without_stockfish(self):
-        resp = client.post("/api/compare-maia-stockfish", json={"fen": START_FEN})
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data.get("error") == "Stockfish не загружен"
-
-    def test_invalid_fen(self):
-        resp = client.post("/api/compare-maia-stockfish", json={"fen": "bad"})
-        assert resp.status_code == 422
-
-    def test_elo_out_of_range(self):
-        resp = client.post("/api/compare-maia-stockfish", json={"fen": START_FEN, "elo": 9999})
-        assert resp.status_code == 422
-
-
-# --- /api/analyze ---
-
-class TestAnalyze:
-    def test_without_gigachat_key(self):
-        resp = client.post("/api/analyze", json={"fen": START_FEN})
-        assert resp.status_code == 200
-        data = resp.json()
-        assert "GigaChat API ключ не настроен" in data.get("message", "")
-
-    def test_invalid_fen(self):
-        resp = client.post("/api/analyze", json={"fen": "bad"})
-        assert resp.status_code == 422
-
-    def test_custom_elo(self):
-        resp = client.post("/api/analyze", json={"fen": START_FEN, "elo": 2000})
         assert resp.status_code == 200
 
 

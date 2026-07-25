@@ -11,8 +11,6 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
 from backend.api_gateway.state import (
-    GIGACHAT_AUTH_KEY,
-    load_maia2,
     load_stockfish,
     load_knowledge,
     load_llava,
@@ -52,14 +50,6 @@ app.include_router(knowledge_router)
 app.include_router(data_router)
 app.include_router(vision_router)
 
-
-# Загружаем зависимости. Если модуль не установлен — сообщаем и работаем в fallback-режиме.
-if GIGACHAT_AUTH_KEY:
-    print("GigaChat API ключ загружен.")
-else:
-    print("GigaChat API ключ не найден! Добавьте GIGACHAT_AUTH_KEY в .env")
-
-load_maia2()
 load_stockfish()
 load_knowledge()
 print("Инициализация LLaVA...")

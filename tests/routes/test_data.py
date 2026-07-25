@@ -1,5 +1,6 @@
 """Тесты endpoint'ов данных: /api/save-move-to-dataset, /api/parse-pgn-text, /api/parse-pgn."""
 
+from unittest.mock import patch
 import io
 import json
 import pytest
@@ -20,9 +21,10 @@ SAMPLE_PGN = (
 
 class TestSaveMoveToDataset:
     def test_without_stockfish(self):
-        resp = client.post("/api/save-move-to-dataset", json={
-            "fen": START_FEN, "move": "e2e4", "user_id": "test", "game_id": "g1"
-        })
+        with patch("backend.api_gateway.routes.data.ensure_stockfish", return_value=None):
+            resp = client.post("/api/save-move-to-dataset", json={
+                "fen": START_FEN, "move": "e2e4", "user_id": "test", "game_id": "g1"
+            })
         assert resp.status_code == 200
         data = resp.json()
         assert data.get("error") == "Stockfish не загружен"
