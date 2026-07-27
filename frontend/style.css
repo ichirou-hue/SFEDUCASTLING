@@ -1,3 +1,9 @@
+@font-face {
+  font-family: "Calypso";
+  src: url("/Calypso.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+}
 @import url("https://fonts.googleapis.com/css2?family=Orbitron:wght@900&family=Cormorant+Garamond:wght@300;400;500&display=swap");
 
 * {
@@ -516,4 +522,195 @@ body {
 
 .chat-input-area button:hover {
   background: #2d7a9c;
+}
+/* ========================================= */
+/*       ЛЕВАЯ ПАНЕЛЬ: ИСТОРИЯ ХОДОВ         */
+/* ========================================= */
+.move-history-panel {
+  /* 1. Визуальные свойства из Figma */
+  width: 17vw;
+  height: 85vh;
+  border-radius: 30px;
+  border: 3px solid rgba(180, 135, 44, 0.85);
+  background: rgba(255, 255, 255, 0.87); /* Полупрозрачный белый фон */
+  box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.25);
+
+  /* 2. Твое требование: отступ 30px слева */
+  margin-left: 30px;
+  /* (Чтобы панель не прилипала сверху/снизу, можно добавить margin-top или margin-bottom по необходимости) */
+
+  /* 3. Внутренняя Flex-магия для красивого расположения элементов */
+  display: flex;
+  flex-direction: column; /* Выстраиваем заголовок, список и кнопки сверху вниз */
+  padding: 20px 24px; /* Внутренние отступы, чтобы контент не прилипал к рамке */
+  box-sizing: border-box; /* Чтобы padding не увеличивал заданную ширину 327px */
+
+  order: -1;
+}
+/* Настройка самого списка ходов */
+.move-list {
+  flex-grow: 1; /* Заставляет список занять ВСЁ свободное пространство между заголовком и кнопками */
+  overflow-y: auto; /* Добавляет вертикальный скролл, если ходов будет много */
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px; /* Расстояние между парами ходов */
+}
+
+/* Настройка ряда с кнопками */
+.nav-controls {
+  display: flex;
+  justify-content: space-between; /* Равномерно распределяет кнопки по ширине панели */
+  align-items: center;
+}
+.player-info,
+.move-pair,
+.nav-controls,
+.action-buttons {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* --- Блок профиля --- */
+.player-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 41px;
+  background: linear-gradient(90deg, #79b180 28%, #e2ece2 51%);
+  padding: 20px 30px; /* Увеличили внутренние отступы, чтобы блок стал шире и массивнее */
+  margin-bottom: 25px;
+  width: 100%;
+  box-sizing: border-box;
+}
+/* Здесь можно добавить стили шрифтов для .player-names по данным из Dev Mode */
+
+/* --- Список ходов (чередование цветов как на макете) --- */
+.move-pair {
+  display: flex;
+  align-items: center;
+  padding: 15px 10px; /* Сделали строки шире */
+  border-bottom: 1px solid #a5d6a7; /* Добавили тонкую линию снизу */
+  font-family: "Calypso", serif;
+  font-size: 26px; /* Сильно увеличили шрифт самих ходов */
+  color: #333;
+}
+.move-pair.active {
+  background-color: #dcecd9; /* Светло-зеленый фон заливки */
+  border-radius: 10px;
+  border-bottom: 1px solid transparent;
+}
+.num {
+  width: 40px;
+  color: #555;
+  font-size: 22px;
+}
+.move-w {
+  flex: 1;
+  text-align: left; /* Белые ходы прижаты влево (под Вы) */
+  padding-left: 10px;
+}
+.move-b {
+  flex: 1;
+  text-align: right; /* Черные ходы прижаты вправо (под Maia 2) */
+  padding-right: 15px;
+}
+/* --- Навигация со стрелками --- */
+.nav-controls {
+  display: flex;
+  justify-content: space-between; /* Раздвигает стрелки по краям, а текст по центру */
+  align-items: center;
+  margin-top: 15px;
+  margin-bottom: 15px;
+}
+.icon-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+.icon-btn img {
+  width: 40px; /* Посмотри точную ширину стрелки в Figma */
+  height: auto;
+}
+
+/* --- Нижние кнопки --- */
+.action-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px; /* Расстояние между кнопкой и инпутом */
+}
+.btn-import {
+  background: #a5d6a7; /* Цвет кнопки "Импорт" */
+  border: none;
+  border-radius: 20px; /* Скругления из макета */
+  padding: 10px;
+  font-weight: bold;
+}
+.input-fen {
+  border: 2px solid #a5d6a7;
+  border-radius: 20px;
+  padding: 10px;
+}
+.history-title {
+  font-family: "Calypso", serif; /* Обязательно укажи нужный шрифт */
+  font-size: 38px; /* Увеличиваем размер (подстрой под себя) */
+  font-weight: normal;
+  white-space: nowrap; /* Гарантирует, что текст будет в одну строку */
+  text-align: center;
+  color: #333; /* Возьми точный цвет из Figma */
+  margin: 0 0 5px 0; /* Убираем лишние отступы */
+}
+
+/* --- Тонкая линия под заголовком --- */
+.title-separator {
+  width: 100%;
+  height: 2px;
+  background-color: #69b87c;
+  margin-bottom: 20px;
+}
+
+/* --- Блок профиля --- */
+.player-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between; /* Раздвигает аватарки по краям, а VS по центру */
+  border-radius: 41px; /* Твое скругление */
+  /* Тот самый градиент из макета */
+  background: linear-gradient(90deg, #79b180 28%, #e2ece2 51%);
+  padding: 10px 15px;
+  margin-bottom: 15px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Стилизация текста внутри профиля */
+.player-avatar,
+.bot-avatar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.player-name,
+.bot-name {
+  font-family: "Calypso", serif;
+  font-size: 24px; /* Сильно увеличили шрифт имён */
+  line-height: 1.2;
+}
+.bot-name {
+  text-align: right;
+}
+.vs-text {
+  font-family: "Calypso", serif;
+  font-size: 30px; /* Увеличили надпись VS */
+  color: #79b180;
+}
+
+/* Стилизация аватарок (если ты не экспортируешь их с фоном) */
+.player-avatar img,
+.bot-avatar img {
+  width: 55px; /* Увеличили размер эллипсов (аватарок) */
+  height: 55px;
+  border-radius: 50%;
+  object-fit: cover;
 }
