@@ -8,6 +8,34 @@ const userId = localStorage.getItem('sfedu_user_id') || 'user_' + Math.random().
 localStorage.setItem('sfedu_user_id', userId)
 let gameId = 'game_' + Date.now()
 
+let audioCtx = null
+function playMoveSound() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)()
+  const now = audioCtx.currentTime
+
+  const osc = audioCtx.createOscillator()
+  const gain = audioCtx.createGain()
+  const filter = audioCtx.createBiquadFilter()
+
+  filter.type = 'lowpass'
+  filter.frequency.setValueAtTime(1200, now)
+  filter.frequency.exponentialRampToValueAtTime(300, now + 0.08)
+
+  osc.type = 'triangle'
+  osc.frequency.setValueAtTime(180, now)
+  osc.frequency.exponentialRampToValueAtTime(60, now + 0.06)
+
+  gain.gain.setValueAtTime(0.5, now)
+  gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1)
+
+  osc.connect(filter)
+  filter.connect(gain)
+  gain.connect(audioCtx.destination)
+
+  osc.start(now)
+  osc.stop(now + 0.12)
+}
+
 const ChessboardComponent = forwardRef(function ChessboardComponent({ onStateChange }, ref) {
   const gameRef = useRef(new Chess())
   const [fen, setFen] = useState(gameRef.current.fen())
@@ -170,6 +198,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent({ onStateCha
         buildMoveHistory()
         takeSnapshot()
         updateStatus()
+        playMoveSound()
       }
     } catch (err) {
       console.error('Maia2 ошибка:', err)
@@ -182,6 +211,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent({ onStateCha
         buildMoveHistory()
         takeSnapshot()
         updateStatus()
+        playMoveSound()
       }
     }
     setIsAiThinking(false)
@@ -206,6 +236,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent({ onStateCha
     buildMoveHistory()
     takeSnapshot()
     updateStatus()
+    playMoveSound()
 
     saveMoveToDataset(game.fen(), sourceSquare + targetSquare, userId, gameId).catch(() => {})
 
@@ -245,6 +276,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent({ onStateCha
         buildMoveHistory()
         takeSnapshot()
         updateStatus()
+        playMoveSound()
         saveMoveToDataset(game.fen(), selectedSquare + square, userId, gameId).catch(() => {})
         if (!game.isGameOver() && !game.isDraw()) {
           setTimeout(makeAiMove, 500)
@@ -285,27 +317,39 @@ const ChessboardComponent = forwardRef(function ChessboardComponent({ onStateCha
     })
   }, [fen, moveHistory, turn, positionSnapshots, viewIndex, isViewMode, onStateChange])
 
+  const cornerStyle = (radius) => ({ borderRadius: radius })
   const customSquareStyles = {}
+  if (!boardFlipped) {
+    customSquareStyles.a1 = cornerStyle('15px 0 0 0')
+    customSquareStyles.h1 = cornerStyle('0 15px 0 0')
+    customSquareStyles.a8 = cornerStyle('0 0 0 15px')
+    customSquareStyles.h8 = cornerStyle('0 0 15px 0')
+  } else {
+    customSquareStyles.a8 = cornerStyle('15px 0 0 0')
+    customSquareStyles.h8 = cornerStyle('0 15px 0 0')
+    customSquareStyles.a1 = cornerStyle('0 0 0 15px')
+    customSquareStyles.h1 = cornerStyle('0 0 15px 0')
+  }
   if (lastMove) {
-    customSquareStyles[lastMove.from] = { backgroundColor: 'rgba(34, 90, 115, 0.5)' }
-    customSquareStyles[lastMove.to] = { backgroundColor: 'rgba(34, 90, 115, 0.7)' }
+    customSquareStyles[lastMove.from] = { backgroundColor: 'rgba(201, 169, 110, 0.45)' }
+    customSquareStyles[lastMove.to] = { backgroundColor: 'rgba(201, 169, 110, 0.6)' }
   }
   if (selectedSquare) {
-    customSquareStyles[selectedSquare] = { backgroundColor: 'rgba(163, 196, 209, 0.6)' }
+    customSquareStyles[selectedSquare] = { backgroundColor: 'rgba(201, 169, 110, 0.55)' }
   }
   for (const sq of legalMovesForSelected) {
     const targetPiece = game.get(sq)
     if (!customSquareStyles[sq]) {
       if (targetPiece) {
         customSquareStyles[sq] = {
-          backgroundImage: 'radial-gradient(circle, transparent 50%, rgba(0,0,0,0.18) 52%, rgba(0,0,0,0.18) 80%, transparent 82%)',
+          backgroundImage: 'radial-gradient(circle, transparent 48%, rgba(100,80,40,0.25) 50%, rgba(100,80,40,0.25) 80%, transparent 82%)',
           backgroundPosition: 'center',
           backgroundSize: '100% 100%',
           backgroundRepeat: 'no-repeat',
         }
       } else {
         customSquareStyles[sq] = {
-          backgroundImage: 'radial-gradient(circle, rgba(0,0,0,0.18) 15%, transparent 16%)',
+          backgroundImage: 'radial-gradient(circle, rgba(100,80,40,0.2) 15%, transparent 16%)',
           backgroundPosition: 'center',
           backgroundSize: '100% 100%',
           backgroundRepeat: 'no-repeat',
@@ -328,7 +372,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent({ onStateCha
             step="100"
             value={elo}
             onChange={e => setElo(parseInt(e.target.value))}
-            style={{ width: 100, accentColor: '#225A73', cursor: 'pointer' }}
+            style={{ width: 100, accentColor: '#C9A96E', cursor: 'pointer' }}
           />
         </div>
 
@@ -342,19 +386,47 @@ const ChessboardComponent = forwardRef(function ChessboardComponent({ onStateCha
           showBoardNotation={true}
           areArrowsAllowed={true}
           onPromotionPieceSelect={handlePromotionPieceSelect}
-          customBoardStyle={{
-            border: '3px solid #225A73',
-            boxShadow: '0 0 0 1px #1a4a5f, 0 10px 50px rgba(0, 0, 0, 0.7)',
-            borderRadius: '6px',
+          customPieces={{
+            wK: () => <img src="/pieces/white_king.svg" style={{ width: '100%', height: '100%' }} />,
+            wQ: () => <img src="/pieces/white_queen.svg" style={{ width: '100%', height: '100%' }} />,
+            wR: () => <img src="/pieces/white_rook.svg" style={{ width: '100%', height: '100%' }} />,
+            wB: () => <img src="/pieces/white_bishop.svg" style={{ width: '100%', height: '100%' }} />,
+            wN: () => <img src="/pieces/white_knight.svg" style={{ width: '100%', height: '100%' }} />,
+            wP: () => <img src="/pieces/white_pawn.svg" style={{ width: '100%', height: '100%' }} />,
+            bK: () => <img src="/pieces/black_king.svg" style={{ width: '100%', height: '100%' }} />,
+            bQ: () => <img src="/pieces/black_queen.svg" style={{ width: '100%', height: '100%' }} />,
+            bR: () => <img src="/pieces/black_rook.svg" style={{ width: '100%', height: '100%' }} />,
+            bB: () => <img src="/pieces/black_bishop.svg" style={{ width: '100%', height: '100%' }} />,
+            bN: () => <img src="/pieces/black_knight.svg" style={{ width: '100%', height: '100%' }} />,
+            bP: () => <img src="/pieces/black_pawn.svg" style={{ width: '100%', height: '100%' }} />,
           }}
-          customDarkSquareStyle={{ backgroundColor: '#225A73' }}
-          customLightSquareStyle={{ backgroundColor: '#F8FAFC' }}
+          customBoardStyle={{
+            borderRadius: '15px',
+            backgroundImage: 'linear-gradient(0deg, rgba(74, 178, 45, 0.43) 0%, rgba(74, 178, 45, 0.43) 100%), url(/textures/green-marble.png)',
+            backgroundPosition: '-0.111px 0px',
+            backgroundSize: '100.027% 100%',
+            backgroundRepeat: 'no-repeat',
+            backgroundColor: 'lightgray',
+          }}
+          customDarkSquareStyle={{
+            borderLeft: '1px solid rgba(226, 213, 124, 0.85)',
+            backgroundColor: 'rgba(223, 239, 252, 0.20)',
+          }}
+          customLightSquareStyle={{
+            borderTop: '1px solid rgba(226, 213, 124, 0.85)',
+            borderLeft: '1px solid rgba(226, 213, 124, 0.85)',
+            backgroundImage: 'url(/textures/white-marble.png)',
+            backgroundPosition: '50%',
+            backgroundSize: 'cover',
+            backgroundRepeat: 'no-repeat',
+            backgroundColor: 'rgba(255, 255, 255, 0.75)',
+          }}
           customSquareStyles={customSquareStyles}
         />
 
         <div className="controls-row">
-          <button className="ctrl-btn" style={{ background: '#0d3550', border: '1px solid #225A73' }} onClick={() => setBoardFlipped(f => !f)}>↺ Доска</button>
-          <button className="ctrl-btn" style={{ background: '#225A73' }} onClick={handleNewGame}>Новая игра</button>
+          <button className="ctrl-btn" style={{ background: '#8B7340', border: '1px solid #C9A96E' }} onClick={() => setBoardFlipped(f => !f)}>↺ Доска</button>
+          <button className="ctrl-btn" style={{ background: '#C9A96E' }} onClick={handleNewGame}>Новая игра</button>
         </div>
 
         <FenBar onLoadFen={handleLoadFen} />
