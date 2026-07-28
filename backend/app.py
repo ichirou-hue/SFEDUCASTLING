@@ -21,6 +21,7 @@ from backend.api_gateway.routes.analysis import router as analysis_router
 from backend.api_gateway.routes.knowledge import router as knowledge_router
 from backend.api_gateway.routes.data import router as data_router
 from backend.api_gateway.routes.vision import router as vision_router
+from backend.api_gateway.routes.analyze import router as analyze_router
 
 app = FastAPI(title="SFEDUCASTLING API")
 
@@ -38,6 +39,7 @@ app.include_router(analysis_router)
 app.include_router(knowledge_router)
 app.include_router(data_router)
 app.include_router(vision_router)
+app.include_router(analyze_router)
 
 # Раздаём статику фронтенда (собранный React в frontend/dist/)
 frontend_dist = os.path.join(os.path.dirname(__file__), "..", "frontend", "dist")
