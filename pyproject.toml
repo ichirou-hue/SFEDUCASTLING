@@ -1,0 +1,124 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sfeducasling"
+version = "0.1.0"
+description = "Chess assistant with ML and computer vision"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "ruff",
+    "mypy",
+    "pytest",
+    "pytest-cov",
+    "pytest-asyncio",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "python-dotenv",
+]
+
+[tool.ruff]
+src = [
+    "analysis",
+    "backend",
+    "evaluation",
+    "input_gateway",
+    "learninig_system",
+    "memory",
+    "perception",
+    "reasoning",
+    "training_data",
+    "tests",
+]
+exclude = [".git", ".venv", "venv", "__pycache__", "build", "dist", "frontend", "docs"]
+select = ["E", "W", "F", "I", "N", "UP", "B", "C4", "T20", "SIM", "RET", "ARG"]
+ignore = ["E501", "B008", "B904"]
+fixable = ["ALL"]
+line-length = 120
+
+[tool.ruff.isort]
+known-first-party = [
+    "analysis",
+    "backend",
+    "evaluation",
+    "input_gateway",
+    "learninig_system",
+    "memory",
+    "perception",
+    "reasoning",
+    "training_data",
+    "tests",
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[tool.mypy]
+python_version = "3.14"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+ignore_missing_imports = true
+plugins = ["pydantic.mypy"]
+exclude = ["venv", ".venv", "build", "dist", "frontend", "docs", "__pycache__"]
+
+[[tool.mypy.overrides]]
+module = "backend.config.settings"
+ignore_errors = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = [
+    "-v",
+    "--cov=analysis",
+    "--cov=backend",
+    "--cov=evaluation",
+    "--cov=input_gateway",
+    "--cov=learninig_system",
+    "--cov=memory",
+    "--cov=perception",
+    "--cov=reasoning",
+    "--cov=training_data",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+]
+norecursedirs = ["venv", ".venv", "frontend", "docs"]
+
+[tool.coverage.run]
+source = [
+    "analysis",
+    "backend",
+    "evaluation",
+    "input_gateway",
+    "learninig_system",
+    "memory",
+    "perception",
+    "reasoning",
+    "training_data",
+]
+omit = ["*/tests/*", "*/__pycache__/*", "*/venv/*", "*/.venv/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if __name__ == .__main__.:",
+    "raise AssertionError",
+    "raise NotImplementedError",
+]
