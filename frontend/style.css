@@ -1,10 +1,10 @@
+@import url("https://fonts.googleapis.com/css2?family=Orbitron:wght@900&family=Cormorant+Garamond:wght@300;400;500&display=swap");
 @font-face {
   font-family: "Calypso";
   src: url("/Calypso.ttf") format("truetype");
   font-weight: normal;
   font-style: normal;
 }
-@import url("https://fonts.googleapis.com/css2?family=Orbitron:wght@900&family=Cormorant+Garamond:wght@300;400;500&display=swap");
 
 * {
   margin: 0;
@@ -160,6 +160,13 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
+  width: fit-content;
+  border-radius: 15px;
+  border: 3px solid rgba(180, 135, 44, 0.85);
+  background: #F0F2EA;
+  padding: 20px 24px;
+  box-sizing: border-box;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.25));
 }
 
 .player-bar {
@@ -173,7 +180,7 @@ body {
 
 .rating-label {
   font-size: 13px;
-  color: #64748b;
+  color: #8B7340;
   letter-spacing: 0.5px;
 }
 
