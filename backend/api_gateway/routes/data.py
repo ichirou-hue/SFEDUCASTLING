@@ -1,5 +1,6 @@
 """Endpoint'ы сбора данных и парсинга PGN."""
 
+import os
 import json
 import io
 from datetime import datetime
@@ -9,7 +10,7 @@ from fastapi import APIRouter, UploadFile, File
 from backend.config.settings import settings
 
 from backend.api_gateway.models import DatasetMoveRequest, PGNTextRequest
-from backend.api_gateway.state import ensure_stockfish
+from backend.api_gateway.state import ensure_stockfish, stockfish_lock
 
 router = APIRouter(tags=["data"])
 
@@ -22,9 +23,10 @@ def save_move_to_dataset(req: DatasetMoveRequest):
         return {"error": "Stockfish не загружен"}
 
     try:
-        stockfish.set_fen_position(req.fen)
-        stockfish_best = stockfish.get_best_move()
-        stockfish_eval = stockfish.get_evaluation()
+        with stockfish_lock:
+            stockfish.set_fen_position(req.fen)
+            stockfish_best = stockfish.get_best_move()
+            stockfish_eval = stockfish.get_evaluation()
 
         move_data = {
             "fen": req.fen,
@@ -42,7 +44,7 @@ def save_move_to_dataset(req: DatasetMoveRequest):
             f.write(json.dumps(move_data, ensure_ascii=False) + "\n")
 
         readable_path = str(settings.data.dataset_readable_path)
-        if readable_path.exists():
+        if os.path.exists(readable_path):
             with open(readable_path, "r", encoding="utf-8") as f:
                 all_data = json.load(f)
         else:

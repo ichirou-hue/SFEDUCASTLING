@@ -117,7 +117,7 @@ class FenRequest(BaseModel):
 
     Attributes:
         fen: Текущая позиция в нотации FEN.
-        elo: Целевой рейтинг Elo для анализа Maia (0–3000). По умолчанию 1500.
+        elo: Целевой рейтинг Elo (0–3000). По умолчанию 1500.
     """
     fen: str
     elo: int = 1500

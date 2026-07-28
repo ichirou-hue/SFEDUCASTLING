@@ -17,15 +17,7 @@ class CorsSettings(BaseModel):
     allow_headers: list[str] = Field(["*"], alias="ALLOW_HEADERS")
 
 
-class GigachatSettings(BaseModel):
-    auth_key: str | None = Field(None, alias="GIGACHAT_AUTH_KEY")
-    model: str = Field("GigaChat", alias="GIGACHAT_MODEL")
-    scope: str = Field("GIGACHAT_API_PERS", alias="GIGACHAT_SCOPE")
-    verify_ssl_certs: bool = Field(False, alias="GIGACHAT_VERIFY_SSL")
-
-
 class ModelsSettings(BaseModel):
-    maia2_config_path: Path = Field(BASE_DIR / "maia2_models" / "config.yaml", alias="MAIA2_CONFIG_PATH")
     stockfish_path: Path | None = Field(None, alias="STOCKFISH_PATH")
     stockfish_depth: int = Field(20, alias="STOCKFISH_DEPTH")          # добавлено
     stockfish_top_moves: int = Field(5, alias="STOCKFISH_TOP_MOVES")
@@ -48,12 +40,11 @@ class LichessSettings(BaseModel):      # новая группа
 class Settings(BaseSettings):
     app_name: str = Field("SFEDUCASTLING API", alias="APP_NAME")
     debug: bool = Field(False, alias="DEBUG")
-    secret_key: str = Field(..., alias="SECRET_KEY")
+    secret_key: str = Field("dev-key", alias="SECRET_KEY")
     frontend_dir: Path = Field(BASE_DIR / "frontend", alias="FRONTEND_DIR")
 
     server: ServerSettings = ServerSettings()
     cors: CorsSettings = CorsSettings()
-    gigachat: GigachatSettings = GigachatSettings()
     models: ModelsSettings = ModelsSettings()
     data: DataSettings = DataSettings()
     lichess: LichessSettings = LichessSettings()   # добавлено

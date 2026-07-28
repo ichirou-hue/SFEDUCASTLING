@@ -8,14 +8,9 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
 
-# Импорт настроек
-from backend.config.settings import settings
 
-# Импорт из state (уже без GIGACHAT_AUTH_KEY)
 from backend.api_gateway.state import (
-    load_maia2,
     load_stockfish,
     load_knowledge,
     load_llava,
@@ -27,26 +22,15 @@ from backend.api_gateway.routes.knowledge import router as knowledge_router
 from backend.api_gateway.routes.data import router as data_router
 from backend.api_gateway.routes.vision import router as vision_router
 
-app = FastAPI(title=settings.app_name)
+app = FastAPI(title="SFEDUCASTLING API")
 
 # Разрешаем запросы с любых источников (для разработки)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors.allowed_origins,
-    allow_methods=settings.cors.allow_methods,
-    allow_headers=settings.cors.allow_headers,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
-
-# Раздаём статику фронтенда
-frontend_path = settings.frontend_dir
-app.mount("/static", StaticFiles(directory=str(frontend_path)), name="static")
-
-
-@app.get("/")
-def serve_index():
-    """Отдаёт index.html фронтенда."""
-    return FileResponse(str(frontend_path / "index.html"))
-
 
 # Подключаем маршруты, разбитые по доменам
 app.include_router(game_router)
@@ -55,14 +39,10 @@ app.include_router(knowledge_router)
 app.include_router(data_router)
 app.include_router(vision_router)
 
+# Раздаём статику фронтенда (собранный React в frontend/dist/)
+frontend_dist = os.path.join(os.path.dirname(__file__), "..", "frontend", "dist")
+app.mount("/", StaticFiles(directory=frontend_dist, html=True), name="frontend")
 
-# Загружаем зависимости. Если модуль не установлен — сообщаем и работаем в fallback-режиме.
-if settings.gigachat.auth_key:
-    print("GigaChat API ключ загружен.")
-else:
-    print("GigaChat API ключ не найден! Добавьте GIGACHAT_AUTH_KEY в .env")
-
-load_maia2()
 load_stockfish()
 load_knowledge()
 print("Инициализация LLaVA...")
@@ -71,4 +51,4 @@ load_llava()
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host=settings.server.host, port=settings.server.port)
+    uvicorn.run(app, host="127.0.0.1", port=8005)

@@ -16,6 +16,7 @@ venv/
 *.pt
 dataset.jsonl
 dataset_readable.json
+*.exe
 *.jsonl
 *.parquet
 *.csv

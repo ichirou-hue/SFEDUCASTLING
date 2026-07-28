@@ -803,7 +803,7 @@
         var fen = toFEN();
         var elo = parseInt(document.getElementById('elo-slider').value);
 
-        fetch('/api/maia-move', {
+        fetch('/api/stockfish-move', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({fen: fen, elo: elo})
