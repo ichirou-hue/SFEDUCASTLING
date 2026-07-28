@@ -26,6 +26,19 @@ body {
   /* Резервный цвет на случай долгой загрузки картинки */
   background-color: #e8f5e9;
 }
+.main-area {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 20px; /* Уменьшили отступ, чтобы панели придвинулись ближе к доске */
+
+  /* Делаем контейнер шире для трех колонок */
+  max-width: 1600px;
+  width: 95vw; /* Разрешаем приложению занимать 95% экрана */
+
+  margin: 40px auto 0;
+  box-sizing: border-box;
+}
 
 #root {
   display: flex;
@@ -355,11 +368,21 @@ body {
 
 /* --- Chat --- */
 .chat-section {
-  flex: 1;
+  /* 1. Делаем размеры чата симметричными левой панели истории ходов */
+  flex-shrink: 0; /* Строго запрещаем браузеру сжимать этот блок */
+  width: 30vw; /* Резиновая ширина, как у левой панели */
+  min-width: 280px; /* Минимальная ширина */
+  max-width: 400px; /* Максимальная ширина */
+  height: 85vh; /* Высота 85% от экрана */
+
+  /* 2. Твои оригинальные стили чата (цвета и внутренний Flexbox) */
   background: #061b2c;
   display: flex;
   flex-direction: column;
   border-left: 2px solid #225a73;
+
+  /* По желанию: можешь добавить скругление углов, чтобы соответствовать стилю левой панели */
+  border-radius: 30px;
 }
 
 .chat-header {
@@ -528,6 +551,7 @@ body {
 /* ========================================= */
 .move-history-panel {
   /* 1. Визуальные свойства из Figma */
+  flex-shrink: 0;
   width: 17vw;
   height: 85vh;
   border-radius: 30px;
@@ -535,17 +559,11 @@ body {
   background: rgba(255, 255, 255, 0.87); /* Полупрозрачный белый фон */
   box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.25);
 
-  /* 2. Твое требование: отступ 30px слева */
-  margin-left: 30px;
-  /* (Чтобы панель не прилипала сверху/снизу, можно добавить margin-top или margin-bottom по необходимости) */
-
   /* 3. Внутренняя Flex-магия для красивого расположения элементов */
   display: flex;
   flex-direction: column; /* Выстраиваем заголовок, список и кнопки сверху вниз */
   padding: 20px 24px; /* Внутренние отступы, чтобы контент не прилипал к рамке */
   box-sizing: border-box; /* Чтобы padding не увеличивал заданную ширину 327px */
-
-  order: -1;
 }
 /* Настройка самого списка ходов */
 .move-list {
@@ -653,13 +671,16 @@ body {
   padding: 10px;
 }
 .history-title {
-  font-family: "Calypso", serif; /* Обязательно укажи нужный шрифт */
-  font-size: 38px; /* Увеличиваем размер (подстрой под себя) */
+  font-family: "Calypso", serif;
+  /* Используем clamp: минимум 24px, в идеале 2vw, максимум 38px */
+  font-size: clamp(24px, 2vw, 38px);
   font-weight: normal;
-  white-space: nowrap; /* Гарантирует, что текст будет в одну строку */
+  white-space: nowrap; /* Оставляем в одну строку */
+  overflow: hidden; /* Скрываем то, что физически не влезает */
+  text-overflow: ellipsis; /* Добавляем троеточие на самых узких экранах */
   text-align: center;
-  color: #333; /* Возьми точный цвет из Figma */
-  margin: 0 0 5px 0; /* Убираем лишние отступы */
+  color: #333;
+  margin: 0 0 5px 0;
 }
 
 /* --- Тонкая линия под заголовком --- */
@@ -674,12 +695,13 @@ body {
 .player-info {
   display: flex;
   align-items: center;
-  justify-content: space-between; /* Раздвигает аватарки по краям, а VS по центру */
-  border-radius: 41px; /* Твое скругление */
-  /* Тот самый градиент из макета */
+  justify-content: space-between;
+  border-radius: 41px;
   background: linear-gradient(90deg, #79b180 28%, #e2ece2 51%);
+
+  /* Уменьшаем отступы! Было 20px 30px, из-за чего блок раздувало */
   padding: 10px 15px;
-  margin-bottom: 15px;
+  margin-bottom: 25px;
   width: 100%;
   box-sizing: border-box;
 }
@@ -694,23 +716,27 @@ body {
 .player-name,
 .bot-name {
   font-family: "Calypso", serif;
-  font-size: 24px; /* Сильно увеличили шрифт имён */
+  font-size: clamp(16px, 1.2vw, 22px);
   line-height: 1.2;
 }
+
 .bot-name {
   text-align: right;
 }
 .vs-text {
   font-family: "Calypso", serif;
-  font-size: 30px; /* Увеличили надпись VS */
+  font-size: clamp(18px, 1.5vw, 26px);
   color: #79b180;
+  margin: 0 10px; /* Добавляем немного воздуха по бокам */
 }
 
 /* Стилизация аватарок (если ты не экспортируешь их с фоном) */
 .player-avatar img,
 .bot-avatar img {
-  width: 55px; /* Увеличили размер эллипсов (аватарок) */
-  height: 55px;
+  /* Гибкий размер для эллипсов (было 55px) */
+  width: clamp(35px, 2.5vw, 48px);
+  height: clamp(35px, 2.5vw, 48px);
   border-radius: 50%;
   object-fit: cover;
+  flex-shrink: 0; /* Строго запрещаем браузеру сплющивать саму картинку в овал */
 }
