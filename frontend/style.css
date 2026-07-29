@@ -163,7 +163,7 @@ body {
   width: fit-content;
   border-radius: 15px;
   border: 3px solid rgba(180, 135, 44, 0.85);
-  background: #F0F2EA;
+  background: #f0f2ea;
   padding: 20px 24px;
   box-sizing: border-box;
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.25));
@@ -180,7 +180,7 @@ body {
 
 .rating-label {
   font-size: 13px;
-  color: #8B7340;
+  color: #8b7340;
   letter-spacing: 0.5px;
 }
 
@@ -312,48 +312,70 @@ body {
 .move-list {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  /* Убрали gap, так как линии между ходами лучше делать через border-bottom */
   overflow-y: auto;
-  flex: 1;
-  font-size: 13px;
-  color: #94a3b8;
+
+  flex: 1 1 auto; /* Заставляем список гибко занимать всё свободное место */
+  min-height: 0; /* ВАЖНО: магическое свойство, которое чинит баг скролла во Flexbox! */
+
+  padding-right: 8px; /* Отступ для скроллбара */
 }
 
+/* Возвращаем наш фирменный мятный скроллбар */
 .move-list::-webkit-scrollbar {
   width: 6px;
 }
 .move-list::-webkit-scrollbar-track {
-  background: #051a28;
-  border-radius: 3px;
+  background: transparent; /* Убрали синий фон */
 }
 .move-list::-webkit-scrollbar-thumb {
-  background: #225a73;
-  border-radius: 3px;
+  background: #79b180; /* Мятный цвет из профиля */
+  border-radius: 10px;
 }
 .move-list::-webkit-scrollbar-thumb:hover {
-  background: #2d7a9c;
+  background: #5d9364;
 }
 .move-list {
-  scrollbar-color: #225a73 #051a28;
+  scrollbar-color: #79b180 transparent;
   scrollbar-width: thin;
 }
 
 .move-pair {
   display: flex;
-  gap: 4px;
-}
-.move-pair .num {
-  color: #475569;
-  min-width: 24px;
-}
-.move-pair span {
-  padding: 2px 4px;
-  border-radius: 3px;
-}
-.move-pair span:hover {
-  background: #0d3550;
+  align-items: center;
+  padding: 12px 0; /* Отступы сверху и снизу делают строку достаточно высокой (~7 строк на экран) */
+  border-bottom: 1px solid #a3c7a7; /* Та самая зеленая полосочка-разделитель из макета */
+
+  font-family: "Calypso", serif;
+  font-size: clamp(
+    16px,
+    1.2vw,
+    20px
+  ); /* Делаем шрифт крупным, как на картинке */
+  color: #333;
 }
 
+/* Убираем нижнюю полоску у самого последнего хода в списке */
+.move-pair:last-child {
+  border-bottom: none;
+}
+
+.move-pair .num {
+  color: #333;
+  min-width: 30px;
+}
+
+.move-pair span {
+  padding: 4px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+/* Эффект выделения хода мятным цветом при наведении */
+.move-pair span:hover {
+  background: #e2ece2;
+}
 .nav-controls {
   display: flex;
   gap: 6px;
@@ -574,14 +596,30 @@ body {
 }
 /* Настройка самого списка ходов */
 .move-list {
-  flex-grow: 1; /* Заставляет список занять ВСЁ свободное пространство между заголовком и кнопками */
-  overflow-y: auto; /* Добавляет вертикальный скролл, если ходов будет много */
-  margin-bottom: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px; /* Расстояние между парами ходов */
+  flex: 1;
+  min-height: 0;
+  /* max-height: 250px; --- УДАЛИТЕ ЭТУ СТРОКУ */
+  overflow-y: auto;
+  padding-right: 8px;
 }
 
+/* Стилизация скроллбара для Chrome, Edge, Safari */
+.move-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.move-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.move-list::-webkit-scrollbar-thumb {
+  background: #79b180; /* Наш мятно-зеленый цвет */
+  border-radius: 10px;
+}
+
+.move-list::-webkit-scrollbar-thumb:hover {
+  background: #5d9364;
+}
 /* Настройка ряда с кнопками */
 .nav-controls {
   display: flex;
@@ -602,8 +640,8 @@ body {
   align-items: center;
   justify-content: space-between;
   border-radius: 41px;
-  background: linear-gradient(90deg, #79b180 28%, #e2ece2 51%);
-  padding: 20px 30px; /* Увеличили внутренние отступы, чтобы блок стал шире и массивнее */
+  background: linear-gradient(45deg, #79b180 28%, #e2ece2 51%);
+  padding: 10px 15px; /* Правильные уменьшенные отступы */
   margin-bottom: 25px;
   width: 100%;
   box-sizing: border-box;
@@ -625,6 +663,19 @@ body {
   border-radius: 10px;
   border-bottom: 1px solid transparent;
 }
+.move-pair span {
+  padding: 4px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+
+  /* НОВЫЕ СТРОКИ: Центрируем текст внутри прямоугольника */
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  min-width: 45px; /* Чтобы все плашки были одинаковой ширины и смотрелись симметрично */
+}
 .num {
   width: 40px;
   color: #555;
@@ -641,22 +692,37 @@ body {
   padding-right: 15px;
 }
 /* --- Навигация со стрелками --- */
-.nav-controls {
+/* Выстраиваем кнопки и счетчик строго по центру на равном удалении */
+.nav-row {
   display: flex;
-  justify-content: space-between; /* Раздвигает стрелки по краям, а текст по центру */
+  justify-content: center;
   align-items: center;
-  margin-top: 15px;
-  margin-bottom: 15px;
+  gap: 40px; /* Было 20px, сделали шире */
+  margin-bottom: 25px; /* Подняли стрелки чуть выше над кнопками */
 }
-.icon-btn {
-  background: none;
+
+/* Делаем саму кнопку невидимой оберткой для SVG */
+.arrow-btn {
+  width: 55px;
+  height: 44px;
+  background: transparent; /* Убираем зеленый фон из CSS, фон теперь внутри SVG */
   border: none;
-  cursor: pointer;
   padding: 0;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: transform 0.2s; /* Легкая анимация при наведении */
 }
-.icon-btn img {
-  width: 40px; /* Посмотри точную ширину стрелки в Figma */
-  height: auto;
+
+/* При наведении кнопка будет слегка увеличиваться (вместо смены цвета) */
+.arrow-btn:hover {
+  transform: scale(1.05);
+}
+
+/* Небольшой трюк: делаем фон SVG чуть ярче при наведении мышкой */
+.arrow-btn:hover rect {
+  fill-opacity: 0.5;
 }
 
 /* --- Нижние кнопки --- */
@@ -666,11 +732,29 @@ body {
   gap: 10px; /* Расстояние между кнопкой и инпутом */
 }
 .btn-import {
-  background: #a5d6a7; /* Цвет кнопки "Импорт" */
+  width: 233px;
+  height: 59px;
+  border-radius: 30px;
+  background: #83b787;
   border: none;
-  border-radius: 20px; /* Скругления из макета */
-  padding: 10px;
-  font-weight: bold;
+
+  /* Фирменный шрифт проекта */
+  font-family: "Calypso", serif;
+  font-size: 24px;
+  color: #333; /* Темный цвет текста, чтобы хорошо читался на мятном фоне */
+
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  /* Ставим кнопку строго по центру */
+  margin: 0 auto;
+  transition: background 0.2s;
+}
+
+.btn-import:hover {
+  background: #76a87a; /* Чуть темнеет при наведении */
 }
 .input-fen {
   border: 2px solid #a5d6a7;
@@ -697,22 +781,6 @@ body {
   background-color: #69b87c;
   margin-bottom: 20px;
 }
-
-/* --- Блок профиля --- */
-.player-info {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-radius: 41px;
-  background: linear-gradient(90deg, #79b180 28%, #e2ece2 51%);
-
-  /* Уменьшаем отступы! Было 20px 30px, из-за чего блок раздувало */
-  padding: 10px 15px;
-  margin-bottom: 25px;
-  width: 100%;
-  box-sizing: border-box;
-}
-
 /* Стилизация текста внутри профиля */
 .player-avatar,
 .bot-avatar {
@@ -746,4 +814,22 @@ body {
   border-radius: 50%;
   object-fit: cover;
   flex-shrink: 0; /* Строго запрещаем браузеру сплющивать саму картинку в овал */
+}
+.player-details {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start; /* Прижимаем текст к левому краю (к аватарке) */
+}
+.bot-details {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end; /* Прижимаем текст к правому краю (к аватарке) */
+}
+.player-rating,
+.bot-rating {
+  font-family: "Calypso", serif;
+  font-size: clamp(12px, 1vw, 16px);
+  color: #555;
+  line-height: 1;
+  margin-bottom: 2px; /* Небольшой отступ между рейтингом и именем */
 }
