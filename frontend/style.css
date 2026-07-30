@@ -30,13 +30,10 @@ body {
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  gap: 20px; /* Уменьшили отступ, чтобы панели придвинулись ближе к доске */
-
-  /* Делаем контейнер шире для трех колонок */
+  gap: 20px;
   max-width: 1600px;
-  width: 95vw; /* Разрешаем приложению занимать 95% экрана */
-
-  margin: 40px auto 0;
+  width: 95vw;
+  margin: 20px auto 0;
   box-sizing: border-box;
 }
 
@@ -142,18 +139,13 @@ body {
   font-size: 14px;
 }
 
-.main-area {
-  display: flex;
-  flex: 1;
-  overflow: hidden;
-}
-
 .board-section {
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  justify-content: flex-start;
-  padding: 8px 12px 8px 24px;
+  justify-content: center;
+  padding: 0 10px;
+  order: 2;
 }
 
 .board-wrapper {
@@ -161,12 +153,13 @@ body {
   flex-direction: column;
   align-items: center;
   width: fit-content;
+  height: fit-content;
   border-radius: 15px;
   border: 3px solid rgba(180, 135, 44, 0.85);
   background: #f0f2ea;
-  padding: 20px 24px;
+  padding: 12px 16px;
   box-sizing: border-box;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.25));
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
 }
 
 .player-bar {
@@ -215,15 +208,19 @@ body {
   align-items: center;
   margin-top: 10px;
   width: 100%;
+  background: #f0f2ea;
+  border-radius: 8px;
+  padding: 8px 12px;
+  box-sizing: border-box;
 }
 
 .fen-bar input {
   flex: 1;
-  background: #0a2838;
-  border: 1px solid #225a73;
+  background: #f0f2ea;
+  border: 1px solid #c2974d;
   border-radius: 6px;
   padding: 6px 10px;
-  color: #cbd5e1;
+  color: #333;
   font-size: 11px;
   font-family: "Consolas", "Courier New", monospace;
   outline: none;
@@ -231,8 +228,8 @@ body {
 }
 
 .fen-bar input:focus {
-  border-color: #3d8da6;
-  color: #e2e8f0;
+  border-color: #c2974d;
+  color: #111;
 }
 
 .fen-bar button {
@@ -397,21 +394,16 @@ body {
 
 /* --- Chat --- */
 .chat-section {
-  /* 1. Делаем размеры чата симметричными левой панели истории ходов */
-  flex-shrink: 0; /* Строго запрещаем браузеру сжимать этот блок */
-  width: 30vw; /* Резиновая ширина, как у левой панели */
-  min-width: 280px; /* Минимальная ширина */
-  max-width: 400px; /* Максимальная ширина */
-  height: 85vh; /* Высота 85% от экрана */
-
-  /* 2. Твои оригинальные стили чата (цвета и внутренний Flexbox) */
+  flex-shrink: 0;
+  width: 340px;
+  height: fit-content;
+  max-height: 85vh;
   background: #061b2c;
   display: flex;
   flex-direction: column;
   border-left: 2px solid #225a73;
-
-  /* По желанию: можешь добавить скругление углов, чтобы соответствовать стилю левой панели */
   border-radius: 30px;
+  order: 3;
 }
 
 .chat-header {
@@ -579,20 +571,18 @@ body {
 /*       ЛЕВАЯ ПАНЕЛЬ: ИСТОРИЯ ХОДОВ         */
 /* ========================================= */
 .move-history-panel {
-  /* 1. Визуальные свойства из Figma */
   flex-shrink: 0;
-  width: 17vw;
+  width: 300px;
   height: 85vh;
   border-radius: 30px;
   border: 3px solid rgba(180, 135, 44, 0.85);
-  background: rgba(255, 255, 255, 0.87); /* Полупрозрачный белый фон */
+  background: rgba(255, 255, 255, 0.87);
   box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.25);
-
-  /* 3. Внутренняя Flex-магия для красивого расположения элементов */
   display: flex;
-  flex-direction: column; /* Выстраиваем заголовок, список и кнопки сверху вниз */
-  padding: 20px 24px; /* Внутренние отступы, чтобы контент не прилипал к рамке */
-  box-sizing: border-box; /* Чтобы padding не увеличивал заданную ширину 327px */
+  flex-direction: column;
+  padding: 20px 24px;
+  box-sizing: border-box;
+  order: 1;
 }
 /* Настройка самого списка ходов */
 .move-list {

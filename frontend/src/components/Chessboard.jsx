@@ -70,10 +70,13 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
   useEffect(() => {
     const updateSize = () => {
       const topH = 58;
-      const availH = window.innerHeight - topH;
-      const availW = window.innerWidth * 0.6;
-      const size = Math.floor(Math.min(availW - 60, availH - 160));
-      setBoardWidth(Math.max(320, Math.min(size, 640)));
+      const sideW = 340;
+      const gapW = 60;
+      const padW = 120;
+      const availW = window.innerWidth - sideW * 2 - gapW - padW;
+      const availH = window.innerHeight - topH - 120;
+      const size = Math.floor(Math.min(availW, availH));
+      setBoardWidth(Math.max(320, Math.min(size, 560)));
     };
     updateSize();
     window.addEventListener("resize", updateSize);
@@ -595,6 +598,12 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
           animationDuration={200}
           boardOrientation={boardFlipped ? "black" : "white"}
           showBoardNotation={true}
+          customNotationStyle={{
+            fontSize: "12px",
+            fontFamily: "Cormorant Garamond, Georgia, serif",
+            fontWeight: "500",
+            color: "#225a73",
+          }}
           areArrowsAllowed={true}
           onPromotionPieceSelect={handlePromotionPieceSelect}
           customPieces={{
@@ -681,12 +690,11 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
             backgroundColor: "lightgray",
           }}
           customDarkSquareStyle={{
-            borderLeft: "1px solid rgba(226, 213, 124, 0.85)",
+            boxShadow: "inset 1px 0 0 rgba(226, 213, 124, 0.5), inset 0 1px 0 rgba(226, 213, 124, 0.5)",
             backgroundColor: "rgba(223, 239, 252, 0.20)",
           }}
           customLightSquareStyle={{
-            borderTop: "1px solid rgba(226, 213, 124, 0.85)",
-            borderLeft: "1px solid rgba(226, 213, 124, 0.85)",
+            boxShadow: "inset 1px 0 0 rgba(226, 213, 124, 0.5), inset 0 1px 0 rgba(226, 213, 124, 0.5)",
             backgroundImage: "url(/textures/white-marble.png)",
             backgroundPosition: "50%",
             backgroundSize: "cover",
