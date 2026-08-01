@@ -32,7 +32,7 @@ body {
   align-items: flex-start; /* Выравнивает панель и доску ровно по верхнему краю */
   gap: 40px; /* Увеличил отступ между историей и доской */
   width: calc(100vw - 40px);
-  margin: 20px 0 0 20px; /* Отступ 20px слева и сверху */
+  margin: 2px 0 0 20px; /* Отступ 20px слева и сверху */
   box-sizing: border-box;
 }
 
@@ -44,98 +44,20 @@ body {
 }
 
 .top-bar {
-  display: flex;
-  align-items: center;
-  gap: 0;
-  padding: 8px 20px;
-  border-bottom: 2px solid #225a73;
-  background: #061b2c;
+  padding: 4px 15px;
   flex-shrink: 0;
   position: relative;
-  overflow: auto;
 }
 
-.sfedu-logo {
-  width: 50px;
-  height: auto;
-  filter: drop-shadow(0 0 10px rgba(34, 90, 115, 0.6));
-  margin-right: 10px;
+.logo-wrapper {
   position: relative;
-  z-index: 2;
-  flex-shrink: 0;
-}
-
-.top-bar .title-block {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  margin-left: 10px;
-}
-
-.top-bar .title {
-  font-family: "Cormorant Garamond", Georgia, serif;
-  font-size: 32px;
-  font-weight: 400;
-  text-transform: uppercase;
-  letter-spacing: 6px;
-  line-height: 1;
-  display: flex;
-  align-items: baseline;
-  flex-shrink: 0;
-}
-
-.top-bar .title .t-knight-img {
-  height: 32px;
-  margin-right: -14px;
-  align-self: center;
-  display: inline-block;
-  filter: brightness(0) invert(1) drop-shadow(0 0 6px rgba(131, 180, 170, 0.5));
-}
-
-.top-bar .title .t-sfedu {
-  color: #f4fafb;
-}
-.top-bar .title .t-castling {
-  color: #83b4aa;
-}
-
-.top-bar .subtitle {
-  font-size: 10px;
-  color: #83b4aa;
-  letter-spacing: 3px;
-  text-transform: uppercase;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 4px;
-  flex-shrink: 0;
-}
-
-.top-bar .subtitle .ai-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #83b4aa;
-  animation: pulse 2s infinite;
   display: inline-block;
 }
 
-.top-bar .version-tag {
-  font-size: 10px;
-  color: #64748b;
-  border: 1px solid #225a73;
-  padding: 3px 8px;
-  border-radius: 6px;
-  margin-left: auto;
-  letter-spacing: 1px;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex-shrink: 0;
-}
-
-.top-bar .version-tag .crown {
-  font-size: 14px;
+.gigachess-logo {
+  height: 58px;
+  width: auto;
+  display: block;
 }
 
 .board-section {
