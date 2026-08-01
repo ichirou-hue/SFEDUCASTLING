@@ -727,7 +727,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
         <div className="controls-row">
           <button
             className="ctrl-btn"
-            style={{ background: "#8B7340", border: "1px solid #C9A96E" }}
+            style={{ background: "#C9A96E" }}
             onClick={() => setBoardFlipped((f) => !f)}
           >
             ↺ Доска
