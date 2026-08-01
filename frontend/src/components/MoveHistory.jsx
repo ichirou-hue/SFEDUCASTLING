@@ -24,7 +24,7 @@ export default function MoveHistory({
   // Если мы отмотали в самое начало (viewIndex === -1 И мы в режиме просмотра), то показываем 0.
   // Иначе показываем текущий ход или максимум.
   const currentHalfMove =
-    viewIndex === -1 && !isViewMode ? safeHistory.length : viewIndex + 1;
+    viewIndex === -1 && !isViewMode ? safeHistory.length : viewIndex;
   const currentFullMove = Math.ceil(currentHalfMove / 2);
   const totalFullMoves = Math.ceil(safeHistory.length / 2);
 
