@@ -28,12 +28,11 @@ body {
 }
 .main-area {
   display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  gap: 20px;
-  max-width: 1600px;
-  width: 95vw;
-  margin: 20px auto 0;
+  justify-content: flex-start; /* Было center, теперь прижимаем влево */
+  align-items: flex-start; /* Выравнивает панель и доску ровно по верхнему краю */
+  gap: 40px; /* Увеличил отступ между историей и доской */
+  width: calc(100vw - 40px);
+  margin: 20px 0 0 20px; /* Отступ 20px слева и сверху */
   box-sizing: border-box;
 }
 
@@ -631,9 +630,11 @@ body {
   justify-content: space-between;
   border-radius: 41px;
   background: linear-gradient(45deg, #79b180 28%, #e2ece2 51%);
-  padding: 10px 15px; /* Правильные уменьшенные отступы */
+  padding: 10px 15px;
   margin-bottom: 25px;
   width: 100%;
+  min-height: 64px; /* Фиксируем минимальную высоту */
+  flex-shrink: 0; /* Запрещаем сплющивание элемента */
   box-sizing: border-box;
 }
 /* Здесь можно добавить стили шрифтов для .player-names по данным из Dev Mode */
@@ -753,12 +754,10 @@ body {
 }
 .history-title {
   font-family: "Calypso", serif;
-  /* Используем clamp: минимум 24px, в идеале 2vw, максимум 38px */
-  font-size: clamp(24px, 2vw, 38px);
+  font-size: clamp(20px, 1.8vw, 32px); /* Сделали шрифт немного меньше */
   font-weight: normal;
-  white-space: nowrap; /* Оставляем в одну строку */
-  overflow: hidden; /* Скрываем то, что физически не влезает */
-  text-overflow: ellipsis; /* Добавляем троеточие на самых узких экранах */
+  white-space: nowrap; /* Принудительно выстраиваем текст строго в одну строку */
+  overflow: visible;
   text-align: center;
   color: #333;
   margin: 0 0 5px 0;
@@ -781,7 +780,11 @@ body {
 .player-name,
 .bot-name {
   font-family: "Calypso", serif;
-  font-size: clamp(16px, 1.2vw, 22px);
+  font-size: clamp(
+    14px,
+    1vw,
+    18px
+  ); /* Сделали чуть меньше, чтобы Maia 2 умещалась без переносов */
   line-height: 1.2;
 }
 
@@ -790,9 +793,13 @@ body {
 }
 .vs-text {
   font-family: "Calypso", serif;
-  font-size: clamp(18px, 1.5vw, 26px);
+  font-size: clamp(
+    16px,
+    1.2vw,
+    20px
+  ); /* Немного уменьшили VS, чтобы сохранить пропорции */
   color: #79b180;
-  margin: 0 10px; /* Добавляем немного воздуха по бокам */
+  margin: 0 10px;
 }
 
 /* Стилизация аватарок (если ты не экспортируешь их с фоном) */

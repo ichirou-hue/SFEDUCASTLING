@@ -6,10 +6,12 @@ export default function MoveHistory({
   viewIndex,
   isViewMode,
   onNavigate,
+  onImport,
   maiaRating = 1700,
   userRating = "?",
 }) {
   const listRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   // Скролл теперь будет следить не только за новыми ходами, но и за переключением активного хода
   useEffect(() => {
@@ -19,7 +21,10 @@ export default function MoveHistory({
   }, [moveHistory, viewIndex]);
   // Если moveHistory вдруг пришел как undefined, считаем его пустым массивом
   const safeHistory = moveHistory || [];
-  const currentHalfMove = viewIndex === -1 ? safeHistory.length : viewIndex + 1;
+  // Если мы отмотали в самое начало (viewIndex === -1 И мы в режиме просмотра), то показываем 0.
+  // Иначе показываем текущий ход или максимум.
+  const currentHalfMove =
+    viewIndex === -1 && !isViewMode ? safeHistory.length : viewIndex + 1;
   const currentFullMove = Math.ceil(currentHalfMove / 2);
   const totalFullMoves = Math.ceil(safeHistory.length / 2);
 
@@ -37,6 +42,12 @@ export default function MoveHistory({
       bIndex: i + 1, // Индекс полухода черных
     });
   }
+  // Функция для программного клика по скрытому загрузчику файлов
+  const handleImportClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
   return (
     <div className="move-history-panel">
       <h3 className="history-title">История ходов</h3>
@@ -166,19 +177,17 @@ export default function MoveHistory({
 
       {/* Нижние кнопки */}
       <div className="action-buttons">
-        <button
-          className="btn-import"
-          style={{
-            width: "100%",
-            padding: "20px 0",
-            fontSize: "26px",
-            fontFamily: '"Calypso", serif',
-            borderRadius: "30px",
-            cursor: "pointer",
-            boxShadow: "0 2px 4px rgba(0,0,0,0.15)",
-          }}
-          // onClick={handleImport} <-- не забудь оставить свой обработчик клика, если он там был
-        >
+        {/* Скрытый инпут для файлов */}
+        <input
+          type="file"
+          ref={fileInputRef}
+          style={{ display: "none" }}
+          accept=".fen,.pgn,.png"
+          onChange={onImport}
+        />
+
+        {/* Красивая кнопка, которая триггерит инпут */}
+        <button className="btn-import" onClick={handleImportClick}>
           Импорт
         </button>
       </div>

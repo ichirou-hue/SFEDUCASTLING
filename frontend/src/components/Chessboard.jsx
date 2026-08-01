@@ -91,7 +91,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
   const buildMoveHistory = useCallback(
     (newMoveSan) => {
       setMoveHistory((prev) => {
-        const safePrev = prev || []; // <-- ЗАЩИТА ОТ UNDEFINED
+        const safePrev = prev || [];
         const validHistory =
           viewIndex === -1 ? safePrev : safePrev.slice(0, viewIndex + 1);
         return [...validHistory, newMoveSan];
@@ -102,10 +102,10 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
 
   const takeSnapshot = useCallback(() => {
     setPositionSnapshots((prev) => {
-      const safePrev = prev || []; // <-- ЗАЩИТА ОТ UNDEFINED
+      const safePrev = prev || [];
       const validSnapshots =
         viewIndex === -1 ? safePrev : safePrev.slice(0, viewIndex + 2);
-      // Если у тебя использовался gameRef.current.fen(), оставь его вместо game.fen()
+
       return [...validSnapshots, game.fen()];
     });
     setViewIndex(-1);
@@ -117,7 +117,6 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
       const g = gameRef.current;
       const snapshots = [...positionSnapshots, g.fen()];
 
-      // === НОВОЕ: ОБРАБОТКА КЛИКА ПО КОНКРЕТНОМУ ХОДУ (ЧИСЛО) ===
       if (typeof direction === "number") {
         const targetIndex = direction;
 
@@ -132,7 +131,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
           g.load(lastFen);
           setFen(lastFen);
         } else {
-          // Отматываем в прошлое (режим просмотра)
+          // Отматываем в прошлое
           setIsViewMode(true);
           setViewIndex(targetIndex);
           // Берем позицию +1, так как 0-й элемент массива — это стартовая позиция до первого хода
@@ -140,11 +139,9 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
           g.load(fenToLoad);
           setFen(fenToLoad);
         }
-        return; // Обязательно прерываем функцию, чтобы не идти в блоки со стрелками
+        return;
       }
-      // ==========================================================
 
-      // ДАЛЬШЕ ИДЕТ ТВОЙ СТАРЫЙ РАБОЧИЙ КОД ДЛЯ СТРЕЛОК
       if (direction === "first") {
         if (snapshots.length === 0) return;
         setIsViewMode(true);
@@ -186,7 +183,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
 
   const handleNewGame = useCallback(() => {
     // 1. Сбрасываем внутреннюю логику шахмат
-    game.reset(); // (или gameRef.current.reset(), если у тебя используется ref)
+    game.reset();
     const startFen = game.fen();
 
     // 2. Локальный сброс состояний доски
@@ -200,7 +197,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
     setLegalMovesForSelected([]);
     setIsAiThinking(false);
 
-    // 3. НОВОЕ: Глобальный сброс для левой панели, чтобы стереть список
+    // 3. Глобальный сброс для левой панели, чтобы стереть список
     if (typeof onStateChange === "function") {
       onStateChange((prev) => ({
         ...prev,
@@ -270,12 +267,12 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
         updateStatus();
         playMoveSound();
 
-        // Отправка хода БОТА в глобальный список (без затирания твоего)
+        // Отправка хода БОТА в глобальный список
         if (typeof onStateChange === "function") {
           onStateChange((prev) => ({
             ...prev,
             fen: currentFen,
-            moveHistory: [...(prev.moveHistory || []), move.san], // <-- Берем список с твоим ходом и добавляем ход бота
+            moveHistory: [...(prev.moveHistory || []), move.san],
             positionSnapshots: [...(prev.positionSnapshots || []), currentFen],
             viewIndex: -1,
             turn: game.turn(),
@@ -312,13 +309,25 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
     setIsAiThinking(false);
   }, [game, elo, buildMoveHistory, takeSnapshot, updateStatus, onStateChange]);
   useEffect(() => {
-    if (typeof onStateChange === "function") {
-      onStateChange((prev) => ({
-        ...prev,
-        viewIndex: viewIndex,
-      }));
-    }
-  }, [viewIndex, onStateChange]);
+    const updateSize = () => {
+      const sideW = 300; // Ширина левой панели
+      const gapW = 40; // Расстояние между панелью и доской
+      const uiHeight = 110; // НОВОЕ: Резервируем место под FEN-строку и верхнюю плашку с ELO
+
+      const availW = window.innerWidth - sideW - gapW - 40;
+      // Вычитаем из 85vh высоту дополнительных элементов внутри рамки
+      const availH = window.innerHeight * 0.85 - uiHeight;
+
+      const size = Math.floor(Math.min(availW, availH));
+
+      setBoardWidth(Math.max(320, size));
+    };
+
+    updateSize();
+    window.addEventListener("resize", updateSize);
+    return () => window.removeEventListener("resize", updateSize);
+  }, []);
+
   const onDrop = useCallback(
     (sourceSquare, targetSquare) => {
       if (isViewMode || isAiThinking || game.turn() !== "w") return false;
@@ -432,7 +441,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
           setSelectedSquare(null);
           setLegalMovesForSelected([]);
 
-          buildMoveHistory(move.san); // <--- ИСПРАВЛЕНО: добавили move.san
+          buildMoveHistory(move.san);
           takeSnapshot();
           updateStatus();
           playMoveSound();
@@ -457,7 +466,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
               return {
                 ...prev,
                 fen: currentFen,
-                moveHistory: [...currentMoveHistory, move.san], // <-- Твой ход записывается здесь
+                moveHistory: [...currentMoveHistory, move.san],
                 positionSnapshots: [...currentSnapshots, currentFen],
                 viewIndex: -1,
                 turn: game.turn(),
@@ -498,9 +507,9 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
       takeSnapshot,
       updateStatus,
       makeAiMove,
-      onStateChange, // <--- ДОБАВЛЕНО в зависимости
-      userId, // <--- ДОБАВЛЕНО в зависимости
-      gameId, // <--- ДОБАВЛЕНО в зависимости
+      onStateChange,
+      userId,
+      gameId,
     ],
   );
   const handlePromotionPieceSelect = useCallback(() => {
@@ -511,6 +520,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
     onNavigate,
     handleNewGame,
     getFen: () => gameRef.current.fen(),
+    handleLoadFen,
   }));
 
   const cornerStyle = (radius) => ({ borderRadius: radius });
@@ -578,7 +588,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
             onChange={(e) => {
               const newElo = parseInt(e.target.value, 10);
 
-              // 1. Оставляем локальное обновление для самой доски (как написал коллега)
+              // 1. Оставляем локальное обновление для самой доски
               setElo(newElo);
 
               // 2. Отправляем новое значение наверх в App.js
@@ -690,11 +700,13 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
             backgroundColor: "lightgray",
           }}
           customDarkSquareStyle={{
-            boxShadow: "inset 1px 0 0 rgba(226, 213, 124, 0.5), inset 0 1px 0 rgba(226, 213, 124, 0.5)",
+            boxShadow:
+              "inset 1px 0 0 rgba(226, 213, 124, 0.5), inset 0 1px 0 rgba(226, 213, 124, 0.5)",
             backgroundColor: "rgba(223, 239, 252, 0.20)",
           }}
           customLightSquareStyle={{
-            boxShadow: "inset 1px 0 0 rgba(226, 213, 124, 0.5), inset 0 1px 0 rgba(226, 213, 124, 0.5)",
+            boxShadow:
+              "inset 1px 0 0 rgba(226, 213, 124, 0.5), inset 0 1px 0 rgba(226, 213, 124, 0.5)",
             backgroundImage: "url(/textures/white-marble.png)",
             backgroundPosition: "50%",
             backgroundSize: "cover",

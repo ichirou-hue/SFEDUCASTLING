@@ -20,25 +20,52 @@ export default function App() {
     return await fetchGigaChatAnalysis(boardState.fen);
   }, [boardState.fen]);
 
+  // === НОВАЯ ФУНКЦИЯ ДЛЯ ОБРАБОТКИ ФАЙЛОВ ===
+  const handleFileUpload = (event) => {
+    const file = event.target.files;
+    if (!file) return;
+
+    const extension = file.name.split(".").pop().toLowerCase();
+
+    if (extension === "png") {
+      // Логика для изображений (передача в LLaVA / backend)
+      console.log("Загружено изображение:", file.name);
+      alert(
+        "Картинка загружена! Здесь будет вызов API для распознавания доски.",
+      );
+      // TODO: Добавить отправку FormData на ваш эндпоинт распознавания
+    } else if (extension === "fen" || extension === "pgn") {
+      // Логика для текстовых шахматных форматов
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const content = e.target.result.trim();
+        if (boardRef.current && boardRef.current.handleLoadFen) {
+          // Если это PGN, парсинг лучше делать на бэкенде, но FEN можно сразу отдать доске
+          boardRef.current.handleLoadFen(content);
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    // Очищаем значение, чтобы можно было загрузить тот же файл повторно
+    event.target.value = null;
+  };
+
   return (
     <>
       <TopBar />
-      {/* Обертка для всех панелей и доски */}
       <div className="main-area">
-        {/* 1. Левая панель */}
+        {/* Передаем функцию onImport в левую панель */}
         <MoveHistory
           moveHistory={boardState.moveHistory}
           positionSnapshots={boardState.positionSnapshots}
           viewIndex={boardState.viewIndex}
           isViewMode={boardState.isViewMode}
           onNavigate={(dir) => boardRef.current?.onNavigate(dir)}
+          onImport={handleFileUpload}
         />
 
-        {/* 2. Доска (по центру) */}
         <ChessboardComponent ref={boardRef} onStateChange={setBoardState} />
-
-        {/* 3. Правая панель с чатом */}
-        <ChatPanel onAnalyze={handleAnalyze} />
       </div>
     </>
   );
