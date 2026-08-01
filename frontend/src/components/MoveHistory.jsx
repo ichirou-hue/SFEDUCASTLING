@@ -24,9 +24,7 @@ export default function MoveHistory({
   // Если мы отмотали в самое начало (viewIndex === -1 И мы в режиме просмотра), то показываем 0.
   // Иначе показываем текущий ход или максимум.
   const currentHalfMove =
-    viewIndex === -1 && !isViewMode ? safeHistory.length : viewIndex;
-  const currentFullMove = Math.ceil(currentHalfMove / 2);
-  const totalFullMoves = Math.ceil(safeHistory.length / 2);
+    viewIndex === -1 && !isViewMode ? safeHistory.length : viewIndex + 1;
 
   const isPrevDisabled = safeHistory.length === 0 || viewIndex === 0;
   const isNextDisabled = safeHistory.length === 0 || viewIndex === -1;
@@ -130,7 +128,7 @@ export default function MoveHistory({
               height="44"
               rx="22"
               fill="#76B451"
-              fill-opacity="0.3"
+              fillOpacity="0.3"
             />
             <path
               d="M22.651 39.1787C24.2588 38.9233 25.5233 37.8556 25.9964 36.3483C26.3649 35.1843 26.189 33.9073 25.5149 32.8647C25.3474 32.6051 24.6775 31.9101 22.1402 29.3727L18.9748 26.199L32.7459 26.1864L46.5212 26.178L46.8687 26.0817C48.5937 25.6212 49.7828 24.252 49.9755 22.5228C50.1848 20.6261 49.0376 18.8466 47.2036 18.2185C46.5086 17.9799 47.2665 17.9924 32.5365 17.9924H18.9706L22.136 14.8229C24.1039 12.8508 25.3683 11.5528 25.4688 11.3979C26.5826 9.72725 26.3816 7.58349 24.979 6.18503C24.2002 5.40206 23.233 5.00429 22.1108 5.0001C21.4032 4.99592 20.8757 5.11734 20.2476 5.43137C19.5442 5.78726 19.9713 5.36856 11.7731 13.617L5.7396 19.6882L5.52188 20.0859C4.70122 21.61 4.85614 23.3811 5.93221 24.7084C6.06619 24.8717 9.16459 27.9952 12.824 31.6463C18.5561 37.3699 19.5233 38.3204 19.8331 38.5256C20.4905 38.9526 21.152 39.1662 21.9434 39.1955C22.1946 39.208 22.517 39.1997 22.651 39.1787Z"
@@ -139,8 +137,17 @@ export default function MoveHistory({
           </svg>
         </button>
 
-        <span className="move-counter">
-          {currentFullMove} / {totalFullMoves}
+        {/* Обновленный счетчик ходов */}
+        <span
+          className="move-counter"
+          style={{
+            fontFamily: '"Calypso", serif',
+            fontSize: "24px",
+            color: "#333",
+            whiteSpace: "nowrap", // <-- Добавили запрет на перенос строки
+          }}
+        >
+          {currentHalfMove} / {safeHistory.length}
         </span>
 
         <button
