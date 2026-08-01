@@ -69,12 +69,12 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
 
   useEffect(() => {
     const updateSize = () => {
-      const topH = 58;
+      const topH = 48;
       const sideW = 340;
       const gapW = 60;
       const padW = 120;
       const availW = window.innerWidth - sideW * 2 - gapW - padW;
-      const availH = window.innerHeight - topH - 120;
+      const availH = window.innerHeight - topH - 100;
       const size = Math.floor(Math.min(availW, availH));
       setBoardWidth(Math.max(320, Math.min(size, 560)));
     };
