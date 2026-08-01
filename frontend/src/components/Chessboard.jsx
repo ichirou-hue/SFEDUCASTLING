@@ -115,70 +115,70 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
   const onNavigate = useCallback(
     (direction) => {
       const g = gameRef.current;
-      const snapshots = [...positionSnapshots, g.fen()];
+      const history = moveHistory; // Используем текстовую историю ходов, она всегда точна!
+      const START_FEN =
+        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
+      if (history.length === 0) return;
+
+      // Вспомогательная функция: 100% точно восстанавливает FEN, проигрывая ходы заново
+      const getFenForIndex = (index) => {
+        if (index === -1) return START_FEN;
+        const tempGame = new Chess();
+        for (let i = 0; i <= index; i++) {
+          if (history[i]) tempGame.move(history[i]);
+        }
+        return tempGame.fen();
+      };
+
+      // 1. Если кликнули мышкой по конкретному ходу в списке
       if (typeof direction === "number") {
         const targetIndex = direction;
-
-        // Проверяем, не является ли ход самым последним сделанным
-        // (-2 потому что длина массива snapshots всегда на 1 больше количества ходов,
-        // плюс мы сверяем индекс массива, который начинается с 0)
-        if (targetIndex >= positionSnapshots.length - 2) {
-          // Возвращаемся в активный режим "настоящего времени"
+        if (targetIndex >= history.length - 1) {
           setIsViewMode(false);
           setViewIndex(-1);
-          const lastFen = positionSnapshots[positionSnapshots.length - 1];
+          const lastFen = getFenForIndex(history.length - 1);
           g.load(lastFen);
           setFen(lastFen);
         } else {
-          // Отматываем в прошлое
           setIsViewMode(true);
           setViewIndex(targetIndex);
-          // Берем позицию +1, так как 0-й элемент массива — это стартовая позиция до первого хода
-          const fenToLoad = snapshots[targetIndex + 1];
+          const fenToLoad = getFenForIndex(targetIndex);
           g.load(fenToLoad);
           setFen(fenToLoad);
         }
         return;
       }
 
+      // 2. Логика для стрелок
+      let currentIndex = isViewMode ? viewIndex : history.length - 1;
+
       if (direction === "first") {
-        if (snapshots.length === 0) return;
-        setIsViewMode(true);
-        setViewIndex(0);
-        g.load(snapshots);
-        setFen(snapshots);
+        currentIndex = -1;
       } else if (direction === "prev") {
-        if (snapshots.length === 0) return;
-        const currentIdx = isViewMode ? viewIndex : snapshots.length - 1;
-        const newIdx = Math.max(0, currentIdx - 1);
-        setIsViewMode(true);
-        setViewIndex(newIdx);
-        g.load(snapshots[newIdx]);
-        setFen(snapshots[newIdx]);
+        currentIndex = Math.max(-1, currentIndex - 1);
       } else if (direction === "next") {
-        if (!isViewMode) return;
-        const newIdx = viewIndex + 1;
-        if (newIdx >= snapshots.length) {
-          setIsViewMode(false);
-          setViewIndex(-1);
-          const last = snapshots[snapshots.length - 1];
-          g.load(last);
-          setFen(last);
-        } else {
-          setViewIndex(newIdx);
-          g.load(snapshots[newIdx]);
-          setFen(snapshots[newIdx]);
-        }
+        currentIndex = Math.min(history.length - 1, currentIndex + 1);
       } else if (direction === "last") {
+        currentIndex = history.length - 1;
+      }
+
+      // 3. Загружаем нужную позицию на доску
+      if (currentIndex >= history.length - 1) {
         setIsViewMode(false);
         setViewIndex(-1);
-        const last = snapshots[snapshots.length - 1];
-        g.load(last);
-        setFen(last);
+        const lastFen = getFenForIndex(history.length - 1);
+        g.load(lastFen);
+        setFen(lastFen);
+      } else {
+        setIsViewMode(true);
+        setViewIndex(currentIndex);
+        const fenToLoad = getFenForIndex(currentIndex);
+        g.load(fenToLoad);
+        setFen(fenToLoad);
       }
     },
-    [positionSnapshots, isViewMode, viewIndex, game],
+    [moveHistory, isViewMode, viewIndex],
   );
 
   const handleNewGame = useCallback(() => {
@@ -327,7 +327,15 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
     window.addEventListener("resize", updateSize);
     return () => window.removeEventListener("resize", updateSize);
   }, []);
-
+  useEffect(() => {
+    if (typeof onStateChange === "function") {
+      onStateChange((prev) => ({
+        ...prev,
+        viewIndex: viewIndex,
+        isViewMode: isViewMode,
+      }));
+    }
+  }, [viewIndex, isViewMode, onStateChange]);
   const onDrop = useCallback(
     (sourceSquare, targetSquare) => {
       if (isViewMode || isAiThinking || game.turn() !== "w") return false;
