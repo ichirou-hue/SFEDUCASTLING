@@ -318,69 +318,97 @@ body {
   font-size: 14px;
 }
 
-/* --- Chat --- */
+/* ========================================= */
+/*               ЧАТ (ПРАВАЯ ПАНЕЛЬ)         */
+/* ========================================= */
 .chat-section {
-  flex-shrink: 0;
-  width: 340px;
-  height: fit-content;
-  max-height: 85vh;
-  background: #061b2c;
+  flex: 1; /* Растягиваем на всё свободное пространство */
+  min-width: 400px;
+  max-width: none; /* ВАЖНО: убрали барьер, чтобы чат смог дотянуться до края экрана */
+
+  height: 100vh; /* Высота во весь экран */
+
+  /* ИДЕАЛЬНОЕ ПРИЛИПАНИЕ К КРАЯМ: */
+  margin-top: -85px; /* Затягиваем чат на самый верх (компенсирует высоту TopBar и отступы) */
+  margin-right: calc(
+    50% - 50vw
+  ); /* Магическая формула, прижимающая ровно к правому краю монитора */
+
+  border-radius: 0; /* Строгие прямые углы */
+  z-index: 100; /* Перекрывает всё, что под ним */
+
+  /* Эффект стекла */
+  background: rgba(255, 255, 255, 0.01);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+
+  /* Обводка и тень теперь только СЛЕВА, так как справа срез экрана */
+  border-left: 1px solid rgba(255, 255, 255, 0.4);
+  border-top: none;
+  border-right: none;
+  border-bottom: none;
+  box-shadow: -8px 0 32px 0 rgba(0, 0, 0, 0.1);
+
   display: flex;
   flex-direction: column;
-  border-left: 2px solid #225a73;
-  border-radius: 30px;
   order: 3;
 }
 
+/* --- Хедер чата --- */
 .chat-header {
-  padding: 16px 24px;
-  border-bottom: 1px solid #0d3550;
+  padding: 50px 40px 25px; /* Верхний отступ 50px защищает текст от прилипания к потолку */
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 20px;
 }
 
-.chat-header .icon {
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #225a73, #1a4558);
+.chat-avatar img {
+  width: 55px;
+  height: 55px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.chat-title-block {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 17px;
+  flex-direction: column;
 }
 
-.chat-header h2 {
-  font-size: 17px;
-  color: #e2e8f0;
-  font-weight: 600;
+.chat-title-block h2 {
+  font-family: "Calypso", serif;
+  font-size: 36px;
+  color: #333;
+  margin: 0;
+  line-height: 1;
+  text-transform: uppercase;
 }
 
-.chat-header .badge {
-  font-size: 11px;
-  background: #225a73;
-  color: #e2e8f0;
-  padding: 2px 8px;
-  border-radius: 10px;
-  margin-left: auto;
+.chat-subtitle {
+  font-family: "Calypso", serif;
+  font-size: 20px;
+  color: #79b180;
+  margin-top: 4px;
 }
 
+/* Статус бар (если он тебе нужен для отображения онлайна/статуса) */
 .status-bar {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 24px;
-  border-bottom: 1px solid #0d3550;
+  padding: 10px 40px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
   font-size: 13px;
-  color: #64748b;
+  color: #555;
+  font-family: Arial, sans-serif;
 }
 
 .status-bar .dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #225a73;
+  background: #79b180; /* Мятный цвет индикатора */
   animation: pulse 2s infinite;
 }
 
@@ -394,105 +422,108 @@ body {
   }
 }
 
+/* --- Область сообщений --- */
 .chat-messages {
   flex: 1;
   overflow-y: auto;
-  padding: 18px 24px;
+  padding: 20px 40px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
 }
 
+/* Мятный скроллбар как в истории ходов */
 .chat-messages::-webkit-scrollbar {
   width: 6px;
 }
 .chat-messages::-webkit-scrollbar-track {
-  background: #061b2c;
-  border-radius: 3px;
+  background: transparent;
 }
 .chat-messages::-webkit-scrollbar-thumb {
-  background: #225a73;
-  border-radius: 3px;
+  background: #79b180;
+  border-radius: 10px;
 }
 .chat-messages::-webkit-scrollbar-thumb:hover {
-  background: #2d7a9c;
-}
-.chat-messages {
-  scrollbar-color: #225a73 #061b2c;
-  scrollbar-width: thin;
+  background: #5d9364;
 }
 
+/* --- Оформление самих сообщений --- */
 .chat-msg {
   display: flex;
   gap: 12px;
-  align-items: flex-start;
+  align-items: flex-end; /* Аватарка прижимается к низу сообщения */
 }
 
-.chat-msg .msg-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #225a73, #1a4558);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  flex-shrink: 0;
-}
-
+/* Пузырь сообщения бота */
 .chat-msg .msg-body {
-  background: #0a2838;
-  padding: 12px 16px;
-  border-radius: 0 12px 12px 12px;
-  font-size: 14px;
-  line-height: 1.6;
-  color: #cbd5e1;
+  background: rgba(255, 255, 255, 0.6); /* Полупрозрачный белый фон */
+  padding: 14px 18px;
+  border-radius: 0; /* Острый угол слева внизу */
+  font-family:
+    Arial, Helvetica, sans-serif; /* Простой шрифт для читабельности */
+  font-size: 15px;
+  line-height: 1.5;
+  color: #333;
   max-width: 85%;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
 }
 
+/* Модификатор для сообщения пользователя (добавь класс "user" к div с сообщением юзера) */
+.chat-msg.user {
+  flex-direction: row-reverse; /* Аватарка справа */
+}
+
+.chat-msg.user .msg-body {
+  background: #dcecd9; /* Светло-мятный фон для твоих сообщений */
+  border-radius: 16px 16px 0 16px; /* Острый угол справа внизу */
+}
+
+/* --- Поле ввода --- */
 .chat-input-area {
-  padding: 14px 24px;
-  border-top: 1px solid #0d3550;
+  padding: 20px 40px 30px; /* Снизу отступ чуть больше из-за скругления панели */
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
   display: flex;
-  gap: 10px;
+  gap: 12px;
 }
 
 .chat-input-area input {
   flex: 1;
-  background: #0a2838;
-  border: 1px solid #0d3550;
-  border-radius: 10px;
-  padding: 12px 16px;
-  color: #e2e8f0;
-  font-size: 14px;
-  font-family: inherit;
+  background: rgba(255, 255, 255, 0.5); /* Стеклянный инпут */
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 20px;
+  padding: 14px 20px;
+  color: #333;
+  font-size: 15px;
+  font-family: Arial, sans-serif;
   outline: none;
-  transition: border-color 0.2s;
+  transition: all 0.2s;
 }
 
 .chat-input-area input:focus {
-  border-color: #225a73;
+  border-color: #79b180;
+  background: rgba(255, 255, 255, 0.9);
 }
+
 .chat-input-area input::placeholder {
-  color: #475569;
+  color: #777;
 }
 
 .chat-input-area button {
-  background: #225a73;
+  background: #83b787; /* Мятная кнопка как "Импорт" */
   border: none;
-  border-radius: 10px;
-  padding: 0 20px;
-  color: #e2e8f0;
-  font-size: 14px;
+  border-radius: 0;
+  padding: 0 25px;
+  color: #fff;
+  font-size: 15px;
   font-weight: 600;
   cursor: pointer;
   transition: background 0.2s;
 }
 
 .chat-input-area button:hover {
-  background: #2d7a9c;
+  background: #76a87a;
 }
+
 /* ========================================= */
 /*       ЛЕВАЯ ПАНЕЛЬ: ИСТОРИЯ ХОДОВ         */
 /* ========================================= */
