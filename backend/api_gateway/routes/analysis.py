@@ -43,6 +43,29 @@ def stockfish_analyze(req: FenRequest):
         return {"error": str(e)}
 
 
+@router.post("/api/eval")
+def quick_eval(req: FenRequest):
+    """Быстрая оценка позиции — только eval, без best move."""
+    stockfish = ensure_stockfish()
+    if not stockfish:
+        return {"evaluation": None}
+
+    try:
+        board = chess.Board(req.fen)
+        with stockfish_lock:
+            stockfish.set_fen_position(req.fen)
+            evaluation = stockfish.get_evaluation()
+        if evaluation and board.turn == chess.BLACK:
+            if evaluation.get("type") == "cp":
+                evaluation = {"type": "cp", "value": -evaluation["value"]}
+            elif evaluation.get("type") == "mate":
+                evaluation = {"type": "mate", "value": -evaluation["value"]}
+        return {"evaluation": evaluation}
+    except Exception as e:
+        print(f"[Stockfish] Ошибка eval: {e}")
+        return {"evaluation": None}
+
+
 @router.post("/api/similarity/search")
 def similarity_search(req: SimilarityRequest):
     """Ищет позиции, похожие на заданную FEN, в векторной базе данных."""

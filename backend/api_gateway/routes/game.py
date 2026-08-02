@@ -102,6 +102,15 @@ def ai_move(req: FenRequest):
     elif board.is_check():
         status = "check"
 
+    evaluation = None
+    if stockfish:
+        try:
+            with stockfish_lock:
+                stockfish.set_fen_position(board.fen())
+                evaluation = stockfish.get_evaluation()
+        except Exception as e:
+            print(f"[Stockfish] Ошибка eval: {e}")
+
     return {
         "fen": board.fen(),
         "san": san,
@@ -109,4 +118,5 @@ def ai_move(req: FenRequest):
         "to": to_name,
         "status": status,
         "turn": "w" if board.turn == chess.WHITE else "b",
+        "evaluation": evaluation,
     }

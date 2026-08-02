@@ -9,7 +9,7 @@ import {
 import { Chessboard as ReactChessboard } from "react-chessboard";
 import { Chess } from "chess.js";
 import FenBar from "./FenBar.jsx";
-import { fetchMaiaMove, saveMoveToDataset } from "../api.js";
+import { fetchMaiaMove, fetchEval, saveMoveToDataset } from "../api.js";
 
 const userId =
   localStorage.getItem("sfedu_user_id") ||
@@ -64,6 +64,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
   const [selectedSquare, setSelectedSquare] = useState(null);
   const [legalMovesForSelected, setLegalMovesForSelected] = useState([]);
   const [boardWidth, setBoardWidth] = useState(560);
+  const [evalScore, setEvalScore] = useState(null);
 
   const game = gameRef.current;
 
@@ -196,6 +197,10 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
     setSelectedSquare(null);
     setLegalMovesForSelected([]);
     setIsAiThinking(false);
+    setEvalScore(null);
+    fetchEval(startFen).then((data) => {
+      if (data.evaluation) setEvalScore(data.evaluation);
+    }).catch(() => {});
 
     // 3. Глобальный сброс для левой панели, чтобы стереть список
     if (typeof onStateChange === "function") {
@@ -206,6 +211,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
         positionSnapshots: [startFen], // <-- Оставляем только стартовую позицию
         viewIndex: -1,
         turn: "w",
+        evalScore: null,
       }));
     }
   }, [game, onStateChange]);
@@ -226,6 +232,10 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
         setSelectedSquare(null);
         setLegalMovesForSelected([]);
         setIsAiThinking(false);
+        setEvalScore(null);
+        fetchEval(validFen).then((data) => {
+          if (data.evaluation) setEvalScore(data.evaluation);
+        }).catch(() => {});
 
         // 2. Глобальный сброс для левой панели
         if (typeof onStateChange === "function") {
@@ -266,6 +276,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
         takeSnapshot();
         updateStatus();
         playMoveSound();
+        if (data.evaluation) setEvalScore(data.evaluation);
 
         // Отправка хода БОТА в глобальный список
         if (typeof onStateChange === "function") {
@@ -327,6 +338,25 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
     window.addEventListener("resize", updateSize);
     return () => window.removeEventListener("resize", updateSize);
   }, []);
+
+  useEffect(() => {
+    fetchEval(game.fen()).then((data) => {
+      if (data.evaluation) setEvalScore(data.evaluation);
+    }).catch(() => {});
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (typeof onStateChange === "function") {
+      onStateChange((prev) => ({ ...prev, evalScore }));
+    }
+  }, [evalScore, onStateChange]);
+
+  const fetchEvalForPosition = useCallback((fen) => {
+    fetchEval(fen).then((data) => {
+      if (data.evaluation) setEvalScore(data.evaluation);
+    }).catch(() => {});
+  }, []);
+
   useEffect(() => {
     if (typeof onStateChange === "function") {
       onStateChange((prev) => ({
@@ -358,6 +388,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
       takeSnapshot();
       updateStatus();
       playMoveSound();
+      fetchEvalForPosition(currentFen);
 
       // 2. Глобальная отправка ТВОЕГО хода
       if (typeof onStateChange === "function") {
@@ -453,6 +484,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
           takeSnapshot();
           updateStatus();
           playMoveSound();
+          fetchEvalForPosition(currentFen);
 
           // 2. НОВОЕ: Глобальная отправка ТВОЕГО хода в левую панель
           if (typeof onStateChange === "function") {

@@ -108,6 +108,27 @@ body {
   color: #000;
 }
 
+.eval-bar {
+  width: 28px;
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+  background: #cda970;
+  flex-shrink: 0;
+  border: 1px solid rgba(180, 135, 44, 0.4);
+  margin: 0 -12px;
+  order: 1;
+  align-self: stretch;
+}
+
+.eval-bar-white {
+  background: #7cb688;
+  transition: height 0.4s ease;
+  position: absolute;
+  top: 0;
+  width: 100%;
+}
+
 .player-bar {
   width: 100%;
   padding: 4px 4px;

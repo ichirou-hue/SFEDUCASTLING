@@ -12,6 +12,11 @@ export async function fetchStockfishAnalysis(fen) {
   return data
 }
 
+export async function fetchEval(fen) {
+  const { data } = await api.post('/api/eval', { fen })
+  return data
+}
+
 export async function fetchGigaChatAnalysis(fen) {
   const { data } = await api.post('/api/analyze', { fen, elo: 1500 })
   return data
