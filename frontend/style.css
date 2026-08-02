@@ -1,437 +1,790 @@
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@900&family=Cormorant+Garamond:wght@300;400;500&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Orbitron:wght@900&family=Cormorant+Garamond:wght@300;400;500&display=swap");
+@font-face {
+  font-family: "Calypso";
+  src: url("/Calypso.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+}
 
-* { margin: 0; padding: 0; box-sizing: border-box; }
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
 
 body {
-    background: #0a2a3f;
-    color: #E2E8F0;
-    font-family: 'Segoe UI', Tahoma, sans-serif;
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
-    overflow: hidden;
+  margin: 0;
+  padding: 0;
+
+  background-image: url("/marble-bg.jpg");
+
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+
+  /* Резервный цвет на случай долгой загрузки картинки */
+  background-color: #e8f5e9;
+}
+.main-area {
+  display: flex;
+  justify-content: flex-start; /* Было center, теперь прижимаем влево */
+  align-items: flex-start; /* Выравнивает панель и доску ровно по верхнему краю */
+  gap: 40px; /* Увеличил отступ между историей и доской */
+  width: calc(100vw - 40px);
+  margin: 2px 0 0 20px; /* Отступ 20px слева и сверху */
+  box-sizing: border-box;
 }
 
 #root {
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
-    overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
 }
 
 .top-bar {
-    display: flex;
-    align-items: center;
-    gap: 0;
-    padding: 8px 20px;
-    border-bottom: 2px solid #225A73;
-    background: #061b2c;
-    flex-shrink: 0;
-    position: relative;
-    overflow: auto;
+  padding: 4px 15px;
+  flex-shrink: 0;
+  position: relative;
 }
 
-.sfedu-logo {
-    width: 50px;
-    height: auto;
-    filter: drop-shadow(0 0 10px rgba(34, 90, 115, 0.6));
-    margin-right: 10px;
-    position: relative;
-    z-index: 2;
-    flex-shrink: 0;
+.logo-wrapper {
+  position: relative;
+  display: inline-block;
 }
 
-.top-bar .title-block {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    margin-left: 10px;
-}
-
-.top-bar .title {
-    font-family: 'Cormorant Garamond', Georgia, serif;
-    font-size: 32px;
-    font-weight: 400;
-    text-transform: uppercase;
-    letter-spacing: 6px;
-    line-height: 1;
-    display: flex;
-    align-items: baseline;
-    flex-shrink: 0;
-}
-
-.top-bar .title .t-knight-img {
-    height: 32px;
-    margin-right: -14px;
-    align-self: center;
-    display: inline-block;
-    filter: brightness(0) invert(1) drop-shadow(0 0 6px rgba(131, 180, 170, 0.5));
-}
-
-.top-bar .title .t-sfedu { color: #f4fafb; }
-.top-bar .title .t-castling { color: #83b4aa; }
-
-.top-bar .subtitle {
-    font-size: 10px;
-    color: #83b4aa;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-top: 4px;
-    flex-shrink: 0;
-}
-
-.top-bar .subtitle .ai-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: #83b4aa;
-    animation: pulse 2s infinite;
-    display: inline-block;
-}
-
-.top-bar .version-tag {
-    font-size: 10px;
-    color: #64748B;
-    border: 1px solid #225A73;
-    padding: 3px 8px;
-    border-radius: 6px;
-    margin-left: auto;
-    letter-spacing: 1px;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    flex-shrink: 0;
-}
-
-.top-bar .version-tag .crown { font-size: 14px; }
-
-.main-area {
-    display: flex;
-    flex: 1;
-    overflow: hidden;
+.gigachess-logo {
+  height: 58px;
+  width: auto;
+  display: block;
 }
 
 .board-section {
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    padding: 8px 12px 8px 24px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+  order: 2;
 }
 
 .board-wrapper {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: fit-content;
+  height: fit-content;
+  border-radius: 15px;
+  border: 3px solid rgba(180, 135, 44, 0.85);
+  background: #f0f2ea;
+  padding: 12px 16px;
+  box-sizing: border-box;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
 }
 
 .player-bar {
-    width: 100%;
-    padding: 4px 4px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
+  width: 100%;
+  padding: 4px 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .rating-label {
-    font-size: 13px;
-    color: #64748B;
-    letter-spacing: 0.5px;
+  font-size: 13px;
+  color: #8b7340;
+  letter-spacing: 0.5px;
 }
 
 .controls-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-top: 6px;
-    width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+  width: 100%;
 }
 
 #game-status {
-    text-align: center;
-    font-size: 13px;
-    color: #94A3B8;
-    padding: 6px 0;
-    flex: 1;
+  text-align: center;
+  font-size: 13px;
+  color: #94a3b8;
+  padding: 6px 0;
+  flex: 1;
 }
 
 .ctrl-btn {
-    padding: 4px 12px;
-    color: #fff;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 12px;
+  padding: 6px 16px;
+  color: #333;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: "Calypso", serif;
+  font-size: 18px;
+  min-width: 110px;
+  height: 34px;
+  line-height: 1;
+  text-align: center;
 }
 
 .fen-bar {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    margin-top: 10px;
-    width: 100%;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 10px;
+  width: 100%;
+  background: #f0f2ea;
+  border-radius: 8px;
+  padding: 8px 12px;
+  box-sizing: border-box;
 }
 
 .fen-bar input {
-    flex: 1;
-    background: #0a2838;
-    border: 1px solid #225A73;
-    border-radius: 6px;
-    padding: 6px 10px;
-    color: #CBD5E1;
-    font-size: 11px;
-    font-family: 'Consolas', 'Courier New', monospace;
-    outline: none;
-    min-width: 0;
+  flex: 1;
+  background: #f0f2ea;
+  border: 1px solid #c2974d;
+  border-radius: 6px;
+  padding: 6px 10px;
+  color: #333;
+  font-size: 11px;
+  font-family: "Consolas", "Courier New", monospace;
+  outline: none;
+  min-width: 0;
 }
 
-.fen-bar input:focus { border-color: #3d8da6; color: #E2E8F0; }
+.fen-bar input:focus {
+  border-color: #c2974d;
+  color: #111;
+}
 
 .fen-bar button {
-    background: #225A73;
-    border: none;
-    border-radius: 6px;
-    padding: 5px 10px;
-    color: #E2E8F0;
-    font-size: 11px;
-    font-weight: 600;
-    cursor: pointer;
-    white-space: nowrap;
+  background: #83b787;
+  border: none;
+  border-radius: 6px;
+  padding: 5px 10px;
+  color: #333;
+  font-family: "Calypso", serif;
+  font-size: 14px;
+  cursor: pointer;
+  white-space: nowrap;
 }
 
-.fen-bar button:hover { background: #2d7a9c; }
+.fen-bar button:hover {
+  background: #76a87a;
+}
 
 .fen-bar .fen-file-btn {
-    background: #0d3550;
-    font-size: 13px;
-    padding: 4px 8px;
-    border-radius: 6px;
-    cursor: pointer;
-    border: 1px solid #225A73;
+  background: #0d3550;
+  font-size: 13px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid #225a73;
 }
 
-.fen-bar .fen-file-btn:hover { background: #164a63; }
+.fen-bar .fen-file-btn:hover {
+  background: #164a63;
+}
 
 .material-display {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-    font-size: 12px;
-    padding: 4px 8px;
-    background: #0a2838;
-    border-radius: 6px;
-    flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 12px;
+  padding: 4px 8px;
+  background: #0a2838;
+  border-radius: 6px;
+  flex-shrink: 0;
 }
 
-.material-display.white-adv { color: #4ade80; }
-.material-display.black-adv { color: #f87171; }
-.material-display.equal { color: #64748B; }
-.material-display .mat-icon { font-size: 16px; }
+.material-display.white-adv {
+  color: #4ade80;
+}
+.material-display.black-adv {
+  color: #f87171;
+}
+.material-display.equal {
+  color: #64748b;
+}
+.material-display .mat-icon {
+  font-size: 16px;
+}
 
 /* --- Move History --- */
 .middle-section {
-    width: 220px;
-    flex-shrink: 0;
-    display: flex;
-    flex-direction: column;
-    padding: 16px 14px;
-    border-left: 1px solid #0d3550;
-    border-right: 1px solid #0d3550;
-    background: #051a28;
+  width: 220px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 14px;
+  border-left: 1px solid #0d3550;
+  border-right: 1px solid #0d3550;
+  background: #051a28;
 }
 
 .middle-section h3 {
-    font-size: 12px;
-    color: #64748B;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-bottom: 12px;
+  font-size: 12px;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 12px;
 }
 
 .move-list {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    overflow-y: auto;
-    flex: 1;
-    font-size: 13px;
-    color: #94A3B8;
+  display: flex;
+  flex-direction: column;
+  /* Убрали gap, так как линии между ходами лучше делать через border-bottom */
+  overflow-y: auto;
+
+  flex: 1 1 auto; /* Заставляем список гибко занимать всё свободное место */
+  min-height: 0; /* ВАЖНО: магическое свойство, которое чинит баг скролла во Flexbox! */
+
+  padding-right: 8px; /* Отступ для скроллбара */
 }
 
-.move-list::-webkit-scrollbar { width: 6px; }
-.move-list::-webkit-scrollbar-track { background: #051a28; border-radius: 3px; }
-.move-list::-webkit-scrollbar-thumb { background: #225A73; border-radius: 3px; }
-.move-list::-webkit-scrollbar-thumb:hover { background: #2d7a9c; }
-.move-list { scrollbar-color: #225A73 #051a28; scrollbar-width: thin; }
+/* Возвращаем наш фирменный мятный скроллбар */
+.move-list::-webkit-scrollbar {
+  width: 6px;
+}
+.move-list::-webkit-scrollbar-track {
+  background: transparent; /* Убрали синий фон */
+}
+.move-list::-webkit-scrollbar-thumb {
+  background: #79b180; /* Мятный цвет из профиля */
+  border-radius: 10px;
+}
+.move-list::-webkit-scrollbar-thumb:hover {
+  background: #5d9364;
+}
+.move-list {
+  scrollbar-color: #79b180 transparent;
+  scrollbar-width: thin;
+}
 
-.move-pair { display: flex; gap: 4px; }
-.move-pair .num { color: #475569; min-width: 24px; }
-.move-pair span { padding: 2px 4px; border-radius: 3px; }
-.move-pair span:hover { background: #0d3550; }
+.move-pair {
+  display: flex;
+  align-items: center;
+  padding: 12px 0; /* Отступы сверху и снизу делают строку достаточно высокой (~7 строк на экран) */
+  border-bottom: 1px solid #a3c7a7; /* Та самая зеленая полосочка-разделитель из макета */
 
+  font-family: "Calypso", serif;
+  font-size: clamp(
+    16px,
+    1.2vw,
+    20px
+  ); /* Делаем шрифт крупным, как на картинке */
+  color: #333;
+}
+
+/* Убираем нижнюю полоску у самого последнего хода в списке */
+.move-pair:last-child {
+  border-bottom: none;
+}
+
+.move-pair .num {
+  color: #333;
+  min-width: 30px;
+}
+
+.move-pair span {
+  padding: 4px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+/* Эффект выделения хода мятным цветом при наведении */
+.move-pair span:hover {
+  background: #e2ece2;
+}
 .nav-controls {
-    display: flex;
-    gap: 6px;
-    justify-content: center;
-    margin-top: 10px;
-    flex-shrink: 0;
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin-top: 10px;
+  flex-shrink: 0;
 }
 
 .nav-controls button {
-    width: 36px;
-    height: 32px;
-    background: #0d3550;
-    color: #E2E8F0;
-    border: 1px solid #225A73;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 14px;
+  width: 36px;
+  height: 32px;
+  background: #0d3550;
+  color: #e2e8f0;
+  border: 1px solid #225a73;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
 }
 
-/* --- Chat --- */
+/* ========================================= */
+/*               ЧАТ (ПРАВАЯ ПАНЕЛЬ)         */
+/* ========================================= */
 .chat-section {
-    flex: 1;
-    background: #061b2c;
-    display: flex;
-    flex-direction: column;
-    border-left: 2px solid #225A73;
+  flex: 1; /* Растягиваем на всё свободное пространство */
+  min-width: 400px;
+  max-width: none; /* ВАЖНО: убрали барьер, чтобы чат смог дотянуться до края экрана */
+
+  height: 100vh; /* Высота во весь экран */
+
+  /* ИДЕАЛЬНОЕ ПРИЛИПАНИЕ К КРАЯМ: */
+  margin-top: -85px; /* Затягиваем чат на самый верх (компенсирует высоту TopBar и отступы) */
+  margin-right: calc(
+    50% - 50vw
+  ); /* Магическая формула, прижимающая ровно к правому краю монитора */
+
+  border-radius: 0; /* Строгие прямые углы */
+  z-index: 100; /* Перекрывает всё, что под ним */
+
+  /* Эффект стекла */
+  background: rgba(255, 255, 255, 0.01);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+
+  /* Обводка и тень теперь только СЛЕВА, так как справа срез экрана */
+  border-left: 1px solid rgba(255, 255, 255, 0.4);
+  border-top: none;
+  border-right: none;
+  border-bottom: none;
+  box-shadow: -8px 0 32px 0 rgba(0, 0, 0, 0.1);
+
+  display: flex;
+  flex-direction: column;
+  order: 3;
 }
 
+/* --- Хедер чата --- */
 .chat-header {
-    padding: 16px 24px;
-    border-bottom: 1px solid #0d3550;
-    display: flex;
-    align-items: center;
-    gap: 12px;
+  padding: 50px 40px 25px; /* Верхний отступ 50px защищает текст от прилипания к потолку */
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  gap: 20px;
 }
 
-.chat-header .icon {
-    width: 34px;
-    height: 34px;
-    border-radius: 10px;
-    background: linear-gradient(135deg, #225A73, #1a4558);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 17px;
+.chat-avatar img {
+  width: 55px;
+  height: 55px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
 }
 
-.chat-header h2 { font-size: 17px; color: #E2E8F0; font-weight: 600; }
-
-.chat-header .badge {
-    font-size: 11px;
-    background: #225A73;
-    color: #E2E8F0;
-    padding: 2px 8px;
-    border-radius: 10px;
-    margin-left: auto;
+.chat-title-block {
+  display: flex;
+  flex-direction: column;
 }
 
+.chat-title-block h2 {
+  font-family: "Calypso", serif;
+  font-size: 36px;
+  color: #333;
+  margin: 0;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.chat-subtitle {
+  font-family: "Calypso", serif;
+  font-size: 20px;
+  color: #79b180;
+  margin-top: 4px;
+}
+
+/* Статус бар (если он тебе нужен для отображения онлайна/статуса) */
 .status-bar {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 24px;
-    border-bottom: 1px solid #0d3550;
-    font-size: 13px;
-    color: #64748B;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 40px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  font-size: 13px;
+  color: #555;
+  font-family: Arial, sans-serif;
 }
 
 .status-bar .dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: #225A73;
-    animation: pulse 2s infinite;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #79b180; /* Мятный цвет индикатора */
+  animation: pulse 2s infinite;
 }
 
 @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.4; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
 }
 
+/* --- Область сообщений --- */
 .chat-messages {
-    flex: 1;
-    overflow-y: auto;
-    padding: 18px 24px;
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
-.chat-messages::-webkit-scrollbar { width: 6px; }
-.chat-messages::-webkit-scrollbar-track { background: #061b2c; border-radius: 3px; }
-.chat-messages::-webkit-scrollbar-thumb { background: #225A73; border-radius: 3px; }
-.chat-messages::-webkit-scrollbar-thumb:hover { background: #2d7a9c; }
-.chat-messages { scrollbar-color: #225A73 #061b2c; scrollbar-width: thin; }
+/* Мятный скроллбар как в истории ходов */
+.chat-messages::-webkit-scrollbar {
+  width: 6px;
+}
+.chat-messages::-webkit-scrollbar-track {
+  background: transparent;
+}
+.chat-messages::-webkit-scrollbar-thumb {
+  background: #79b180;
+  border-radius: 10px;
+}
+.chat-messages::-webkit-scrollbar-thumb:hover {
+  background: #5d9364;
+}
 
+/* --- Оформление самих сообщений --- */
 .chat-msg {
-    display: flex;
-    gap: 12px;
-    align-items: flex-start;
+  display: flex;
+  gap: 12px;
+  align-items: flex-end; /* Аватарка прижимается к низу сообщения */
 }
 
-.chat-msg .msg-avatar {
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
-    background: linear-gradient(135deg, #225A73, #1a4558);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
-    flex-shrink: 0;
-}
-
+/* Пузырь сообщения бота */
 .chat-msg .msg-body {
-    background: #0a2838;
-    padding: 12px 16px;
-    border-radius: 0 12px 12px 12px;
-    font-size: 14px;
-    line-height: 1.6;
-    color: #CBD5E1;
-    max-width: 85%;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  background: rgba(255, 255, 255, 0.6); /* Полупрозрачный белый фон */
+  padding: 14px 18px;
+  border-radius: 0; /* Острый угол слева внизу */
+  font-family:
+    Arial, Helvetica, sans-serif; /* Простой шрифт для читабельности */
+  font-size: 15px;
+  line-height: 1.5;
+  color: #333;
+  max-width: 85%;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
 }
 
+/* Модификатор для сообщения пользователя (добавь класс "user" к div с сообщением юзера) */
+.chat-msg.user {
+  flex-direction: row-reverse; /* Аватарка справа */
+}
+
+.chat-msg.user .msg-body {
+  background: #dcecd9; /* Светло-мятный фон для твоих сообщений */
+  border-radius: 16px 16px 0 16px; /* Острый угол справа внизу */
+}
+
+/* --- Поле ввода --- */
 .chat-input-area {
-    padding: 14px 24px;
-    border-top: 1px solid #0d3550;
-    display: flex;
-    gap: 10px;
+  padding: 20px 40px 30px; /* Снизу отступ чуть больше из-за скругления панели */
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  display: flex;
+  gap: 12px;
 }
 
 .chat-input-area input {
-    flex: 1;
-    background: #0a2838;
-    border: 1px solid #0d3550;
-    border-radius: 10px;
-    padding: 12px 16px;
-    color: #E2E8F0;
-    font-size: 14px;
-    font-family: inherit;
-    outline: none;
-    transition: border-color 0.2s;
+  flex: 1;
+  background: rgba(255, 255, 255, 0.5); /* Стеклянный инпут */
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 20px;
+  padding: 14px 20px;
+  color: #333;
+  font-size: 15px;
+  font-family: Arial, sans-serif;
+  outline: none;
+  transition: all 0.2s;
 }
 
-.chat-input-area input:focus { border-color: #225A73; }
-.chat-input-area input::placeholder { color: #475569; }
+.chat-input-area input:focus {
+  border-color: #79b180;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.chat-input-area input::placeholder {
+  color: #777;
+}
 
 .chat-input-area button {
-    background: #225A73;
-    border: none;
-    border-radius: 10px;
-    padding: 0 20px;
-    color: #E2E8F0;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background 0.2s;
+  background: #83b787; /* Мятная кнопка как "Импорт" */
+  border: none;
+  border-radius: 30px;
+  padding: 0 25px;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
 }
 
-.chat-input-area button:hover { background: #2d7a9c; }
+.chat-input-area button:hover {
+  background: #76a87a;
+}
+
+/* ========================================= */
+/*       ЛЕВАЯ ПАНЕЛЬ: ИСТОРИЯ ХОДОВ         */
+/* ========================================= */
+.move-history-panel {
+  flex-shrink: 0;
+  width: 300px;
+  height: 85vh;
+  border-radius: 30px;
+  border: 3px solid rgba(180, 135, 44, 0.85);
+  background: rgba(255, 255, 255, 0.87);
+  box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  padding: 20px 24px;
+  box-sizing: border-box;
+  order: 1;
+}
+/* Настройка самого списка ходов */
+.move-list {
+  flex: 1;
+  min-height: 0;
+  /* max-height: 250px; --- УДАЛИТЕ ЭТУ СТРОКУ */
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+/* Стилизация скроллбара для Chrome, Edge, Safari */
+.move-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.move-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.move-list::-webkit-scrollbar-thumb {
+  background: #79b180; /* Наш мятно-зеленый цвет */
+  border-radius: 10px;
+}
+
+.move-list::-webkit-scrollbar-thumb:hover {
+  background: #5d9364;
+}
+/* Настройка ряда с кнопками */
+.nav-controls {
+  display: flex;
+  justify-content: space-between; /* Равномерно распределяет кнопки по ширине панели */
+  align-items: center;
+}
+.player-info,
+.move-pair,
+.nav-controls,
+.action-buttons {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* --- Блок профиля --- */
+.player-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 41px;
+  background: linear-gradient(45deg, #79b180 28%, #e2ece2 51%);
+  padding: 10px 15px;
+  margin-bottom: 25px;
+  width: 100%;
+  min-height: 64px; /* Фиксируем минимальную высоту */
+  flex-shrink: 0; /* Запрещаем сплющивание элемента */
+  box-sizing: border-box;
+}
+/* Здесь можно добавить стили шрифтов для .player-names по данным из Dev Mode */
+
+/* --- Список ходов (чередование цветов как на макете) --- */
+.move-pair {
+  display: flex;
+  align-items: center;
+  padding: 15px 10px; /* Сделали строки шире */
+  border-bottom: 1px solid #a5d6a7; /* Добавили тонкую линию снизу */
+  font-family: "Calypso", serif;
+  font-size: 26px; /* Сильно увеличили шрифт самих ходов */
+  color: #333;
+}
+.move-pair.active {
+  background-color: #dcecd9; /* Светло-зеленый фон заливки */
+  border-radius: 10px;
+  border-bottom: 1px solid transparent;
+}
+.move-pair span {
+  padding: 4px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+
+  /* НОВЫЕ СТРОКИ: Центрируем текст внутри прямоугольника */
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  min-width: 45px; /* Чтобы все плашки были одинаковой ширины и смотрелись симметрично */
+}
+.num {
+  width: 40px;
+  color: #555;
+  font-size: 22px;
+}
+.move-w {
+  flex: 1;
+  text-align: left; /* Белые ходы прижаты влево (под Вы) */
+  padding-left: 10px;
+}
+.move-b {
+  flex: 1;
+  text-align: right; /* Черные ходы прижаты вправо (под Maia 2) */
+  padding-right: 15px;
+}
+/* --- Навигация со стрелками --- */
+/* Выстраиваем кнопки и счетчик строго по центру на равном удалении */
+.nav-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 40px; /* Было 20px, сделали шире */
+  margin-bottom: 25px; /* Подняли стрелки чуть выше над кнопками */
+}
+
+/* Делаем саму кнопку невидимой оберткой для SVG */
+.arrow-btn {
+  width: 55px;
+  height: 44px;
+  background: transparent; /* Убираем зеленый фон из CSS, фон теперь внутри SVG */
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: transform 0.2s; /* Легкая анимация при наведении */
+}
+
+/* При наведении кнопка будет слегка увеличиваться (вместо смены цвета) */
+.arrow-btn:hover {
+  transform: scale(1.05);
+}
+
+/* Небольшой трюк: делаем фон SVG чуть ярче при наведении мышкой */
+.arrow-btn:hover rect {
+  fill-opacity: 0.5;
+}
+
+/* --- Нижние кнопки --- */
+.action-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px; /* Расстояние между кнопкой и инпутом */
+}
+.btn-import {
+  width: 233px;
+  height: 59px;
+  border-radius: 30px;
+  background: #83b787;
+  border: none;
+
+  /* Фирменный шрифт проекта */
+  font-family: "Calypso", serif;
+  font-size: 24px;
+  color: #333; /* Темный цвет текста, чтобы хорошо читался на мятном фоне */
+
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  /* Ставим кнопку строго по центру */
+  margin: 0 auto;
+  transition: background 0.2s;
+}
+
+.btn-import:hover {
+  background: #76a87a; /* Чуть темнеет при наведении */
+}
+.input-fen {
+  border: 2px solid #a5d6a7;
+  border-radius: 20px;
+  padding: 10px;
+}
+.history-title {
+  font-family: "Calypso", serif;
+  font-size: clamp(20px, 1.8vw, 32px); /* Сделали шрифт немного меньше */
+  font-weight: normal;
+  white-space: nowrap; /* Принудительно выстраиваем текст строго в одну строку */
+  overflow: visible;
+  text-align: center;
+  color: #333;
+  margin: 0 0 5px 0;
+}
+
+/* --- Тонкая линия под заголовком --- */
+.title-separator {
+  width: 100%;
+  height: 2px;
+  background-color: #69b87c;
+  margin-bottom: 20px;
+}
+/* Стилизация текста внутри профиля */
+.player-avatar,
+.bot-avatar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.player-name,
+.bot-name {
+  font-family: "Calypso", serif;
+  font-size: clamp(
+    14px,
+    1vw,
+    18px
+  ); /* Сделали чуть меньше, чтобы Maia 2 умещалась без переносов */
+  line-height: 1.2;
+}
+
+.bot-name {
+  text-align: right;
+}
+.vs-text {
+  font-family: "Calypso", serif;
+  font-size: clamp(
+    16px,
+    1.2vw,
+    20px
+  ); /* Немного уменьшили VS, чтобы сохранить пропорции */
+  color: #79b180;
+  margin: 0 10px;
+}
+
+/* Стилизация аватарок (если ты не экспортируешь их с фоном) */
+.player-avatar img,
+.bot-avatar img {
+  /* Гибкий размер для эллипсов (было 55px) */
+  width: clamp(35px, 2.5vw, 48px);
+  height: clamp(35px, 2.5vw, 48px);
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0; /* Строго запрещаем браузеру сплющивать саму картинку в овал */
+}
+.player-details {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start; /* Прижимаем текст к левому краю (к аватарке) */
+}
+.bot-details {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end; /* Прижимаем текст к правому краю (к аватарке) */
+}
+.player-rating,
+.bot-rating {
+  font-family: "Calypso", serif;
+  font-size: clamp(12px, 1vw, 16px);
+  color: #555;
+  line-height: 1;
+  margin-bottom: 2px; /* Небольшой отступ между рейтингом и именем */
+}
