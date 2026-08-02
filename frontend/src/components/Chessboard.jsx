@@ -531,6 +531,69 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
     handleLoadFen,
   }));
 
+  const getMaterialAdvantage = useCallback(() => {
+    const board = game.board();
+    const pieceValues = { p: 1, n: 3, b: 3, r: 5, q: 9 };
+    let white = 0;
+    let black = 0;
+    const whitePieces = {};
+    const blackPieces = {};
+
+    board.forEach((row) => {
+      row.forEach((square) => {
+        if (square) {
+          const value = pieceValues[square.type] || 0;
+          if (square.color === "w") {
+            white += value;
+            whitePieces[square.type] = (whitePieces[square.type] || 0) + 1;
+          } else {
+            black += value;
+            blackPieces[square.type] = (blackPieces[square.type] || 0) + 1;
+          }
+        }
+      });
+    });
+
+    const diff = white - black;
+    const excess = {};
+
+    if (diff > 0) {
+      let remaining = diff;
+      ["q", "r", "b", "n", "p"].forEach((type) => {
+        const count = whitePieces[type] || 0;
+        const needed = Math.min(Math.floor(remaining / pieceValues[type]), count);
+        if (needed > 0) {
+          excess[type] = needed;
+          remaining -= needed * pieceValues[type];
+        }
+      });
+    } else if (diff < 0) {
+      let remaining = Math.abs(diff);
+      ["q", "r", "b", "n", "p"].forEach((type) => {
+        const count = blackPieces[type] || 0;
+        const needed = Math.min(Math.floor(remaining / pieceValues[type]), count);
+        if (needed > 0) {
+          excess[type] = needed;
+          remaining -= needed * pieceValues[type];
+        }
+      });
+    }
+
+    return { diff, excess };
+  }, [game]);
+
+  const materialAdv = getMaterialAdvantage();
+
+  const MaterialDisplay = ({ diff }) => {
+    if (diff <= 0) return null;
+
+    return (
+      <div className="material-display">
+        <span className="material-diff">+{diff}</span>
+      </div>
+    );
+  };
+
   const cornerStyle = (radius) => ({ borderRadius: radius });
   const customSquareStyles = {};
   if (!boardFlipped) {
@@ -607,6 +670,11 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
             style={{ width: 100, accentColor: "#C9A96E", cursor: "pointer" }}
           />
         </div>
+
+        <div style={{ position: "relative", display: "inline-block" }}>
+        <MaterialDisplay
+          diff={boardFlipped ? materialAdv.diff : -materialAdv.diff}
+        />
 
         <ReactChessboard
           position={fen}
@@ -723,6 +791,11 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
           }}
           customSquareStyles={customSquareStyles}
         />
+
+        <MaterialDisplay
+          diff={boardFlipped ? -materialAdv.diff : materialAdv.diff}
+        />
+        </div>
 
         <div className="controls-row">
           <button
