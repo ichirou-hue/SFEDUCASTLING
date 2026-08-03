@@ -3,6 +3,7 @@ import TopBar from "./components/TopBar.jsx";
 import ChessboardComponent from "./components/Chessboard.jsx";
 import MoveHistory from "./components/MoveHistory.jsx";
 import ChatPanel from "./components/ChatPanel.jsx";
+import EvalBar from "./components/EvalBar.jsx";
 import { fetchGigaChatAnalysis } from "./api.js";
 
 export default function App() {
@@ -14,6 +15,7 @@ export default function App() {
     positionSnapshots: [],
     viewIndex: -1,
     isViewMode: false,
+    evalScore: null,
   });
 
   const handleAnalyze = useCallback(async () => {
@@ -32,6 +34,9 @@ export default function App() {
           isViewMode={boardState.isViewMode}
           onNavigate={(dir) => boardRef.current?.onNavigate(dir)}
         />
+
+        {/* 1.5 Eval Bar */}
+        <EvalBar evaluation={boardState.evalScore} />
 
         {/* 2. Центральная панель */}
         <ChessboardComponent ref={boardRef} onStateChange={setBoardState} />

@@ -9,7 +9,7 @@ import {
 import { Chessboard as ReactChessboard } from "react-chessboard";
 import { Chess } from "chess.js";
 import FenBar from "./FenBar.jsx";
-import { fetchMaiaMove, saveMoveToDataset } from "../api.js";
+import { fetchMaiaMove, fetchEval, saveMoveToDataset } from "../api.js";
 
 const userId =
   localStorage.getItem("sfedu_user_id") ||
@@ -64,6 +64,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
   const [selectedSquare, setSelectedSquare] = useState(null);
   const [legalMovesForSelected, setLegalMovesForSelected] = useState([]);
   const [boardWidth, setBoardWidth] = useState(560);
+  const [evalScore, setEvalScore] = useState(null);
 
   const game = gameRef.current;
 
@@ -196,6 +197,10 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
     setSelectedSquare(null);
     setLegalMovesForSelected([]);
     setIsAiThinking(false);
+    setEvalScore(null);
+    fetchEval(startFen).then((data) => {
+      if (data.evaluation) setEvalScore(data.evaluation);
+    }).catch(() => {});
 
     // 3. Глобальный сброс для левой панели, чтобы стереть список
     if (typeof onStateChange === "function") {
@@ -206,6 +211,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
         positionSnapshots: [startFen], // <-- Оставляем только стартовую позицию
         viewIndex: -1,
         turn: "w",
+        evalScore: null,
       }));
     }
   }, [game, onStateChange]);
@@ -226,6 +232,10 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
         setSelectedSquare(null);
         setLegalMovesForSelected([]);
         setIsAiThinking(false);
+        setEvalScore(null);
+        fetchEval(validFen).then((data) => {
+          if (data.evaluation) setEvalScore(data.evaluation);
+        }).catch(() => {});
 
         // 2. Глобальный сброс для левой панели
         if (typeof onStateChange === "function") {
@@ -266,6 +276,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
         takeSnapshot();
         updateStatus();
         playMoveSound();
+        if (data.evaluation) setEvalScore(data.evaluation);
 
         // Отправка хода БОТА в глобальный список
         if (typeof onStateChange === "function") {
@@ -327,6 +338,25 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
     window.addEventListener("resize", updateSize);
     return () => window.removeEventListener("resize", updateSize);
   }, []);
+
+  useEffect(() => {
+    fetchEval(game.fen()).then((data) => {
+      if (data.evaluation) setEvalScore(data.evaluation);
+    }).catch(() => {});
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (typeof onStateChange === "function") {
+      onStateChange((prev) => ({ ...prev, evalScore }));
+    }
+  }, [evalScore, onStateChange]);
+
+  const fetchEvalForPosition = useCallback((fen) => {
+    fetchEval(fen).then((data) => {
+      if (data.evaluation) setEvalScore(data.evaluation);
+    }).catch(() => {});
+  }, []);
+
   useEffect(() => {
     if (typeof onStateChange === "function") {
       onStateChange((prev) => ({
@@ -358,6 +388,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
       takeSnapshot();
       updateStatus();
       playMoveSound();
+      fetchEvalForPosition(currentFen);
 
       // 2. Глобальная отправка ТВОЕГО хода
       if (typeof onStateChange === "function") {
@@ -453,6 +484,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
           takeSnapshot();
           updateStatus();
           playMoveSound();
+          fetchEvalForPosition(currentFen);
 
           // 2. НОВОЕ: Глобальная отправка ТВОЕГО хода в левую панель
           if (typeof onStateChange === "function") {
@@ -531,6 +563,69 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
     handleLoadFen,
   }));
 
+  const getMaterialAdvantage = useCallback(() => {
+    const board = game.board();
+    const pieceValues = { p: 1, n: 3, b: 3, r: 5, q: 9 };
+    let white = 0;
+    let black = 0;
+    const whitePieces = {};
+    const blackPieces = {};
+
+    board.forEach((row) => {
+      row.forEach((square) => {
+        if (square) {
+          const value = pieceValues[square.type] || 0;
+          if (square.color === "w") {
+            white += value;
+            whitePieces[square.type] = (whitePieces[square.type] || 0) + 1;
+          } else {
+            black += value;
+            blackPieces[square.type] = (blackPieces[square.type] || 0) + 1;
+          }
+        }
+      });
+    });
+
+    const diff = white - black;
+    const excess = {};
+
+    if (diff > 0) {
+      let remaining = diff;
+      ["q", "r", "b", "n", "p"].forEach((type) => {
+        const count = whitePieces[type] || 0;
+        const needed = Math.min(Math.floor(remaining / pieceValues[type]), count);
+        if (needed > 0) {
+          excess[type] = needed;
+          remaining -= needed * pieceValues[type];
+        }
+      });
+    } else if (diff < 0) {
+      let remaining = Math.abs(diff);
+      ["q", "r", "b", "n", "p"].forEach((type) => {
+        const count = blackPieces[type] || 0;
+        const needed = Math.min(Math.floor(remaining / pieceValues[type]), count);
+        if (needed > 0) {
+          excess[type] = needed;
+          remaining -= needed * pieceValues[type];
+        }
+      });
+    }
+
+    return { diff, excess };
+  }, [game]);
+
+  const materialAdv = getMaterialAdvantage();
+
+  const MaterialDisplay = ({ diff }) => {
+    if (diff <= 0) return null;
+
+    return (
+      <div className="material-display">
+        <span className="material-diff">+{diff}</span>
+      </div>
+    );
+  };
+
   const cornerStyle = (radius) => ({ borderRadius: radius });
   const customSquareStyles = {};
   if (!boardFlipped) {
@@ -607,6 +702,11 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
             style={{ width: 100, accentColor: "#C9A96E", cursor: "pointer" }}
           />
         </div>
+
+        <div style={{ position: "relative", display: "inline-block" }}>
+        <MaterialDisplay
+          diff={boardFlipped ? materialAdv.diff : -materialAdv.diff}
+        />
 
         <ReactChessboard
           position={fen}
@@ -723,6 +823,11 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
           }}
           customSquareStyles={customSquareStyles}
         />
+
+        <MaterialDisplay
+          diff={boardFlipped ? -materialAdv.diff : materialAdv.diff}
+        />
+        </div>
 
         <div className="controls-row">
           <button

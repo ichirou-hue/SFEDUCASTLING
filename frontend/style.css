@@ -83,6 +83,52 @@ body {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
 }
 
+.material-display {
+  position: absolute;
+  right: -4px;
+  display: flex;
+  justify-content: flex-end;
+  padding: 1px 6px;
+  background: #cda970;
+  border-radius: 4px;
+  z-index: 10;
+}
+
+.material-display:first-child {
+  top: -20px;
+}
+
+.material-display:last-child {
+  bottom: -20px;
+}
+
+.material-diff {
+  font-size: 12px;
+  font-weight: 600;
+  color: #000;
+}
+
+.eval-bar {
+  width: 28px;
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+  background: #cda970;
+  flex-shrink: 0;
+  border: 1px solid rgba(180, 135, 44, 0.4);
+  margin: 0 -12px;
+  order: 1;
+  align-self: stretch;
+}
+
+.eval-bar-white {
+  background: #7cb688;
+  transition: height 0.4s ease;
+  position: absolute;
+  top: 0;
+  width: 100%;
+}
+
 .player-bar {
   width: 100%;
   padding: 4px 4px;
@@ -185,31 +231,6 @@ body {
 
 .fen-bar .fen-file-btn:hover {
   background: #164a63;
-}
-
-.material-display {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  font-size: 12px;
-  padding: 4px 8px;
-  background: #0a2838;
-  border-radius: 6px;
-  flex-shrink: 0;
-}
-
-.material-display.white-adv {
-  color: #4ade80;
-}
-.material-display.black-adv {
-  color: #f87171;
-}
-.material-display.equal {
-  color: #64748b;
-}
-.material-display .mat-icon {
-  font-size: 16px;
 }
 
 /* --- Move History --- */
