@@ -680,12 +680,12 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
       <div className="board-wrapper">
         <div className="player-bar">
           <div className="rating-label">
-            Противник (Maia2): <span>{elo}</span> ELO
+            Противник (Maia3): <span>{elo}</span> ELO
           </div>
           <input
             type="range"
-            min="1100"
-            max="1900"
+            min="1000"
+            max="2600"
             step="100"
             value={elo}
             onChange={(e) => {
