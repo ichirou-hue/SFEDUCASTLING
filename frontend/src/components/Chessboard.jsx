@@ -64,6 +64,30 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
   const [selectedSquare, setSelectedSquare] = useState(null);
   const [legalMovesForSelected, setLegalMovesForSelected] = useState([]);
   const [boardWidth, setBoardWidth] = useState(560);
+  const boardBoxRef = useRef(null);
+  useEffect(() => {
+    if (typeof onStateChange === "function") {
+      onStateChange((prev) => ({ ...prev, boardFlipped }));
+    }
+  }, [boardFlipped, onStateChange]);
+
+  useEffect(() => {
+    if (!boardBoxRef.current) return;
+    const el = boardBoxRef.current;
+    const report = () => {
+      if (typeof onStateChange === "function") {
+        onStateChange((prev) => ({
+          ...prev,
+          boardHeight: el.offsetHeight,
+        }));
+      }
+    };
+    report();
+    const ro = new ResizeObserver(report);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [onStateChange]);
+
   const [evalScore, setEvalScore] = useState(null);
   const [stockfishArrow, setStockfishArrow] = useState(null);
 
@@ -630,6 +654,15 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
 
   const materialAdv = getMaterialAdvantage();
 
+  useEffect(() => {
+    if (typeof onStateChange === "function") {
+      onStateChange((prev) => ({
+        ...prev,
+        materialDiff: materialAdv.diff,
+      }));
+    }
+  }, [materialAdv.diff, onStateChange]);
+
   const MaterialDisplay = ({ diff }) => {
     if (diff <= 0) return null;
 
@@ -717,7 +750,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
           />
         </div>
 
-        <div style={{ position: "relative", display: "inline-block" }}>
+        <div ref={boardBoxRef} style={{ position: "relative", display: "inline-block" }}>
         <MaterialDisplay
           diff={boardFlipped ? materialAdv.diff : -materialAdv.diff}
         />
@@ -869,7 +902,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
           </button>
         </div>
 
-        <FenBar onLoadFen={handleLoadFen} />
+        <FenBar fen={fen} onLoadFen={handleLoadFen} />
       </div>
     </div>
   );
