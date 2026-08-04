@@ -26,6 +26,15 @@ class ModelsSettings(BaseModel):
     llava_model_id: str = Field("llava-hf/llava-1.5-7b-hf", alias="LLAVA_MODEL_ID")   # добавлено
 
 
+class Maia3Settings(BaseModel):
+    """Настройки движка Maia3 (человекоподобная игра по уровням)."""
+    model_id: str = Field("maia3-5m", alias="MAIA3_MODEL_ID")
+    device: str = Field("cpu", alias="MAIA3_DEVICE")
+    default_elo: int = Field(1500, alias="MAIA3_DEFAULT_ELO")
+    history: int = Field(8, alias="MAIA3_HISTORY")
+    max_elo: int = Field(2600, alias="MAIA3_MAX_ELO")
+
+
 class DataSettings(BaseModel):
     dataset_jsonl_path: Path = Field(BASE_DIR / "dataset.jsonl", alias="DATASET_JSONL_PATH")
     dataset_readable_path: Path = Field(BASE_DIR / "dataset_readable.json", alias="DATASET_READABLE_PATH")
@@ -46,6 +55,7 @@ class Settings(BaseSettings):
     server: ServerSettings = ServerSettings()
     cors: CorsSettings = CorsSettings()
     models: ModelsSettings = ModelsSettings()
+    maia3: Maia3Settings = Maia3Settings()
     data: DataSettings = DataSettings()
     lichess: LichessSettings = LichessSettings()   # добавлено
 

@@ -118,9 +118,14 @@ class FenRequest(BaseModel):
     Attributes:
         fen: Текущая позиция в нотации FEN.
         elo: Целевой рейтинг Elo (0–3000). По умолчанию 1500.
+        moves: Список ходов в UCI (например ["e2e4", "e7e5"]), от стартовой
+            позиции до текущей. Нужен Maia3 для истории партии.
+        engine: Движок для хода: "maia3" (по умолчанию) или "stockfish".
     """
     fen: str
     elo: int = 1500
+    moves: list[str] = []
+    engine: str = "maia3"
 
     @field_validator("fen")
     @classmethod
@@ -132,6 +137,13 @@ class FenRequest(BaseModel):
     def elo_must_be_in_range(cls, v: int) -> int:
         if v < 0 or v > 3000:
             raise ValueError(f"ELO должен быть от 0 до 3000, получено {v}")
+        return v
+
+    @field_validator("engine")
+    @classmethod
+    def engine_must_be_valid(cls, v: str) -> str:
+        if v not in ("maia3", "stockfish"):
+            raise ValueError(f"Движок должен быть 'maia3' или 'stockfish', получено {v}")
         return v
 
 

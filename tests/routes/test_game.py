@@ -91,13 +91,23 @@ class TestAiMove:
         assert data.get("error") == "Партия окончена"
 
     def test_valid_request(self):
-        resp = client.post("/api/stockfish-move", json={"fen": START_FEN, "elo": 1500})
+        resp = client.post("/api/stockfish-move", json={"fen": START_FEN, "elo": 1500, "engine": "stockfish"})
         assert resp.status_code == 200
         data = resp.json()
         assert "fen" in data
         assert "san" in data
         assert "from" in data
         assert "to" in data
+        assert data.get("engine") == "stockfish"
+
+    def test_levels_list(self):
+        resp = client.get("/api/levels")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "levels" in data
+        assert len(data["levels"]) >= 7
+        assert data["levels"][0]["engine"] == "maia3"
+        assert data["levels"][-1]["engine"] == "stockfish"
 
     def test_invalid_fen(self):
         resp = client.post("/api/stockfish-move", json={"fen": "bad", "elo": 1500})

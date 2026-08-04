@@ -27,13 +27,28 @@ def stockfish_analyze(req: FenRequest):
             stockfish.set_fen_position(req.fen)
             stockfish.update_engine_parameters({"UCI_LimitStrength": False})
             best_move = stockfish.get_best_move_time(10000)
-            evaluation = stockfish.get_evaluation()
-            top_moves = stockfish.get_top_moves(5)
+            evaluation = stockfish.get_evaluation(searchtime=1000)
+            top_moves = stockfish.get_top_moves(5, num_nodes=200000)
             print(f"[Analysis] Лучший ход: {best_move}, оценка: {evaluation}")
+
+        from_name = None
+        to_name = None
+        san = None
+        if best_move:
+            try:
+                move = chess.Move.from_uci(best_move)
+                from_name = chess.square_name(move.from_square)
+                to_name = chess.square_name(move.to_square)
+                san = chess.Board(req.fen).san(move)
+            except Exception:
+                pass
 
         return {
             "fen": req.fen,
             "best_move": best_move,
+            "from": from_name,
+            "to": to_name,
+            "san": san,
             "evaluation": evaluation,
             "top_moves": top_moves,
         }
@@ -54,7 +69,7 @@ def quick_eval(req: FenRequest):
         board = chess.Board(req.fen)
         with stockfish_lock:
             stockfish.set_fen_position(req.fen)
-            evaluation = stockfish.get_evaluation()
+            evaluation = stockfish.get_evaluation(searchtime=1000)
         if evaluation and board.turn == chess.BLACK:
             if evaluation.get("type") == "cp":
                 evaluation = {"type": "cp", "value": -evaluation["value"]}

@@ -7,6 +7,8 @@
 
 import os
 import json
+import sys
+import subprocess
 import threading
 import requests
 
@@ -47,8 +49,14 @@ class ModelManager:
             from stockfish import Stockfish
             path = os.path.join(os.path.dirname(__file__), "..", "..", "stockfish_engine", "stockfish.exe")
             if os.path.exists(path):
-                self._stockfish = Stockfish(path=path, depth=12)
-                print(f"Stockfish loaded: {path}")
+                self._stockfish = Stockfish(path=path, depth=30)
+                self._stockfish.update_engine_parameters({
+                    "UCI_LimitStrength": False,
+                    "Skill Level": 20,
+                    "Threads": max(1, os.cpu_count() or 1),
+                    "Hash": 1024,
+                })
+                print(f"Stockfish loaded (полная сила): {path}")
             else:
                 print(f"Stockfish not found at path: {path}")
         except Exception as e:
@@ -77,6 +85,81 @@ def reset_stockfish():
 def load_stockfish():
     """Загружает Stockfish. Возвращает True при успехе."""
     return manager.get_stockfish() is not None
+
+
+# --- Maia3 ---
+_maia3_engine = None
+_maia3_lock = threading.Lock()
+_maia3_loading_lock = threading.Lock()
+
+
+def get_maia3():
+    """Возвращает UCI-движок Maia3 (ленивая загрузка) или None.
+
+    Maia3 играет как человек выбранного уровня (SelfElo/OppoElo через UCI).
+    """
+    global _maia3_engine
+    if _maia3_engine is not None:
+        return _maia3_engine
+    with _maia3_loading_lock:
+        if _maia3_engine is not None:
+            return _maia3_engine
+        try:
+            import chess.engine
+            from backend.config.settings import settings
+
+            cmd = [
+                sys.executable,
+                "-m", "maia3.uci",
+                "--model", settings.maia3.model_id,
+                "--device", settings.maia3.device,
+                "--use-uci-history",
+                "--history", str(settings.maia3.history),
+                "--elo", str(settings.maia3.default_elo),
+            ]
+            _maia3_engine = chess.engine.SimpleEngine.popen_uci(
+                cmd,
+                setpgrp=True,
+                stderr=subprocess.DEVNULL if os.name == "nt" else None,
+            )
+            print(f"Maia3 ready: {settings.maia3.model_id} ({settings.maia3.device})")
+        except Exception as e:
+            print(f"Error loading Maia3: {e}")
+            _maia3_engine = None
+    return _maia3_engine
+
+
+def shutdown_maia3():
+    """Останавливает UCI-процесс Maia3 (при завершении приложения)."""
+    global _maia3_engine
+    with _maia3_loading_lock:
+        if _maia3_engine is not None:
+            try:
+                _maia3_engine.quit()
+            except Exception:
+                pass
+            _maia3_engine = None
+
+
+def maia3_lock():
+    """Возвращает мьютекс, защищающий Maia3 от конкурентного доступа."""
+    return _maia3_lock
+
+
+def elo_to_temperature(elo: int) -> float:
+    """Сопоставляет Elo с температурой сэмплирования Maia3.
+
+    Чем ниже уровень, тем выше температура (больше человеческих ошибок).
+    """
+    if elo >= 2400:
+        return 0.0
+    if elo >= 2000:
+        return 0.3
+    if elo >= 1700:
+        return 0.6
+    if elo >= 1400:
+        return 0.9
+    return 1.2
 
 
 # --- LLaVA ---

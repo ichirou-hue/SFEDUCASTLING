@@ -25,8 +25,8 @@ def save_move_to_dataset(req: DatasetMoveRequest):
     try:
         with stockfish_lock:
             stockfish.set_fen_position(req.fen)
-            stockfish_best = stockfish.get_best_move()
-            stockfish_eval = stockfish.get_evaluation()
+            stockfish_best = stockfish.get_best_move_time(1000)
+            stockfish_eval = stockfish.get_evaluation(searchtime=1000)
 
         move_data = {
             "fen": req.fen,

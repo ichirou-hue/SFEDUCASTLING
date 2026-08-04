@@ -68,7 +68,7 @@ class TestGamePromotionAndStatus:
         mock_sf = MagicMock()
         mock_sf.get_best_move_time.return_value = "e2e4"
         with patch("backend.api_gateway.routes.game.ensure_stockfish", return_value=mock_sf):
-            resp = client.post("/api/stockfish-move", json={"fen": START_FEN, "elo": 1500})
+            resp = client.post("/api/stockfish-move", json={"fen": START_FEN, "elo": 1500, "engine": "stockfish"})
 
         assert resp.status_code == 200
         data = resp.json()

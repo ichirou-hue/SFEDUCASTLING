@@ -14,12 +14,14 @@ from backend.api_gateway.state import (
     load_stockfish,
     load_knowledge,
     load_llava,
+    shutdown_maia3,
 )
 
 from backend.api_gateway.routes.game import router as game_router
 from backend.api_gateway.routes.analysis import router as analysis_router
 from backend.api_gateway.routes.knowledge import router as knowledge_router
 from backend.api_gateway.routes.data import router as data_router
+from backend.api_gateway.routes.chat import router as chat_router
 from backend.api_gateway.routes.vision import router as vision_router
 from backend.api_gateway.routes.analyze import router as analyze_router
 
@@ -38,6 +40,7 @@ app.include_router(game_router)
 app.include_router(analysis_router)
 app.include_router(knowledge_router)
 app.include_router(data_router)
+app.include_router(chat_router)
 app.include_router(vision_router)
 app.include_router(analyze_router)
 
@@ -49,6 +52,11 @@ load_stockfish()
 load_knowledge()
 print("Инициализация LLaVA...")
 load_llava()
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    shutdown_maia3()
 
 
 if __name__ == "__main__":
