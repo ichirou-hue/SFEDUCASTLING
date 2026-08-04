@@ -1,10 +1,12 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 
-export default function FenBar({ onLoadFen }) {
-  const [fenInput, setFenInput] = useState(
-    "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-  );
+export default function FenBar({ fen, onLoadFen }) {
+  const [fenInput, setFenInput] = useState(fen);
   const fileRef = useRef(null);
+
+  useEffect(() => {
+    setFenInput(fen);
+  }, [fen]);
 
   const handleLoad = () => {
     if (fenInput.trim()) onLoadFen(fenInput.trim());

@@ -109,24 +109,39 @@ body {
 }
 
 .eval-bar {
-  width: 28px;
-  border-radius: 4px;
+  width: 46px;
+  border-radius: 8px;
   overflow: hidden;
   position: relative;
-  background: #cda970;
+  background: #126b5b;
   flex-shrink: 0;
-  border: 1px solid rgba(180, 135, 44, 0.4);
-  margin: 0 -12px;
+  border: 1px solid rgba(18, 107, 91, 0.4);
+  margin: 0 8px;
   order: 1;
-  align-self: stretch;
+  align-self: flex-start;
 }
 
 .eval-bar-white {
-  background: #7cb688;
+  background: linear-gradient(
+    to top,
+    #f7f8f5 0%,
+    #f7f8f5 97%,
+    rgba(247, 248, 245, 0) 100%
+  );
   transition: height 0.4s ease;
   position: absolute;
   top: 0;
   width: 100%;
+}
+
+.eval-bar-label {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #126b5b;
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .player-bar {

@@ -36,7 +36,11 @@ export default function App() {
         />
 
         {/* 1.5 Eval Bar */}
-        <EvalBar evaluation={boardState.evalScore} />
+        <EvalBar
+          diff={boardState.materialDiff}
+          flipped={boardState.boardFlipped}
+          height={boardState.boardHeight}
+        />
 
         {/* 2. Центральная панель */}
         <ChessboardComponent ref={boardRef} onStateChange={setBoardState} />
