@@ -7,7 +7,7 @@ export default function MoveHistory({
   isViewMode,
   onNavigate,
   onImport,
-  maiaRating = 1700,
+  maiaRating = 1500,
   userRating = "?",
 }) {
   const listRef = useRef(null);
@@ -66,12 +66,12 @@ export default function MoveHistory({
 
         {/* Правая часть: Бот Maia */}
         <div className="bot-details">
-          <span className="bot-name">Maia 2</span>
+          <span className="bot-name">Maia 3</span>
           {/* Сюда мы передаем проп с рейтингом от доски */}
           <span className="bot-rating">{maiaRating}</span>
         </div>
         <div className="bot-avatar">
-          <img src="\bot-icon.svg" alt="Maia 2" />
+          <img src="\bot-icon.svg" alt="Maia 3" />
         </div>
       </div>
 

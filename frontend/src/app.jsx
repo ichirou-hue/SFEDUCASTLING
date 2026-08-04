@@ -16,6 +16,7 @@ export default function App() {
     viewIndex: -1,
     isViewMode: false,
     evalScore: null,
+    maiaRating: 1500,
   });
 
   const handleAnalyze = useCallback(async () => {
@@ -32,6 +33,7 @@ export default function App() {
           positionSnapshots={boardState.positionSnapshots}
           viewIndex={boardState.viewIndex}
           isViewMode={boardState.isViewMode}
+          maiaRating={boardState.maiaRating}
           onNavigate={(dir) => boardRef.current?.onNavigate(dir)}
         />
 

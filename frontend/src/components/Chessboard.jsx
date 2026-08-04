@@ -9,7 +9,7 @@ import {
 import { Chessboard as ReactChessboard } from "react-chessboard";
 import { Chess } from "chess.js";
 import FenBar from "./FenBar.jsx";
-import { fetchMaiaMove, fetchEval, saveMoveToDataset } from "../api.js";
+import { fetchMaiaMove, fetchEval, fetchStockfishAnalysis, saveMoveToDataset } from "../api.js";
 
 const userId =
   localStorage.getItem("sfedu_user_id") ||
@@ -65,6 +65,15 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
   const [legalMovesForSelected, setLegalMovesForSelected] = useState([]);
   const [boardWidth, setBoardWidth] = useState(560);
   const [evalScore, setEvalScore] = useState(null);
+  const [stockfishArrow, setStockfishArrow] = useState(null);
+
+  const fetchBestMove = useCallback((fen) => {
+    fetchStockfishAnalysis(fen).then((sfData) => {
+      if (sfData && sfData.from && sfData.to) {
+        setStockfishArrow([sfData.from, sfData.to, "rgba(0, 150, 50, 0.75)"]);
+      }
+    }).catch(() => {});
+  }, []);
 
   const game = gameRef.current;
 
@@ -198,6 +207,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
     setLegalMovesForSelected([]);
     setIsAiThinking(false);
     setEvalScore(null);
+    setStockfishArrow(null);
     fetchEval(startFen).then((data) => {
       if (data.evaluation) setEvalScore(data.evaluation);
     }).catch(() => {});
@@ -233,9 +243,11 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
         setLegalMovesForSelected([]);
         setIsAiThinking(false);
         setEvalScore(null);
+        setStockfishArrow(null);
         fetchEval(validFen).then((data) => {
           if (data.evaluation) setEvalScore(data.evaluation);
         }).catch(() => {});
+        fetchBestMove(validFen);
 
         // 2. Глобальный сброс для левой панели
         if (typeof onStateChange === "function") {
@@ -291,7 +303,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
         }
       }
     } catch (err) {
-      console.error("Maia2 ошибка:", err);
+      console.error("Maia3 ошибка:", err);
       const legalMoves = game.moves({ verbose: true });
       if (legalMoves.length > 0) {
         const pick = legalMoves[Math.floor(Math.random() * legalMoves.length)];
@@ -381,6 +393,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
 
       // 1. Локальные вызовы
       setFen(currentFen);
+      setStockfishArrow(null);
       setLastMove({ from: sourceSquare, to: targetSquare });
       setSelectedSquare(null);
       setLegalMovesForSelected([]);
@@ -476,6 +489,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
 
           // 1. Локальные обновления
           setFen(currentFen);
+          setStockfishArrow(null);
           setLastMove({ from: selectedSquare, to: square });
           setSelectedSquare(null);
           setLegalMovesForSelected([]);
@@ -723,6 +737,8 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
             color: "#225a73",
           }}
           areArrowsAllowed={true}
+          customArrows={stockfishArrow ? [stockfishArrow] : []}
+          customArrowColor="rgba(0, 150, 50, 0.75)"
           onPromotionPieceSelect={handlePromotionPieceSelect}
           customPieces={{
             wK: () => (
@@ -843,6 +859,13 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
             onClick={handleNewGame}
           >
             Новая игра
+          </button>
+          <button
+            className="ctrl-btn"
+            style={{ background: "#83b787" }}
+            onClick={() => fetchBestMove(game.fen())}
+          >
+            Лучший ход
           </button>
         </div>
 

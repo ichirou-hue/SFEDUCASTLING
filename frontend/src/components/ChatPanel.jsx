@@ -64,7 +64,7 @@ export default function ChatPanel({ onAnalyze, onLoadOpening }) {
     <div className="chat-section">
       <div className="chat-header">
         <div className="chat-avatar">
-          <img src="\bot-icon.svg" alt="Maia 2" />
+          <img src="\bot-icon.svg" alt="Maia 3" />
         </div>
         <div className="chat-title-block">
           <h2>ЧАТ</h2>
