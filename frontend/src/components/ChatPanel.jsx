@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { sendChatMessage, fetchChatMessages } from "../api.js";
 
 function formatMarkdown(text) {
   let s = text
@@ -6,7 +7,6 @@ function formatMarkdown(text) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
 
-  // ОБНОВЛЕНО: Меняем цвета маркдауна под новую светлую тему
   s = s.replace(
     /^### (.+)$/gm,
     '<div style="font-weight:700;color:#79b180;margin-top:8px;">$1</div>',
@@ -19,7 +19,7 @@ function formatMarkdown(text) {
     /^# (.+)$/gm,
     '<div style="font-weight:700;color:#79b180;font-size:16px;margin-top:8px;">$1</div>',
   );
-  s = s.replace(/\*\*(.+?)\*\*/g, '<b style="color:#333;">$1</b>'); // Темный текст вместо белого
+  s = s.replace(/\*\*(.+?)\*\*/g, '<b style="color:#333;">$1</b>');
   s = s.replace(/\*(.+?)\*/g, "<i>$1</i>");
   s = s.replace(/^[-•] (.+)$/gm, '<div style="padding-left:12px;">• $1</div>');
   s = s.replace(/\n/g, "<br>");
@@ -35,11 +35,33 @@ export default function ChatPanel({ onAnalyze, onLoadOpening }) {
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [lastIndex, setLastIndex] = useState(0);
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Poll backend for new messages every 3s
+  useEffect(() => {
+    const poll = async () => {
+      try {
+        const data = await fetchChatMessages(lastIndex);
+        if (data.messages && data.messages.length > 0) {
+          const newMsgs = data.messages.map((m) => ({
+            role: m.role === "user" ? "user" : "ai",
+            text: m.text,
+          }));
+          setMessages((prev) => [...prev, ...newMsgs]);
+          setLastIndex((prev) => prev + data.messages.length);
+        }
+      } catch {
+        // silent — server may be off
+      }
+    };
+    const interval = setInterval(poll, 3000);
+    return () => clearInterval(interval);
+  }, [lastIndex]);
 
   const addMessage = (role, text) => {
     setMessages((prev) => [...prev, { role, text }]);
@@ -50,10 +72,25 @@ export default function ChatPanel({ onAnalyze, onLoadOpening }) {
     if (!text || loading) return;
     setInput("");
     addMessage("user", text);
+
+    // Store user message on backend
+    try {
+      await sendChatMessage(text, "user");
+    } catch {
+      // continue even if backend is off
+    }
+
     setLoading(true);
     try {
       const data = await onAnalyze();
-      addMessage("ai", data.message || "Нет ответа от GigaChat.");
+      const reply = data.message || "Нет ответа от GigaChat.";
+      addMessage("ai", reply);
+      // Store assistant reply on backend so other clients can see it
+      try {
+        await sendChatMessage(reply, "assistant");
+      } catch {
+        // ok
+      }
     } catch {
       addMessage("ai", "Ошибка соединения с сервером.");
     }

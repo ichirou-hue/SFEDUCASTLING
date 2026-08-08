@@ -47,6 +47,10 @@ body {
   padding: 4px 15px;
   flex-shrink: 0;
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 10;
 }
 
 .logo-wrapper {
@@ -58,6 +62,21 @@ body {
   height: 58px;
   width: auto;
   display: block;
+}
+
+.reg-btn {
+  font-family: "Calypso", serif;
+  font-size: 16px;
+  color: #333;
+  background: #C9A96E;
+  border: none;
+  border-radius: 20px;
+  padding: 8px 24px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.reg-btn:hover {
+  background: #b89a5e;
 }
 
 .board-section {
@@ -362,16 +381,16 @@ body {
   min-width: 400px;
   max-width: none; /* ВАЖНО: убрали барьер, чтобы чат смог дотянуться до края экрана */
 
-  height: 100vh; /* Высота во весь экран */
+  height: calc(100vh - 70px); /* Высота минус TopBar */
 
   /* ИДЕАЛЬНОЕ ПРИЛИПАНИЕ К КРАЯМ: */
-  margin-top: -85px; /* Затягиваем чат на самый верх (компенсирует высоту TopBar и отступы) */
+  margin-top: 0px;
   margin-right: calc(
     50% - 50vw
   ); /* Магическая формула, прижимающая ровно к правому краю монитора */
 
   border-radius: 0; /* Строгие прямые углы */
-  z-index: 100; /* Перекрывает всё, что под ним */
+  z-index: 1;
 
   /* Эффект стекла */
   background: rgba(255, 255, 255, 0.01);
@@ -392,7 +411,7 @@ body {
 
 /* --- Хедер чата --- */
 .chat-header {
-  padding: 50px 40px 25px; /* Верхний отступ 50px защищает текст от прилипания к потолку */
+  padding: 15px 40px 25px;
   border-bottom: 1px solid rgba(0, 0, 0, 0.1);
   display: flex;
   align-items: center;
@@ -823,4 +842,142 @@ body {
   color: #555;
   line-height: 1;
   margin-bottom: 2px; /* Небольшой отступ между рейтингом и именем */
+}
+
+/* ========================================= */
+/*            МОДАЛЬНОЕ ОКНО                  */
+/* ========================================= */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  position: relative;
+  background: #fff;
+  border-radius: 20px;
+  padding: 40px 48px 36px;
+  width: 420px;
+  max-width: 90vw;
+  text-align: center;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.25);
+}
+
+.modal-close {
+  position: absolute;
+  top: 16px;
+  right: 20px;
+  background: none;
+  border: none;
+  font-size: 20px;
+  color: #999;
+  cursor: pointer;
+}
+.modal-close:hover {
+  color: #333;
+}
+
+.modal-icon {
+  font-size: 32px;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.modal-title {
+  font-family: "Calypso", serif;
+  font-size: 28px;
+  color: #333;
+  margin: 0 0 6px;
+}
+
+.modal-subtitle {
+  font-size: 14px;
+  color: #888;
+  margin: 0 0 20px;
+}
+
+.modal-divider {
+  width: 40px;
+  height: 2px;
+  background: #cda970;
+  margin: 0 auto 24px;
+  border-radius: 1px;
+}
+
+.modal-label {
+  display: block;
+  text-align: left;
+  font-size: 14px;
+  color: #555;
+  margin-bottom: 6px;
+}
+
+.modal-input-wrapper {
+  display: flex;
+  align-items: center;
+  background: #f7f7f7;
+  border: 1px solid #e0e0e0;
+  border-radius: 10px;
+  padding: 0 14px;
+  margin-bottom: 18px;
+}
+
+.modal-input-icon {
+  font-size: 16px;
+  margin-right: 10px;
+  color: #999;
+}
+
+.modal-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 12px 0;
+  font-size: 15px;
+  outline: none;
+  color: #333;
+}
+
+.modal-eye {
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  color: #999;
+}
+
+.modal-submit {
+  width: 100%;
+  padding: 14px;
+  background: #83b787;
+  color: #fff;
+  border: none;
+  border-radius: 30px;
+  font-size: 16px;
+  font-family: "Calypso", serif;
+  cursor: pointer;
+  margin-top: 6px;
+  transition: background 0.2s;
+}
+.modal-submit:hover {
+  background: #76a87a;
+}
+
+.modal-footer {
+  font-size: 14px;
+  color: #888;
+  margin-top: 18px;
+}
+.modal-footer a {
+  color: #83b787;
+  text-decoration: none;
+  font-weight: 600;
+}
+.modal-footer a:hover {
+  text-decoration: underline;
 }

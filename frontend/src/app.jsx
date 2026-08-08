@@ -4,10 +4,12 @@ import ChessboardComponent from "./components/Chessboard.jsx";
 import MoveHistory from "./components/MoveHistory.jsx";
 import ChatPanel from "./components/ChatPanel.jsx";
 import EvalBar from "./components/EvalBar.jsx";
+import RegisterModal from "./components/RegisterModal.jsx";
 import { fetchGigaChatAnalysis } from "./api.js";
 
 export default function App() {
   const boardRef = useRef(null);
+  const [showRegister, setShowRegister] = useState(false);
   const [boardState, setBoardState] = useState({
     fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
     moveHistory: [],
@@ -25,7 +27,7 @@ export default function App() {
 
   return (
     <>
-      <TopBar />
+      <TopBar onRegister={() => setShowRegister(true)} />
       <div className="main-area">
         {/* 1. Левая панель */}
         <MoveHistory
@@ -50,6 +52,7 @@ export default function App() {
         {/* 3. Правая панель (ЧАТ) */}
         <ChatPanel onAnalyze={handleAnalyze} />
       </div>
+      <RegisterModal isOpen={showRegister} onClose={() => setShowRegister(false)} />
     </>
   );
 }

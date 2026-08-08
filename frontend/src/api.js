@@ -36,3 +36,13 @@ export async function fetchRandomOpening() {
   const { data } = await api.get("/api/knowledge/random-opening");
   return data;
 }
+
+export async function sendChatMessage(message, role = "user") {
+  const { data } = await api.post("/api/chat/ingest", { message, role });
+  return data;
+}
+
+export async function fetchChatMessages(after = 0) {
+  const { data } = await api.get("/api/chat/messages", { params: { after } });
+  return data;
+}
