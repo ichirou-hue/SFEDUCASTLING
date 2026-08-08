@@ -3,11 +3,23 @@
 Сообщения хранятся в памяти и опрашиваются фронтендом через /api/chat/messages.
 """
 
+import re
 import time
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
 router = APIRouter(tags=["chat"])
+
+_chat_messages: list[dict] = []
+
+_TAG_RE = re.compile(r"<[^>]*>")
+
+
+def _sanitize(text: str) -> str:
+    """Убирает HTML-теги и экранирует спецсимволы."""
+    text = _TAG_RE.sub("", text)
+    text = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    return text[:4000]
 
 _chat_messages: list[dict] = []
 
@@ -22,7 +34,7 @@ class IngestMessage(BaseModel):
 def ingest_comment(req: IngestMessage):
     """Принимает сообщение и сохраняет его для отправки в чат."""
     _chat_messages.append(
-        {"role": req.role, "text": req.message, "ts": time.time()}
+        {"role": req.role, "text": _sanitize(req.message), "ts": time.time()}
     )
     return {"ok": True, "count": len(_chat_messages)}
 

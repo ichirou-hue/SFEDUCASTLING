@@ -1,11 +1,17 @@
 import { useState, useRef, useEffect } from "react";
 import { sendChatMessage, fetchChatMessages } from "../api.js";
 
-function formatMarkdown(text) {
-  let s = text
+function escapeHtml(str) {
+  return str
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function formatMarkdown(text) {
+  let s = escapeHtml(text);
 
   s = s.replace(
     /^### (.+)$/gm,
@@ -73,9 +79,12 @@ export default function ChatPanel({ onAnalyze, onLoadOpening }) {
     setInput("");
     addMessage("user", text);
 
+    // Sanitize: strip HTML tags before sending to backend
+    const sanitized = text.replace(/<[^>]*>/g, "");
+
     // Store user message on backend
     try {
-      await sendChatMessage(text, "user");
+      await sendChatMessage(sanitized, "user");
     } catch {
       // continue even if backend is off
     }
@@ -87,7 +96,7 @@ export default function ChatPanel({ onAnalyze, onLoadOpening }) {
       addMessage("ai", reply);
       // Store assistant reply on backend so other clients can see it
       try {
-        await sendChatMessage(reply, "assistant");
+        await sendChatMessage(reply.replace(/<[^>]*>/g, ""), "assistant");
       } catch {
         // ok
       }
