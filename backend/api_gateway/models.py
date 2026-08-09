@@ -147,6 +147,26 @@ class FenRequest(BaseModel):
         return v
 
 
+class CompareMovesRequest(BaseModel):
+    """Запрос для сравнения Stockfish и Maia3."""
+
+    fen: str
+    elo: int = 1500
+    moves: list[str] = []
+
+    @field_validator("fen")
+    @classmethod
+    def fen_must_be_valid(cls, v: str) -> str:
+        return validate_fen(v)
+
+    @field_validator("elo")
+    @classmethod
+    def elo_must_be_in_range(cls, v: int) -> int:
+        if v < 0 or v > 3000:
+            raise ValueError(f"ELO должен быть от 0 до 3000, получено {v}")
+        return v
+
+
 class SimilarityRequest(BaseModel):
     """Запрос: поиск похожих позиций в векторной базе.
 

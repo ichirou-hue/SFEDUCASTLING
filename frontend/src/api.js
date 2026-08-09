@@ -2,23 +2,44 @@ import axios from "axios";
 
 const api = axios.create({ baseURL: "" });
 
-export async function fetchMaiaMove(fen, elo) {
-  const { data } = await api.post("/api/maia-move", { fen, elo });
+export async function fetchMaiaMove(fen, elo, moves = []) {
+  const { data } = await api.post("/api/maia-move", {
+    fen,
+    elo,
+    moves,
+    engine: "maia3",
+  });
   return data;
 }
 
 export async function fetchStockfishAnalysis(fen) {
-  const { data } = await api.post("/api/stockfish-analyze", { fen, elo: 1500 });
+  const { data } = await api.post("/api/stockfish-analysis", {
+    fen,
+    elo: 1500,
+    engine: "stockfish",
+  });
+  return data;
+}
+
+export async function fetchCompareMoves(fen, elo, moves = []) {
+  const { data } = await api.post("/api/compare-moves", {
+    fen,
+    elo,
+    moves,
+  });
   return data;
 }
 
 export async function fetchEval(fen) {
-  const { data } = await api.post('/api/eval', { fen })
-  return data
+  const { data } = await api.post("/api/eval", { fen });
+  return data;
 }
 
 export async function fetchGigaChatAnalysis(fen) {
-  const { data } = await api.post("/api/analyze", { fen, elo: 1500 });
+  const { data } = await api.post("/api/analyze", {
+    fen,
+    elo: 1500,
+  });
   return data;
 }
 

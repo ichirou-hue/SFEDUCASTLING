@@ -3,7 +3,7 @@
 import random
 import chess
 from fastapi import APIRouter
-from backend.api_gateway.models import FenSquare, MoveRequest, FenRequest
+from backend.api_gateway.models import FenSquare, MoveRequest, FenRequest, CompareMovesRequest
 from backend.api_gateway.state import (
     ensure_stockfish,
     reset_stockfish,
@@ -249,3 +249,73 @@ def _stockfish_move(board: chess.Board) -> chess.Move | None:
     else:
         print("[AI] Stockfish недоступен, случайный ход")
     return None
+
+
+@router.post("/api/compare-moves")
+def compare_moves(req: CompareMovesRequest):
+    """Сравнивает лучший ход Stockfish с ходом Maia3."""
+
+    board = chess.Board(req.fen)
+
+    if board.is_game_over():
+        return {
+            "error": "Партия окончена",
+            "fen": req.fen,
+        }
+
+    # ---------------- Stockfish ----------------
+
+    stockfish_move = _stockfish_move(board.copy())
+
+    stockfish_result = None
+
+    if stockfish_move is not None:
+        stockfish_result = {
+            "move": stockfish_move.uci(),
+            "from": chess.square_name(stockfish_move.from_square),
+            "to": chess.square_name(stockfish_move.to_square),
+            "san": board.san(stockfish_move),
+        }
+
+        stockfish = ensure_stockfish()
+
+        if stockfish:
+            try:
+                with stockfish_lock:
+                    stockfish.set_fen_position(req.fen)
+                    evaluation = stockfish.get_evaluation(searchtime=1000)
+
+                stockfish_result["evaluation"] = evaluation
+
+            except Exception as e:
+                print(f"[Compare] Ошибка оценки Stockfish: {e}")
+
+    # ---------------- Maia3 ----------------
+
+    maia_move = _maia3_move(req, board.copy())
+
+    maia_result = None
+
+    if maia_move is not None:
+        maia_result = {
+            "move": maia_move.uci(),
+            "from": chess.square_name(maia_move.from_square),
+            "to": chess.square_name(maia_move.to_square),
+            "san": board.san(maia_move),
+            "elo": req.elo,
+        }
+
+    # ---------------- Результат ----------------
+
+    same_move = (
+        stockfish_move is not None
+        and maia_move is not None
+        and stockfish_move == maia_move
+    )
+
+    return {
+        "fen": req.fen,
+        "stockfish": stockfish_result,
+        "maia3": maia_result,
+        "same_move": same_move,
+    }
