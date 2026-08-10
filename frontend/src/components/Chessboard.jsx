@@ -141,16 +141,19 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
    */
   useEffect(() => {
     const updateSize = () => {
-      const sideW = 300;
-      const gapW = 40;
-      const uiHeight = 110;
+      const evalW = 62;      // eval-bar 46px + отступы
+      const sideW = 300;     // панель истории
+      const gapW = 24;       // отступы между панелями
+      const chatMin = 300;   // минимальная ширина чата (ужимается ради доски)
+      const uiHeight = 150;  // управление + панели вокруг доски
 
-      const availW = window.innerWidth - sideW - gapW - 40;
+      const availW =
+        window.innerWidth - evalW - sideW - gapW * 3 - chatMin - 40;
       const availH = window.innerHeight * 0.85 - uiHeight;
 
       const size = Math.floor(Math.min(availW, availH));
 
-      setBoardWidth(Math.max(320, Math.min(size, 560)));
+      setBoardWidth(Math.max(360, Math.min(size, 820)));
     };
 
     updateSize();
