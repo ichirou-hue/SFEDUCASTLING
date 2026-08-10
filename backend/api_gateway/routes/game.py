@@ -149,6 +149,10 @@ def ai_move(req: FenRequest):
         move = _stockfish_move(board)
 
     if move is None:
+        print("[AI] Primary engine не вернул ход — fallback на Stockfish")
+        move = _stockfish_move(board)
+
+    if move is None:
         move = random.choice(list(board.legal_moves))
 
     san = board.san(move)
@@ -197,15 +201,18 @@ def _maia3_move(req: FenRequest, board: chess.Board) -> chess.Move | None:
         import chess.engine
 
         # Восстанавливаем историю партии из ходов (для --use-uci-history).
-        history_board = chess.Board()
+        history_board = board
         if req.moves:
             try:
+                replay = chess.Board()
                 for uci in req.moves:
-                    history_board.push_uci(uci)
+                    replay.push_uci(uci)
+                if replay.fen() == board.fen():
+                    history_board = replay
+                else:
+                    print(f"[Maia3] History FEN mismatch, using board directly")
             except ValueError:
-                history_board = board
-        else:
-            history_board = board
+                pass
 
         with maia3_lock():
             temperature = elo_to_temperature(req.elo)
@@ -216,17 +223,22 @@ def _maia3_move(req: FenRequest, board: chess.Board) -> chess.Move | None:
                 "OppoElo": req.elo,
                 "Temperature": temperature,
             })
-            result = engine.play(history_board, limit=chess.engine.Limit(time=30))
+            result = engine.play(history_board, limit=chess.engine.Limit(time=3))
             move = result.move
         print(f"[Maia3] Ход: {move}")
         if move is not None and move in board.legal_moves:
             return move
+        elif move is not None:
+            print(f"[Maia3] Ход {move} не легален в текущей позиции, fallback")
+            return _stockfish_move(board)
     except Exception as e:
         print(f"[Maia3] Ошибка хода: {e}")
         try:
             engine.configure({"Elo": 1500, "SelfElo": 1500, "OppoElo": 1500, "Temperature": 1.0})
         except Exception:
             pass
+        print("[Maia3] Fallback на Stockfish после ошибки")
+        return _stockfish_move(board)
     return None
 
 
