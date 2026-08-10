@@ -1,4 +1,5 @@
-@import url("https://fonts.googleapis.com/css2?family=Orbitron:wght@900&family=Cormorant+Garamond:wght@300;400;500&display=swap");
+﻿@import url("https://fonts.googleapis.com/css2?family=Orbitron:wght@900&family=Cormorant+Garamond:wght@300;400;500&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500&family=JetBrains+Mono:wght@400&display=swap");
 @font-face {
   font-family: "Calypso";
   src: url("/Calypso.ttf") format("truetype");
@@ -23,16 +24,16 @@ body {
   background-repeat: no-repeat;
   background-attachment: fixed;
 
-  /* Резервный цвет на случай долгой загрузки картинки */
+  /* Р РµР·РµСЂРІРЅС‹Р№ С†РІРµС‚ РЅР° СЃР»СѓС‡Р°Р№ РґРѕР»РіРѕР№ Р·Р°РіСЂСѓР·РєРё РєР°СЂС‚РёРЅРєРё */
   background-color: #e8f5e9;
 }
 .main-area {
   display: flex;
-  justify-content: flex-start; /* Было center, теперь прижимаем влево */
-  align-items: flex-start; /* Выравнивает панель и доску ровно по верхнему краю */
-  gap: 40px; /* Увеличил отступ между историей и доской */
+  justify-content: flex-start; /* Р‘С‹Р»Рѕ center, С‚РµРїРµСЂСЊ РїСЂРёР¶РёРјР°РµРј РІР»РµРІРѕ */
+  align-items: flex-start; /* Р’С‹СЂР°РІРЅРёРІР°РµС‚ РїР°РЅРµР»СЊ Рё РґРѕСЃРєСѓ СЂРѕРІРЅРѕ РїРѕ РІРµСЂС…РЅРµРјСѓ РєСЂР°СЋ */
+  gap: 40px; /* РЈРІРµР»РёС‡РёР» РѕС‚СЃС‚СѓРї РјРµР¶РґСѓ РёСЃС‚РѕСЂРёРµР№ Рё РґРѕСЃРєРѕР№ */
   width: calc(100vw - 40px);
-  margin: 2px 0 0 20px; /* Отступ 20px слева и сверху */
+  margin: 2px 0 0 20px; /* РћС‚СЃС‚СѓРї 20px СЃР»РµРІР° Рё СЃРІРµСЂС…Сѓ */
   box-sizing: border-box;
 }
 
@@ -290,24 +291,24 @@ body {
 .move-list {
   display: flex;
   flex-direction: column;
-  /* Убрали gap, так как линии между ходами лучше делать через border-bottom */
+  /* РЈР±СЂР°Р»Рё gap, С‚Р°Рє РєР°Рє Р»РёРЅРёРё РјРµР¶РґСѓ С…РѕРґР°РјРё Р»СѓС‡С€Рµ РґРµР»Р°С‚СЊ С‡РµСЂРµР· border-bottom */
   overflow-y: auto;
 
-  flex: 1 1 auto; /* Заставляем список гибко занимать всё свободное место */
-  min-height: 0; /* ВАЖНО: магическое свойство, которое чинит баг скролла во Flexbox! */
+  flex: 1 1 auto; /* Р—Р°СЃС‚Р°РІР»СЏРµРј СЃРїРёСЃРѕРє РіРёР±РєРѕ Р·Р°РЅРёРјР°С‚СЊ РІСЃС‘ СЃРІРѕР±РѕРґРЅРѕРµ РјРµСЃС‚Рѕ */
+  min-height: 0; /* Р’РђР–РќРћ: РјР°РіРёС‡РµСЃРєРѕРµ СЃРІРѕР№СЃС‚РІРѕ, РєРѕС‚РѕСЂРѕРµ С‡РёРЅРёС‚ Р±Р°Рі СЃРєСЂРѕР»Р»Р° РІРѕ Flexbox! */
 
-  padding-right: 8px; /* Отступ для скроллбара */
+  padding-right: 8px; /* РћС‚СЃС‚СѓРї РґР»СЏ СЃРєСЂРѕР»Р»Р±Р°СЂР° */
 }
 
-/* Возвращаем наш фирменный мятный скроллбар */
+/* Р’РѕР·РІСЂР°С‰Р°РµРј РЅР°С€ С„РёСЂРјРµРЅРЅС‹Р№ РјСЏС‚РЅС‹Р№ СЃРєСЂРѕР»Р»Р±Р°СЂ */
 .move-list::-webkit-scrollbar {
   width: 6px;
 }
 .move-list::-webkit-scrollbar-track {
-  background: transparent; /* Убрали синий фон */
+  background: transparent; /* РЈР±СЂР°Р»Рё СЃРёРЅРёР№ С„РѕРЅ */
 }
 .move-list::-webkit-scrollbar-thumb {
-  background: #79b180; /* Мятный цвет из профиля */
+  background: #79b180; /* РњСЏС‚РЅС‹Р№ С†РІРµС‚ РёР· РїСЂРѕС„РёР»СЏ */
   border-radius: 10px;
 }
 .move-list::-webkit-scrollbar-thumb:hover {
@@ -321,19 +322,19 @@ body {
 .move-pair {
   display: flex;
   align-items: center;
-  padding: 12px 0; /* Отступы сверху и снизу делают строку достаточно высокой (~7 строк на экран) */
-  border-bottom: 1px solid #a3c7a7; /* Та самая зеленая полосочка-разделитель из макета */
+  padding: 12px 0; /* РћС‚СЃС‚СѓРїС‹ СЃРІРµСЂС…Сѓ Рё СЃРЅРёР·Сѓ РґРµР»Р°СЋС‚ СЃС‚СЂРѕРєСѓ РґРѕСЃС‚Р°С‚РѕС‡РЅРѕ РІС‹СЃРѕРєРѕР№ (~7 СЃС‚СЂРѕРє РЅР° СЌРєСЂР°РЅ) */
+  border-bottom: 1px solid #a3c7a7; /* РўР° СЃР°РјР°СЏ Р·РµР»РµРЅР°СЏ РїРѕР»РѕСЃРѕС‡РєР°-СЂР°Р·РґРµР»РёС‚РµР»СЊ РёР· РјР°РєРµС‚Р° */
 
   font-family: "Calypso", serif;
   font-size: clamp(
     16px,
     1.2vw,
     20px
-  ); /* Делаем шрифт крупным, как на картинке */
+  ); /* Р”РµР»Р°РµРј С€СЂРёС„С‚ РєСЂСѓРїРЅС‹Рј, РєР°Рє РЅР° РєР°СЂС‚РёРЅРєРµ */
   color: #333;
 }
 
-/* Убираем нижнюю полоску у самого последнего хода в списке */
+/* РЈР±РёСЂР°РµРј РЅРёР¶РЅСЋСЋ РїРѕР»РѕСЃРєСѓ Сѓ СЃР°РјРѕРіРѕ РїРѕСЃР»РµРґРЅРµРіРѕ С…РѕРґР° РІ СЃРїРёСЃРєРµ */
 .move-pair:last-child {
   border-bottom: none;
 }
@@ -350,7 +351,7 @@ body {
   transition: background 0.2s;
 }
 
-/* Эффект выделения хода мятным цветом при наведении */
+/* Р­С„С„РµРєС‚ РІС‹РґРµР»РµРЅРёСЏ С…РѕРґР° РјСЏС‚РЅС‹Рј С†РІРµС‚РѕРј РїСЂРё РЅР°РІРµРґРµРЅРёРё */
 .move-pair span:hover {
   background: #e2ece2;
 }
@@ -374,30 +375,30 @@ body {
 }
 
 /* ========================================= */
-/*               ЧАТ (ПРАВАЯ ПАНЕЛЬ)         */
+/*               Р§РђРў (РџР РђР’РђРЇ РџРђРќР•Р›Р¬)         */
 /* ========================================= */
 .chat-section {
-  flex: 1; /* Растягиваем на всё свободное пространство */
+  flex: 1; /* Р Р°СЃС‚СЏРіРёРІР°РµРј РЅР° РІСЃС‘ СЃРІРѕР±РѕРґРЅРѕРµ РїСЂРѕСЃС‚СЂР°РЅСЃС‚РІРѕ */
   min-width: 400px;
-  max-width: none; /* ВАЖНО: убрали барьер, чтобы чат смог дотянуться до края экрана */
+  max-width: none; /* Р’РђР–РќРћ: СѓР±СЂР°Р»Рё Р±Р°СЂСЊРµСЂ, С‡С‚РѕР±С‹ С‡Р°С‚ СЃРјРѕРі РґРѕС‚СЏРЅСѓС‚СЊСЃСЏ РґРѕ РєСЂР°СЏ СЌРєСЂР°РЅР° */
 
-  height: calc(100vh - 70px); /* Высота минус TopBar */
+  height: calc(100vh - 70px); /* Р’С‹СЃРѕС‚Р° РјРёРЅСѓСЃ TopBar */
 
-  /* ИДЕАЛЬНОЕ ПРИЛИПАНИЕ К КРАЯМ: */
+  /* РР”Р•РђР›Р¬РќРћР• РџР РР›РРџРђРќРР• Рљ РљР РђРЇРњ: */
   margin-top: 0px;
   margin-right: calc(
     50% - 50vw
-  ); /* Магическая формула, прижимающая ровно к правому краю монитора */
+  ); /* РњР°РіРёС‡РµСЃРєР°СЏ С„РѕСЂРјСѓР»Р°, РїСЂРёР¶РёРјР°СЋС‰Р°СЏ СЂРѕРІРЅРѕ Рє РїСЂР°РІРѕРјСѓ РєСЂР°СЋ РјРѕРЅРёС‚РѕСЂР° */
 
-  border-radius: 0; /* Строгие прямые углы */
+  border-radius: 0; /* РЎС‚СЂРѕРіРёРµ РїСЂСЏРјС‹Рµ СѓРіР»С‹ */
   z-index: 1;
 
-  /* Эффект стекла */
+  /* Р­С„С„РµРєС‚ СЃС‚РµРєР»Р° */
   background: rgba(255, 255, 255, 0.01);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 
-  /* Обводка и тень теперь только СЛЕВА, так как справа срез экрана */
+  /* РћР±РІРѕРґРєР° Рё С‚РµРЅСЊ С‚РµРїРµСЂСЊ С‚РѕР»СЊРєРѕ РЎР›Р•Р’Рђ, С‚Р°Рє РєР°Рє СЃРїСЂР°РІР° СЃСЂРµР· СЌРєСЂР°РЅР° */
   border-left: 1px solid rgba(255, 255, 255, 0.4);
   border-top: none;
   border-right: none;
@@ -409,7 +410,7 @@ body {
   order: 3;
 }
 
-/* --- Хедер чата --- */
+/* --- РҐРµРґРµСЂ С‡Р°С‚Р° --- */
 .chat-header {
   padding: 15px 40px 25px;
   border-bottom: 1px solid rgba(0, 0, 0, 0.1);
@@ -447,7 +448,7 @@ body {
   margin-top: 4px;
 }
 
-/* Статус бар (если он тебе нужен для отображения онлайна/статуса) */
+/* РЎС‚Р°С‚СѓСЃ Р±Р°СЂ (РµСЃР»Рё РѕРЅ С‚РµР±Рµ РЅСѓР¶РµРЅ РґР»СЏ РѕС‚РѕР±СЂР°Р¶РµРЅРёСЏ РѕРЅР»Р°Р№РЅР°/СЃС‚Р°С‚СѓСЃР°) */
 .status-bar {
   display: flex;
   align-items: center;
@@ -463,7 +464,7 @@ body {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #79b180; /* Мятный цвет индикатора */
+  background: #79b180; /* РњСЏС‚РЅС‹Р№ С†РІРµС‚ РёРЅРґРёРєР°С‚РѕСЂР° */
   animation: pulse 2s infinite;
 }
 
@@ -477,7 +478,7 @@ body {
   }
 }
 
-/* --- Область сообщений --- */
+/* --- РћР±Р»Р°СЃС‚СЊ СЃРѕРѕР±С‰РµРЅРёР№ --- */
 .chat-messages {
   flex: 1;
   overflow-y: auto;
@@ -487,7 +488,7 @@ body {
   gap: 16px;
 }
 
-/* Мятный скроллбар как в истории ходов */
+/* РњСЏС‚РЅС‹Р№ СЃРєСЂРѕР»Р»Р±Р°СЂ РєР°Рє РІ РёСЃС‚РѕСЂРёРё С…РѕРґРѕРІ */
 .chat-messages::-webkit-scrollbar {
   width: 6px;
 }
@@ -502,20 +503,20 @@ body {
   background: #5d9364;
 }
 
-/* --- Оформление самих сообщений --- */
+/* --- РћС„РѕСЂРјР»РµРЅРёРµ СЃР°РјРёС… СЃРѕРѕР±С‰РµРЅРёР№ --- */
 .chat-msg {
   display: flex;
   gap: 12px;
-  align-items: flex-end; /* Аватарка прижимается к низу сообщения */
+  align-items: flex-end; /* РђРІР°С‚Р°СЂРєР° РїСЂРёР¶РёРјР°РµС‚СЃСЏ Рє РЅРёР·Сѓ СЃРѕРѕР±С‰РµРЅРёСЏ */
 }
 
-/* Пузырь сообщения бота */
+/* РџСѓР·С‹СЂСЊ СЃРѕРѕР±С‰РµРЅРёСЏ Р±РѕС‚Р° */
 .chat-msg .msg-body {
-  background: rgba(255, 255, 255, 0.6); /* Полупрозрачный белый фон */
+  background: rgba(255, 255, 255, 0.6); /* РџРѕР»СѓРїСЂРѕР·СЂР°С‡РЅС‹Р№ Р±РµР»С‹Р№ С„РѕРЅ */
   padding: 14px 18px;
-  border-radius: 0; /* Острый угол слева внизу */
+  border-radius: 0; /* РћСЃС‚СЂС‹Р№ СѓРіРѕР» СЃР»РµРІР° РІРЅРёР·Сѓ */
   font-family:
-    Arial, Helvetica, sans-serif; /* Простой шрифт для читабельности */
+    Arial, Helvetica, sans-serif; /* РџСЂРѕСЃС‚РѕР№ С€СЂРёС„С‚ РґР»СЏ С‡РёС‚Р°Р±РµР»СЊРЅРѕСЃС‚Рё */
   font-size: 15px;
   line-height: 1.5;
   color: #333;
@@ -523,19 +524,19 @@ body {
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
 }
 
-/* Модификатор для сообщения пользователя (добавь класс "user" к div с сообщением юзера) */
+/* РњРѕРґРёС„РёРєР°С‚РѕСЂ РґР»СЏ СЃРѕРѕР±С‰РµРЅРёСЏ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ (РґРѕР±Р°РІСЊ РєР»Р°СЃСЃ "user" Рє div СЃ СЃРѕРѕР±С‰РµРЅРёРµРј СЋР·РµСЂР°) */
 .chat-msg.user {
-  flex-direction: row-reverse; /* Аватарка справа */
+  flex-direction: row-reverse; /* РђРІР°С‚Р°СЂРєР° СЃРїСЂР°РІР° */
 }
 
 .chat-msg.user .msg-body {
-  background: #dcecd9; /* Светло-мятный фон для твоих сообщений */
-  border-radius: 16px 16px 0 16px; /* Острый угол справа внизу */
+  background: #dcecd9; /* РЎРІРµС‚Р»Рѕ-РјСЏС‚РЅС‹Р№ С„РѕРЅ РґР»СЏ С‚РІРѕРёС… СЃРѕРѕР±С‰РµРЅРёР№ */
+  border-radius: 16px 16px 0 16px; /* РћСЃС‚СЂС‹Р№ СѓРіРѕР» СЃРїСЂР°РІР° РІРЅРёР·Сѓ */
 }
 
-/* --- Поле ввода --- */
+/* --- РџРѕР»Рµ РІРІРѕРґР° --- */
 .chat-input-area {
-  padding: 20px 40px 30px; /* Снизу отступ чуть больше из-за скругления панели */
+  padding: 20px 40px 30px; /* РЎРЅРёР·Сѓ РѕС‚СЃС‚СѓРї С‡СѓС‚СЊ Р±РѕР»СЊС€Рµ РёР·-Р·Р° СЃРєСЂСѓРіР»РµРЅРёСЏ РїР°РЅРµР»Рё */
   border-top: 1px solid rgba(0, 0, 0, 0.1);
   display: flex;
   gap: 12px;
@@ -543,7 +544,7 @@ body {
 
 .chat-input-area input {
   flex: 1;
-  background: rgba(255, 255, 255, 0.5); /* Стеклянный инпут */
+  background: rgba(255, 255, 255, 0.5); /* РЎС‚РµРєР»СЏРЅРЅС‹Р№ РёРЅРїСѓС‚ */
   border: 1px solid rgba(0, 0, 0, 0.1);
   border-radius: 20px;
   padding: 14px 20px;
@@ -564,7 +565,7 @@ body {
 }
 
 .chat-input-area button {
-  background: #83b787; /* Мятная кнопка как "Импорт" */
+  background: #83b787; /* РњСЏС‚РЅР°СЏ РєРЅРѕРїРєР° РєР°Рє "РРјРїРѕСЂС‚" */
   border: none;
   border-radius: 30px;
   padding: 0 25px;
@@ -580,7 +581,7 @@ body {
 }
 
 /* ========================================= */
-/*       ЛЕВАЯ ПАНЕЛЬ: ИСТОРИЯ ХОДОВ         */
+/*       Р›Р•Р’РђРЇ РџРђРќР•Р›Р¬: РРЎРўРћР РРЇ РҐРћР”РћР’         */
 /* ========================================= */
 .move-history-panel {
   flex-shrink: 0;
@@ -596,16 +597,16 @@ body {
   box-sizing: border-box;
   order: 1;
 }
-/* Настройка самого списка ходов */
+/* РќР°СЃС‚СЂРѕР№РєР° СЃР°РјРѕРіРѕ СЃРїРёСЃРєР° С…РѕРґРѕРІ */
 .move-list {
   flex: 1;
   min-height: 0;
-  /* max-height: 250px; --- УДАЛИТЕ ЭТУ СТРОКУ */
+  /* max-height: 250px; --- РЈР”РђР›РРўР• Р­РўРЈ РЎРўР РћРљРЈ */
   overflow-y: auto;
   padding-right: 8px;
 }
 
-/* Стилизация скроллбара для Chrome, Edge, Safari */
+/* РЎС‚РёР»РёР·Р°С†РёСЏ СЃРєСЂРѕР»Р»Р±Р°СЂР° РґР»СЏ Chrome, Edge, Safari */
 .move-list::-webkit-scrollbar {
   width: 6px;
 }
@@ -615,17 +616,17 @@ body {
 }
 
 .move-list::-webkit-scrollbar-thumb {
-  background: #79b180; /* Наш мятно-зеленый цвет */
+  background: #79b180; /* РќР°С€ РјСЏС‚РЅРѕ-Р·РµР»РµРЅС‹Р№ С†РІРµС‚ */
   border-radius: 10px;
 }
 
 .move-list::-webkit-scrollbar-thumb:hover {
   background: #5d9364;
 }
-/* Настройка ряда с кнопками */
+/* РќР°СЃС‚СЂРѕР№РєР° СЂСЏРґР° СЃ РєРЅРѕРїРєР°РјРё */
 .nav-controls {
   display: flex;
-  justify-content: space-between; /* Равномерно распределяет кнопки по ширине панели */
+  justify-content: space-between; /* Р Р°РІРЅРѕРјРµСЂРЅРѕ СЂР°СЃРїСЂРµРґРµР»СЏРµС‚ РєРЅРѕРїРєРё РїРѕ С€РёСЂРёРЅРµ РїР°РЅРµР»Рё */
   align-items: center;
 }
 .player-info,
@@ -636,7 +637,7 @@ body {
   box-sizing: border-box;
 }
 
-/* --- Блок профиля --- */
+/* --- Р‘Р»РѕРє РїСЂРѕС„РёР»СЏ --- */
 .player-info {
   display: flex;
   align-items: center;
@@ -646,24 +647,24 @@ body {
   padding: 10px 15px;
   margin-bottom: 25px;
   width: 100%;
-  min-height: 64px; /* Фиксируем минимальную высоту */
-  flex-shrink: 0; /* Запрещаем сплющивание элемента */
+  min-height: 64px; /* Р¤РёРєСЃРёСЂСѓРµРј РјРёРЅРёРјР°Р»СЊРЅСѓСЋ РІС‹СЃРѕС‚Сѓ */
+  flex-shrink: 0; /* Р—Р°РїСЂРµС‰Р°РµРј СЃРїР»СЋС‰РёРІР°РЅРёРµ СЌР»РµРјРµРЅС‚Р° */
   box-sizing: border-box;
 }
-/* Здесь можно добавить стили шрифтов для .player-names по данным из Dev Mode */
+/* Р—РґРµСЃСЊ РјРѕР¶РЅРѕ РґРѕР±Р°РІРёС‚СЊ СЃС‚РёР»Рё С€СЂРёС„С‚РѕРІ РґР»СЏ .player-names РїРѕ РґР°РЅРЅС‹Рј РёР· Dev Mode */
 
-/* --- Список ходов (чередование цветов как на макете) --- */
+/* --- РЎРїРёСЃРѕРє С…РѕРґРѕРІ (С‡РµСЂРµРґРѕРІР°РЅРёРµ С†РІРµС‚РѕРІ РєР°Рє РЅР° РјР°РєРµС‚Рµ) --- */
 .move-pair {
   display: flex;
   align-items: center;
-  padding: 15px 10px; /* Сделали строки шире */
-  border-bottom: 1px solid #a5d6a7; /* Добавили тонкую линию снизу */
+  padding: 15px 10px; /* РЎРґРµР»Р°Р»Рё СЃС‚СЂРѕРєРё С€РёСЂРµ */
+  border-bottom: 1px solid #a5d6a7; /* Р”РѕР±Р°РІРёР»Рё С‚РѕРЅРєСѓСЋ Р»РёРЅРёСЋ СЃРЅРёР·Сѓ */
   font-family: "Calypso", serif;
-  font-size: 26px; /* Сильно увеличили шрифт самих ходов */
+  font-size: 26px; /* РЎРёР»СЊРЅРѕ СѓРІРµР»РёС‡РёР»Рё С€СЂРёС„С‚ СЃР°РјРёС… С…РѕРґРѕРІ */
   color: #333;
 }
 .move-pair.active {
-  background-color: #dcecd9; /* Светло-зеленый фон заливки */
+  background-color: #dcecd9; /* РЎРІРµС‚Р»Рѕ-Р·РµР»РµРЅС‹Р№ С„РѕРЅ Р·Р°Р»РёРІРєРё */
   border-radius: 10px;
   border-bottom: 1px solid transparent;
 }
@@ -673,12 +674,12 @@ body {
   cursor: pointer;
   transition: background 0.2s;
 
-  /* НОВЫЕ СТРОКИ: Центрируем текст внутри прямоугольника */
+  /* РќРћР’Р«Р• РЎРўР РћРљР: Р¦РµРЅС‚СЂРёСЂСѓРµРј С‚РµРєСЃС‚ РІРЅСѓС‚СЂРё РїСЂСЏРјРѕСѓРіРѕР»СЊРЅРёРєР° */
   display: inline-flex;
   justify-content: center;
   align-items: center;
   text-align: center;
-  min-width: 45px; /* Чтобы все плашки были одинаковой ширины и смотрелись симметрично */
+  min-width: 45px; /* Р§С‚РѕР±С‹ РІСЃРµ РїР»Р°С€РєРё Р±С‹Р»Рё РѕРґРёРЅР°РєРѕРІРѕР№ С€РёСЂРёРЅС‹ Рё СЃРјРѕС‚СЂРµР»РёСЃСЊ СЃРёРјРјРµС‚СЂРёС‡РЅРѕ */
 }
 .num {
   width: 40px;
@@ -687,53 +688,53 @@ body {
 }
 .move-w {
   flex: 1;
-  text-align: left; /* Белые ходы прижаты влево (под Вы) */
+  text-align: left; /* Р‘РµР»С‹Рµ С…РѕРґС‹ РїСЂРёР¶Р°С‚С‹ РІР»РµРІРѕ (РїРѕРґ Р’С‹) */
   padding-left: 10px;
 }
 .move-b {
   flex: 1;
-  text-align: right; /* Черные ходы прижаты вправо (под Maia 2) */
+  text-align: right; /* Р§РµСЂРЅС‹Рµ С…РѕРґС‹ РїСЂРёР¶Р°С‚С‹ РІРїСЂР°РІРѕ (РїРѕРґ Maia 2) */
   padding-right: 15px;
 }
-/* --- Навигация со стрелками --- */
-/* Выстраиваем кнопки и счетчик строго по центру на равном удалении */
+/* --- РќР°РІРёРіР°С†РёСЏ СЃРѕ СЃС‚СЂРµР»РєР°РјРё --- */
+/* Р’С‹СЃС‚СЂР°РёРІР°РµРј РєРЅРѕРїРєРё Рё СЃС‡РµС‚С‡РёРє СЃС‚СЂРѕРіРѕ РїРѕ С†РµРЅС‚СЂСѓ РЅР° СЂР°РІРЅРѕРј СѓРґР°Р»РµРЅРёРё */
 .nav-row {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 40px; /* Было 20px, сделали шире */
-  margin-bottom: 25px; /* Подняли стрелки чуть выше над кнопками */
+  gap: 40px; /* Р‘С‹Р»Рѕ 20px, СЃРґРµР»Р°Р»Рё С€РёСЂРµ */
+  margin-bottom: 25px; /* РџРѕРґРЅСЏР»Рё СЃС‚СЂРµР»РєРё С‡СѓС‚СЊ РІС‹С€Рµ РЅР°Рґ РєРЅРѕРїРєР°РјРё */
 }
 
-/* Делаем саму кнопку невидимой оберткой для SVG */
+/* Р”РµР»Р°РµРј СЃР°РјСѓ РєРЅРѕРїРєСѓ РЅРµРІРёРґРёРјРѕР№ РѕР±РµСЂС‚РєРѕР№ РґР»СЏ SVG */
 .arrow-btn {
   width: 55px;
   height: 44px;
-  background: transparent; /* Убираем зеленый фон из CSS, фон теперь внутри SVG */
+  background: transparent; /* РЈР±РёСЂР°РµРј Р·РµР»РµРЅС‹Р№ С„РѕРЅ РёР· CSS, С„РѕРЅ С‚РµРїРµСЂСЊ РІРЅСѓС‚СЂРё SVG */
   border: none;
   padding: 0;
   cursor: pointer;
   display: flex;
   justify-content: center;
   align-items: center;
-  transition: transform 0.2s; /* Легкая анимация при наведении */
+  transition: transform 0.2s; /* Р›РµРіРєР°СЏ Р°РЅРёРјР°С†РёСЏ РїСЂРё РЅР°РІРµРґРµРЅРёРё */
 }
 
-/* При наведении кнопка будет слегка увеличиваться (вместо смены цвета) */
+/* РџСЂРё РЅР°РІРµРґРµРЅРёРё РєРЅРѕРїРєР° Р±СѓРґРµС‚ СЃР»РµРіРєР° СѓРІРµР»РёС‡РёРІР°С‚СЊСЃСЏ (РІРјРµСЃС‚Рѕ СЃРјРµРЅС‹ С†РІРµС‚Р°) */
 .arrow-btn:hover {
   transform: scale(1.05);
 }
 
-/* Небольшой трюк: делаем фон SVG чуть ярче при наведении мышкой */
+/* РќРµР±РѕР»СЊС€РѕР№ С‚СЂСЋРє: РґРµР»Р°РµРј С„РѕРЅ SVG С‡СѓС‚СЊ СЏСЂС‡Рµ РїСЂРё РЅР°РІРµРґРµРЅРёРё РјС‹С€РєРѕР№ */
 .arrow-btn:hover rect {
   fill-opacity: 0.5;
 }
 
-/* --- Нижние кнопки --- */
+/* --- РќРёР¶РЅРёРµ РєРЅРѕРїРєРё --- */
 .action-buttons {
   display: flex;
   flex-direction: column;
-  gap: 10px; /* Расстояние между кнопкой и инпутом */
+  gap: 10px; /* Р Р°СЃСЃС‚РѕСЏРЅРёРµ РјРµР¶РґСѓ РєРЅРѕРїРєРѕР№ Рё РёРЅРїСѓС‚РѕРј */
 }
 .btn-import {
   width: 233px;
@@ -742,23 +743,23 @@ body {
   background: #83b787;
   border: none;
 
-  /* Фирменный шрифт проекта */
+  /* Р¤РёСЂРјРµРЅРЅС‹Р№ С€СЂРёС„С‚ РїСЂРѕРµРєС‚Р° */
   font-family: "Calypso", serif;
   font-size: 24px;
-  color: #333; /* Темный цвет текста, чтобы хорошо читался на мятном фоне */
+  color: #333; /* РўРµРјРЅС‹Р№ С†РІРµС‚ С‚РµРєСЃС‚Р°, С‡С‚РѕР±С‹ С…РѕСЂРѕС€Рѕ С‡РёС‚Р°Р»СЃСЏ РЅР° РјСЏС‚РЅРѕРј С„РѕРЅРµ */
 
   cursor: pointer;
   display: flex;
   justify-content: center;
   align-items: center;
 
-  /* Ставим кнопку строго по центру */
+  /* РЎС‚Р°РІРёРј РєРЅРѕРїРєСѓ СЃС‚СЂРѕРіРѕ РїРѕ С†РµРЅС‚СЂСѓ */
   margin: 0 auto;
   transition: background 0.2s;
 }
 
 .btn-import:hover {
-  background: #76a87a; /* Чуть темнеет при наведении */
+  background: #76a87a; /* Р§СѓС‚СЊ С‚РµРјРЅРµРµС‚ РїСЂРё РЅР°РІРµРґРµРЅРёРё */
 }
 .input-fen {
   border: 2px solid #a5d6a7;
@@ -767,23 +768,23 @@ body {
 }
 .history-title {
   font-family: "Calypso", serif;
-  font-size: clamp(20px, 1.8vw, 32px); /* Сделали шрифт немного меньше */
+  font-size: clamp(20px, 1.8vw, 32px); /* РЎРґРµР»Р°Р»Рё С€СЂРёС„С‚ РЅРµРјРЅРѕРіРѕ РјРµРЅСЊС€Рµ */
   font-weight: normal;
-  white-space: nowrap; /* Принудительно выстраиваем текст строго в одну строку */
+  white-space: nowrap; /* РџСЂРёРЅСѓРґРёС‚РµР»СЊРЅРѕ РІС‹СЃС‚СЂР°РёРІР°РµРј С‚РµРєСЃС‚ СЃС‚СЂРѕРіРѕ РІ РѕРґРЅСѓ СЃС‚СЂРѕРєСѓ */
   overflow: visible;
   text-align: center;
   color: #333;
   margin: 0 0 5px 0;
 }
 
-/* --- Тонкая линия под заголовком --- */
+/* --- РўРѕРЅРєР°СЏ Р»РёРЅРёСЏ РїРѕРґ Р·Р°РіРѕР»РѕРІРєРѕРј --- */
 .title-separator {
   width: 100%;
   height: 2px;
   background-color: #69b87c;
   margin-bottom: 20px;
 }
-/* Стилизация текста внутри профиля */
+/* РЎС‚РёР»РёР·Р°С†РёСЏ С‚РµРєСЃС‚Р° РІРЅСѓС‚СЂРё РїСЂРѕС„РёР»СЏ */
 .player-avatar,
 .bot-avatar {
   display: flex;
@@ -797,7 +798,7 @@ body {
     14px,
     1vw,
     18px
-  ); /* Сделали чуть меньше, чтобы Maia 2 умещалась без переносов */
+  ); /* РЎРґРµР»Р°Р»Рё С‡СѓС‚СЊ РјРµРЅСЊС€Рµ, С‡С‚РѕР±С‹ Maia 2 СѓРјРµС‰Р°Р»Р°СЃСЊ Р±РµР· РїРµСЂРµРЅРѕСЃРѕРІ */
   line-height: 1.2;
 }
 
@@ -810,30 +811,30 @@ body {
     16px,
     1.2vw,
     20px
-  ); /* Немного уменьшили VS, чтобы сохранить пропорции */
+  ); /* РќРµРјРЅРѕРіРѕ СѓРјРµРЅСЊС€РёР»Рё VS, С‡С‚РѕР±С‹ СЃРѕС…СЂР°РЅРёС‚СЊ РїСЂРѕРїРѕСЂС†РёРё */
   color: #79b180;
   margin: 0 10px;
 }
 
-/* Стилизация аватарок (если ты не экспортируешь их с фоном) */
+/* РЎС‚РёР»РёР·Р°С†РёСЏ Р°РІР°С‚Р°СЂРѕРє (РµСЃР»Рё С‚С‹ РЅРµ СЌРєСЃРїРѕСЂС‚РёСЂСѓРµС€СЊ РёС… СЃ С„РѕРЅРѕРј) */
 .player-avatar img,
 .bot-avatar img {
-  /* Гибкий размер для эллипсов (было 55px) */
+  /* Р“РёР±РєРёР№ СЂР°Р·РјРµСЂ РґР»СЏ СЌР»Р»РёРїСЃРѕРІ (Р±С‹Р»Рѕ 55px) */
   width: clamp(35px, 2.5vw, 48px);
   height: clamp(35px, 2.5vw, 48px);
   border-radius: 50%;
   object-fit: cover;
-  flex-shrink: 0; /* Строго запрещаем браузеру сплющивать саму картинку в овал */
+  flex-shrink: 0; /* РЎС‚СЂРѕРіРѕ Р·Р°РїСЂРµС‰Р°РµРј Р±СЂР°СѓР·РµСЂСѓ СЃРїР»СЋС‰РёРІР°С‚СЊ СЃР°РјСѓ РєР°СЂС‚РёРЅРєСѓ РІ РѕРІР°Р» */
 }
 .player-details {
   display: flex;
   flex-direction: column;
-  align-items: flex-start; /* Прижимаем текст к левому краю (к аватарке) */
+  align-items: flex-start; /* РџСЂРёР¶РёРјР°РµРј С‚РµРєСЃС‚ Рє Р»РµРІРѕРјСѓ РєСЂР°СЋ (Рє Р°РІР°С‚Р°СЂРєРµ) */
 }
 .bot-details {
   display: flex;
   flex-direction: column;
-  align-items: flex-end; /* Прижимаем текст к правому краю (к аватарке) */
+  align-items: flex-end; /* РџСЂРёР¶РёРјР°РµРј С‚РµРєСЃС‚ Рє РїСЂР°РІРѕРјСѓ РєСЂР°СЋ (Рє Р°РІР°С‚Р°СЂРєРµ) */
 }
 .player-rating,
 .bot-rating {
@@ -841,11 +842,11 @@ body {
   font-size: clamp(12px, 1vw, 16px);
   color: #555;
   line-height: 1;
-  margin-bottom: 2px; /* Небольшой отступ между рейтингом и именем */
+  margin-bottom: 2px; /* РќРµР±РѕР»СЊС€РѕР№ РѕС‚СЃС‚СѓРї РјРµР¶РґСѓ СЂРµР№С‚РёРЅРіРѕРј Рё РёРјРµРЅРµРј */
 }
 
 /* ========================================= */
-/*            МОДАЛЬНОЕ ОКНО                  */
+/*            РњРћР”РђР›Р¬РќРћР• РћРљРќРћ                  */
 /* ========================================= */
 .modal-overlay {
   position: fixed;
@@ -980,4 +981,425 @@ body {
 }
 .modal-footer a:hover {
   text-decoration: underline;
+}
+
+/* ======================================== */
+/*  AUTH MODAL (GIGACHESS · светлое стекло) */
+/* ======================================== */
+
+.auth-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(30, 52, 33, 0.35);
+  backdrop-filter: blur(8px);
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.auth-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  width: 1040px;
+  min-height: 600px;
+  max-width: 94vw;
+  border-radius: 24px;
+  overflow: hidden;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(140, 190, 150, 0.55);
+  box-shadow:
+    0 4px 12px rgba(40, 70, 46, 0.12),
+    0 18px 50px rgba(40, 70, 46, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  font-family: "Calypso", "Cormorant Garamond", serif;
+  color: #333;
+}
+
+.auth-close {
+  position: absolute;
+  top: 16px;
+  right: 18px;
+  z-index: 5;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid rgba(140, 180, 150, 0.5);
+  color: #555;
+  font-size: 17px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.auth-close:hover {
+  background: #fff;
+  color: #333;
+}
+
+/* --- Панели --- */
+.auth-side {
+  padding: 40px 36px;
+}
+.auth-side--brand {
+  background: linear-gradient(160deg, rgba(201, 169, 110, 0.22), rgba(131, 183, 135, 0.18));
+  border-right: 1px solid rgba(201, 169, 110, 0.4);
+}
+.auth-side--form {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* --- Бренд --- */
+.auth-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 22px;
+}
+.auth-brand-icon {
+  font-size: 30px;
+  color: #b88a3e;
+}
+.auth-brand-name {
+  font-family: "Orbitron", "Inter", sans-serif;
+  font-weight: 900;
+  font-size: 30px;
+  letter-spacing: 0.14em;
+  color: #2f5c36;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+}
+
+.auth-title {
+  font-family: "Calypso", serif;
+  font-weight: normal;
+  font-size: 30px;
+  line-height: 1.1;
+  color: #2f5c36;
+  margin: 0 0 8px;
+}
+.auth-subtitle {
+  font-family: "Calypso", serif;
+  font-size: 17px;
+  color: #6b7a6e;
+  line-height: 1.35;
+  margin: 0 0 24px;
+  max-width: 380px;
+}
+
+/* --- Секция импорта --- */
+.auth-section {
+  padding: 18px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(180, 200, 175, 0.6);
+}
+.auth-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.auth-section-label {
+  font-family: "Calypso", serif;
+  font-size: 16px;
+  color: #3a513f;
+  letter-spacing: 0.02em;
+}
+.auth-optional {
+  font-size: 13px;
+  color: #8a908b;
+}
+
+.auth-providers {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.auth-provider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(150, 190, 160, 0.6);
+  color: #3a542f;
+  font-family: "Calypso", serif;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+.auth-provider:hover {
+  background: #ffffff;
+}
+.auth-provider.active {
+  background: #83b787;
+  border-color: #76a87a;
+  color: #fff;
+}
+.auth-provider-glyph {
+  font-size: 18px;
+}
+
+.auth-import-row {
+  display: flex;
+  gap: 8px;
+}
+.auth-import-input {
+  flex: 1;
+}
+.auth-import-btn {
+  flex-shrink: 0;
+  padding: 11px 18px;
+  border: none;
+  border-radius: 14px;
+  background: #c9a96e;
+  color: #fff;
+  font-family: "Calypso", serif;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.auth-import-btn:hover:not(:disabled) {
+  background: #b89a5e;
+}
+.auth-import-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.auth-error {
+  margin-top: 10px;
+  font-size: 14px;
+  color: #b3543a;
+}
+
+/* --- Карточка найденного профиля --- */
+.auth-profile-card {
+  margin-top: 14px;
+  padding: 14px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(201, 169, 110, 0.5);
+  box-shadow: 0 6px 20px rgba(120, 90, 40, 0.1);
+}
+.auth-profile-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.auth-profile-img {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: #f0f2ea;
+  border: 2px solid #cda970;
+}
+.auth-profile-img--fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  color: #b88a3e;
+}
+.auth-profile-meta {
+  min-width: 0;
+}
+.auth-profile-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 18px;
+  color: #2b4029;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.auth-profile-title {
+  padding: 1px 7px;
+  border-radius: 7px;
+  background: #99b79a;
+  color: #fff;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+.auth-profile-sub {
+  font-size: 14px;
+  color: #7c8b70;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.auth-perfs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-top: 12px;
+}
+.auth-perf {
+  padding: 9px 4px;
+  border-radius: 12px;
+  background: rgba(210, 240, 214, 0.6);
+  border: 1px solid rgba(140, 190, 150, 0.45);
+}
+.auth-perf-label {
+  display: block;
+  font-size: 13px;
+  color: #6b7a63;
+  margin-bottom: 2px;
+}
+.auth-perf-value {
+  font-size: 19px;
+  font-weight: bold;
+  color: #3a513a;
+}
+.auth-profile-stats {
+  margin-top: 12px;
+  font-size: 15px;
+  color: #5f6f57;
+  text-align: center;
+}
+.auth-profile-stats b {
+  color: #3a513a;
+}
+.auth-stat-sep {
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #cda970;
+  margin: 0 10px 2px;
+  vertical-align: middle;
+}
+
+/* --- Поля формы --- */
+.auth-label {
+  display: block;
+  margin-bottom: 16px;
+}
+.auth-label-text {
+  display: block;
+  font-size: 15px;
+  color: #555;
+  margin-bottom: 6px;
+}
+.auth-input-wrapper {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(150, 190, 160, 0.7);
+  border-radius: 12px;
+  padding: 0 14px;
+  transition: border-color 0.2s;
+}
+.auth-input-wrapper:focus-within {
+  border-color: #76a87a;
+}
+.auth-input-icon {
+  font-size: 15px;
+  margin-right: 10px;
+  color: #8a908b;
+}
+.auth-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  padding: 13px 0;
+  font-size: 16px;
+  font-weight: 400;
+  letter-spacing: normal;
+  color: #1f2b20;
+  font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+}
+.auth-input::placeholder {
+  color: #8a948a;
+  font-weight: 400;
+}
+.auth-import-input {
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(200, 175, 110, 0.7);
+}
+.auth-import-input:focus {
+  border-color: #c9a96e;
+}
+.auth-eye {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  font-size: 15px;
+  cursor: pointer;
+  color: #8a9a8a;
+}
+.auth-eye:hover {
+  color: #333;
+}
+
+.auth-submit {
+  width: 100%;
+  margin-top: 6px;
+  padding: 15px 24px;
+  border: none;
+  border-radius: 30px;
+  background: #83b787;
+  color: #fff;
+  font-family: "Calypso", serif;
+  font-size: 18px;
+  cursor: pointer;
+  transition: background 0.2s;
+  box-shadow: 0 6px 16px rgba(94, 148, 99, 0.35);
+}
+.auth-submit:hover {
+  background: #76a87a;
+}
+
+.auth-footer {
+  margin-top: 18px;
+  font-size: 15px;
+  color: #888;
+  text-align: center;
+}
+.auth-footer a {
+  color: #83b787;
+  text-decoration: none;
+  font-weight: normal;
+}
+.auth-footer a:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 760px) {
+  .auth-card {
+    grid-template-columns: 1fr;
+  }
+  .auth-side--brand {
+    border-right: none;
+    border-bottom: 1px solid rgba(201, 169, 110, 0.4);
+  }
 }

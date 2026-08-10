@@ -67,3 +67,10 @@ export async function fetchChatMessages(after = 0) {
   const { data } = await api.get("/api/chat/messages", { params: { after } });
   return data;
 }
+
+export async function fetchPlayerProfile(username, platform = "lichess") {
+  const { data } = await api.get("/api/chess-profile", {
+    params: { username, platform },
+  });
+  return data;
+}
