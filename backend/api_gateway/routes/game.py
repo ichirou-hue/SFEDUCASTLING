@@ -1,17 +1,20 @@
 """Игровые endpoint'ы: легальные ходы, выполнение хода, ход AI."""
 
 import random
+
 import chess
-from fastapi import APIRouter
-from backend.api_gateway.models import FenSquare, MoveRequest, FenRequest, CompareMovesRequest
+from fastapi import APIRouter, BackgroundTasks
+
+from backend.api_gateway.models import CompareMovesRequest, FenRequest, FenSquare, FinishGameRequest, MoveRequest
 from backend.api_gateway.state import (
+    elo_to_temperature,
     ensure_stockfish,
-    reset_stockfish,
-    stockfish_lock,
     get_maia3,
     maia3_lock,
-    elo_to_temperature,
+    reset_stockfish,
+    stockfish_lock,
 )
+from backend.services.game_recorder import record_game
 
 router = APIRouter(tags=["game"])
 
@@ -210,7 +213,7 @@ def _maia3_move(req: FenRequest, board: chess.Board) -> chess.Move | None:
                 if replay.fen() == board.fen():
                     history_board = replay
                 else:
-                    print(f"[Maia3] History FEN mismatch, using board directly")
+                    print("[Maia3] History FEN mismatch, using board directly")
             except ValueError:
                 pass
 
@@ -228,7 +231,7 @@ def _maia3_move(req: FenRequest, board: chess.Board) -> chess.Move | None:
         print(f"[Maia3] Ход: {move}")
         if move is not None and move in board.legal_moves:
             return move
-        elif move is not None:
+        if move is not None:
             print(f"[Maia3] Ход {move} не легален в текущей позиции, fallback")
             return _stockfish_move(board)
     except Exception as e:
@@ -331,3 +334,22 @@ def compare_moves(req: CompareMovesRequest):
         "maia3": maia_result,
         "same_move": same_move,
     }
+
+
+@router.post("/api/game/finish")
+def finish_game(req: FinishGameRequest, background_tasks: BackgroundTasks):
+    """Сохраняет завершённую партию в БД с классификацией ходов.
+
+    Классификация каждого хода через Stockfish (1с на ход) выполняется
+    в фоне, чтобы не блокировать ответ фронтенду.
+    """
+    background_tasks.add_task(
+        record_game,
+        moves=req.moves,
+        user_id=req.user_id,
+        elo=req.elo,
+        engine=req.engine,
+        result=req.result,
+        status=req.status,
+    )
+    return {"ok": True, "status": "scheduled"}

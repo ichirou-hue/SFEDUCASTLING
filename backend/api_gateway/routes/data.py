@@ -1,22 +1,27 @@
 """Endpoint'ы сбора данных и парсинга PGN."""
 
-import os
-import json
 import io
-from datetime import datetime
+import json
+from datetime import UTC, datetime
+
 import chess
 import chess.pgn
-from fastapi import APIRouter, UploadFile, File
-from backend.config.settings import settings
+from fastapi import APIRouter, Depends, File, UploadFile
+from fastapi.responses import StreamingResponse
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api_gateway.models import DatasetMoveRequest, PGNTextRequest
 from backend.api_gateway.state import ensure_stockfish, stockfish_lock
+from backend.config.settings import settings
+from backend.db.session import get_db
+from backend.models.dataset_move import DatasetMove
 
 router = APIRouter(tags=["data"])
 
 
 @router.post("/api/save-move-to-dataset")
-def save_move_to_dataset(req: DatasetMoveRequest):
+async def save_move_to_dataset(req: DatasetMoveRequest, db: AsyncSession = Depends(get_db)):
     """Сохраняет ход пользователя в тренировочный датасет с оценкой Stockfish."""
     stockfish = ensure_stockfish()
     if not stockfish:
@@ -28,47 +33,67 @@ def save_move_to_dataset(req: DatasetMoveRequest):
             stockfish_best = stockfish.get_best_move_time(1000)
             stockfish_eval = stockfish.get_evaluation(searchtime=1000)
 
-        move_data = {
-            "fen": req.fen,
-            "user_move": req.move,
-            "stockfish_move": stockfish_best,
-            "stockfish_eval": stockfish_eval,
-            "user_id": req.user_id,
-            "game_id": req.game_id,
-            "timestamp": datetime.now().isoformat(),
-        }
+        row = DatasetMove(
+            fen=req.fen,
+            user_move=req.move,
+            stockfish_move=stockfish_best,
+            stockfish_eval=stockfish_eval,
+            user_id=req.user_id,
+            game_id=req.game_id,
+        )
+        db.add(row)
+        await db.commit()
+        await db.refresh(row)
 
-        # Используем пути из настроек
-        dataset_path = str(settings.data.dataset_jsonl_path)
-        with open(dataset_path, "a", encoding="utf-8") as f:
-            f.write(json.dumps(move_data, ensure_ascii=False) + "\n")
-
-        readable_path = str(settings.data.dataset_readable_path)
-        if os.path.exists(readable_path):
-            with open(readable_path, "r", encoding="utf-8") as f:
-                all_data = json.load(f)
-        else:
-            all_data = []
-
-        all_data.append(move_data)
-
-        with open(readable_path, "w", encoding="utf-8") as f:
-            json.dump(all_data, f, indent=2, ensure_ascii=False)
-
+        total = await db.scalar(select(func.count(DatasetMove.id)))
         return {
             "status": "saved",
-            "dataset_size": len(all_data),
-            "data": move_data,
+            "dataset_size": total,
+            "data": {
+                "fen": row.fen,
+                "user_move": row.user_move,
+                "stockfish_move": row.stockfish_move,
+                "stockfish_eval": row.stockfish_eval,
+                "user_id": row.user_id,
+                "game_id": row.game_id,
+                "timestamp": row.timestamp.isoformat() if row.timestamp else datetime.now(UTC).isoformat(),
+            },
         }
     except Exception as e:
         return {"error": str(e)}
+
+
+@router.get("/api/dataset/export")
+async def export_dataset(db: AsyncSession = Depends(get_db)):
+    """Выгружает весь датасет в формате NDJSON (по строке на объект).
+
+    Каждая строка повторяет структуру объекта из старого dataset.jsonl,
+    чтобы ML-пайплайн работал без изменений.
+    """
+
+    async def row_gen():
+        result = await db.stream(select(DatasetMove).order_by(DatasetMove.id.asc()))
+        async for row in result.scalars():
+            ts = row.timestamp.isoformat() if row.timestamp else datetime.now(UTC).isoformat()
+            payload = {
+                "fen": row.fen,
+                "user_move": row.user_move,
+                "stockfish_move": row.stockfish_move,
+                "stockfish_eval": row.stockfish_eval,
+                "user_id": row.user_id,
+                "game_id": row.game_id,
+                "timestamp": ts,
+            }
+            yield json.dumps(payload, ensure_ascii=False) + "\n"
+
+    return StreamingResponse(row_gen(), media_type="application/x-ndjson")
 
 
 @router.post("/api/parse-pgn-text")
 def parse_pgn_text(req: PGNTextRequest):
     """Разбирает PGN-текст, вставленный пользователем, в структурированный формат."""
     try:
-        print(f"[PGN-Text] Начало обработки PGN текста")
+        print("[PGN-Text] Начало обработки PGN текста")
         print(f"[PGN-Text] Длина текста: {len(req.pgn)} символов")
         print(f"[PGN-Text] Первые 200 символов: {req.pgn[:200]}")
 

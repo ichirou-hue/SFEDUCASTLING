@@ -4,6 +4,11 @@ uvicorn>=0.20.0
 python-multipart>=0.0.6
 requests>=2.28.0
 
+# === Database (PostgreSQL) ===
+sqlalchemy[asyncio]>=2.0.0
+asyncpg>=0.29.0
+alembic>=1.13.0
+
 # === Validation & chess ===
 pydantic>=2.0.0
 python-chess>=1.999

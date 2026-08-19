@@ -1,5 +1,6 @@
 # backend/config/settings.py
 from pathlib import Path
+
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -46,6 +47,26 @@ class LichessSettings(BaseModel):      # новая группа
     timeout: int = Field(5, alias="LICHESS_TIMEOUT")
 
 
+class DatabaseSettings(BaseSettings):
+    """Настройки подключения к PostgreSQL (async SQLAlchemy + asyncpg).
+
+    URL обязателен и задаётся через переменную окружения DATABASE_URL
+    (или .env). Пример:
+        postgresql+asyncpg://user:password@127.0.0.1:5432/dbname
+    """
+    model_config = SettingsConfigDict(
+        env_file=BASE_DIR / ".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
+
+    url: str = Field(alias="DATABASE_URL")
+    echo: bool = Field(False, alias="DATABASE_ECHO")
+    pool_size: int = Field(5, alias="DATABASE_POOL_SIZE")
+    max_overflow: int = Field(10, alias="DATABASE_MAX_OVERFLOW")
+
+
 class Settings(BaseSettings):
     app_name: str = Field("SFEDUCASTLING API", alias="APP_NAME")
     debug: bool = Field(False, alias="DEBUG")
@@ -58,6 +79,7 @@ class Settings(BaseSettings):
     maia3: Maia3Settings = Maia3Settings()
     data: DataSettings = DataSettings()
     lichess: LichessSettings = LichessSettings()   # добавлено
+    database: DatabaseSettings = DatabaseSettings()   # добавлено
 
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env",
