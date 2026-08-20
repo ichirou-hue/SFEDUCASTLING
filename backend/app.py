@@ -25,6 +25,7 @@ from backend.api_gateway.routes.chat import router as chat_router
 from backend.api_gateway.routes.vision import router as vision_router
 from backend.api_gateway.routes.analyze import router as analyze_router
 from backend.api_gateway.routes.chess_profile import router as chess_profile_router
+from backend.api_gateway.routes.explanation import router as explanation_router
 
 app = FastAPI(title="SFEDUCASTLING API")
 
@@ -45,6 +46,7 @@ app.include_router(chat_router)
 app.include_router(vision_router)
 app.include_router(analyze_router)
 app.include_router(chess_profile_router)
+app.include_router(explanation_router)
 
 # Раздаём статику фронтенда (собранный React в frontend/dist/)
 frontend_dist = os.path.join(os.path.dirname(__file__), "..", "frontend", "dist")

@@ -1,58 +1,129 @@
 import { useState, useRef, useCallback } from "react";
+
 import TopBar from "./components/TopBar.jsx";
 import ChessboardComponent from "./components/Chessboard.jsx";
 import MoveHistory from "./components/MoveHistory.jsx";
 import ChatPanel from "./components/ChatPanel.jsx";
 import EvalBar from "./components/EvalBar.jsx";
 import RegisterModal from "./components/RegisterModal.jsx";
+
 import { fetchGigaChatAnalysis } from "./api.js";
 
 export default function App() {
   const boardRef = useRef(null);
-  const [showRegister, setShowRegister] = useState(false);
+
+  const [showRegister, setShowRegister] =
+    useState(false);
+
   const [boardState, setBoardState] = useState({
     fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+
     moveHistory: [],
+
     turn: "w",
+
     positionSnapshots: [],
+
     viewIndex: -1,
+
     isViewMode: false,
+
     evalScore: null,
+
     maiaRating: 1500,
+
+    /*
+     * Сообщение с объяснением подсказки Stockfish.
+     *
+     * ChessboardComponent записывает его сюда
+     * через onStateChange.
+     */
+    hintMessage: null,
   });
 
+  /*
+   * Старый ручной анализ из поля чата.
+   *
+   * Он остаётся независимо от новой системы
+   * подсказок Stockfish.
+   */
   const handleAnalyze = useCallback(async () => {
-    return await fetchGigaChatAnalysis(boardState.fen);
+    return await fetchGigaChatAnalysis(
+      boardState.fen,
+    );
   }, [boardState.fen]);
 
   return (
     <>
-      <TopBar onRegister={() => setShowRegister(true)} />
+      <TopBar
+        onRegister={() =>
+          setShowRegister(true)
+        }
+      />
+
       <div className="main-area">
         {/* 1. Левая панель */}
         <MoveHistory
-          moveHistory={boardState.moveHistory}
-          positionSnapshots={boardState.positionSnapshots}
-          viewIndex={boardState.viewIndex}
-          isViewMode={boardState.isViewMode}
-          maiaRating={boardState.maiaRating}
-          onNavigate={(dir) => boardRef.current?.onNavigate(dir)}
+          moveHistory={
+            boardState.moveHistory
+          }
+          positionSnapshots={
+            boardState.positionSnapshots
+          }
+          viewIndex={
+            boardState.viewIndex
+          }
+          isViewMode={
+            boardState.isViewMode
+          }
+          maiaRating={
+            boardState.maiaRating
+          }
+          onNavigate={(dir) =>
+            boardRef.current?.onNavigate(
+              dir,
+            )
+          }
         />
 
         {/* 1.5 Eval Bar */}
         <EvalBar
-          diff={boardState.materialDiff}
-          flipped={boardState.boardFlipped}
-          height={boardState.boardHeight}
+          diff={
+            boardState.materialDiff
+          }
+          flipped={
+            boardState.boardFlipped
+          }
+          height={
+            boardState.boardHeight
+          }
         />
 
         {/* 2. Центральная панель */}
-        <ChessboardComponent ref={boardRef} onStateChange={setBoardState} />
+        <ChessboardComponent
+          ref={boardRef}
+          onStateChange={
+            setBoardState
+          }
+        />
 
-        {/* 3. Правая панель (ЧАТ) */}
-        <ChatPanel onAnalyze={handleAnalyze} />
+        {/* 3. Правая панель — чат */}
+        <ChatPanel
+          onAnalyze={
+            handleAnalyze
+          }
+          hintMessage={
+            boardState.hintMessage
+          }
+        />
       </div>
-      <RegisterModal isOpen={showRegister} onClose={() => setShowRegister(false)} />
+
+      <RegisterModal
+        isOpen={showRegister}
+        onClose={() =>
+          setShowRegister(false)
+        }
+      />
     </>
   );
 }

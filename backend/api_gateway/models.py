@@ -231,3 +231,39 @@ class PGNTextRequest(BaseModel):
         if not v.strip():
             raise ValueError("PGN-текст не может быть пустым")
         return v.strip()
+
+
+class ExplainMoveRequest(BaseModel):
+    """Запрос на объяснение хода игрока."""
+
+    fen: str
+    move: str
+    elo: int = 1500
+    moves: list[str] = []
+
+    @field_validator("fen")
+    @classmethod
+    def fen_must_be_valid(cls, v: str) -> str:
+        return validate_fen(v)
+
+    @field_validator("move")
+    @classmethod
+    def move_must_not_be_empty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("Ход не может быть пустым")
+        return v.strip()
+
+    @field_validator("elo")
+    @classmethod
+    def elo_must_be_in_range(cls, v: int) -> int:
+        if v < 0 or v > 3000:
+            raise ValueError(
+                f"ELO должен быть от 0 до 3000, получено {v}"
+            )
+        return v
+
+    @field_validator("moves")
+    @classmethod
+    def moves_must_be_valid(cls, v: list[str]) -> list[str]:
+        return [move.strip() for move in v if move.strip()]
+    

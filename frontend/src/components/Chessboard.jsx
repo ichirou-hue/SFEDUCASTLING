@@ -16,6 +16,7 @@ import {
   fetchStockfishAnalysis,
   fetchCompareMoves,
   saveMoveToDataset,
+  fetchExplainMove,
 } from "../api.js";
 
 const userId =
@@ -459,121 +460,361 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
    *
    * После получения ответа рисуем ДВЕ стрелки.
    */
-  const fetchBestMove = useCallback(
-    async (positionFen = game.fen()) => {
-      if (isComparing) return;
+const fetchBestMove = useCallback(
+  async (positionFen = game.fen()) => {
+    if (isComparing) return;
 
-      if (game.isGameOver()) {
-        return;
+    if (game.isGameOver()) {
+      return;
+    }
+
+    setIsComparing(true);
+
+    try {
+      /*
+       * ============================================================
+       * ИСТОРИЯ ПАРТИИ В UCI
+       * ============================================================
+       *
+       * moveHistory хранит SAN, например:
+       *
+       * e4
+       * e5
+       * Nf3
+       *
+       * Backend compare-moves ожидает историю в UCI:
+       *
+       * e2e4
+       * e7e5
+       * g1f3
+       */
+      const historyGame = new Chess();
+      const uciMoves = [];
+
+      for (const san of moveHistory) {
+        try {
+          const move = historyGame.move(san);
+
+          if (move) {
+            uciMoves.push(
+              move.from +
+                move.to +
+                (move.promotion || ""),
+            );
+          }
+        } catch (error) {
+          console.warn(
+            "[Compare] Не удалось восстановить ход:",
+            san,
+          );
+
+          break;
+        }
       }
 
-      setIsComparing(true);
+      /*
+       * ============================================================
+       * STOCKFISH + MAIA3
+       * ============================================================
+       *
+       * Получаем:
+       *
+       * Stockfish -> объективно лучший ход.
+       * Maia3     -> человекоподобный ход для выбранного Elo.
+       */
+      const data = await fetchCompareMoves(
+        positionFen,
+        elo,
+        uciMoves,
+      );
 
-      try {
-        /*
-         * История передаётся в backend в UCI.
-         *
-         * moveHistory содержит SAN, поэтому восстанавливаем
-         * партию и получаем UCI-последовательность.
-         */
-        const historyGame = new Chess();
-        const uciMoves = [];
-
-        for (const san of moveHistory) {
-          try {
-            const move = historyGame.move(san);
-
-            if (move) {
-              uciMoves.push(move.from + move.to + (move.promotion || ""));
-            }
-          } catch (error) {
-            console.warn(
-              "[Compare] Не удалось восстановить ход:",
-              san,
-            );
-            break;
-          }
-        }
-
-        /*
-         * ВАЖНО:
-         * если пользователь загрузил произвольный FEN без истории,
-         * moves будет [].
-         */
-        const data = await fetchCompareMoves(
-          positionFen,
-          elo,
-          uciMoves,
-        );
-
-        if (!data || data.error) {
-          console.warn("[Compare] Ошибка:", data?.error);
-          setStockfishArrow(null);
-          setMaiaArrow(null);
-          setCompareData(null);
-          return;
-        }
-
-        /*
-         * Stockfish:
-         * зелёная стрелка.
-         */
-        if (
-          data.stockfish &&
-          data.stockfish.from &&
-          data.stockfish.to
-        ) {
-          setStockfishArrow([
-            data.stockfish.from,
-            data.stockfish.to,
-            "rgba(0, 150, 50, 0.85)",
-          ]);
-        } else {
-          setStockfishArrow(null);
-        }
-
-        /*
-         * Maia3:
-         * оранжевая стрелка.
-         */
-        if (
-          data.maia3 &&
-          data.maia3.from &&
-          data.maia3.to
-        ) {
-          setMaiaArrow([
-            data.maia3.from,
-            data.maia3.to,
-            "rgba(220, 120, 20, 0.9)",
-          ]);
-        } else {
-          setMaiaArrow(null);
-        }
-
-        /*
-         * Сохраняем ответ для информационного блока.
-         */
-        setCompareData(data);
-      } catch (error) {
-        console.error(
-          "[Compare] Ошибка сравнения Stockfish/Maia3:",
-          error,
+      if (!data || data.error) {
+        console.warn(
+          "[Compare] Ошибка:",
+          data?.error,
         );
 
         setStockfishArrow(null);
         setMaiaArrow(null);
         setCompareData(null);
-      } finally {
-        setIsComparing(false);
+
+        return;
       }
-    },
-    [
-      game,
-      elo,
-      moveHistory,
-      isComparing,
-    ],
-  );
+
+      /*
+       * ============================================================
+       * СТРЕЛКА STOCKFISH
+       * ============================================================
+       *
+       * Зелёная стрелка показывает объективно лучший ход.
+       */
+      if (
+        data.stockfish &&
+        data.stockfish.from &&
+        data.stockfish.to
+      ) {
+        setStockfishArrow([
+          data.stockfish.from,
+          data.stockfish.to,
+          "rgba(0, 150, 50, 0.85)",
+        ]);
+      } else {
+        setStockfishArrow(null);
+      }
+
+      /*
+       * ============================================================
+       * СТРЕЛКА MAIA3
+       * ============================================================
+       *
+       * Оранжевая стрелка показывает ход, который скорее
+       * выбрал бы человек заданного Elo.
+       */
+      if (
+        data.maia3 &&
+        data.maia3.from &&
+        data.maia3.to
+      ) {
+        setMaiaArrow([
+          data.maia3.from,
+          data.maia3.to,
+          "rgba(220, 120, 20, 0.9)",
+        ]);
+      } else {
+        setMaiaArrow(null);
+      }
+
+      /*
+       * Сохраняем результат сравнения.
+       *
+       * Он используется в блоке под доской:
+       *
+       * Stockfish: ...
+       * Maia3: ...
+       */
+      setCompareData(data);
+
+      /*
+       * ============================================================
+       * ОБЪЯСНЕНИЕ ЛУЧШЕГО ХОДА STOCKFISH
+       * ============================================================
+       *
+       * ВАЖНО:
+       *
+       * этот код находится ВНУТРИ fetchBestMove().
+       *
+       * Поэтому /api/explain-move вызывается ТОЛЬКО тогда,
+       * когда пользователь нажимает кнопку "Лучший ход".
+       *
+       * При обычных ходах игрока GigaChess не вызывается.
+       * При ходе Maia3 GigaChess тоже не вызывается.
+       */
+
+      if (
+        data.stockfish &&
+        data.stockfish.from &&
+        data.stockfish.to
+      ) {
+        /*
+         * Определяем UCI лучшего хода.
+         *
+         * Например:
+         *
+         * e2e4
+         * g1f3
+         * e7e8q
+         */
+        let stockfishUci = null;
+
+        /*
+         * Если compare-moves уже вернул готовый UCI,
+         * используем его.
+         */
+        if (
+          typeof data.stockfish.uci === "string" &&
+          data.stockfish.uci.length >= 4
+        ) {
+          stockfishUci = data.stockfish.uci;
+        }
+
+        /*
+         * В некоторых версиях backend UCI может находиться
+         * в поле move.
+         */
+        if (
+          !stockfishUci &&
+          typeof data.stockfish.move === "string" &&
+          data.stockfish.move.length >= 4
+        ) {
+          stockfishUci = data.stockfish.move;
+        }
+
+        /*
+         * Если готового UCI нет — собираем его из from/to.
+         */
+        if (!stockfishUci) {
+          stockfishUci =
+            data.stockfish.from +
+            data.stockfish.to +
+            (data.stockfish.promotion || "");
+        }
+
+        /*
+         * Ошибка объяснения НЕ должна ломать основную подсказку.
+         *
+         * Поэтому здесь отдельный try/catch.
+         *
+         * Даже если GigaChess недоступен:
+         *
+         * - стрелка Stockfish останется;
+         * - стрелка Maia3 останется;
+         * - compareData останется.
+         */
+        try {
+          console.log(
+            "[ExplainMove] Запрашиваем объяснение:",
+            {
+              fen: positionFen,
+              move: stockfishUci,
+              elo,
+            },
+          );
+
+          const explanationData =
+            await fetchExplainMove(
+              positionFen,
+              stockfishUci,
+              elo,
+            );
+
+          console.log(
+            "[ExplainMove] Ответ:",
+            explanationData,
+          );
+
+          if (
+            explanationData?.ok &&
+            explanationData?.explanation
+          ) {
+            /*
+             * SAN лучше брать из нового explain-move,
+             * поскольку именно этот ход фактически объяснялся.
+             */
+            const explainedSan =
+              explanationData.explained_move?.san ||
+              data.stockfish.san ||
+              stockfishUci;
+
+            /*
+             * Формируем сообщение для ChatPanel.
+             *
+             * Твой ChatPanel уже умеет отображать Markdown:
+             *
+             * ### заголовки
+             * **жирный текст**
+             */
+            const message = [
+              "### Подсказка Stockfish",
+              "",
+              `**Лучший ход:** ${explainedSan}`,
+              "",
+              explanationData.explanation,
+            ].join("\n");
+
+            /*
+             * Передаём сообщение родительскому компоненту.
+             *
+             * Уникальный id нужен для того, чтобы пользователь
+             * мог нажать "Лучший ход" повторно даже в той же
+             * позиции — ChatPanel воспримет это как новое
+             * сообщение.
+             */
+            if (
+              typeof onStateChange === "function"
+            ) {
+              onStateChange((prev) => ({
+                ...prev,
+
+                hintMessage: {
+                  id:
+                    Date.now().toString() +
+                    "_" +
+                    Math.random()
+                      .toString(36)
+                      .slice(2),
+
+                  text: message,
+
+                  /*
+                   * Можно сохранить исходные данные.
+                   *
+                   * Сейчас ChatPanel они не использует,
+                   * но в будущем пригодятся для красивой
+                   * карточки анализа.
+                   */
+                  explanation:
+                    explanationData.explanation,
+
+                  san: explainedSan,
+
+                  uci:
+                    explanationData.explained_move
+                      ?.uci || stockfishUci,
+
+                  from:
+                    explanationData.explained_move
+                      ?.from ||
+                    data.stockfish.from,
+
+                  to:
+                    explanationData.explained_move
+                      ?.to ||
+                    data.stockfish.to,
+
+                  source:
+                    explanationData.explanation_source ||
+                    null,
+                },
+              }));
+            }
+          } else {
+            console.warn(
+              "[ExplainMove] Backend не вернул объяснение:",
+              explanationData?.error ||
+                explanationData,
+            );
+          }
+        } catch (explanationError) {
+          console.error(
+            "[ExplainMove] Не удалось получить объяснение:",
+            explanationError,
+          );
+        }
+      }
+    } catch (error) {
+      /*
+       * Ошибка самого сравнения Stockfish / Maia3.
+       */
+      console.error(
+        "[Compare] Ошибка сравнения Stockfish/Maia3:",
+        error,
+      );
+
+      setStockfishArrow(null);
+      setMaiaArrow(null);
+      setCompareData(null);
+    } finally {
+      setIsComparing(false);
+    }
+  },
+  [
+    game,
+    elo,
+    moveHistory,
+    isComparing,
+    onStateChange,
+  ],
+);
 
   /*
    * Ход Maia3.

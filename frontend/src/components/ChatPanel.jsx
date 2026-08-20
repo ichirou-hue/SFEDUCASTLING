@@ -32,7 +32,7 @@ function formatMarkdown(text) {
   return s;
 }
 
-export default function ChatPanel({ onAnalyze, onLoadOpening }) {
+export default function ChatPanel({ onAnalyze, onLoadOpening, hintMessage, }) {
   const [messages, setMessages] = useState([
     {
       role: "ai",
@@ -43,10 +43,49 @@ export default function ChatPanel({ onAnalyze, onLoadOpening }) {
   const [loading, setLoading] = useState(false);
   const [lastIndex, setLastIndex] = useState(0);
   const messagesEndRef = useRef(null);
+  const lastHintMessageIdRef = useRef(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  /*
+   * ============================================================
+   * ПОДСКАЗКА STOCKFISH
+   * ============================================================
+   *
+   * hintMessage приходит из ChessBoard через родительский компонент.
+   *
+   * Он появляется только после нажатия кнопки "Лучший ход".
+   */
+
+  useEffect(() => {
+  if (!hintMessage?.text) {
+    return;
+  }
+
+  /*
+   * Защита от повторного добавления одного и того же
+   * сообщения при повторном рендере компонента.
+   */
+  if (
+    lastHintMessageIdRef.current ===
+    hintMessage.id
+  ) {
+    return;
+  }
+
+  lastHintMessageIdRef.current =
+    hintMessage.id;
+
+  setMessages((prev) => [
+    ...prev,
+    {
+      role: "ai",
+      text: hintMessage.text,
+    },
+  ]);
+}, [hintMessage]);
 
   // Poll backend for new messages every 3s
   useEffect(() => {

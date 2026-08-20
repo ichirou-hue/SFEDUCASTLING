@@ -242,6 +242,88 @@ def _maia3_move(req: FenRequest, board: chess.Board) -> chess.Move | None:
     return None
 
 
+def _maia3_move_strict(
+    req: FenRequest,
+    board: chess.Board,
+) -> chess.Move | None:
+    """Получает ход Maia3 без fallback на Stockfish.
+
+    Нужен для hybrid-анализа, где важно отличать
+    настоящий ход Maia3 от fallback-хода Stockfish.
+    """
+    engine = get_maia3()
+
+    if engine is None:
+        print("[Maia3] Недоступна для strict analysis")
+        return None
+
+    try:
+        import chess.engine
+
+        history_board = board
+
+        if req.moves:
+            try:
+                replay = chess.Board()
+
+                for uci in req.moves:
+                    replay.push_uci(uci)
+
+                if replay.fen() == board.fen():
+                    history_board = replay
+                else:
+                    print(
+                        "[Maia3] History FEN mismatch, "
+                        "using board directly"
+                    )
+            except ValueError:
+                print("[Maia3] Некорректная история ходов")
+
+        with maia3_lock():
+            temperature = elo_to_temperature(req.elo)
+
+            engine.configure({
+                "Elo": req.elo,
+                "SelfElo": req.elo,
+                "OppoElo": req.elo,
+                "Temperature": temperature,
+            })
+
+            result = engine.play(
+                history_board,
+                limit=chess.engine.Limit(time=3),
+            )
+
+            move = result.move
+
+        if move is None:
+            return None
+
+        if move not in board.legal_moves:
+            print(
+                f"[Maia3] Strict move {move} "
+                "is not legal"
+            )
+            return None
+
+        return move
+
+    except Exception as e:
+        print(f"[Maia3] Strict analysis error: {e}")
+
+        try:
+            engine.configure({
+                "Elo": 1500,
+                "SelfElo": 1500,
+                "OppoElo": 1500,
+                "Temperature": 1.0,
+            })
+        except Exception:
+            pass
+
+        return None
+
+
 def _stockfish_move(board: chess.Board) -> chess.Move | None:
     """Ход Stockfish на максимальной силе."""
     stockfish = ensure_stockfish()
@@ -331,3 +413,4 @@ def compare_moves(req: CompareMovesRequest):
         "maia3": maia_result,
         "same_move": same_move,
     }
+

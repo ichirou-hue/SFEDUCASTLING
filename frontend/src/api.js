@@ -74,3 +74,17 @@ export async function fetchPlayerProfile(username, platform = "lichess") {
   });
   return data;
 }
+
+export async function fetchExplainMove(
+  fen,
+  move,
+  elo = 1500,
+) {
+  const { data } = await api.post("/api/explain-move", {
+    fen,
+    move,
+    elo,
+  });
+
+  return data;
+}

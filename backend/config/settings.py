@@ -1,10 +1,20 @@
 # backend/config/settings.py
 from pathlib import Path
+import os
+from dotenv import load_dotenv
+
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
+# Теперь загружаем .env из правильной папки
+load_dotenv(dotenv_path=BASE_DIR / ".env")
+
+print(
+    "[Config] ENV GIGACHESS_BASE_URL:",
+    repr(os.getenv("GIGACHESS_BASE_URL")),
+)
 
 class ServerSettings(BaseModel):
     host: str = Field("127.0.0.1", alias="SERVER_HOST")
@@ -46,6 +56,16 @@ class LichessSettings(BaseModel):      # новая группа
     timeout: int = Field(5, alias="LICHESS_TIMEOUT")
 
 
+class GigachessSettings(BaseModel):
+    base_url: str = ""
+    model: str = "gigachess"
+    connect_timeout: float = 15.0
+    read_timeout: float = 900.0
+    temperature: float = 0.2
+    top_p: float = 0.95
+    max_tokens: int = 700
+
+
 class Settings(BaseSettings):
     app_name: str = Field("SFEDUCASTLING API", alias="APP_NAME")
     debug: bool = Field(False, alias="DEBUG")
@@ -57,7 +77,9 @@ class Settings(BaseSettings):
     models: ModelsSettings = ModelsSettings()
     maia3: Maia3Settings = Maia3Settings()
     data: DataSettings = DataSettings()
-    lichess: LichessSettings = LichessSettings()   # добавлено
+    lichess: LichessSettings = LichessSettings()
+    gigachess: GigachessSettings = GigachessSettings()
+
 
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env",
@@ -67,5 +89,12 @@ class Settings(BaseSettings):
         env_nested_delimiter="__",
     )
 
+env_path = BASE_DIR / ".env"
+
 
 settings = Settings()
+
+print("[Config] BASE_DIR:", BASE_DIR)
+print("[Config] .env exists:", (BASE_DIR / ".env").exists())
+print("[Config] Gigachess URL:", repr(settings.gigachess.base_url))
+print("[Config] GIGACHESS_BASE_URL from env:", repr(os.getenv("GIGACHESS_BASE_URL")))
