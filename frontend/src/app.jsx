@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef } from "react";
 
 import TopBar from "./components/TopBar.jsx";
 import ChessboardComponent from "./components/Chessboard.jsx";
@@ -6,8 +6,6 @@ import MoveHistory from "./components/MoveHistory.jsx";
 import ChatPanel from "./components/ChatPanel.jsx";
 import EvalBar from "./components/EvalBar.jsx";
 import RegisterModal from "./components/RegisterModal.jsx";
-
-import { fetchGigaChatAnalysis } from "./api.js";
 
 export default function App() {
   const boardRef = useRef(null);
@@ -40,18 +38,6 @@ export default function App() {
      */
     hintMessage: null,
   });
-
-  /*
-   * Старый ручной анализ из поля чата.
-   *
-   * Он остаётся независимо от новой системы
-   * подсказок Stockfish.
-   */
-  const handleAnalyze = useCallback(async () => {
-    return await fetchGigaChatAnalysis(
-      boardState.fen,
-    );
-  }, [boardState.fen]);
 
   return (
     <>
@@ -109,12 +95,11 @@ export default function App() {
 
         {/* 3. Правая панель — чат */}
         <ChatPanel
-          onAnalyze={
-            handleAnalyze
-          }
           hintMessage={
             boardState.hintMessage
           }
+          currentFen={boardState.fen}
+          currentMoves={boardState.moveHistory}
         />
       </div>
 

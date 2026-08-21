@@ -1,5 +1,14 @@
 import { useState, useRef, useEffect } from "react";
-import { sendChatMessage, fetchChatMessages } from "../api.js";
+import { askLLM } from "../api.js";
+
+const GREETING_ONLY = /^(привет|здравствуй|хай|hello|hi|hey|пока|до свидания|спасибо|благодарю)$/i;
+const CHESS_MARKERS = /позиц|ход|фигур|ферз|конь|ладь|пешк|слон|рокир|мат|шах|взят|игр|доск|парти|elo|rating|уровн|помоги|объясни|что делать|чем ход|лучш|ход\b|uci|fen|дебют/i;
+
+function classifyLocal(text) {
+  if (GREETING_ONLY.test(text.trim())) return "greeting";
+  if (CHESS_MARKERS.test(text)) return "chess";
+  return "unknown";
+}
 
 function escapeHtml(str) {
   return str
@@ -32,7 +41,7 @@ function formatMarkdown(text) {
   return s;
 }
 
-export default function ChatPanel({ onAnalyze, onLoadOpening, hintMessage, }) {
+export default function ChatPanel({ onAnalyze, onLoadOpening, hintMessage, currentFen, currentMoves }) {
   const [messages, setMessages] = useState([
     {
       role: "ai",
@@ -41,7 +50,6 @@ export default function ChatPanel({ onAnalyze, onLoadOpening, hintMessage, }) {
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const lastIndexRef = useRef(0);
   const messagesEndRef = useRef(null);
   const lastHintMessageIdRef = useRef(null);
 
@@ -85,28 +93,7 @@ export default function ChatPanel({ onAnalyze, onLoadOpening, hintMessage, }) {
       text: hintMessage.text,
     },
   ]);
-}, [hintMessage]);
-
-  // Poll backend for new messages every 3s
-  useEffect(() => {
-    const poll = async () => {
-      try {
-        const data = await fetchChatMessages(lastIndexRef.current);
-        if (data.messages && data.messages.length > 0) {
-          const newMsgs = data.messages.map((m) => ({
-            role: m.role === "user" ? "user" : "ai",
-            text: m.text,
-          }));
-          setMessages((prev) => [...prev, ...newMsgs]);
-          lastIndexRef.current += data.messages.length;
-        }
-      } catch {
-        // silent — server may be off
-      }
-    };
-    const interval = setInterval(poll, 3000);
-    return () => clearInterval(interval);
-  }, []);
+  }, [hintMessage]);
 
   const addMessage = (role, text) => {
     setMessages((prev) => [...prev, { role, text }]);
@@ -118,27 +105,19 @@ export default function ChatPanel({ onAnalyze, onLoadOpening, hintMessage, }) {
     setInput("");
     addMessage("user", text);
 
-    // Sanitize: strip HTML tags before sending to backend
     const sanitized = text.replace(/<[^>]*>/g, "");
-
-    // Store user message on backend
-    try {
-      await sendChatMessage(sanitized, "user");
-    } catch {
-      // continue even if backend is off
-    }
+    const type = classifyLocal(sanitized);
 
     setLoading(true);
     try {
-      const data = await onAnalyze();
-      const reply = data.message || "Нет ответа от GigaChat.";
+      const data = await askLLM(
+        sanitized,
+        currentFen || "",
+        currentMoves || [],
+        type === "greeting",
+      );
+      const reply = data.reply || "Не понял вопрос. Спросите о шахматах!";
       addMessage("ai", reply);
-      // Store assistant reply on backend so other clients can see it
-      try {
-        await sendChatMessage(reply.replace(/<[^>]*>/g, ""), "assistant");
-      } catch {
-        // ok
-      }
     } catch {
       addMessage("ai", "Ошибка соединения с сервером.");
     }

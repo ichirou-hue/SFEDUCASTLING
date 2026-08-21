@@ -5,7 +5,7 @@
 """
 
 import chess
-from pydantic import BaseModel, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 def validate_fen(fen: str) -> str:
@@ -293,4 +293,12 @@ class ExplainMoveRequest(BaseModel):
     @classmethod
     def moves_must_be_valid(cls, v: list[str]) -> list[str]:
         return [move.strip() for move in v if move.strip()]
-    
+
+
+class ChatAskRequest(BaseModel):
+    """Запрос на чат с AI-ассистентом."""
+    message: str = Field(..., min_length=1, max_length=4000)
+    fen: str = ""
+    moves: list[str] = []
+    elo: int = 1500
+    is_greeting: bool = False

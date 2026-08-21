@@ -68,6 +68,16 @@ export async function fetchChatMessages(after = 0) {
   return data;
 }
 
+export async function askLLM(message, fen, moves = [], isGreeting = false) {
+  const { data } = await api.post("/api/chat/ask", {
+    message,
+    fen,
+    moves,
+    is_greeting: isGreeting,
+  });
+  return data;
+}
+
 export async function fetchPlayerProfile(username, platform = "lichess") {
   const { data } = await api.get("/api/chess-profile", {
     params: { username, platform },
