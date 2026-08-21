@@ -41,7 +41,7 @@ export default function ChatPanel({ onAnalyze, onLoadOpening, hintMessage, }) {
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [lastIndex, setLastIndex] = useState(0);
+  const lastIndexRef = useRef(0);
   const messagesEndRef = useRef(null);
   const lastHintMessageIdRef = useRef(null);
 
@@ -91,14 +91,14 @@ export default function ChatPanel({ onAnalyze, onLoadOpening, hintMessage, }) {
   useEffect(() => {
     const poll = async () => {
       try {
-        const data = await fetchChatMessages(lastIndex);
+        const data = await fetchChatMessages(lastIndexRef.current);
         if (data.messages && data.messages.length > 0) {
           const newMsgs = data.messages.map((m) => ({
             role: m.role === "user" ? "user" : "ai",
             text: m.text,
           }));
           setMessages((prev) => [...prev, ...newMsgs]);
-          setLastIndex((prev) => prev + data.messages.length);
+          lastIndexRef.current += data.messages.length;
         }
       } catch {
         // silent — server may be off
@@ -106,7 +106,7 @@ export default function ChatPanel({ onAnalyze, onLoadOpening, hintMessage, }) {
     };
     const interval = setInterval(poll, 3000);
     return () => clearInterval(interval);
-  }, [lastIndex]);
+  }, []);
 
   const addMessage = (role, text) => {
     setMessages((prev) => [...prev, { role, text }]);

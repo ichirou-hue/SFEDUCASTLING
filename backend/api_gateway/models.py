@@ -4,8 +4,8 @@
 попадали только корректные позиции на доске.
 """
 
-from pydantic import BaseModel, field_validator, model_validator
 import chess
+from pydantic import BaseModel, field_validator, model_validator
 
 
 def validate_fen(fen: str) -> str:
@@ -164,6 +164,33 @@ class CompareMovesRequest(BaseModel):
     def elo_must_be_in_range(cls, v: int) -> int:
         if v < 0 or v > 3000:
             raise ValueError(f"ELO должен быть от 0 до 3000, получено {v}")
+        return v
+
+
+class FinishGameRequest(BaseModel):
+    """Запрос: сохранить завершённую партию с классификацией ходов.
+
+    Attributes:
+        moves: Полный список ходов партии в нотации UCI.
+        user_id: Идентификатор пользователя (None для анонима).
+        elo: Уровень сложности AI (Elo).
+        engine: Движок AI ("maia3" или "stockfish").
+        result: Результат партии ("1-0", "0-1", "1/2-1/2", "*").
+        status: Статус окончания ("checkmate", "stalemate", "draw", ...).
+    """
+
+    moves: list[str] = []
+    user_id: str | None = None
+    elo: int | None = None
+    engine: str = "maia3"
+    result: str = "*"
+    status: str = "playing"
+
+    @field_validator("engine")
+    @classmethod
+    def engine_must_be_valid(cls, v: str) -> str:
+        if v not in ("maia3", "stockfish"):
+            raise ValueError(f"Движок должен быть 'maia3' или 'stockfish', получено {v}")
         return v
 
 

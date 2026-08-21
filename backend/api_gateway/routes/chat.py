@@ -1,27 +1,19 @@
 """Endpoint'ы чата: приём комментариев от LLM/пользователя и выдача их во фронтенд.
 
-Сообщения хранятся в памяти и опрашиваются фронтендом через /api/chat/messages.
+Сообщения хранятся в PostgreSQL (таблица chat_messages) и опрашиваются
+фронтендом через /api/chat/messages?after=<id>.
 """
 
-import re
-import time
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from backend.api_gateway.sanitize import sanitize_text
+from backend.db.session import get_db
+from backend.models.chat_message import ChatMessage
 
 router = APIRouter(tags=["chat"])
-
-_chat_messages: list[dict] = []
-
-_TAG_RE = re.compile(r"<[^>]*>")
-
-
-def _sanitize(text: str) -> str:
-    """Убирает HTML-теги и экранирует спецсимволы."""
-    text = _TAG_RE.sub("", text)
-    text = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-    return text[:4000]
-
-_chat_messages: list[dict] = []
 
 
 class IngestMessage(BaseModel):
@@ -31,21 +23,35 @@ class IngestMessage(BaseModel):
 
 
 @router.post("/api/chat/ingest")
-def ingest_comment(req: IngestMessage):
+async def ingest_comment(req: IngestMessage, db: AsyncSession = Depends(get_db)):
     """Принимает сообщение и сохраняет его для отправки в чат."""
-    _chat_messages.append(
-        {"role": req.role, "text": _sanitize(req.message), "ts": time.time()}
-    )
-    return {"ok": True, "count": len(_chat_messages)}
+    message = ChatMessage(role=req.role, text=sanitize_text(req.message))
+    db.add(message)
+    await db.commit()
+    total = await db.scalar(select(func.count(ChatMessage.id)))
+    return {"ok": True, "count": total}
 
 
 @router.get("/api/chat/messages")
-def get_chat_messages(after: int = 0):
-    """Отдаёт сообщения, начиная с индекса `after`."""
-    return {"messages": _chat_messages[after:]}
+async def get_chat_messages(after: int = 0, db: AsyncSession = Depends(get_db)):
+    """Отдаёт сообщения с id > `after` (для опроса фронтендом)."""
+    rows = (
+        await db.execute(
+            select(ChatMessage)
+            .where(ChatMessage.id > after)
+            .order_by(ChatMessage.id.asc())
+        )
+    ).scalars().all()
+    return {
+        "messages": [
+            {"id": m.id, "role": m.role, "text": m.text, "ts": m.ts}
+            for m in rows
+        ]
+    }
 
 
 @router.get("/api/chat/messages/count")
-def get_messages_count():
+async def get_messages_count(db: AsyncSession = Depends(get_db)):
     """Возвращает текущее количество сообщений (для опроса)."""
-    return {"count": len(_chat_messages)}
+    total = await db.scalar(select(func.count(ChatMessage.id)))
+    return {"count": total}

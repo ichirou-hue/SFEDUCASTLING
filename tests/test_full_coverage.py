@@ -211,23 +211,21 @@ class TestKnowledgeLoaded:
 class TestDataSaveSuccess:
     """Покрываем success-путь save_move_to_dataset и PGN error handler."""
 
-    def test_save_move_success(self, tmp_path):
-        """Stockfish загружен, сохраняем ход."""
+    def test_save_move_success(self):
+        """Stockfish загружен, сохраняем ход в БД."""
         mock_sf = MagicMock()
         mock_sf.get_best_move_time.return_value = "e2e4"
         mock_sf.get_evaluation.return_value = {"type": "cp", "value": 30}
 
         with patch("backend.api_gateway.routes.data.ensure_stockfish", return_value=mock_sf):
-            with patch("backend.api_gateway.routes.data.os.path.dirname",
-                       return_value=str(tmp_path)):
-                resp = client.post("/api/save-move-to-dataset", json={
-                    "fen": START_FEN, "move": "e2e4", "user_id": "test", "game_id": "g1"
-                })
+            resp = client.post("/api/save-move-to-dataset", json={
+                "fen": START_FEN, "move": "e2e4", "user_id": "test", "game_id": "g1"
+            })
 
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "saved"
-        assert (tmp_path / "dataset.jsonl").exists()
+        assert data["dataset_size"] >= 1
 
     def test_save_move_exception(self):
         """Stockfish загружен, set_fen_position падает."""

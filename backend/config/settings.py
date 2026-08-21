@@ -66,6 +66,26 @@ class GigachessSettings(BaseModel):
     max_tokens: int = 700
 
 
+class DatabaseSettings(BaseSettings):
+    """Настройки подключения к PostgreSQL (async SQLAlchemy + asyncpg).
+
+    URL обязателен и задаётся через переменную окружения DATABASE_URL
+    (или .env). Пример:
+        postgresql+asyncpg://user:password@127.0.0.1:5432/dbname
+    """
+    model_config = SettingsConfigDict(
+        env_file=BASE_DIR / ".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
+
+    url: str = Field(alias="DATABASE_URL")
+    echo: bool = Field(False, alias="DATABASE_ECHO")
+    pool_size: int = Field(5, alias="DATABASE_POOL_SIZE")
+    max_overflow: int = Field(10, alias="DATABASE_MAX_OVERFLOW")
+
+
 class Settings(BaseSettings):
     app_name: str = Field("SFEDUCASTLING API", alias="APP_NAME")
     debug: bool = Field(False, alias="DEBUG")
@@ -77,8 +97,10 @@ class Settings(BaseSettings):
     models: ModelsSettings = ModelsSettings()
     maia3: Maia3Settings = Maia3Settings()
     data: DataSettings = DataSettings()
+
     lichess: LichessSettings = LichessSettings()
     gigachess: GigachessSettings = GigachessSettings()
+    database: DatabaseSettings = DatabaseSettings()   # добавлено
 
 
     model_config = SettingsConfigDict(
@@ -90,7 +112,6 @@ class Settings(BaseSettings):
     )
 
 env_path = BASE_DIR / ".env"
-
 
 settings = Settings()
 
