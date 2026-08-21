@@ -27,7 +27,7 @@ class Game(Base):
 
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
 
-    moves: Mapped[list[GameMove]] = relationship(
+    moves: Mapped[list["GameMove"]] = relationship(
         back_populates="game", cascade="all, delete-orphan", order_by="GameMove.move_no"
     )
 
