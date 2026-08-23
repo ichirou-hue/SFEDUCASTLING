@@ -67,6 +67,24 @@ class DatabaseSettings(BaseSettings):
     max_overflow: int = Field(10, alias="DATABASE_MAX_OVERFLOW")
 
 
+class AuthSettings(BaseSettings):
+    """JWT и токены (задача 64).
+
+    jwt_secret обязательно сменить в проде через переменную JWT_SECRET_KEY.
+    """
+
+    model_config = SettingsConfigDict(
+        env_file=BASE_DIR / ".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
+
+    jwt_secret: str = Field("dev-key-change-me", alias="JWT_SECRET_KEY")
+    access_token_ttl_min: int = Field(60 * 24, alias="ACCESS_TOKEN_TTL_MIN")  # 24 ч
+    refresh_token_ttl_days: int = Field(30, alias="REFRESH_TOKEN_TTL_DAYS")
+
+
 class Settings(BaseSettings):
     app_name: str = Field("SFEDUCASTLING API", alias="APP_NAME")
     debug: bool = Field(False, alias="DEBUG")
@@ -80,6 +98,7 @@ class Settings(BaseSettings):
     data: DataSettings = DataSettings()
     lichess: LichessSettings = LichessSettings()   # добавлено
     database: DatabaseSettings = DatabaseSettings()   # добавлено
+    auth: AuthSettings = AuthSettings()               # задача 64 (регистрация)
 
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env",

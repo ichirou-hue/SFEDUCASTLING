@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { fetchPlayerProfile } from "../api.js";
+import { fetchPlayerProfile, login as apiLogin, register as apiRegister } from "../api.js";
 
 const PLATFORM_LABELS = {
   lichess: "Lichess",
@@ -14,11 +14,13 @@ const PERF_LABELS = {
   daily: "Днев.",
 };
 
-export default function AuthModal({ isOpen, onClose }) {
+export default function AuthModal({ isOpen, onClose, onSuccess }) {
   const [mode, setMode] = useState("register"); // "register" | "login"
   const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [authError, setAuthError] = useState("");
 
   // Подтягивание профиля с Lichess / Chess.com
   const [platform, setPlatform] = useState("lichess");
@@ -30,6 +32,43 @@ export default function AuthModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const isRegister = mode === "register";
+
+  // Регистрация / вход через бэкенд (задача 64)
+  const handleSubmit = async () => {
+    if (submitting) return;
+    const nick = login.trim();
+    if (!nick || !password) {
+      setAuthError("Введите логин и пароль");
+      return;
+    }
+    setSubmitting(true);
+    setAuthError("");
+    try {
+      const user = isRegister
+        ? await apiRegister(nick, password)
+        : await apiLogin(nick, password);
+      onSuccess?.(user);
+      onClose();
+    } catch (e) {
+      const d = e?.response?.data?.detail;
+      const msg = Array.isArray(d)
+        ? d
+            .map((x) => String(x?.msg || "").replace(/^Value error,\s*/i, ""))
+            .filter(Boolean)
+            .join("; ")
+        : typeof d === "string"
+          ? d
+          : "";
+      setAuthError(msg || "Не удалось выполнить запрос. Попробуйте позже.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleSwitchMode = () => {
+    setMode(isRegister ? "login" : "register");
+    setAuthError("");
+  };
 
   const handleFetchProfile = async () => {
     const nick = username.trim();
@@ -180,6 +219,7 @@ export default function AuthModal({ isOpen, onClose }) {
                   placeholder="Введите логин"
                   value={login}
                   onChange={(e) => setLogin(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
                 />
               </div>
             </label>
@@ -191,9 +231,10 @@ export default function AuthModal({ isOpen, onClose }) {
                 <input
                   type={showPassword ? "text" : "password"}
                   className="auth-input"
-                  placeholder="Введите пароль"
+                  placeholder={isRegister ? "Минимум 8 символов" : "Введите пароль"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
                 />
                 <button
                   className="auth-eye"
@@ -205,10 +246,20 @@ export default function AuthModal({ isOpen, onClose }) {
                 </button>
               </div>
             </label>
+
+            {authError && <p className="auth-error">{authError}</p>}
           </div>
 
-          <button className="auth-submit">
-            {isRegister ? "Зарегистрироваться" : "Войти"}
+          <button
+            className="auth-submit"
+            onClick={handleSubmit}
+            disabled={submitting}
+          >
+            {submitting
+              ? "Отправляем…"
+              : isRegister
+                ? "Зарегистрироваться"
+                : "Войти"}
           </button>
 
           <p className="auth-footer">
@@ -219,7 +270,7 @@ export default function AuthModal({ isOpen, onClose }) {
                   href="#"
                   onClick={(e) => {
                     e.preventDefault();
-                    setMode("login");
+                    handleSwitchMode();
                   }}
                 >
                   Войти
@@ -232,7 +283,7 @@ export default function AuthModal({ isOpen, onClose }) {
                   href="#"
                   onClick={(e) => {
                     e.preventDefault();
-                    setMode("register");
+                    handleSwitchMode();
                   }}
                 >
                   Зарегистрироваться

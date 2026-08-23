@@ -37,9 +37,14 @@ src = [
 ]
 exclude = [".git", ".venv", "venv", "__pycache__", "build", "dist", "frontend", "docs"]
 select = ["E", "W", "F", "I", "N", "UP", "B", "C4", "T20", "SIM", "RET", "ARG"]
-ignore = ["E501", "B008", "B904"]
+  ignore = ["E501", "B008", "B904"]
+
 fixable = ["ALL"]
 line-length = 120
+
+[tool.ruff.per-file-ignores]
+# CLI-скрипты легитимно печатают в консоль
+"scripts/**" = ["T20"]
 
 [tool.ruff.isort]
 known-first-party = [

@@ -80,6 +80,25 @@ body {
   background: #b89a5e;
 }
 
+/* Авторизованный пользователь в топбаре (задача 64) */
+.user-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.user-name {
+  font-family: "Calypso", serif;
+  font-size: 16px;
+  color: #333;
+}
+.reg-btn--ghost {
+  background: transparent;
+  border: 1px solid #c9a96e;
+}
+.reg-btn--ghost:hover {
+  background: rgba(201, 169, 110, 0.2);
+}
+
 .board-section {
   flex: 1 1 auto; /* Р”РѕСЃРєР° Р·Р°РЅРёРјР°РµС‚ РІСЋ СЃРІРѕР±РѕРґРЅСѓСЋ СЃРµСЂРµРґРёРЅСѓ */
   min-width: 320px;
