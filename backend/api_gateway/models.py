@@ -5,7 +5,7 @@
 """
 
 import chess
-from pydantic import BaseModel, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 def validate_fen(fen: str) -> str:
@@ -180,7 +180,7 @@ class FinishGameRequest(BaseModel):
     """
 
     moves: list[str] = []
-    user_id: str | None = None
+    user_id: int | None = None
     elo: int | None = None
     engine: str = "maia3"
     result: str = "*"
@@ -223,12 +223,12 @@ class DatasetMoveRequest(BaseModel):
     Attributes:
         fen: Позиция до хода в нотации FEN.
         move: Ход пользователя в нотации UCI или SAN.
-        user_id: Идентификатор пользователя. По умолчанию 'anonymous'.
+        user_id: id залогиненного пользователя (NULL для анонима).
         game_id: Идентификатор игровой сессии. По умолчанию ''.
     """
     fen: str
     move: str
-    user_id: str = "anonymous"
+    user_id: int | None = None
     game_id: str = ""
 
     @field_validator("fen")
@@ -258,3 +258,47 @@ class PGNTextRequest(BaseModel):
         if not v.strip():
             raise ValueError("PGN-текст не может быть пустым")
         return v.strip()
+
+
+class ExplainMoveRequest(BaseModel):
+    """Запрос на объяснение хода игрока."""
+
+    fen: str
+    move: str
+    elo: int = 1500
+    moves: list[str] = []
+
+    @field_validator("fen")
+    @classmethod
+    def fen_must_be_valid(cls, v: str) -> str:
+        return validate_fen(v)
+
+    @field_validator("move")
+    @classmethod
+    def move_must_not_be_empty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("Ход не может быть пустым")
+        return v.strip()
+
+    @field_validator("elo")
+    @classmethod
+    def elo_must_be_in_range(cls, v: int) -> int:
+        if v < 0 or v > 3000:
+            raise ValueError(
+                f"ELO должен быть от 0 до 3000, получено {v}"
+            )
+        return v
+
+    @field_validator("moves")
+    @classmethod
+    def moves_must_be_valid(cls, v: list[str]) -> list[str]:
+        return [move.strip() for move in v if move.strip()]
+
+
+class ChatAskRequest(BaseModel):
+    """Запрос на чат с AI-ассистентом."""
+    message: str = Field(..., min_length=1, max_length=4000)
+    fen: str = ""
+    moves: list[str] = []
+    elo: int = 1500
+    is_greeting: bool = False

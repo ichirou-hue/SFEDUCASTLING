@@ -2,7 +2,7 @@
 
 from datetime import UTC, datetime
 
-from sqlalchemy import BigInteger, String, Text, func
+from sqlalchemy import BigInteger, ForeignKey, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.db.base import Base
@@ -19,5 +19,10 @@ class ChatMessage(Base):
     role: Mapped[str] = mapped_column(String(16), default="assistant")
     text: Mapped[str] = mapped_column(Text)
     ts: Mapped[float] = mapped_column(default=_now_ts, index=True)
+    user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)

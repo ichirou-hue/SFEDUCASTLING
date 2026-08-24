@@ -219,7 +219,7 @@ class TestDataSaveSuccess:
 
         with patch("backend.api_gateway.routes.data.ensure_stockfish", return_value=mock_sf):
             resp = client.post("/api/save-move-to-dataset", json={
-                "fen": START_FEN, "move": "e2e4", "user_id": "test", "game_id": "g1"
+                "fen": START_FEN, "move": "e2e4", "user_id": 1, "game_id": "g1"
             })
 
         assert resp.status_code == 200
@@ -306,12 +306,21 @@ class TestStateSuccess:
 
     def test_load_stockfish_success(self):
         """Stockfish бинарник найден, загружаем."""
+        fake_engine = MagicMock()
+        # Новый state.py после запуска проверяет живость процесса:
+        # engine._stockfish.poll() должен вернуть None.
+        fake_engine._stockfish.poll.return_value = None
+
+        fake_module = MagicMock()
+        fake_module.Stockfish.return_value = fake_engine
+
         with patch("os.path.exists", return_value=True):
-            with patch.dict("sys.modules",
-                            {"stockfish": MagicMock(), "stockfish.Stockfish": MagicMock()}):
+            with patch.dict("sys.modules", {"stockfish": fake_module}):
                 result = st.load_stockfish()
+
         assert result is True
-        assert st.manager._stockfish is not None
+        assert st.manager._stockfish is fake_engine
+
         st.manager._stockfish = None
         st.manager._stockfish_loaded = False
 

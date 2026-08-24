@@ -152,6 +152,18 @@ export async function saveMoveToDataset(fen, move, userId, gameId) {
   return data;
 }
 
+export async function finishGame({ moves, userId, elo, engine, result, status }) {
+  const { data } = await api.post("/api/game/finish", {
+    moves,
+    user_id: userId ?? null,
+    elo: elo ?? null,
+    engine: engine || "maia3",
+    result: result || "*",
+    status: status || "playing",
+  });
+  return data;
+}
+
 export async function fetchRandomOpening() {
   const { data } = await api.get("/api/knowledge/random-opening");
   return data;
@@ -167,9 +179,33 @@ export async function fetchChatMessages(after = 0) {
   return data;
 }
 
+export async function askLLM(message, fen, moves = [], isGreeting = false) {
+  const { data } = await api.post("/api/chat/ask", {
+    message,
+    fen,
+    moves,
+    is_greeting: isGreeting,
+  });
+  return data;
+}
+
 export async function fetchPlayerProfile(username, platform = "lichess") {
   const { data } = await api.get("/api/chess-profile", {
     params: { username, platform },
   });
+  return data;
+}
+
+export async function fetchExplainMove(
+  fen,
+  move,
+  elo = 1500,
+) {
+  const { data } = await api.post("/api/explain-move", {
+    fen,
+    move,
+    elo,
+  });
+
   return data;
 }

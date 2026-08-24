@@ -20,3 +20,6 @@ dataset_readable.json
 *.jsonl
 *.parquet
 *.csv
+
+# дамп БД с bcrypt-хэшами паролей — в git нельзя
+sfc.dump

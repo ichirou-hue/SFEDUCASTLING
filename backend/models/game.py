@@ -14,11 +14,14 @@ class Game(Base):
     __tablename__ = "games"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
-    user_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     white: Mapped[str] = mapped_column(String(64), default="player")
     black: Mapped[str] = mapped_column(String(64), default="AI")
     result: Mapped[str] = mapped_column(String(8), default="*")
-    date: Mapped[str | None] = mapped_column(String(32), nullable=True)
     opening: Mapped[str | None] = mapped_column(String(128), nullable=True)
     status: Mapped[str] = mapped_column(String(16), default="playing")
     elo: Mapped[int | None] = mapped_column(Integer, nullable=True)

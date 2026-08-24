@@ -31,3 +31,22 @@ async def get_current_user(
     if not user:
         raise HTTPException(status_code=401, detail="Пользователь не найден")
     return user
+
+
+async def get_optional_current_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+    db: AsyncSession = Depends(get_db),
+) -> User | None:
+    """Пользователь по токену, но без ошибки 401: аноним -> None.
+
+    Для эндпоинтов, которые работают и для гостей
+    (чат, сохранение ходов), но хотят привязать данные к аккаунту,
+    если он есть.
+    """
+    if credentials is None or credentials.scheme.lower() != "bearer":
+        return None
+    try:
+        payload = decode_access_token(credentials.credentials)
+    except pyjwt.PyJWTError:
+        return None
+    return await db.get(User, int(payload["sub"]))

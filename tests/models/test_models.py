@@ -180,11 +180,11 @@ class TestDatasetMoveRequest:
 
     def test_default_user_id(self):
         m = DatasetMoveRequest(fen=START_FEN, move="e2e4")
-        assert m.user_id == "anonymous"
+        assert m.user_id is None
 
     def test_custom_ids(self):
-        m = DatasetMoveRequest(fen=START_FEN, move="e2e4", user_id="alice", game_id="g123")
-        assert m.user_id == "alice"
+        m = DatasetMoveRequest(fen=START_FEN, move="e2e4", user_id=7, game_id="g123")
+        assert m.user_id == 7
         assert m.game_id == "g123"
 
 

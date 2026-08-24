@@ -98,7 +98,7 @@ def _classify_game(moves: list[str]) -> list[dict]:
 
 async def record_game(
     moves: list[str],
-    user_id: str | None,
+    user_id: int | None,
     elo: int | None,
     engine: str,
     result: str,

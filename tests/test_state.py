@@ -24,17 +24,30 @@ class TestModelManagerStockfish:
         assert result is None
 
     def test_get_stockfish_twice(self):
-        state.manager._stockfish = MagicMock()
-        result = state.manager.get_stockfish()
-        assert result is not None
+        mock = MagicMock()
+        # Новый state.py проверяет живость процесса через
+        # engine._stockfish.poll(): None = процесс жив.
+        mock._stockfish.poll.return_value = None
+        state.manager._stockfish = mock
+
+        first = state.manager.get_stockfish()
+        second = state.manager.get_stockfish()
+
+        assert first is mock
+        assert second is mock
 
     def test_get_stockfish_load_called_once(self):
         def side_effect():
-            state.manager._stockfish = MagicMock()
+            engine = MagicMock()
+            # Процесс «жив», чтобы не сработал авто-рестарт.
+            engine._stockfish.poll.return_value = None
+            state.manager._stockfish = engine
+
         with patch.object(state.manager, "_load_stockfish",
                           side_effect=side_effect) as mock_load:
             state.manager.get_stockfish()
             state.manager.get_stockfish()
+
         mock_load.assert_called_once()
 
     def test_ensure_stockfish_not_loaded(self):
@@ -44,8 +57,12 @@ class TestModelManagerStockfish:
 
     def test_ensure_stockfish_already_loaded(self):
         mock = MagicMock()
+        # Процесс «жив» — ensure должен вернуть тот же экземпляр.
+        mock._stockfish.poll.return_value = None
         state.manager._stockfish = mock
+
         result = state.ensure_stockfish()
+
         assert result is mock
 
 
@@ -56,8 +73,12 @@ class TestBackwardCompatLoadStockfish:
         assert result is False
 
     def test_load_twice(self):
-        state.manager._stockfish = MagicMock()
+        mock = MagicMock()
+        mock._stockfish.poll.return_value = None
+        state.manager._stockfish = mock
+
         result = state.load_stockfish()
+
         assert result is True
 
 

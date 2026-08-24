@@ -1,11 +1,11 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import TopBar from "./components/TopBar.jsx";
 import ChessboardComponent from "./components/Chessboard.jsx";
 import MoveHistory from "./components/MoveHistory.jsx";
 import ChatPanel from "./components/ChatPanel.jsx";
 import EvalBar from "./components/EvalBar.jsx";
 import RegisterModal from "./components/RegisterModal.jsx";
-import { fetchGigaChatAnalysis, getStoredUser } from "./api.js";
+import { getStoredUser } from "./api.js";
 
 export default function App() {
   const boardRef = useRef(null);
@@ -17,6 +17,7 @@ export default function App() {
     const stored = getStoredUser();
     if (stored) setUser(stored);
   }, []);
+
   const [boardState, setBoardState] = useState({
     fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
     moveHistory: [],
@@ -26,11 +27,14 @@ export default function App() {
     isViewMode: false,
     evalScore: null,
     maiaRating: 1500,
+    /*
+     * Сообщение с объяснением подсказки Stockfish.
+     *
+     * ChessboardComponent записывает его сюда
+     * через onStateChange.
+     */
+    hintMessage: null,
   });
-
-  const handleAnalyze = useCallback(async () => {
-    return await fetchGigaChatAnalysis(boardState.fen);
-  }, [boardState.fen]);
 
   return (
     <>
@@ -59,8 +63,12 @@ export default function App() {
         {/* 2. Центральная панель */}
         <ChessboardComponent ref={boardRef} onStateChange={setBoardState} />
 
-        {/* 3. Правая панель (ЧАТ) */}
-        <ChatPanel onAnalyze={handleAnalyze} />
+        {/* 3. Правая панель — чат */}
+        <ChatPanel
+          hintMessage={boardState.hintMessage}
+          currentFen={boardState.fen}
+          currentMoves={boardState.moveHistory}
+        />
       </div>
       <RegisterModal
         isOpen={showRegister}

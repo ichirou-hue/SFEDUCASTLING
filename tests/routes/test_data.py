@@ -23,7 +23,7 @@ class TestSaveMoveToDataset:
     def test_without_stockfish(self):
         with patch("backend.api_gateway.routes.data.ensure_stockfish", return_value=None):
             resp = client.post("/api/save-move-to-dataset", json={
-                "fen": START_FEN, "move": "e2e4", "user_id": "test", "game_id": "g1"
+                "fen": START_FEN, "move": "e2e4", "user_id": 1, "game_id": "g1"
             })
         assert resp.status_code == 200
         data = resp.json()
