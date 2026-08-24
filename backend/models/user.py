@@ -24,7 +24,7 @@ class User(Base):
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
 
-    refresh_tokens: Mapped[list[RefreshToken]] = relationship(
+    refresh_tokens: Mapped[list["RefreshToken"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
 
