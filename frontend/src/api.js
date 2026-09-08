@@ -209,3 +209,16 @@ export async function fetchExplainMove(
 
   return data;
 }
+
+export async function fetchPuzzles(count = 20) {
+  const { data } = await api.get("/api/learning/puzzles", { params: { count } });
+  return data;
+}
+
+export async function checkPuzzle(puzzleId, move) {
+  const { data } = await api.post("/api/learning/level-test/check", {
+    puzzle_id: puzzleId,
+    move,
+  });
+  return data;
+}

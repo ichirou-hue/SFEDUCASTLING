@@ -10,6 +10,8 @@
   то засчитываем частично (это лояльно к сильным, но не точным ответам).
 """
 
+import random
+
 import chess
 import chess.engine
 from fastapi import APIRouter
@@ -239,3 +241,68 @@ def level_test_result(answers: list[dict]):
 def puzzle_check(req: PuzzleAnswerRequest):
     """Проверка решения отдельного паззла (для миттельшпиля, Задача 2.4)."""
     return level_test_check(req)
+
+
+@router.get("/api/learning/puzzles")
+def get_puzzles(count: int = 20):
+    """Возвращает набор задач с полными решениями для тренировочной страницы.
+
+    Отличие от level-test/start: включает поле moves (ходы решения).
+    Задачи, где после решения игрок оказывается матован, исключаются.
+    """
+    if not state.puzzle_base:
+        return {"error": "База паззлов не загружена", "puzzles": []}
+
+    all_puzzles = state.puzzle_base.get("puzzles", [])
+
+    valid_puzzles = [p for p in all_puzzles if _is_puzzle_valid(p)]
+
+    picked: list[dict] = []
+    for bucket in LEVEL_BUCKETS:
+        lo, hi = bucket["min_puzzle_rating"], bucket["max_puzzle_rating"]
+        pool = [p for p in valid_puzzles if lo <= p.get("rating", 0) < hi]
+        random.shuffle(pool)
+        need = count // len(LEVEL_BUCKETS)
+        picked.extend(pool[:need])
+
+    result = []
+    for p in picked:
+        result.append({
+            "id": p.get("id", ""),
+            "fen": p.get("fen", ""),
+            "moves": p.get("moves", ""),
+            "themes": p.get("themes", []),
+            "rating": p.get("rating", 0),
+        })
+
+    return {"puzzles": result, "total": len(result)}
+
+
+def _is_puzzle_valid(puzzle: dict) -> bool:
+    """Проверяет, что задача валидна для тренировки.
+
+    Исключает задачи, где после решения:
+    - игрок матован;
+    - игрок остаётся под шахом (позиция не стабилизировалась).
+    """
+    try:
+        board = chess.Board(puzzle["fen"])
+        moves_str = puzzle.get("moves", "").strip()
+        if not moves_str:
+            return False
+        for uci in moves_str.split():
+            board.push(chess.Move.from_uci(uci))
+
+        initial_turn = puzzle["fen"].split()[1]
+        player_color = chess.WHITE if initial_turn == "w" else chess.BLACK
+
+        if board.is_checkmate():
+            mated = board.turn == player_color
+            return not mated
+
+        if board.is_check() and board.turn == player_color:
+            return False
+
+        return True
+    except Exception:
+        return False

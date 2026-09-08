@@ -1,23 +1,17 @@
 import { useState, useRef, useEffect } from "react";
+import { Routes, Route } from "react-router-dom";
 import TopBar from "./components/TopBar.jsx";
+import Sidebar from "./components/Sidebar.jsx";
 import ChessboardComponent from "./components/Chessboard.jsx";
 import MoveHistory from "./components/MoveHistory.jsx";
 import ChatPanel from "./components/ChatPanel.jsx";
 import EvalBar from "./components/EvalBar.jsx";
 import RegisterModal from "./components/RegisterModal.jsx";
+import PuzzlesPage from "./components/PuzzlesPage.jsx";
 import { getStoredUser } from "./api.js";
 
-export default function App() {
+function MainPage() {
   const boardRef = useRef(null);
-  const [showRegister, setShowRegister] = useState(false);
-  const [user, setUser] = useState(null);
-
-  // Восстанавливаем сессию из localStorage при загрузке
-  useEffect(() => {
-    const stored = getStoredUser();
-    if (stored) setUser(stored);
-  }, []);
-
   const [boardState, setBoardState] = useState({
     fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
     moveHistory: [],
@@ -27,49 +21,56 @@ export default function App() {
     isViewMode: false,
     evalScore: null,
     maiaRating: 1500,
-    /*
-     * Сообщение с объяснением подсказки Stockfish.
-     *
-     * ChessboardComponent записывает его сюда
-     * через onStateChange.
-     */
     hintMessage: null,
   });
+
+  return (
+    <div className="main-area">
+      <MoveHistory
+        moveHistory={boardState.moveHistory}
+        positionSnapshots={boardState.positionSnapshots}
+        viewIndex={boardState.viewIndex}
+        isViewMode={boardState.isViewMode}
+        maiaRating={boardState.maiaRating}
+        onNavigate={(dir) => boardRef.current?.onNavigate(dir)}
+      />
+      <EvalBar
+        diff={boardState.materialDiff}
+        flipped={boardState.boardFlipped}
+        height={boardState.boardHeight}
+      />
+      <ChessboardComponent ref={boardRef} onStateChange={setBoardState} />
+      <ChatPanel
+        hintMessage={boardState.hintMessage}
+        currentFen={boardState.fen}
+        currentMoves={boardState.moveHistory}
+      />
+    </div>
+  );
+}
+
+export default function App() {
+  const [showRegister, setShowRegister] = useState(false);
+  const [user, setUser] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    const stored = getStoredUser();
+    if (stored) setUser(stored);
+  }, []);
 
   return (
     <>
       <TopBar
         user={user}
         onRegister={() => setShowRegister(true)}
+        onMenuClick={() => setSidebarOpen(true)}
       />
-      <div className="main-area">
-        {/* 1. Левая панель */}
-        <MoveHistory
-          moveHistory={boardState.moveHistory}
-          positionSnapshots={boardState.positionSnapshots}
-          viewIndex={boardState.viewIndex}
-          isViewMode={boardState.isViewMode}
-          maiaRating={boardState.maiaRating}
-          onNavigate={(dir) => boardRef.current?.onNavigate(dir)}
-        />
-
-        {/* 1.5 Eval Bar */}
-        <EvalBar
-          diff={boardState.materialDiff}
-          flipped={boardState.boardFlipped}
-          height={boardState.boardHeight}
-        />
-
-        {/* 2. Центральная панель */}
-        <ChessboardComponent ref={boardRef} onStateChange={setBoardState} />
-
-        {/* 3. Правая панель — чат */}
-        <ChatPanel
-          hintMessage={boardState.hintMessage}
-          currentFen={boardState.fen}
-          currentMoves={boardState.moveHistory}
-        />
-      </div>
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <Routes>
+        <Route path="/" element={<MainPage />} />
+        <Route path="/puzzles" element={<PuzzlesPage />} />
+      </Routes>
       <RegisterModal
         isOpen={showRegister}
         onClose={() => setShowRegister(false)}
