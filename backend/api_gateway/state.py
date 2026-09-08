@@ -654,6 +654,72 @@ def load_knowledge():
 
 
 # =============================================================
+# PUZZLE BASE
+# =============================================================
+
+puzzle_base = None
+
+PUZZLES_PATH = os.path.abspath(
+    os.path.join(
+        os.path.dirname(__file__),
+        "..",
+        "knowledge",
+        "puzzles.json",
+    )
+)
+
+
+def load_puzzles():
+    """Загружает базу тактических задач (паззлов) из JSON."""
+
+    global puzzle_base
+
+    try:
+
+        if not os.path.exists(PUZZLES_PATH):
+
+            print(
+                "[Puzzles] "
+                f"База паззлов не найдена: "
+                f"{PUZZLES_PATH}"
+            )
+
+            return False
+
+        with open(
+            PUZZLES_PATH,
+            "r",
+            encoding="utf-8",
+        ) as f:
+
+            puzzle_base = json.load(f)
+
+        count = len(
+            puzzle_base.get(
+                "puzzles",
+                [],
+            )
+        )
+
+        print(
+            "[Puzzles] "
+            f"База паззлов загружена: "
+            f"{count} задач"
+        )
+
+        return True
+
+    except Exception as e:
+
+        print(
+            "[Puzzles] "
+            f"Ошибка загрузки базы паззлов: {e}"
+        )
+
+        return False
+
+
+# =============================================================
 # LLAVA
 # =============================================================
 

@@ -166,39 +166,39 @@ class TestKnowledgeLoaded:
     """Покрываем knowledge.py с загруженной базой."""
 
     def test_list_openings(self):
-        with patch("backend.api_gateway.routes.knowledge.knowledge_base", TEST_OPENINGS):
+        with patch("backend.api_gateway.state.knowledge_base", TEST_OPENINGS):
             resp = client.get("/api/knowledge/openings")
         assert resp.status_code == 200
         assert len(resp.json()["openings"]) == 2
 
     def test_opening_found_by_fen(self):
-        with patch("backend.api_gateway.routes.knowledge.knowledge_base", TEST_OPENINGS):
+        with patch("backend.api_gateway.state.knowledge_base", TEST_OPENINGS):
             resp = client.get("/api/knowledge/opening",
                 params={"fen": "r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 3"})
         assert resp.status_code == 200
         assert resp.json()["opening"]["name"] == "Italian Game"
 
     def test_opening_not_found(self):
-        with patch("backend.api_gateway.routes.knowledge.knowledge_base", TEST_OPENINGS):
+        with patch("backend.api_gateway.state.knowledge_base", TEST_OPENINGS):
             resp = client.get("/api/knowledge/opening", params={"fen": START_FEN})
         assert resp.status_code == 200
         assert resp.json()["opening"] is None
 
     def test_random_opening(self):
-        with patch("backend.api_gateway.routes.knowledge.knowledge_base", TEST_OPENINGS):
+        with patch("backend.api_gateway.state.knowledge_base", TEST_OPENINGS):
             resp = client.get("/api/knowledge/random-opening")
         assert resp.status_code == 200
         assert "name" in resp.json()["opening"]
 
     def test_check_move_found(self):
-        with patch("backend.api_gateway.routes.knowledge.knowledge_base", TEST_OPENINGS):
+        with patch("backend.api_gateway.state.knowledge_base", TEST_OPENINGS):
             resp = client.post("/api/knowledge/check-move", json={
                 "fen": "r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 3"})
         assert resp.status_code == 200
         assert resp.json()["in_theory"] is True
 
     def test_check_move_not_found(self):
-        with patch("backend.api_gateway.routes.knowledge.knowledge_base", TEST_OPENINGS):
+        with patch("backend.api_gateway.state.knowledge_base", TEST_OPENINGS):
             resp = client.post("/api/knowledge/check-move", json={"fen": START_FEN})
         assert resp.status_code == 200
         assert resp.json()["in_theory"] is False

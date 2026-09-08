@@ -302,3 +302,30 @@ class ChatAskRequest(BaseModel):
     moves: list[str] = []
     elo: int = 1500
     is_greeting: bool = False
+
+
+class PuzzleAnswerRequest(BaseModel):
+    """Запрос: ответ (ход пользователя) на тактическую задачу.
+
+    Attributes:
+        puzzle_id: Идентификатор задачи из базы паззлов.
+        move: Ход пользователя в нотации UCI.
+    """
+
+    puzzle_id: str
+    move: str
+
+    @field_validator("puzzle_id")
+    @classmethod
+    def puzzle_id_must_not_be_empty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("puzzle_id не может быть пустым")
+        return v.strip()
+
+    @field_validator("move")
+    @classmethod
+    def move_must_be_uci(cls, v: str) -> str:
+        v = v.strip()
+        if len(v) not in (4, 5):
+            raise ValueError("Ход должен быть в формате UCI (например 'g1f3')")
+        return v

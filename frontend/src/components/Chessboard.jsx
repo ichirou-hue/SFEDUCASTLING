@@ -823,6 +823,12 @@ const fetchBestMove = useCallback(
                   text: message,
 
                   /*
+                   * Позицию, в которой был запрошен лучший ход,
+                   * ChatPanel рисует мини-доской прямо в сообщении.
+                   */
+                  fen: positionFen,
+
+                  /*
                    * Можно сохранить исходные данные.
                    *
                    * Сейчас ChatPanel они не использует,
@@ -847,6 +853,31 @@ const fetchBestMove = useCallback(
                     explanationData.explained_move
                       ?.to ||
                     data.stockfish.to,
+
+                  /*
+                   * Обе стрелки (Stockfish + Maia3), чтобы мини-доска
+                   * в чате показывала их так же, как главная доска,
+                   * когда ходы движков различаются.
+                   */
+                  stockfishArrow:
+                    data.stockfish &&
+                    data.stockfish.from &&
+                    data.stockfish.to
+                      ? {
+                          from: data.stockfish.from,
+                          to: data.stockfish.to,
+                        }
+                      : null,
+
+                  maiaArrow:
+                    data.maia3 &&
+                    data.maia3.from &&
+                    data.maia3.to
+                      ? {
+                          from: data.maia3.from,
+                          to: data.maia3.to,
+                        }
+                      : null,
 
                   source:
                     explanationData.explanation_source ||

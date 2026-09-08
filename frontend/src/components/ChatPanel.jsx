@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { askLLM } from "../api.js";
+import MiniBoard from "./MiniBoard.jsx";
 
 const GREETING_ONLY = /^(привет|здравствуй|хай|hello|hi|hey|пока|до свидания|спасибо|благодарю)$/i;
 const CHESS_MARKERS = /позиц|ход|фигур|ферз|конь|ладь|пешк|слон|рокир|мат|шах|взят|игр|доск|парти|elo|rating|уровн|помоги|объясни|что делать|чем ход|лучш|ход\b|uci|fen|дебют/i;
@@ -8,6 +9,34 @@ function classifyLocal(text) {
   if (GREETING_ONLY.test(text.trim())) return "greeting";
   if (CHESS_MARKERS.test(text)) return "chess";
   return "unknown";
+}
+
+const STOCKFISH_GREEN = "rgba(0, 150, 50, 0.85)";
+const MAIA_ORANGE = "rgba(220, 120, 20, 0.9)";
+
+/*
+ * Стрелки для мини-доски подсказки Stockfish:
+ * зелёная — объективно лучший ход, оранжевая — ход Maia3,
+ * если движки разошлись.
+ */
+function buildHintArrows(hintMessage) {
+  const arrows = [];
+
+  if (hintMessage?.stockfishArrow?.from && hintMessage?.stockfishArrow?.to) {
+    arrows.push({ ...hintMessage.stockfishArrow, color: STOCKFISH_GREEN });
+  }
+
+  if (
+    hintMessage?.maiaArrow?.from &&
+    hintMessage?.maiaArrow?.to &&
+    (!hintMessage.stockfishArrow ||
+      hintMessage.maiaArrow.from !== hintMessage.stockfishArrow.from ||
+      hintMessage.maiaArrow.to !== hintMessage.stockfishArrow.to)
+  ) {
+    arrows.push({ ...hintMessage.maiaArrow, color: MAIA_ORANGE, role: "maia" });
+  }
+
+  return arrows;
 }
 
 function escapeHtml(str) {
@@ -91,12 +120,15 @@ export default function ChatPanel({ onAnalyze, onLoadOpening, hintMessage, curre
     {
       role: "ai",
       text: hintMessage.text,
+      fen: hintMessage.fen || null,
+      arrow: hintMessage.stockfishArrow || null,
+      arrows: buildHintArrows(hintMessage),
     },
   ]);
   }, [hintMessage]);
 
-  const addMessage = (role, text) => {
-    setMessages((prev) => [...prev, { role, text }]);
+  const addMessage = (role, text, fen = null, arrows = null) => {
+    setMessages((prev) => [...prev, { role, text, fen, arrows }]);
   };
 
   const handleSend = async () => {
@@ -117,7 +149,14 @@ export default function ChatPanel({ onAnalyze, onLoadOpening, hintMessage, curre
         type === "greeting",
       );
       const reply = data.reply || "Не понял вопрос. Спросите о шахматах!";
-      addMessage("ai", reply);
+      addMessage(
+        "ai",
+        reply,
+        data.fen || null,
+        data.arrow
+          ? [{ ...data.arrow, color: STOCKFISH_GREEN }]
+          : null,
+      );
     } catch {
       addMessage("ai", "Ошибка соединения с сервером.");
     }
@@ -151,10 +190,21 @@ export default function ChatPanel({ onAnalyze, onLoadOpening, hintMessage, curre
               {msg.role === "user" ? "👤" : "⚡"}
             </div>
 
-            <div
-              className="msg-body"
-              dangerouslySetInnerHTML={{ __html: formatMarkdown(msg.text) }}
-            />
+            <div className="msg-content">
+              <div
+                className="msg-body"
+                dangerouslySetInnerHTML={{ __html: formatMarkdown(msg.text) }}
+              />
+
+              {msg.fen && (
+                <MiniBoard
+                  fen={msg.fen}
+                  width={230}
+                  lastMove={msg.lastMove}
+                  arrows={msg.arrows || (msg.arrow ? [msg.arrow] : null)}
+                />
+              )}
+            </div>
           </div>
         ))}
 

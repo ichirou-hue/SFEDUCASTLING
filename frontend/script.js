@@ -1213,9 +1213,14 @@
             var opening = data.opening;
             if (opening) {
                 var msg = '📚 <b>' + opening.name + '</b> (' + (opening.eco || 'ECO') + ')\n\n';
-                msg += opening.description + '\n\n';
-                msg += '<b>Идеи:</b>\n';
-                if (opening.ideas) {
+                if (opening.pgn) {
+                    msg += '<i>' + opening.pgn + '</i>\n\n';
+                }
+                if (opening.description) {
+                    msg += opening.description + '\n\n';
+                }
+                if (opening.ideas && opening.ideas.length) {
+                    msg += '<b>Идеи:</b>\n';
                     opening.ideas.forEach(function(idea) {
                         msg += '• ' + idea + '\n';
                     });

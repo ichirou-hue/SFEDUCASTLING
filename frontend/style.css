@@ -530,6 +530,19 @@ body {
   align-items: flex-end; /* РђРІР°С‚Р°СЂРєР° РїСЂРёР¶РёРјР°РµС‚СЃСЏ Рє РЅРёР·Сѓ СЃРѕРѕР±С‰РµРЅРёСЏ */
 }
 
+/* Текст и мини-доска в одном столбце — доска не делит сообщение пополам */
+.chat-msg .msg-content {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+  max-width: 85%;
+}
+
+.chat-msg .msg-content .msg-body {
+  max-width: 100%;
+}
+
 /* РџСѓР·С‹СЂСЊ СЃРѕРѕР±С‰РµРЅРёСЏ Р±РѕС‚Р° */
 .chat-msg .msg-body {
   background: rgba(255, 255, 255, 0.6); /* РџРѕР»СѓРїСЂРѕР·СЂР°С‡РЅС‹Р№ Р±РµР»С‹Р№ С„РѕРЅ */
@@ -542,6 +555,13 @@ body {
   color: #333;
   max-width: 85%;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+}
+
+/* --- Мини-доска внутри сообщения (display_board_tool) --- */
+.chat-msg .chat-board {
+  margin-top: 8px;
+  border-radius: 10px;
+  max-width: 230px;
 }
 
 /* РњРѕРґРёС„РёРєР°С‚РѕСЂ РґР»СЏ СЃРѕРѕР±С‰РµРЅРёСЏ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ (РґРѕР±Р°РІСЊ РєР»Р°СЃСЃ "user" Рє div СЃ СЃРѕРѕР±С‰РµРЅРёРµРј СЋР·РµСЂР°) */

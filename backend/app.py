@@ -13,6 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from backend.api_gateway.state import (
     load_stockfish,
     load_knowledge,
+    load_puzzles,
     load_llava,
     shutdown_maia3,
 )
@@ -27,6 +28,7 @@ from backend.api_gateway.routes.analyze import router as analyze_router
 from backend.api_gateway.routes.chess_profile import router as chess_profile_router
 from backend.api_gateway.routes.explanation import router as explanation_router
 from backend.api_gateway.routes.auth import router as auth_router
+from backend.api_gateway.routes.learning import router as learning_router
 
 app = FastAPI(title="SFEDUCASTLING API")
 
@@ -49,6 +51,7 @@ app.include_router(analyze_router)
 app.include_router(chess_profile_router)
 app.include_router(explanation_router)
 app.include_router(auth_router)
+app.include_router(learning_router)
 
 # Раздаём статику фронтенда (собранный React в frontend/dist/)
 frontend_dist = os.path.join(os.path.dirname(__file__), "..", "frontend", "dist")
@@ -56,6 +59,7 @@ app.mount("/", StaticFiles(directory=frontend_dist, html=True), name="frontend")
 
 load_stockfish()
 load_knowledge()
+load_puzzles()
 print("Инициализация LLaVA...")
 load_llava()
 

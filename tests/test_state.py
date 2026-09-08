@@ -99,10 +99,14 @@ class TestLoadLlava:
 # --- Загрузка базы знаний ---
 
 class TestLoadKnowledge:
-    def test_load_without_file(self):
+    def test_load_without_file(self, tmp_path):
+        original_path = state.KNOWLEDGE_PATH
+        state.KNOWLEDGE_PATH = str(tmp_path / "missing.json")
+        state.knowledge_base = None
         result = state.load_knowledge()
         assert result is False
         assert state.knowledge_base is None
+        state.KNOWLEDGE_PATH = original_path
 
     def test_load_with_file(self, tmp_path):
         openings = {"openings": [{"name": "Italian Game", "fen": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1"}]}
