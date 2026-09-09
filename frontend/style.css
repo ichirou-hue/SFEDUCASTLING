@@ -1870,3 +1870,508 @@ body {
   display: flex;
   flex-direction: column;
 }
+
+/* ========================================= */
+/*              TRAINING PAGE                */
+/* ========================================= */
+.training-page {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 18px 28px 36px;
+  font-family: "Inter", sans-serif;
+  color: #333;
+}
+
+.training-page--centered {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.training-loading {
+  font-family: "Calypso", serif;
+  font-size: 24px;
+  color: #555;
+}
+
+.training-hero,
+.training-module-header {
+  max-width: 1180px;
+  margin: 0 auto 24px;
+  padding: 26px 30px;
+  border-radius: 26px;
+  border: 2px solid rgba(180, 135, 44, 0.72);
+  background: rgba(255, 255, 255, 0.84);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.training-hero h1,
+.training-module-header h1 {
+  margin: 3px 0 8px;
+  font-family: "Calypso", serif;
+  font-size: 36px;
+  font-weight: normal;
+  color: #2f5c36;
+}
+
+.training-hero p,
+.training-module-header p {
+  max-width: 780px;
+  line-height: 1.6;
+  color: #555;
+  font-size: 15px;
+}
+
+.training-kicker {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #9a783b;
+}
+
+.training-modules-grid {
+  width: 100%;
+  max-width: 1180px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 18px;
+}
+
+.training-module-card {
+  min-height: 245px;
+  padding: 22px 20px;
+  border: 2px solid rgba(131, 183, 135, 0.7);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 11px;
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.training-module-card:hover:not(:disabled) {
+  transform: translateY(-3px);
+  border-color: #5e9463;
+  box-shadow: 0 8px 22px rgba(54, 100, 62, 0.16);
+}
+
+.training-module-card--disabled {
+  opacity: 0.58;
+  cursor: default;
+  filter: grayscale(0.15);
+}
+
+.training-module-icon {
+  font-family: Georgia, serif;
+  font-size: 68px;
+  line-height: 1;
+  color: #225a73;
+}
+
+.training-module-title {
+  font-family: "Calypso", serif;
+  font-size: 25px;
+  color: #2f5c36;
+}
+
+.training-module-description {
+  min-height: 54px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #666;
+}
+
+.training-module-meta {
+  margin-top: auto;
+  padding: 7px 12px;
+  border-radius: 20px;
+  background: rgba(201, 169, 110, 0.18);
+  color: #775f30;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.training-toolbar {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.training-back-btn,
+.training-secondary-btn {
+  border: 1px solid rgba(180, 135, 44, 0.7);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.78);
+  color: #555;
+  padding: 9px 16px;
+  cursor: pointer;
+  font-family: "Inter", sans-serif;
+  transition: background 0.18s ease;
+}
+
+.training-back-btn:hover,
+.training-secondary-btn:hover:not(:disabled) {
+  background: rgba(201, 169, 110, 0.22);
+}
+
+.training-module-header {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.training-module-header-icon {
+  flex-shrink: 0;
+  width: 88px;
+  height: 88px;
+  border-radius: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: Georgia, serif;
+  font-size: 64px;
+  color: #225a73;
+  background: rgba(131, 183, 135, 0.18);
+}
+
+.training-lessons-list {
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.training-lesson-card {
+  width: 100%;
+  padding: 16px 20px;
+  border: 1px solid rgba(180, 135, 44, 0.48);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.86);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 2px 9px rgba(0, 0, 0, 0.06);
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.training-lesson-card:hover {
+  transform: translateX(4px);
+  background: rgba(245, 252, 245, 0.94);
+}
+
+.training-lesson-number {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: #83b787;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+}
+
+.training-lesson-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.training-lesson-title {
+  font-family: "Calypso", serif;
+  font-size: 21px;
+  color: #333;
+}
+
+.training-lesson-meta {
+  font-size: 12px;
+  color: #777;
+}
+
+.training-lesson-arrow {
+  font-size: 24px;
+  color: #9a783b;
+}
+
+.training-page--lesson {
+  padding-left: 20px;
+  padding-right: 20px;
+}
+
+.training-task-counter {
+  padding: 7px 13px;
+  border-radius: 18px;
+  background: rgba(131, 183, 135, 0.22);
+  color: #2f5c36;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.training-lesson-layout {
+  width: 100%;
+  max-width: 1460px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(220px, 260px) minmax(340px, 1fr) minmax(280px, 360px);
+  gap: 18px;
+  align-items: start;
+}
+
+.training-theory-panel,
+.training-task-panel {
+  border-radius: 24px;
+  border: 2px solid rgba(180, 135, 44, 0.68);
+  background: rgba(255, 255, 255, 0.87);
+  box-shadow: 0 3px 13px rgba(0, 0, 0, 0.08);
+  padding: 22px;
+}
+
+.training-theory-panel h2,
+.training-task-panel h2 {
+  margin: 7px 0 12px;
+  font-family: "Calypso", serif;
+  font-size: 25px;
+  font-weight: normal;
+  color: #2f5c36;
+}
+
+.training-theory-panel p,
+.training-task-instruction,
+.training-result p {
+  line-height: 1.55;
+  font-size: 14px;
+  color: #555;
+}
+
+.training-lesson-progress {
+  margin-top: 22px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.training-progress-dot {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid #c9a96e;
+  background: rgba(255, 255, 255, 0.8);
+  color: #555;
+  cursor: pointer;
+}
+
+.training-progress-dot--active {
+  background: #83b787;
+  border-color: #5e9463;
+  color: #fff;
+}
+
+.training-board-column {
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+}
+
+.training-board-wrapper {
+  width: fit-content;
+  max-width: 100%;
+  border-radius: 18px;
+  border: 3px solid rgba(180, 135, 44, 0.85);
+  background: #f0f2ea;
+  padding: 12px;
+  box-shadow: 0 3px 14px rgba(0, 0, 0, 0.14);
+}
+
+.training-task-type {
+  display: inline-flex;
+  padding: 5px 10px;
+  border-radius: 14px;
+  background: rgba(34, 90, 115, 0.12);
+  color: #225a73;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.training-task-instruction {
+  margin-bottom: 16px;
+}
+
+.training-selected-summary,
+.training-help-text,
+.training-checking {
+  margin: 14px 0;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(131, 183, 135, 0.13);
+  color: #4d5e50;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.training-selected-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.training-selected-list {
+  font-family: "JetBrains Mono", monospace;
+  color: #2f5c36;
+}
+
+.training-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.training-primary-btn,
+.training-next-btn {
+  border: none;
+  border-radius: 20px;
+  background: #83b787;
+  color: #253b29;
+  padding: 10px 18px;
+  font-family: "Calypso", serif;
+  font-size: 17px;
+  cursor: pointer;
+  transition: background 0.18s ease, transform 0.18s ease;
+}
+
+.training-primary-btn:hover:not(:disabled),
+.training-next-btn:hover {
+  background: #76a87a;
+  transform: translateY(-1px);
+}
+
+.training-primary-btn:disabled,
+.training-secondary-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.training-result {
+  margin-top: 18px;
+  padding: 14px;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-size: 13px;
+}
+
+.training-result--success {
+  background: rgba(131, 183, 135, 0.24);
+  border: 1px solid rgba(94, 148, 99, 0.55);
+  color: #2f5c36;
+}
+
+.training-result--error {
+  background: rgba(220, 120, 100, 0.14);
+  border: 1px solid rgba(190, 90, 70, 0.42);
+  color: #7d392c;
+}
+
+.training-result-score {
+  font-weight: 700;
+}
+
+.training-next-btn {
+  width: 100%;
+  margin-top: 14px;
+}
+
+.training-lesson-complete {
+  margin-top: 16px;
+  padding: 16px;
+  border-radius: 18px;
+  background: rgba(131, 183, 135, 0.18);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+  color: #2f5c36;
+}
+
+.training-complete-icon {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #83b787;
+  color: #fff;
+  font-size: 30px;
+  font-weight: 700;
+}
+
+.training-global-error {
+  width: 100%;
+  max-width: 1180px;
+  margin: 0 auto 16px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: rgba(220, 120, 100, 0.18);
+  border: 1px solid rgba(190, 90, 70, 0.4);
+  color: #7d392c;
+}
+
+.training-empty {
+  padding: 40px;
+  color: #777;
+  font-family: "Calypso", serif;
+  font-size: 20px;
+}
+
+@media (max-width: 1100px) {
+  .training-lesson-layout {
+    grid-template-columns: 230px minmax(340px, 1fr);
+  }
+
+  .training-task-panel {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 760px) {
+  .training-page {
+    padding: 14px;
+  }
+
+  .training-lesson-layout {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .training-theory-panel,
+  .training-task-panel,
+  .training-board-column {
+    width: 100%;
+  }
+
+  .training-module-header {
+    align-items: flex-start;
+  }
+}

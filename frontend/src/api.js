@@ -222,3 +222,35 @@ export async function checkPuzzle(puzzleId, move) {
   });
   return data;
 }
+
+
+// === Учебная подсистема ===
+
+export async function fetchTrainingModules() {
+  const { data } = await api.get("/api/training/modules");
+  return data;
+}
+
+export async function fetchTrainingModule(slug) {
+  const { data } = await api.get(`/api/training/modules/${slug}`);
+  return data;
+}
+
+export async function fetchTrainingLesson(lessonId) {
+  const { data } = await api.get(`/api/training/lessons/${lessonId}`);
+  return data;
+}
+
+export async function checkTrainingTask(
+  taskId,
+  answer,
+  hintsUsed = 0,
+  responseTimeMs = null,
+) {
+  const { data } = await api.post(`/api/training/tasks/${taskId}/check`, {
+    answer,
+    hints_used: hintsUsed,
+    response_time_ms: responseTimeMs,
+  });
+  return data;
+}

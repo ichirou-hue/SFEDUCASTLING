@@ -8,6 +8,7 @@ import ChatPanel from "./components/ChatPanel.jsx";
 import EvalBar from "./components/EvalBar.jsx";
 import RegisterModal from "./components/RegisterModal.jsx";
 import PuzzlesPage from "./components/PuzzlesPage.jsx";
+import TrainingPage from "./components/TrainingPage.jsx";
 import { getStoredUser } from "./api.js";
 
 function MainPage() {
@@ -70,6 +71,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<MainPage />} />
         <Route path="/puzzles" element={<PuzzlesPage />} />
+        <Route path="/training" element={<TrainingPage />} />
       </Routes>
       <RegisterModal
         isOpen={showRegister}

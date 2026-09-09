@@ -29,6 +29,7 @@ from backend.api_gateway.routes.chess_profile import router as chess_profile_rou
 from backend.api_gateway.routes.explanation import router as explanation_router
 from backend.api_gateway.routes.auth import router as auth_router
 from backend.api_gateway.routes.learning import router as learning_router
+from backend.api_gateway.routes.training import router as training_router
 
 app = FastAPI(title="SFEDUCASTLING API")
 
@@ -52,6 +53,7 @@ app.include_router(chess_profile_router)
 app.include_router(explanation_router)
 app.include_router(auth_router)
 app.include_router(learning_router)
+app.include_router(training_router)
 
 # Раздаём статику фронтенда (собранный React в frontend/dist/)
 frontend_dist = os.path.join(os.path.dirname(__file__), "..", "frontend", "dist")

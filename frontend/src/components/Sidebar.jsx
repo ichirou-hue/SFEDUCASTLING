@@ -33,6 +33,16 @@ export default function Sidebar({ isOpen, onClose }) {
             <span className="sidebar-icon">♜</span>
             Шахматные задачи
           </NavLink>
+          <NavLink
+            to="/training"
+            className={({ isActive }) =>
+              `sidebar-link ${isActive ? "sidebar-link--active" : ""}`
+            }
+            onClick={onClose}
+          >
+            <span className="sidebar-icon">♘</span>
+            Обучение
+          </NavLink>
         </nav>
       </div>
     </>
