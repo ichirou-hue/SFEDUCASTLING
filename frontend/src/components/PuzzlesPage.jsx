@@ -35,6 +35,7 @@ const THEME_LABELS = {
   pin: "Связка",
   skewer: "Кол",
   discoveredAttack: "Открытая атака",
+  discoveredCheck: "Шах с открывания",
   deflection: "Отвлечение",
   attraction: "Притяжение",
   sacrifice: "Жертва",
@@ -43,7 +44,6 @@ const THEME_LABELS = {
   opening: "Дебют",
   promotion: "Превращение пешки",
   backRankMate: "Мат по последней горизонтали",
-  discoveredCheck: "Шах с открывания",
   trappedPiece: "Запертая фигура",
   intermezzo: "Промежуточный ход",
   clearance: "Освобождение клетки",
@@ -55,7 +55,34 @@ const THEME_LABELS = {
   exposedKing: "Обнажённый король",
   master: "Мастерская позиция",
   mate: "Мат",
+  advancedPawn: "Продвинутая пешка",
+  defensiveMove: "Защитный ход",
+  kingsideAttack: "Атака на королевском фланге",
+  queensideAttack: "Атака на ферзевом фланге",
+  bishopEndgame: "Слоновый эндшпиль",
+  rookEndgame: "Ладейный эндшпиль",
+  knightEndgame: "Коневой эндшпиль",
+  queenEndgame: "Ферзевый эндшпиль",
+  pawnEndgame: "Пешечный эндшпиль",
+  mateIn5: "Мат в 5 ходов",
+  smotheredMate: "Спёртый мат",
+  enPassant: "Взятие на проходе",
+  doubleCheck: "Двойной шах",
+  underPromotion: "Тихое превращение",
 };
+
+/* Приоритет тем: чем специфичнее тактический приём, тем выше приоритет.
+   Это нужно, чтобы над доской показывалась суть задачи, а не общий
+   «Эндшпиль»/«Преимущество». */
+const THEME_PRIORITY = [
+  "mateIn1", "mateIn2", "mateIn3", "mateIn4", "mateIn5", "mate",
+  "smotheredMate", "backRankMate", "doubleCheck",
+  "fork", "pin", "skewer", "discoveredAttack", "discoveredCheck",
+  "sacrifice", "deflection", "attraction", "intermezzo", "quietMove",
+  "promotion", "underPromotion", "trappedPiece", "clearance",
+  "capturingDefender", "hangingPiece", "kingsideAttack", "queensideAttack",
+  "exposedKing", "enPassant",
+];
 
 const THEME_ICONS = {
   mateIn1: "♚", mateIn2: "♚", mateIn3: "♚", mateIn4: "♚", mate: "♚",
@@ -67,17 +94,21 @@ const THEME_ICONS = {
   hangingPiece: "♞", capturingDefender: "♝",
   advantage: "♟", crushing: "♛", exposedKing: "♚",
   quietMove: "♟", master: "♛",
+  advancedPawn: "♟", defensiveMove: "♟", kingsideAttack: "♚",
+  bishopEndgame: "♝", rookEndgame: "♜", knightEndgame: "♞",
 };
 
 function getThemeInfo(puzzle) {
   const themes = puzzle.themes || [];
-  for (const theme of themes) {
-    if (THEME_ICONS[theme]) {
-      return { label: THEME_LABELS[theme] || theme, icon: THEME_ICONS[theme] };
-    }
-  }
-  if (themes.length > 0) {
-    return { label: THEME_LABELS[themes[0]] || themes[0], icon: "♟" };
+  const byPriority = themes
+    .filter((t) => THEME_PRIORITY.includes(t))
+    .sort((a, b) => THEME_PRIORITY.indexOf(a) - THEME_PRIORITY.indexOf(b));
+  const pick = byPriority[0] || themes.find((t) => THEME_ICONS[t]) || themes[0];
+  if (pick) {
+    return {
+      label: THEME_LABELS[pick] || pick,
+      icon: THEME_ICONS[pick] || "♟",
+    };
   }
   return { label: "Тактика", icon: "♟" };
 }
@@ -147,6 +178,7 @@ export default function PuzzlesPage() {
   const solutionMovesRef = useRef([]);
   const solutionIndexRef = useRef(0);
   const puzzlesRef = useRef([]);
+  const loadSeqRef = useRef(0);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -154,9 +186,9 @@ export default function PuzzlesPage() {
 
   useEffect(() => {
     const updateSize = () => {
-      const availW = window.innerWidth - 300 - 360 - 80;
+      const availW = window.innerWidth - 260 - 360 - 48 - 24;
       const availH = window.innerHeight * 0.85 - 100;
-      const size = Math.floor(Math.min(availW, availH));
+      const size = Math.floor(Math.min(Math.max(availW, 280), availH));
       setBoardWidth(Math.max(320, Math.min(size, 620)));
     };
     updateSize();
@@ -174,6 +206,9 @@ export default function PuzzlesPage() {
       const puzzleList = puzzlesRef.current;
       if (!puzzleList[index]) return;
       const puzzle = puzzleList[index];
+
+      const seq = loadSeqRef.current + 1;
+      loadSeqRef.current = seq;
 
       const game = new Chess(puzzle.fen);
       gameRef.current = game;
@@ -233,15 +268,19 @@ export default function PuzzlesPage() {
     (sourceSquare, targetSquare) => {
       if (waitingForOpponent || showSolution) return false;
 
-      const moveUci = sourceSquare + targetSquare;
       const expectedMove = solutionMovesRef.current[solutionIndexRef.current];
+      if (!expectedMove) return false;
 
-      if (moveUci === expectedMove) {
+      const expectedCore = expectedMove.substring(0, 4);
+      const moveCore = sourceSquare + targetSquare;
+
+      if (moveCore === expectedCore) {
         const game = gameRef.current;
+        const promo = expectedMove.length > 4 ? expectedMove[4] : "q";
         const move = game.move({
           from: sourceSquare,
           to: targetSquare,
-          promotion: "q",
+          promotion: promo,
         });
         if (!move) return false;
 
@@ -269,7 +308,9 @@ export default function PuzzlesPage() {
           solutionIndexRef.current < totalMoves
         ) {
           setWaitingForOpponent(true);
+          const seqAtStart = loadSeqRef.current;
           setTimeout(() => {
+            if (seqAtStart !== loadSeqRef.current) return;
             const oppUci =
               solutionMovesRef.current[solutionIndexRef.current];
             if (oppUci) {
@@ -345,6 +386,7 @@ export default function PuzzlesPage() {
 
   const handleShowSolution = () => {
     if (!currentPuzzle) return;
+    const seqAtStart = loadSeqRef.current;
     const game = new Chess(currentPuzzle.fen);
     const moves = solutionMovesRef.current;
 
@@ -354,6 +396,7 @@ export default function PuzzlesPage() {
 
     let i = 0;
     const playNext = () => {
+      if (seqAtStart !== loadSeqRef.current) return;
       if (i >= moves.length) return;
       const uci = moves[i];
       const from = uci.substring(0, 2);
@@ -399,6 +442,10 @@ export default function PuzzlesPage() {
     if (currentIndex > 0) {
       setCurrentIndex((i) => i - 1);
     }
+  };
+
+  const handleRestartPuzzle = () => {
+    loadPuzzle(currentIndex);
   };
 
   const handleChatSend = async () => {
@@ -594,6 +641,12 @@ export default function PuzzlesPage() {
         )}
 
         <div className="puzzle-controls">
+          <button
+            className="puzzle-ctrl-btn puzzle-ctrl-btn--restart"
+            onClick={handleRestartPuzzle}
+          >
+            Сброс
+          </button>
           <button
             className="puzzle-ctrl-btn puzzle-ctrl-btn--solution"
             onClick={handleShowSolution}
