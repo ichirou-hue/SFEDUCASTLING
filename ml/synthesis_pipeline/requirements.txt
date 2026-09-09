@@ -1,0 +1,17 @@
+# Существующий стек
+openai>=1.14.0
+pydantic>=2.6.0
+tenacity>=8.2.3
+python-dotenv>=1.0.1
+
+# Шахматный анализ и форматы доски
+python-chess>=1.999
+
+# ML и векторизация (PyTorch & Hugging Face)
+torch>=2.2.0
+torchvision>=0.17.0
+huggingface-hub>=0.20.0
+numpy>=1.26.0
+
+# Векторная база данных
+chromadb>=0.4.22

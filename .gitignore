@@ -1,25 +1,54 @@
-#BoardToFEN
+# IDE и редакторы
 .idea/
+.vscode/
+
+# Python и виртуальные окружения
 __pycache__/
+*.pyc
+venv/
+.venv/
+.pytest_cache/
+.coverage
+
+# Секреты и дампы БД
+.env
+sfc.dump
+
+# Фронтенд зависимости
 frontend/node_modules/
+
+# Бинарники и исполняемые файлы
+*.exe
+
+# Веса моделей и артефакты обучения
 outputs/
+*.pt
+*.bin
+*.safetensors
+
+# Датасеты и сырые таблицы
 dataset/
 old_data/
-progress_notes.docx
-.venv
-venv/
-.coverage
-.vscode/
-*.pyc
-.pytest_cache/
-.env
-*.pt
 dataset.jsonl
 dataset_readable.json
-*.exe
 *.jsonl
 *.parquet
 *.csv
 
-# дамп БД с bcrypt-хэшами паролей — в git нельзя
-sfc.dump
+# Шахматные партии и сырые данные пайплайна
+*.pgn
+ml/synthesis_pipeline/data/
+ml/ilushkindataset/
+
+# Векторная база ChromaDB
+**/chroma_db/
+*.sqlite3
+
+# Логи
+*.log
+ml/synthesis_pipeline/generate.log
+
+# Документы
+progress_notes.docxwandb/
+**/wandb/
+ml/models/stockfish/*

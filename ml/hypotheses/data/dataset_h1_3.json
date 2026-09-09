@@ -1,0 +1,122 @@
+[
+    {
+        "id": 1,
+        "fen": "r1bqk2r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",
+        "context_eval": 0.2,
+        "prompt": "Позиция (FEN): r1bqk2r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4\nОценка позиции по Stockfish: +0.20.\nПроанализируй позицию, укажи лучший ход и явно процитируй данную оценку."
+    },
+    {
+        "id": 2,
+        "fen": "r1bqkb1r/pppp1ppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 2 4",
+        "context_eval": 1.4,
+        "prompt": "Позиция (FEN): r1bqkb1r/pppp1ppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 2 4\nОценка позиции по Stockfish: +1.40.\nПроанализируй позицию, укажи лучший ход и явно процитируй данную оценку."
+    },
+    {
+        "id": 3,
+        "fen": "r1bqk2r/ppp2ppp/2n5/3np3/2B5/3P1N2/PPP2PPP/RNBQ1RK1 b kq - 1 7",
+        "context_eval": -0.5,
+        "prompt": "Позиция (FEN): r1bqk2r/ppp2ppp/2n5/3np3/2B5/3P1N2/PPP2PPP/RNBQ1RK1 b kq - 1 7\nОценка позиции по Stockfish: -0.50.\nПроанализируй позицию, укажи лучший ход и явно процитируй данную оценку."
+    },
+    {
+        "id": 4,
+        "fen": "rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2",
+        "context_eval": 0.0,
+        "prompt": "Позиция (FEN): rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2\nОценка позиции по Stockfish: 0.00.\nПроанализируй позицию, укажи лучший ход и явно процитируй данную оценку."
+    },
+    {
+        "id": 5,
+        "fen": "r1b1kb1r/pppp1ppp/8/4q3/4n3/5P2/PPP3PP/RNBQKB1R w KQkq - 0 8",
+        "context_eval": 2.8,
+        "prompt": "Позиция (FEN): r1b1kb1r/pppp1ppp/8/4q3/4n3/5P2/PPP3PP/RNBQKB1R w KQkq - 0 8\nОценка позиции по Stockfish: +2.80.\nПроанализируй позицию, укажи лучший ход и явно процитируй данную оценку."
+    },
+    {
+        "id": 6,
+        "fen": "r1bqk2r/pppp1ppp/5n2/2b1p3/2B1P3/2N2N2/PPPP1PPP/R1BQK2R w KQkq - 4 5",
+        "context_eval": 0.3,
+        "prompt": "Позиция (FEN): r1bqk2r/pppp1ppp/5n2/2b1p3/2B1P3/2N2N2/PPPP1PPP/R1BQK2R w KQkq - 4 5\nОценка позиции по Stockfish: +0.30.\nПроанализируй позицию, укажи лучший ход и явно процитируй данную оценку."
+    },
+    {
+        "id": 7,
+        "fen": "r2qk2r/ppp2ppp/2n5/3pP3/1b2n1b1/2N2N2/PPP1BPPP/R1BQ1RK1 w kq - 1 9",
+        "context_eval": -1.2,
+        "prompt": "Позиция (FEN): r2qk2r/ppp2ppp/2n5/3pP3/1b2n1b1/2N2N2/PPP1BPPP/R1BQ1RK1 w kq - 1 9\nОценка позиции по Stockfish: -1.20.\nПроанализируй позицию, укажи лучший ход и явно процитируй данную оценку."
+    },
+    {
+        "id": 8,
+        "fen": "r1bqk2r/pp1n1ppp/2p1pn2/3p4/2PP4/2N2NP1/PP2PPBP/R2QK2R b KQkq - 1 8",
+        "context_eval": -0.1,
+        "prompt": "Позиция (FEN): r1bqk2r/pp1n1ppp/2p1pn2/3p4/2PP4/2N2NP1/PP2PPBP/R2QK2R b KQkq - 1 8\nОценка позиции по Stockfish: -0.10.\nПроанализируй позицию, укажи лучший ход и явно процитируй данную оценку."
+    },
+    {
+        "id": 9,
+        "fen": "r1b1k2r/ppppqppp/2n2n2/4p3/1b2P3/2N2N2/PPPPBPPP/R1BQ1RK1 w kq - 6 6",
+        "context_eval": 0.4,
+        "prompt": "Позиция (FEN): r1b1k2r/ppppqppp/2n2n2/4p3/1b2P3/2N2N2/PPPPBPPP/R1BQ1RK1 w kq - 6 6\nОценка позиции по Stockfish: +0.40.\nПроанализируй позицию, укажи лучший ход и явно процитируй данную оценку."
+    },
+    {
+        "id": 10,
+        "fen": "rnbq1rk1/ppp2ppp/3p1n2/4p3/1bPP4/2N2NP1/PP2PPBP/R1BQK2R w KQ - 0 7",
+        "context_eval": 0.7,
+        "prompt": "Позиция (FEN): rnbq1rk1/ppp2ppp/3p1n2/4p3/1bPP4/2N2NP1/PP2PPBP/R1BQK2R w KQ - 0 7\nОценка позиции по Stockfish: +0.70.\nПроанализируй позицию, укажи лучший ход и явно процитируй данную оценку."
+    },
+    {
+        "id": 11,
+        "fen": "r1bq1rk1/pppp1ppp/2n2n2/4p3/1b1PP3/2N2N2/PPP1BPPP/R1BQ1RK1 b - - 0 6",
+        "context_eval": -0.8,
+        "prompt": "Позиция (FEN): r1bq1rk1/pppp1ppp/2n2n2/4p3/1b1PP3/2N2N2/PPP1BPPP/R1BQ1RK1 b - - 0 6\nОценка позиции по Stockfish: -0.80.\nПроанализируй позицию, укажи лучший ход и явно процитируй данную оценку."
+    },
+    {
+        "id": 12,
+        "fen": "r1bqk2r/pp2bppp/2n1pn2/2pp4/3P4/2N1PN2/PPP1BPPP/R1BQ1RK1 w kq - 2 7",
+        "context_eval": 0.1,
+        "prompt": "Позиция (FEN): r1bqk2r/pp2bppp/2n1pn2/2pp4/3P4/2N1PN2/PPP1BPPP/R1BQ1RK1 w kq - 2 7\nОценка позиции по Stockfish: +0.10.\nПроанализируй позицию, укажи лучший ход и явно процитируй данную оценку."
+    },
+    {
+        "id": 13,
+        "fen": "rnbqk2r/ppp2ppp/4pn2/3p4/2PP4/2N2N2/PP2PPPP/R2QKB1R b KQkq - 1 5",
+        "context_eval": -0.3,
+        "prompt": "Позиция (FEN): rnbqk2r/ppp2ppp/4pn2/3p4/2PP4/2N2N2/PP2PPPP/R2QKB1R b KQkq - 1 5\nОценка позиции по Stockfish: -0.30.\nПроанализируй позицию, укажи лучший ход и явно процитируй данную оценку."
+    },
+    {
+        "id": 14,
+        "fen": "r2q1rk1/1pp2ppp/p1np1n2/4p3/2PPP3/2N1PN2/PP4PP/R2Q1RK1 w - - 0 11",
+        "context_eval": 1.1,
+        "prompt": "Позиция (FEN): r2q1rk1/1pp2ppp/p1np1n2/4p3/2PPP3/2N1PN2/PP4PP/R2Q1RK1 w - - 0 11\nОценка позиции по Stockfish: +1.10.\nПроанализируй позицию, укажи лучший ход и явно процитируй данную оценку."
+    },
+    {
+        "id": 15,
+        "fen": "r1b1k2r/ppp2ppp/2n5/3qp3/8/3P1N2/PPP2PPP/R1BQ1RK1 w kq - 0 9",
+        "context_eval": -2.1,
+        "prompt": "Позиция (FEN): r1b1k2r/ppp2ppp/2n5/3qp3/8/3P1N2/PPP2PPP/R1BQ1RK1 w kq - 0 9\nОценка позиции по Stockfish: -2.10.\nПроанализируй позицию, укажи лучший ход и явно процитируй данную оценку."
+    },
+    {
+        "id": 16,
+        "fen": "r1bqk2r/pppp1ppp/2n2n2/4p3/1b2P3/2NP1N2/PPP2PPP/R1BQKB1R w KQkq - 3 5",
+        "context_eval": 0.5,
+        "prompt": "Позиция (FEN): r1bqk2r/pppp1ppp/2n2n2/4p3/1b2P3/2NP1N2/PPP2PPP/R1BQKB1R w KQkq - 3 5\nОценка позиции по Stockfish: +0.50.\nПроанализируй позицию, укажи лучший ход и явно процитируй данную оценку."
+    },
+    {
+        "id": 17,
+        "fen": "rnbq1rk1/ppp1bppp/4pn2/3p4/2PP4/2N2NP1/PP2PPBP/R1BQ1RK1 b - - 3 7",
+        "context_eval": -0.2,
+        "prompt": "Позиция (FEN): rnbq1rk1/ppp1bppp/4pn2/3p4/2PP4/2N2NP1/PP2PPBP/R1BQ1RK1 b - - 3 7\nОценка позиции по Stockfish: -0.20.\nПроанализируй позицию, укажи лучший ход и явно процитируй данную оценку."
+    },
+    {
+        "id": 18,
+        "fen": "r1bqk2r/pppp1ppp/8/4n3/2B1P3/8/PPP2PPP/RNBQK2R w KQkq - 0 7",
+        "context_eval": 3.2,
+        "prompt": "Позиция (FEN): r1bqk2r/pppp1ppp/8/4n3/2B1P3/8/PPP2PPP/RNBQK2R w KQkq - 0 7\nОценка позиции по Stockfish: +3.20.\nПроанализируй позицию, укажи лучший ход и явно процитируй данную оценку."
+    },
+    {
+        "id": 19,
+        "fen": "r1bq1rk1/ppp2ppp/2n5/3np3/1b6/2NP1NP1/PP2PPBP/R1BQ1RK1 w - - 1 9",
+        "context_eval": -1.5,
+        "prompt": "Позиция (FEN): r1bq1rk1/ppp2ppp/2n5/3np3/1b6/2NP1NP1/PP2PPBP/R1BQ1RK1 w - - 1 9\nОценка позиции по Stockfish: -1.50.\nПроанализируй позицию, укажи лучший ход и явно процитируй данную оценку."
+    },
+    {
+        "id": 20,
+        "fen": "r1bqk2r/ppppqppp/2n2n2/4p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R w KQkq - 1 5",
+        "context_eval": 0.6,
+        "prompt": "Позиция (FEN): r1bqk2r/ppppqppp/2n2n2/4p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R w KQkq - 1 5\nОценка позиции по Stockfish: +0.60.\nПроанализируй позицию, укажи лучший ход и явно процитируй данную оценку."
+    }
+]
