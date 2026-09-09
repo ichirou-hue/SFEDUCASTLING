@@ -248,7 +248,9 @@ def get_puzzles(count: int = 20):
     """Возвращает набор задач с полными решениями для тренировочной страницы.
 
     Отличие от level-test/start: включает поле moves (ходы решения).
-    Задачи, где после решения игрок оказывается матован, исключаются.
+    Возвращаются только «выигрывающие» задачи: решающий после решения
+    реально побеждает (ставит мат сопернику или получает явное преимущество).
+    Задачи, где решающий лишь защищается/смягчает проигрыш, исключаются.
     """
     if not state.puzzle_base:
         return {"error": "База паззлов не загружена", "puzzles": []}
@@ -267,13 +269,16 @@ def get_puzzles(count: int = 20):
 
     result = []
     for p in picked:
-        result.append({
+        puzzle_out = {
             "id": p.get("id", ""),
             "fen": p.get("fen", ""),
             "moves": p.get("moves", ""),
             "themes": p.get("themes", []),
             "rating": p.get("rating", 0),
-        })
+        }
+        if "win_score" in p:
+            puzzle_out["win_score"] = p["win_score"]
+        result.append(puzzle_out)
 
     return {"puzzles": result, "total": len(result)}
 
@@ -281,10 +286,16 @@ def get_puzzles(count: int = 20):
 def _is_puzzle_valid(puzzle: dict) -> bool:
     """Проверяет, что задача валидна для тренировки.
 
-    Исключает задачи, где после решения:
-    - игрок матован;
-    - игрок остаётся под шахом (позиция не стабилизировалась).
+    Возвращает только задачи, где решающий (сторона, чей ход в FEN) после
+    решения реально побеждает. База пересобирается с предвычисленным полем
+    win_score (оценка Stockfish с точки зрения решающего). Для legacy-базы
+    без win_score делаем дешёвую проверку:
+    - игрок не матован и не остаётся под шахом;
+    - у игрока есть материальное преимущество.
     """
+    if "win_score" in puzzle:
+        return puzzle.get("win_score", 0) >= 150
+
     try:
         board = chess.Board(puzzle["fen"])
         moves_str = puzzle.get("moves", "").strip()
@@ -303,6 +314,14 @@ def _is_puzzle_valid(puzzle: dict) -> bool:
         if board.is_check() and board.turn == player_color:
             return False
 
-        return True
+        # Грубая проверка материального преимущества решающего.
+        values = {chess.PAWN: 1, chess.KNIGHT: 3, chess.BISHOP: 3, chess.ROOK: 5, chess.QUEEN: 9}
+        balance = 0
+        for sq, piece in board.piece_map().items():
+            v = values.get(piece.piece_type, 0)
+            balance += v if piece.color == chess.WHITE else -v
+        player_adv = balance if player_color == chess.WHITE else -balance
+
+        return player_adv >= 2
     except Exception:
         return False
