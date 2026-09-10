@@ -1,238 +1,208 @@
 # SFEDUCASTLING ♟️
-**AI Chess Platform based on GigaChat & Maia 2**
 
-### 🎯 Цели проекта (ТЗ)
-1. **Описание позиции** и лучший ход (Maia 2).
-2. **Поиск мата** в N ходов (N < 6).
-3. **Определение стадии игры** и пешечных структур.
-4. **Генерация планов** обучения и игры.
+**AI Chess Platform** — интеллектуальная шахматная платформа для обучения пользователей любого уровня.
 
-### 👥 Команда
-* **Егор** — Project Lead (Архитектура, GigaChat API)
-* **Митя** — Backend Developer (Python, API)
-* **Илья Бабченков** — Frontend Developer (Веб-интерфейс)
-* **Илья Слынько** — ML Engineer (Maia 2, Датасеты)
-* **Даниил** — ML Engineer (LLM Tuning, Промпты)
-* **Тима** — UI/UX Designer (Figma, Тестирование)
+Платформа объединяет веб-интерфейс (React + Vite), backend-шлюз (FastAPI), классические шахматные движки (Stockfish), человекоподобный движок **Maia3** и стек **ML-исследований** (QLoRA-тюнинг, RAG, бенчмарки LLM, синтез датасетов).
 
-### 🛠 Стек
-- **LLM:** GigaChat API
-- **Engine:** Maia 2 / Stockfish
-- **Web:** HTML/JS/CSS
+Подробное техническое задание — в [`TZ_CHESSAGINE.md`](TZ_CHESSAGINE.md).
+
+---
+
+## 🎯 Функциональность
+
+- **Анализ позиции** — Stockfish (глубина 18, MultiPV 5), информация о дебюте из Lichess Masters Explorer.
+- **Человекоподобная игра** — движок Maia3 с настраиваемым рейтингом (Elo), UCI-обёртка.
+- **Объяснение ходов** — LLM (GigaChess / Qwen3-8B) генерирует тренерские разборы, тональность и стиль.
+- **Паззлы и уровень** — тест определения уровня (Elo-бакеты), тактические задачи с гибридной проверкой (эталон + Stockfish).
+- **Обучение** — структурированный курс по правилам и базовым понятиям (модули → уроки → задания).
+- **Чат с ИИ** — диалоговый помощник с учётом текущей позиции и истории ходов.
+- **Регистрация / профиль** — JWT-авторизация, шахматный профиль.
+
+---
+
+## 🛠 Стек
+
+| Компонент | Технология |
+|-----------|------------|
+| Backend | Python ≥3.14, FastAPI, Uvicorn, SQLAlchemy 2 (async), Alembic |
+| БД | PostgreSQL (asyncpg) |
+| Frontend | React 19, Vite, react-router-dom, react-chessboard, chess.js, axios |
+| Движки | Stockfish (local exe), Maia3 (git submodule, UCI) |
+| LLM | GigaChess (Cloud.ru), Qwen3-8B (vLLM, порт 8000), LLaVA (Vision, отключена) |
+| ML | PyTorch, transformers, PEFT/TRL (QLoRA), ChromaDB, Prometheus |
+| Пакеты | uv (`pyproject.toml` + `uv.lock`) |
+
+---
+
+## 🏗 Архитектура
 
 ```plaintext
-└── 📁 project                                      # корневая директория проекта
-    ├── 📁 analysis                                  # модуль шахматного анализа (движки, аннотации, базы данных)
-    │   ├── 📁 annotators                            # аннотаторы ошибок и меток NAG
-    │   │   ├── 📄 mistake_classifier.py              # классификация ошибок (зевок, неточность, блестящий ход)
-    │   │   └── 📄 nag_annotator.py                   # автоматическая простановка меток NAG (!!, ?, ?? и т.д.)
-    │   ├── 📁 databases                              # базы данных: дебюты, партии, векторное хранилище
-    │   │   ├── 📁 games_db                           # база партий (гроссмейстерские и пользовательские)
-    │   │   │   ├── 📄 games.db                       # SQLite-файл с партиями
-    │   │   │   └── 📄 models.py                      # ORM-модели для работы с партиями
-    │   │   ├── 📁 openings_db                        # база дебютов (ECO-коды, варианты)
-    │   │   │   ├── 📄 models.py                      # ORM-модели для дебютов
-    │   │   │   └── 📄 openings.db                    # SQLite-файл с дебютами
-    │   │   └── 📁 vector_db                          # векторная база данных для поиска похожих позиций
-    │   │       ├── 📄 faiss_index                    # индекс FAISS для быстрого поиска эмбеддингов
-    │   │       └── 📄 milvus_client.py               # клиент для работы с Milvus (альтернатива FAISS)
-    │   ├── 📁 engines                                # шахматные движки
-    │   │   ├── 📁 maia                               # Maia – человеко-подобный движок (имитация игры людей)
-    │   │   │   ├── 📄 engine.py                      # обёртка для запуска Maia
-    │   │   │   └── 📄 predictor.py                   # предсказание хода для заданного рейтинга
-    │   │   └── 📁 stockfish                          # Stockfish – классический шахматный движок
-    │   │       ├── 📄 depth_config.py                # настройка глубины расчёта
-    │   │       ├── 📄 engine.py                      # обёртка для запуска Stockfish
-    │   │       └── 📄 evaluator.py                   # оценка позиции, расчёт лучшего хода
-    │   └── 📄 similarity_search.py                   # поиск похожих позиций через векторную БД
-    ├── 📁 backend                                    # серверная часть (API, очередь, мониторинг)
-    │   ├── 📁 api_gateway                            # FastAPI – основной шлюз
-    │   │   ├── 📁 routes                             # эндпоинты API
-    │   │   │   ├── 📄 analyze.py                     # анализ позиции (Stockfish + Maia + комментарии)
-    │   │   │   ├── 📄 arena.py                       # запуск турниров агентов
-    │   │   │   ├── 📄 chat.py                        # диалог с ИИ-помощником
-    │   │   │   └── 📄 lesson.py                      # получение адаптивных уроков
-    │   │   ├── 📄 app.py                             # инициализация FastAPI-приложения
-    │   │   ├── 📄 dependencies.py                    # общие зависимости (подключение к БД, загрузка моделей)
-    │   │   └── 📄 models.py                          # Pydantic-модели для валидации запросов/ответов
-    │   ├── 📁 async_queue                            # асинхронная очередь задач (Celery + Redis)
-    │   │   ├── 📄 celery_app.py                      # конфигурация Celery
-    │   │   └── 📄 tasks.py                           # определение фоновых задач (тяжёлые вычисления)
-    │   └── 📁 monitoring                             # метрики и мониторинг
-    │       ├── 📁 grafana_dashboards                  # дашборды Grafana
-    │       │   └── 📄 dashboard.json                  # конфигурация дашборда
-    │       └── 📄 prometheus_metrics.py               # сбор метрик для Prometheus
-    ├── 📁 config                                      # конфигурационные файлы (YAML)
-    │   ├── 📄 lora_adapters.yaml                      # настройки LoRA-адаптеров (какие адаптеры загружать)
-    │   ├── 📄 model_paths.yaml                        # пути к весам LLM, LLaVA, эмбеддеров
-    │   ├── 📄 stockfish_config.yaml                   # параметры Stockfish (глубина, потоки, hash)
-    │   └── 📄 tone_profiles.yaml                      # профили тона для дружелюбных объяснений (мотивирующий, спокойный и т.д.)
-    ├── 📁 docs                                        # документация
-    │   ├── 📁 api                                     # документация API
-    │   │   └── 📄 openapi.yaml                        # OpenAPI спецификация (автогенерируемая)
-    │   ├── 📁 architecture                            # архитектурные диаграммы
-    │   │   └── 📄 diagrams.drawio                     # диаграммы в draw.io
-    │   └── 📄 user_guide.md                           # руководство пользователя
-    ├── 📁 evaluation                                  # оценка агентов и метрики
-    │   ├── 📁 arena                                   # арена для соревнований агентов
-    │   │   ├── 📁 agents                              # реализации агентов
-    │   │   │   ├── 📄 lora_llm_agent.py               # агент на базе LLM с LoRA-адаптером
-    │   │   │   ├── 📄 maia_agent.py                   # агент на базе Maia
-    │   │   │   └── 📄 stockfish_agent.py              # агент на базе Stockfish
-    │   │   └── 📄 tournament_runner.py                # запуск турниров между агентами, сбор результатов
-    │   ├── 📁 metrics                                 # расчёт метрик силы игры
-    │   │   ├── 📄 blunder_rate.py                     # частота грубых ошибок
-    │   │   ├── 📄 elo_calculator.py                   # расчёт рейтинга Эло
-    │   │   └── 📄 move_accuracy.py                    # точность предсказания ходов (сравнение с мастерами)
-    │   └── 📁 tracker                                 # трекеры экспериментов
-    │       ├── 📄 mlflow_setup.py                     # интеграция с MLflow
-    │       └── 📄 wandb_setup.py                      # интеграция с Weights & Biases
-    ├── 📁 frontend                                    # клиентская часть (React)
-    │   ├── 📁 public                                  # статические файлы
-    │   │   ├── 📄 favicon.ico                         # иконка сайта
-    │   │   └── 📄 index.html                          # основной HTML-шаблон
-    │   ├── 📁 src                                     # исходный код React
-    │   │   ├── 📁 api                                 # взаимодействие с бэкендом
-    │   │   │   └── 📄 client.js                       # HTTP-клиент (axios/fetch)
-    │   │   ├── 📁 components                          # React-компоненты
-    │   │   │   ├── 📄 Chessboard.js                   # интерактивная шахматная доска
-    │   │   │   ├── 📄 LessonView.js                   # отображение уроков и заданий
-    │   │   │   ├── 📄 ReportView.js                   # отображение комментариев, оценок, похожих позиций
-    │   │   │   └── 📄 Uploader.js                     # загрузка изображений/FEN/PGN
-    │   │   ├── 📁 styles                              # CSS-стили
-    │   │   │   ├── 📄 components.css                  # стили компонентов
-    │   │   │   └── 📄 main.css                        # общие стили
-    │   │   ├── 📄 App.js                              # корневой компонент React
-    │   │   └── 📄 index.js                            # точка входа React-приложения
-    │   ├── 📄 package.json                            # зависимости и скрипты фронтенда
-    │   └── 📄 README.md                               # описание фронтенд-части
-    ├── 📁 input_gateway                               # мультимодальный шлюз (обработка разных форматов ввода)
-    │   ├── 📁 handlers                                # обработчики типов ввода
-    │   │   ├── 📄 fen_parser.py                       # парсинг FEN → объект доски
-    │   │   ├── 📄 image_handler.py                    # обработка изображений (PNG/JPG) → передача в vision
-    │   │   ├── 📄 pgn_parser.py                       # парсинг PGN → история ходов + метаданные
-    │   │   └── 📄 validator.py                        # валидация корректности входных данных
-    │   └── 📄 orchestrator.py                         # выбор нужного обработчика на основе типа входа
-    ├── 📁 learning_system                             # адаптивная система обучения (Duolingo-стиль)
-    │   ├── 📁 adaptive_engine                         # движок подбора контента
-    │   │   ├── 📄 content_generator.py                # генерация заданий через LLM
-    │   │   ├── 📄 difficulty_adjuster.py              # подстройка сложности под уровень
-    │   │   ├── 📄 spaced_repetition.py                # планировщик повторений (Spaced Repetition)
-    │   │   └── 📄 topic_selector.py                   # выбор темы на основе слабых мест
-    │   ├── 📁 exercises                               # типы упражнений
-    │   │   ├── 📄 endgame_practice.py                 # эндшпильные задачи
-    │   │   ├── 📄 explain_move.py                     # объяснить, почему ход хорош/плох
-    │   │   ├── 📄 find_best_move.py                   # найти лучший ход
-    │   │   ├── 📄 opening_quiz.py                     # тесты по дебютам
-    │   │   └── 📄 reconstruct_game.py                 # восстановить последовательность ходов
-    │   ├── 📁 feedback_loop                           # обратная связь для улучшения учебного плана
-    │   │   ├── 📄 curriculum_updater.py               # корректировка дерева навыков на основе данных
-    │   │   └── 📄 performance_analytics.py            # аналитика успешности выполнения заданий
-    │   ├── 📁 gamification                            # геймификация
-    │   │   ├── 📄 achievements.py                     # достижения (бейджи)
-    │   │   ├── 📄 leaderboard.py                      # таблица лидеров
-    │   │   ├── 📄 streaks.py                          # отслеживание серий (daily streak)
-    │   │   └── 📄 xp_system.py                        # начисление очков опыта
-    │   └── 📁 user_profile                            # профиль знаний и прогресса
-    │       ├── 📄 mastery_tracker.py                  # уровень владения каждой темой (0–100%)
-    │       ├── 📄 skill_tree.yaml                     # дерево навыков (дебюты, тактика, эндшпиль...)
-    │       ├── 📄 strength_model.py                   # модель сильных сторон пользователя
-    │       └── 📄 weakness_model.py                   # модель слабых мест (на основе ошибок)
-    ├── 📁 memory                                      # память и RAG
-    │   ├── 📁 long_term_memory                        # долговременное хранение истории игр
-    │   │   ├── 📄 memory.db                           # SQLite с историей игр пользователя
-    │   │   └── 📄 models.py                           # ORM-модели для памяти
-    │   ├── 📁 personalized_lessons                    # персонализированные уроки
-    │   │   ├── 📄 generator.py                        # генерация уроков на основе истории
-    │   │   └── 📄 storage.py                          # хранение сгенерированных уроков
-    │   └── 📁 rag                                     # Retrieval-Augmented Generation
-    │       ├── 📄 generator.py                        # генерация ответа с использованием LLM + контекста
-    │       ├── 📄 prompt_templates.py                 # шаблоны промптов с подстановкой контекста
-    │       └── 📄 retriever.py                        # поиск релевантных позиций/уроков в векторной БД
-    ├── 📁 perception                                  # «глаза» системы – компьютерное зрение и нормализация
-    │   ├── 📁 converters                              # конвертеры между форматами
-    │   │   ├── 📁 BoardToFEN                          # объект доски → FEN
-    │   │   │   │   ├── 📁                             # (Дописать Даниилу детально по папке)
-    │   │   │   │   └── 📄 файлы
-    │   │   ├── 📄 fen_to_board.py                     # FEN → объект доски
-    │   │   └── 📄 pgn_to_moves.py                     # PGN → последовательность ходов
-    │   ├── 📁 embedder                                # эмбеддер позиций
-    │   │   ├── 📄 model.py                            # модель для получения эмбеддинга позиции
-    │   │   └── 📄 vector_store.py                     # интерфейс для сохранения/поиска эмбеддингов
-    │   ├── 📁 vision                                  # работа с изображениями
-    │   │   └── 📁 llava_model                         # LLaVA – мультимодальная модель для распознавания доски
-    │   │       ├── 📄 inference.py                    # запуск инференса LLaVA
-    │   │       └── 📄 model.py                        # загрузка и инициализация LLaVA
-    │   └── 📄 position_normalizer.py                  # приведение позиции к каноническому виду (зеркалирование для чёрных и т.п.)
-    ├── 📁 reasoning                                   # «учитель» – LLM, дружелюбные объяснения, персонализация
-    │   ├── 📁 assistant                               # диалоговый помощник
-    │   │   ├── 📄 dialogue_manager.py                 # управление контекстом разговора
-    │   │   └── 📄 explanation_generator.py            # генерация технических объяснений ходов
-    │   ├── 📁 commentary                              # комментаторы
-    │   │   ├── 📄 commentary_generator.py             # базовый технический комментатор
-    │   │   └── 📄 friendly_explanation_engine.py      # дружелюбная версия (адаптация тона и стиля)
-    │   ├── 📁 llm_core                                # ядро языковых моделей
-    │   │   ├── 📁 base_model                          # базовая мультимодальная модель
-    │   │   │   ├── 📄 config.yaml                     # конфигурация модели (размер, путь)
-    │   │   │   └── 📄 llava_model.py                  # загрузка и инференс LLaVA (или другой VLM)
-    │   │   ├── 📁 lora_adapters                       # LoRA-адаптеры для разных задач
-    │   │   │   ├── 📁 commentary_adapter              # адаптер для стиля комментариев
-    │   │   │   │   └── 📄 adapter.bin                 # веса адаптера
-    │   │   │   ├── 📁 gameplay_adapter                # адаптер для игровой силы
-    │   │   │   │   └── 📄 adapter.bin
-    │   │   │   ├── 📁 reasoning_adapter               # адаптер для рассуждений о стратегии
-    │   │   │   │   └── 📄 adapter.bin
-    │   │   │   └── 📁 vision_adapter                  # адаптер для улучшения распознавания доски
-    │   │   │       └── 📄 adapter.bin
-    │   │   └── 📁 sft_pipeline                        # пайплайн supervised fine-tuning
-    │   │       ├── 📄 dataset_loader.py               # загрузка и подготовка датасетов для SFT
-    │   │       └── 📄 train.py                        # скрипт дообучения (LoRA или полное)
-    │   ├── 📁 personalization                         # настройка тона и стиля под пользователя
-    │   │   ├── 📁 template_library                    # библиотека шаблонов фраз
-    │   │   │   ├── 📄 mistakes.yaml                   # шаблоны для ошибок
-    │   │   │   ├── 📄 praise.yaml                     # шаблоны для похвалы
-    │   │   │   └── 📄 teaching.yaml                   # шаблоны для обучающих объяснений
-    │   │   ├── 📄 style_personalizer.py               # подстройка языка (метафоры, жаргон)
-    │   │   └── 📄 tone_controller.py                  # выбор тона (мотивирующий, спокойный, шутливый)
-    │   └── 📄 feedback_integrator.py                  # сбор лайков/дизлайков на комментарии, обновление профиля
-    ├── 📁 research                                    # исследовательский блок для публикации ACMMM
-    │   ├── 📁 experiment_runner                       # автоматический прогон экспериментов
-    │   │   └── 📄 runner.py                           # скрипт для запуска ablation studies
-    │   ├── 📁 latex_exporter                          # экспорт результатов в LaTeX
-    │   │   └── 📄 exporter.py                         # генерация LaTeX-таблиц и графиков
-    │   ├── 📁 paper_assets                            # артефакты для научной статьи
-    │   │   ├── 📁 ablation_results                    # результаты ablation studies
-    │   │   ├── 📁 datasets                            # датасеты, использованные в статье
-    │   │   └── 📁 models                              # веса моделей для воспроизводимости
-    │   └── 📁 results_aggregator                      # агрегация результатов
-    │       ├── 📄 aggregator.py                       # сбор метрик из разных прогонов
-    │       └── 📄 visualizer.py                       # построение графиков и диаграмм
-    ├── 📁 scripts                                     # утилиты для автоматизации
-    │   ├── 📄 download_datasets.py                    # скрипт для загрузки датасетов (Lichess, Chess.com)
-    │   ├── 📄 export_paper.py                         # генерация итогового LaTeX-файла статьи
-    │   ├── 📄 run_tournament.py                       # запуск турнира между агентами
-    │   └── 📄 train_lora.py                           # запуск дообучения LoRA-адаптеров
-    ├── 📁 tests                                       # тестирование
-    │   ├── 📁 e2e                                     # сквозные тесты (end‑to‑end)
-    │   │   └── 📄 test_user_flow.py                   # тест пользовательского сценария (загрузка, анализ, урок)
-    │   ├── 📁 integration                             # интеграционные тесты
-    │   │   ├── 📄 test_api.py                         # тесты API-эндпоинтов
-    │   │   └── 📄 test_arena.py                       # тесты арены агентов
-    │   └── 📁 unit                                    # модульные тесты
-    │       ├── 📄 test_embedder.py                    # тесты эмбеддера позиций
-    │       └── 📄 test_parsers.py                     # тесты парсеров (FEN, PGN)
-    ├── 📁 training_data                               # сбор и подготовка датасетов
-    │   ├── 📁 augmentor                               # аугментация данных
-    │   │   ├── 📄 fen_augmentation.py                 # аугментация FEN (зеркалирование, перестановки)
-    │   │   └── 📄 image_augmentation.py               # аугментация изображений (повороты, обрезания)
-    │   ├── 📁 collectors                              # сбор данных из внешних источников
-    │   │   ├── 📄 chesscom_api.py                     # загрузка партий с Chess.com API
-    │   │   ├── 📄 lichess_api.py                      # загрузка партий с Lichess API
-    │   │   └── 📄 pgn_archives.py                     # импорт из локальных PGN-файлов
-    │   ├── 📁 labeler                                 # автоматическая разметка
-    │   │   ├── 📄 nag_labeler.py                      # простановка NAG-меток (!!, ?, ??)
-    │   │   └── 📄 stockfish_labeler.py                # расчёт оценок и лучших ходов через Stockfish
-    │   └── 📄 dataset_builder.py                      # формирование итоговых датасетов (для SFT, эмбеддингов)
-    ├── 📄 LICENSE                                     # лицензия проекта
-    ├── 📄 pyproject.toml                              # зависимости и настройки (poetry/pip)
-    └── 📄 README.md                                   # главный файл описания проекта
+┌──────────────────────┐     ┌──────────────────────────────────────────────┐
+│      Frontend        │     │                     Backend                   │
+│  React 19 + Vite     │────▶│  FastAPI :8005 (грузит frontend/dist)        │
+│  (frontend/src)      │     │  └─ api_gateway/routes — 13 роутеров:        │
+│                      │     │     auth, game, analysis, analyze, knowledge,│
+│                      │     │     data, chat, vision, chess_profile,       │
+│                      │     │     explanation, learning, training           │
+└──────────────────────┘     │  └─ services — training_checker/service/seed  │
+                             │  └─ llm — gigachess.py, chess_explainer.py    │
+                             │  └─ state.py — singleton-менеджеры движков    │
+                             └──────────┬───────────────────────────────────┘
+                                        │
+        ┌───────────────────┬───────────┼───────────────┬──────────────────┐
+        ▼                   ▼           ▼               ▼                  ▼
+   ┌─────────────┐   ┌─────────────┐ ┌──────────┐  ┌─────────────┐  ┌──────────────┐
+   │  Stockfish  │   │   Maia3     │ │ GigaChess│  │ Qwen3-8B    │  │  PostgreSQL  │
+   │  (local)    │   │ (submodule) │ │ (Cloud)  │  │ (vLLM :8000)│  │  (async DB)  │
+   └─────────────┘   └─────────────┘ └──────────┘  └─────────────┘  └──────────────┘
+                                        │
+                                        ▼
+                          ┌───────────────────────────────────────────┐
+                          │            ML Research (ml/)              │
+                          │  chess_benchmark · gigachess · hypotheses │
+                          │  models/Qwen3-chess-coach · rag_system_v1 │
+                          │  synthesis_pipeline                       │
+                          └───────────────────────────────────────────┘
+```
+
+---
+
+## 📁 Структура проекта
+
+### Реальная структура (текущее состояние)
+
+```plaintext
+├── backend/                 # FastAPI backend
+│   ├── api_gateway/
+│   │   ├── routes/          #   13 роутеров: auth, game, analysis, analyze,
+│   │   │                    #   knowledge, data, chat, vision, chess_profile,
+│   │   │                    #   explanation, learning, training
+│   │   ├── state.py         #   singleton-менеджеры: Stockfish, Maia3, GigaChess,
+│   │   │                    #   базы дебютов и паззлов, LLaVA (отключена)
+│   │   ├── models.py        #   Pydantic-модели запросов/ответов
+│   │   ├── security.py      #   JWT-авторизация
+│   │   └── sanitize.py      #   санитизация ввода
+│   ├── services/            #   training_service, training_checker,
+│   │                        #   training_seed, game_recorder
+│   ├── models/              #   SQLAlchemy: user, game, chat_message,
+│   │                        #   dataset_move, training_{module,lesson,task,attempt}
+│   ├── db/                  #   async SQLAlchemy + asyncpg (session, base)
+│   ├── config/              #   settings.py (pydantic-settings)
+│   ├── llm/                 #   gigachess.py (HTTP-клиент), chess_explainer.py
+│   ├── knowledge/           #   openings.json, puzzles.json + билдеры
+│   ├── analysis/            #   classifier.py (классификация ошибок)
+│   ├── app.py               #   точка входа (uvicorn :8005)
+│   ├── async_queue/         #   Celery (stub)
+│   └── monitoring/          #   Prometheus (stub)
+├── frontend/                # React 19 + Vite
+│   ├── src/
+│   │   ├── components/      #   Chessboard, MoveHistory, ChatPanel, EvalBar,
+│   │   │                    #   PuzzlesPage, TrainingPage, Sidebar, TopBar,
+│   │   │                    #   MiniBoard, FenBar, RegisterModal
+│   │   ├── app.jsx          #   корневой компонент (роутинг)
+│   │   ├── main.jsx         #   точка входа
+│   │   └── api.js           #   axios + JWT (localStorage)
+│   ├── public/              #   статика, фигуры, шрифты
+│   └── dist/                #   собранный бандл (раздаётся backend'ом)
+├── ml/                      # ML-исследования и тренировка (см. ml/README.md)
+│   ├── chess_benchmark/     #   бенчмарк LLM до 2500 баллов
+│   ├── gigachess/           #   HTTP-клиент GigaChess (Cloud.ru)
+│   ├── hypotheses/          #   проверка гипотез H1.1 / H1.3
+│   ├── models/              #   Qwen3-chess-coach (QLoRA SFT)
+│   ├── rag_system_v1/       #   RAG по шахматной литературе (ChromaDB)
+│   └── synthesis_pipeline/  #   синтез тренерских SFT-датасетов
+├── maia3/                   # git submodule — человекоподобный движок (UCI)
+├── alembic/                 # миграции (5 версий)
+├── scripts/                 # утилиты (create_admin.py и др.)
+├── tests/                   # pytest: routes/, training/, analysis/, models/
+├── training_data/           # артефакты датасетов (parquet/jsonl)
+├── analysis/                # классификатор ошибок, NAG-аннотаторы (stub)
+├── input_gateway/           # мультимодальный ввод (stub)
+├── perception/              # CV: BoardToFEN-проект, эмбеддер позиций
+├── reasoning/               # генерация объяснений (stub)
+├── memory/                  # RAG поверх БД (stub)
+├── evaluation/              # метрики и арена агентов (stub)
+├── docs/                    # user_guide.md (пусто)
+├── TZ_CHESSAGINE.md         # техническое задание
+├── start_llm.sh             # запуск Qwen3-8B через vLLM (порт 8000)
+├── attach_llm.sh            # подключение LLM-сервиса
+├── run_server.sh            # установка и запуск backend
+├── requirements.txt         # зависимости Python
+├── pyproject.toml           # ruff, mypy, pytest (coverage)
+└── uv.lock                  # lock-файл uv
+```
+
+> Часть модулей (`analysis/`, `input_gateway/`, `reasoning/`, `memory/`, `evaluation/`, `backend/async_queue/`, `backend/monitoring/`) пока содержит пустые заглушки — рабочий контур: **backend + frontend + ml/**.
+
+### ML Research Stack (`ml/`)
+
+| Папка | Назначение |
+|-------|------------|
+| [`chess_benchmark`](ml/chess_benchmark) | Модульный бенчмарк шахматных LLM на 2500 баллов (5 модулей по 500). Полная документация — `ml/chess_benchmark/README.md`. |
+| [`gigachess`](ml/gigachess) | HTTP/1.1-клиент облачного инференса GigaChess (ping + `/chat` с FEN). |
+| [`hypotheses`](ml/hypotheses) | A/B-проверка гипотез (структурированный вывод, точность цитирования eval) против Qwen3 и GigaChess, метрики в Prometheus. |
+| [`models/Qwen3-chess-coach`](ml/models/Qwen3-chess-coach) | QLoRA SFT модели Qwen3-8B под роль шахматного тренера + инференс. |
+| [`rag_system_v1`](ml/rag_system_v1) | RAG по шахматной литературе: парсинг PDF/текстов, чанкинг, ChromaDB, динамический ретривер. |
+| [`synthesis_pipeline`](ml/synthesis_pipeline) | Конвейер генерации синтетических тренерских объяснений (Stockfish → LLM → валидация → SFT-датасет), ChessCLIP RAG. |
+
+---
+
+## 🚀 Запуск
+
+### Backend (Windows / 127.0.0.1:8005)
+
+```bash
+# 1. Python-окружение и зависимости
+pip install -r requirements.txt
+
+# 2. Конфигурация (в .env)
+#    DATABASE_URL, JWT_SECRET, MAIA3_*, GIGACHESS_BASE_URL и т.д. — см. backend/config/settings.py
+
+# 3. Миграции БД
+alembic upgrade head
+
+# 4. Запуск API (одновременно раздаёт собранный frontend/dist)
+python backend/app.py
+```
+
+### Frontend (dev-режим)
+
+```bash
+cd frontend
+npm install
+npm run dev        # http://localhost:5173, /api проксируется на :8005
+npm run build      # сборка в dist/
+```
+
+### LLM-сервис (Qwen3-8B через vLLM, порт 8000)
+
+```bash
+bash start_llm.sh
+```
+
+### Linux
+
+```bash
+bash run_server.sh
+```
+
+---
+
+## 🧪 Тесты
+
+```bash
+pytest tests/            # API-роуты, model, training, classifier
+```
+
+Покрытие настраивается в `pyproject.toml` (ruff + mypy + pytest).
+
+---
+
+## 👥 Команда
+
+* **Егор** — Project Lead (архитектура, LLM/GigaChess)
+* **Митя** — Backend Developer (Python, API)
+* **Илья Бабченков** — Frontend Developer
+* **Илья Слынько** — ML Engineer (Maia, датасеты)
+* **Даниил** — ML Engineer (LLM Tuning, промпты)
+* **Тима** — UI/UX Designer
