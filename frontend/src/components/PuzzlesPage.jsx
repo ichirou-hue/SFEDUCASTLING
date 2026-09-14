@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Chessboard as ReactChessboard } from "react-chessboard";
 import { Chess } from "chess.js";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   askLLM,
   fetchPuzzles,
@@ -8,6 +9,8 @@ import {
   recordPuzzleAttempt,
 } from "../api.js";
 import MiniBoard from "./MiniBoard.jsx";
+import { getCourseTopicForPuzzle, getCourseTopicMeta } from "../learningLinks.js";
+import "./LearningCrossLinks.css";
 
 const PIECE_IMAGES = {
   wK: "/pieces/white_king.svg",
@@ -111,11 +114,12 @@ function getThemeInfo(puzzle) {
   const pick = byPriority[0] || themes.find((t) => THEME_ICONS[t]) || themes[0];
   if (pick) {
     return {
+      key: pick,
       label: THEME_LABELS[pick] || pick,
       icon: THEME_ICONS[pick] || "♟",
     };
   }
-  return { label: "Тактика", icon: "♟" };
+  return { key: null, label: "Тактика", icon: "♟" };
 }
 
 function escapeHtml(str) {
@@ -149,6 +153,11 @@ function formatMarkdown(text) {
 }
 
 export default function PuzzlesPage() {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const requestedTopicSlug = searchParams.get("topic");
+  const requestedTopic = getCourseTopicMeta(requestedTopicSlug);
+
   const [puzzles, setPuzzles] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -240,23 +249,32 @@ export default function PuzzlesPage() {
   );
 
   useEffect(() => {
-    fetchPuzzles(20)
+    setLoading(true);
+    setError(null);
+    setSolvedCount(0);
+
+    fetchPuzzles(20, requestedTopic?.slug || null)
       .then((data) => {
         const qs = data.puzzles || [];
         if (qs.length === 0) {
-          setError("Нет доступных задач");
+          puzzlesRef.current = [];
+          setPuzzles([]);
+          setError(
+            requestedTopic
+              ? `Для темы «${requestedTopic.title}» пока нет доступных пазлов.`
+              : "Нет доступных задач",
+          );
           return;
         }
         puzzlesRef.current = qs;
         setPuzzles(qs);
         setCurrentIndex(0);
-        setLoading(false);
       })
       .catch((e) => {
-        setError("Ошибка загрузки задач: " + e.message);
-        setLoading(false);
-      });
-  }, []);
+        setError("Ошибка загрузки задач: " + (e.response?.data?.detail || e.message));
+      })
+      .finally(() => setLoading(false));
+  }, [requestedTopic?.slug, requestedTopic?.title]);
 
   useEffect(() => {
     if (puzzles.length > 0 && puzzles[currentIndex]) {
@@ -267,7 +285,9 @@ export default function PuzzlesPage() {
   const currentPuzzle = puzzles[currentIndex];
   const themeInfo = currentPuzzle
     ? getThemeInfo(currentPuzzle)
-    : { label: "Тактика", icon: "♟" };
+    : { key: null, label: "Тактика", icon: "♟" };
+  const relatedCourseTopic =
+    requestedTopic || getCourseTopicForPuzzle(currentPuzzle);
 
   const savePuzzleProgress = useCallback(
     (correct) => {
@@ -579,6 +599,32 @@ export default function PuzzlesPage() {
           <div className="puzzle-rating">
             Рейтинг: {currentPuzzle.rating}
           </div>
+        )}
+
+        {requestedTopic && (
+          <div className="learning-topic-filter">
+            Практика по теме
+            <strong>
+              {requestedTopic.icon} {requestedTopic.title}
+            </strong>
+            <button type="button" onClick={() => navigate("/puzzles")}>
+              Показать все пазлы
+            </button>
+          </div>
+        )}
+
+        {relatedCourseTopic && (
+          <button
+            type="button"
+            className="learning-crosslink learning-crosslink--compact"
+            onClick={() =>
+              navigate(
+                `/training?module=${encodeURIComponent(relatedCourseTopic.slug)}`,
+              )
+            }
+          >
+            Пройти урок по теме →
+          </button>
         )}
 
         <div className="puzzle-nav-buttons">

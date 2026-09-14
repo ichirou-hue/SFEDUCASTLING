@@ -80,6 +80,37 @@ class PuzzleAttemptRequest(BaseModel):
     correct: bool
 
 
+# Связка учебного курса с тематикой Lichess-пазлов. Это не строгая
+# шахматная классификация: цель A5 — подобрать практику, близкую к модулю.
+COURSE_TOPIC_PUZZLE_THEMES: dict[str, set[str]] = {
+    "pawn": {"advancedPawn", "pawnEndgame"},
+    "knight": {"knightEndgame", "fork"},
+    "bishop": {"bishopEndgame", "pin", "skewer"},
+    "rook": {"rookEndgame", "backRankMate"},
+    "queen": {"queenEndgame", "attraction", "sacrifice"},
+    "king": {"exposedKing", "kingsideAttack", "defensiveMove"},
+    "special-rules": {"enPassant", "promotion", "underPromotion"},
+    "check-mate-stalemate": {
+        "mate",
+        "mateIn1",
+        "mateIn2",
+        "mateIn3",
+        "mateIn4",
+        "mateIn5",
+        "smotheredMate",
+        "backRankMate",
+        "doubleCheck",
+    },
+}
+
+
+def _puzzle_matches_course_topic(puzzle: dict, topic: str) -> bool:
+    wanted = COURSE_TOPIC_PUZZLE_THEMES.get(topic)
+    if not wanted:
+        return False
+    return bool(set(puzzle.get("themes") or []) & wanted)
+
+
 def _ordinal_to_uci(board: chess.Board, san: str) -> str | None:
     """Переводит SAN-ход (например 'Nxe5') в UCI для текущей позиции."""
     try:
@@ -500,8 +531,12 @@ def puzzle_check(req: PuzzleAnswerRequest):
 
 
 @router.get("/api/learning/puzzles")
-def get_puzzles(count: int = 20):
+def get_puzzles(count: int = 20, topic: str | None = None):
     """Возвращает набор задач с полными решениями для тренировочной страницы.
+
+    ``topic`` — slug модуля учебного курса. Если он передан, выдаются только
+    связанные с этим модулем Lichess-темы. Так TrainingPage может отправить
+    пользователя сразу на релевантную практику.
 
     Отличие от level-test/start: включает поле moves (ходы решения).
     Задачи, где после решения игрок оказывается матован, исключаются.
@@ -509,20 +544,44 @@ def get_puzzles(count: int = 20):
     if not state.puzzle_base:
         return {"error": "База паззлов не загружена", "puzzles": []}
 
+    normalized_topic = (topic or "").strip() or None
+    if normalized_topic and normalized_topic not in COURSE_TOPIC_PUZZLE_THEMES:
+        raise HTTPException(status_code=400, detail="Неизвестная тема учебного курса")
+
     all_puzzles = state.puzzle_base.get("puzzles", [])
 
     valid_puzzles = [p for p in all_puzzles if _is_puzzle_valid(p)]
+    if normalized_topic:
+        valid_puzzles = [
+            p for p in valid_puzzles if _puzzle_matches_course_topic(p, normalized_topic)
+        ]
 
     picked: list[dict] = []
+    selected_ids: set[str] = set()
+    per_bucket = max(1, count // len(LEVEL_BUCKETS)) if count > 0 else 0
+
     for bucket in LEVEL_BUCKETS:
         lo, hi = bucket["min_puzzle_rating"], bucket["max_puzzle_rating"]
         pool = [p for p in valid_puzzles if lo <= p.get("rating", 0) < hi]
         random.shuffle(pool)
-        need = count // len(LEVEL_BUCKETS)
-        picked.extend(pool[:need])
+        for puzzle in pool[:per_bucket]:
+            picked.append(puzzle)
+            selected_ids.add(str(puzzle.get("id", "")))
+
+    # Тематическая выборка может быть неравномерной по Elo. Добираем оставшиеся
+    # задачи из той же темы, чтобы ссылка «проверить на пазлах» по возможности
+    # всё равно давала полноценный набор из count позиций.
+    if len(picked) < count:
+        remaining = [
+            p for p in valid_puzzles if str(p.get("id", "")) not in selected_ids
+        ]
+        random.shuffle(remaining)
+        picked.extend(remaining[: max(0, count - len(picked))])
+
+    random.shuffle(picked)
 
     result = []
-    for p in picked:
+    for p in picked[:count]:
         result.append({
             "id": p.get("id", ""),
             "fen": p.get("fen", ""),
@@ -531,7 +590,11 @@ def get_puzzles(count: int = 20):
             "rating": p.get("rating", 0),
         })
 
-    return {"puzzles": result, "total": len(result)}
+    return {
+        "puzzles": result,
+        "total": len(result),
+        "topic": normalized_topic,
+    }
 
 
 def _is_puzzle_valid(puzzle: dict) -> bool:

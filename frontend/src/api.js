@@ -219,8 +219,10 @@ export async function fetchExplainMove(
   return data;
 }
 
-export async function fetchPuzzles(count = 20) {
-  const { data } = await api.get("/api/learning/puzzles", { params: { count } });
+export async function fetchPuzzles(count = 20, topic = null) {
+  const params = { count };
+  if (topic) params.topic = topic;
+  const { data } = await api.get("/api/learning/puzzles", { params });
   return data;
 }
 

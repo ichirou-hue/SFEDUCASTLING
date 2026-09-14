@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Chessboard as ReactChessboard } from "react-chessboard";
 import { Chess } from "chess.js";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   checkTrainingTask,
   fetchTrainingLesson,
   fetchTrainingModule,
   fetchTrainingModules,
 } from "../api.js";
+import "./LearningCrossLinks.css";
 
 const PIECE_IMAGES = {
   wK: "/pieces/white_king.svg",
@@ -51,7 +53,38 @@ function getApiError(error, fallback) {
   return error?.response?.data?.detail || error?.message || fallback;
 }
 
+function getTaskHint(task) {
+  if (!task) return "";
+
+  const explicitHint = task.payload?.hint;
+  if (typeof explicitHint === "string" && explicitHint.trim()) {
+    return explicitHint.trim();
+  }
+
+  if (task.task_type === "select_squares") {
+    const source = task.source_square ? ` с клетки ${task.source_square}` : "";
+    return `Начните${source}: вспомните форму хода фигуры и учитывайте препятствия и занятые клетки.`;
+  }
+
+  if (task.task_type === "make_move") {
+    const source = task.source_square
+      ? ` Обратите внимание на фигуру на ${task.source_square}.`
+      : "";
+    return `Сначала проверьте самые естественные легальные ходы: шахи, взятия и прямые угрозы.${source}`;
+  }
+
+  if (task.task_type === "choose_option") {
+    return "Сверьтесь с теорией слева и исключите варианты, которые нарушают разобранное в уроке правило.";
+  }
+
+  return "Вернитесь к теории урока и разбейте задачу на один простой шаг.";
+}
+
 export default function TrainingPage() {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const requestedModuleSlug = searchParams.get("module");
+
   const [modules, setModules] = useState([]);
   const [selectedModule, setSelectedModule] = useState(null);
   const [lessons, setLessons] = useState([]);
@@ -67,7 +100,10 @@ export default function TrainingPage() {
   const [taskResult, setTaskResult] = useState(null);
   const [boardFen, setBoardFen] = useState(null);
   const [boardWidth, setBoardWidth] = useState(500);
+  const [hintsUsed, setHintsUsed] = useState(0);
+  const [hintVisible, setHintVisible] = useState(false);
   const taskStartedAtRef = useRef(Date.now());
+  const openingModuleRef = useRef(null);
 
   const currentTask = tasks[taskIndex] || null;
 
@@ -114,6 +150,8 @@ export default function TrainingPage() {
     setMoveSource(null);
     setTaskResult(null);
     setBoardFen(currentTask.fen);
+    setHintsUsed(0);
+    setHintVisible(false);
     taskStartedAtRef.current = Date.now();
   }, [currentTask?.id]);
 
@@ -136,6 +174,22 @@ export default function TrainingPage() {
     }
   }, []);
 
+  useEffect(() => {
+    if (!requestedModuleSlug || modules.length === 0) return;
+    if (selectedModule?.slug === requestedModuleSlug) return;
+    if (openingModuleRef.current === requestedModuleSlug) return;
+
+    const module = modules.find(
+      (item) => item.slug === requestedModuleSlug && item.enabled,
+    );
+    if (!module) return;
+
+    openingModuleRef.current = requestedModuleSlug;
+    openModule(module).finally(() => {
+      openingModuleRef.current = null;
+    });
+  }, [modules, openModule, requestedModuleSlug, selectedModule?.slug]);
+
   const openLesson = useCallback(async (lessonId) => {
     try {
       setLoading(true);
@@ -152,6 +206,7 @@ export default function TrainingPage() {
   }, []);
 
   const backToModules = () => {
+    navigate("/training");
     setSelectedModule(null);
     setLessons([]);
     setLesson(null);
@@ -178,7 +233,7 @@ export default function TrainingPage() {
         const result = await checkTrainingTask(
           currentTask.id,
           answer,
-          0,
+          hintsUsed,
           responseTimeMs,
         );
         setTaskResult(result);
@@ -206,7 +261,7 @@ export default function TrainingPage() {
         setChecking(false);
       }
     },
-    [checking, currentTask],
+    [checking, currentTask, hintsUsed],
   );
 
   const handleCheckSquares = () => {
@@ -216,6 +271,19 @@ export default function TrainingPage() {
   const handleCheckOption = () => {
     if (!selectedOption) return;
     submitAnswer({ option: selectedOption });
+  };
+
+  const handleShowTaskHint = () => {
+    if (!currentTask || taskResult?.correct) return;
+    if (!hintVisible) {
+      setHintsUsed((count) => count + 1);
+      setHintVisible(true);
+    }
+  };
+
+  const openPuzzlesForCurrentTopic = () => {
+    if (!selectedModule?.slug) return;
+    navigate(`/puzzles?topic=${encodeURIComponent(selectedModule.slug)}`);
   };
 
   const submitMove = useCallback(
@@ -328,7 +396,9 @@ export default function TrainingPage() {
               className={`training-module-card ${
                 module.enabled ? "" : "training-module-card--disabled"
               }`}
-              onClick={() => openModule(module)}
+              onClick={() =>
+                navigate(`/training?module=${encodeURIComponent(module.slug)}`)
+              }
               disabled={!module.enabled}
             >
               <span className="training-module-icon">
@@ -356,6 +426,13 @@ export default function TrainingPage() {
         <div className="training-toolbar">
           <button type="button" className="training-back-btn" onClick={backToModules}>
             ← Все модули
+          </button>
+          <button
+            type="button"
+            className="learning-crosslink"
+            onClick={openPuzzlesForCurrentTopic}
+          >
+            Проверить на пазлах этой темы →
           </button>
         </div>
 
@@ -400,6 +477,13 @@ export default function TrainingPage() {
       <div className="training-toolbar">
         <button type="button" className="training-back-btn" onClick={backToLessons}>
           ← Уроки модуля
+        </button>
+        <button
+          type="button"
+          className="learning-crosslink"
+          onClick={openPuzzlesForCurrentTopic}
+        >
+          Проверить на пазлах этой темы →
         </button>
         <div className="training-task-counter">
           Задание {Math.min(taskIndex + 1, tasks.length)} из {tasks.length}
@@ -559,6 +643,27 @@ export default function TrainingPage() {
                     {checking ? "Проверка..." : "Проверить ответ"}
                   </button>
                 </div>
+              )}
+
+              {!taskResult?.correct && (
+                <>
+                  <button
+                    type="button"
+                    className="training-secondary-btn"
+                    onClick={handleShowTaskHint}
+                    disabled={checking || hintVisible}
+                  >
+                    {hintVisible ? "Подсказка открыта" : "Подсказка"}
+                  </button>
+                  {hintVisible && (
+                    <div className="training-hint-box">
+                      {getTaskHint(currentTask)}
+                      <span className="training-hint-meta">
+                        Использовано подсказок: {hintsUsed}
+                      </span>
+                    </div>
+                  )}
+                </>
               )}
 
               {checking && currentTask.task_type === "make_move" && (

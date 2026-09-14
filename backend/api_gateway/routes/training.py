@@ -148,6 +148,7 @@ async def check_task(
         "task_id": task.id,
         "attempt_id": attempt.id,
         "attempt_number": attempt.attempt_number,
+        "hints_used": attempt.hints_used,
         "correct": result.correct,
         "score": result.score,
         "feedback": result.feedback,

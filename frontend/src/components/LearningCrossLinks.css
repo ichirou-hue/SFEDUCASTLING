@@ -1,0 +1,74 @@
+.learning-crosslink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 8px 14px;
+  border: 1px solid rgba(33, 90, 115, 0.22);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.78);
+  color: #225a73;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+}
+
+.learning-crosslink:hover {
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 6px 18px rgba(34, 90, 115, 0.12);
+}
+
+.learning-crosslink--compact {
+  width: 100%;
+  margin-top: 12px;
+  padding: 9px 10px;
+  font-size: 14px;
+}
+
+.learning-topic-filter {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(33, 90, 115, 0.18);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.58);
+  color: #225a73;
+  font-size: 14px;
+  line-height: 1.25;
+}
+
+.learning-topic-filter strong {
+  display: block;
+  margin-top: 2px;
+}
+
+.learning-topic-filter button {
+  margin-top: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #225a73;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.training-hint-box {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(240, 247, 230, 0.88);
+  border: 1px solid rgba(79, 147, 92, 0.22);
+  color: #31583a;
+  line-height: 1.4;
+}
+
+.training-hint-meta {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  opacity: 0.72;
+}
