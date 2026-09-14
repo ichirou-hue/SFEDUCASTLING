@@ -10,13 +10,14 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.api_gateway.dependecies import get_optional_current_user
+from backend.api_gateway.dependecies import get_current_user, get_optional_current_user
 from backend.db.session import get_db
 from backend.models.training_task import TrainingTask
 from backend.models.user import User
 from backend.services.training_checker import TrainingCheckError, check_training_task
 from backend.services.training_service import (
     get_lesson,
+    get_training_progress,
     get_module_by_slug,
     get_task,
     list_lesson_tasks,
@@ -38,6 +39,7 @@ def _task_public(task: TrainingTask) -> dict[str, Any]:
     """Публичная часть задания: эталон ответа намеренно не выдаётся."""
     payload = dict(task.payload or {})
     payload.pop("accepted_moves", None)
+    payload.pop("correct_option", None)
 
     return {
         "id": task.id,
@@ -51,6 +53,15 @@ def _task_public(task: TrainingTask) -> dict[str, Any]:
         "payload": payload,
         "sort_order": task.sort_order,
     }
+
+
+@router.get("/progress")
+async def training_progress(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Прогресс текущего пользователя по учебному курсу."""
+    return await get_training_progress(db, user.id)
 
 
 @router.get("/modules")

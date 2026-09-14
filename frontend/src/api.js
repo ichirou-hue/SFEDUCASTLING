@@ -21,6 +21,15 @@ export function getStoredUser() {
   }
 }
 
+export async function fetchCurrentUser() {
+  const { data } = await api.get("/api/auth/me");
+  const user = data?.user ?? data;
+  if (user) {
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
+  }
+  return user;
+}
+
 function saveAuth(data) {
   localStorage.setItem(TOKEN_KEY, data.access_token);
   localStorage.setItem(REFRESH_KEY, data.refresh_token);
@@ -223,6 +232,19 @@ export async function checkPuzzle(puzzleId, move) {
   return data;
 }
 
+export async function recordPuzzleAttempt(puzzleId, correct) {
+  const { data } = await api.post("/api/learning/puzzle/attempt", {
+    puzzle_id: puzzleId,
+    correct,
+  });
+  return data;
+}
+
+export async function fetchLearningProgress() {
+  const { data } = await api.get("/api/learning/progress");
+  return data;
+}
+
 
 // === Учебная подсистема ===
 
@@ -252,5 +274,11 @@ export async function checkTrainingTask(
     hints_used: hintsUsed,
     response_time_ms: responseTimeMs,
   });
+  return data;
+}
+
+
+export async function fetchTrainingProgress() {
+  const { data } = await api.get("/api/training/progress");
   return data;
 }

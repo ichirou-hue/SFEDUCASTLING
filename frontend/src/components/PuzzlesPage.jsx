@@ -1,7 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Chessboard as ReactChessboard } from "react-chessboard";
 import { Chess } from "chess.js";
-import { fetchPuzzles, askLLM } from "../api.js";
+import {
+  askLLM,
+  fetchPuzzles,
+  getAccessToken,
+  recordPuzzleAttempt,
+} from "../api.js";
 import MiniBoard from "./MiniBoard.jsx";
 
 const PIECE_IMAGES = {
@@ -264,6 +269,20 @@ export default function PuzzlesPage() {
     ? getThemeInfo(currentPuzzle)
     : { label: "Тактика", icon: "♟" };
 
+  const savePuzzleProgress = useCallback(
+    (correct) => {
+      if (!currentPuzzle?.id || !getAccessToken()) return;
+      recordPuzzleAttempt(currentPuzzle.id, correct)
+        .then(() => {
+          window.dispatchEvent(new Event("sfedu-progress-updated"));
+        })
+        .catch(() => {
+          // Ошибка статистики не должна мешать решению самой задачи.
+        });
+    },
+    [currentPuzzle?.id],
+  );
+
   const handleMove = useCallback(
     (sourceSquare, targetSquare) => {
       if (waitingForOpponent || showSolution) return false;
@@ -300,6 +319,7 @@ export default function PuzzlesPage() {
           setResultMessage({ type: "success", text: "Правильно! Задача решена!" });
           setSolvedCount((c) => c + 1);
           setPuzzleSolved(true);
+          savePuzzleProgress(true);
           return true;
         }
 
@@ -342,9 +362,10 @@ export default function PuzzlesPage() {
         type: "error",
         text: "Неверный ход. Попробуйте ещё раз.",
       });
+      savePuzzleProgress(false);
       return false;
     },
-    [waitingForOpponent, showSolution],
+    [waitingForOpponent, showSolution, savePuzzleProgress],
   );
 
   const onSquareClick = useCallback(

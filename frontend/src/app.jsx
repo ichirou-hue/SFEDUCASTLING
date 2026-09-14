@@ -9,6 +9,7 @@ import EvalBar from "./components/EvalBar.jsx";
 import RegisterModal from "./components/RegisterModal.jsx";
 import PuzzlesPage from "./components/PuzzlesPage.jsx";
 import TrainingPage from "./components/TrainingPage.jsx";
+import UserProfilePage from "./components/UserProfilePage.jsx";
 import { getStoredUser } from "./api.js";
 
 function MainPage() {
@@ -64,6 +65,7 @@ export default function App() {
     <>
       <TopBar
         user={user}
+        onUserChange={setUser}
         onRegister={() => setShowRegister(true)}
         onMenuClick={() => setSidebarOpen(true)}
       />
@@ -72,6 +74,10 @@ export default function App() {
         <Route path="/" element={<MainPage />} />
         <Route path="/puzzles" element={<PuzzlesPage />} />
         <Route path="/training" element={<TrainingPage />} />
+        <Route
+          path="/profile"
+          element={<UserProfilePage user={user} onUserChange={setUser} />}
+        />
       </Routes>
       <RegisterModal
         isOpen={showRegister}

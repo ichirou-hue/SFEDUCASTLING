@@ -1,6 +1,7 @@
 import { logout as apiLogout } from "../api.js";
+import MiniProfilePopover from "./MiniProfilePopover.jsx";
 
-export default function TopBar({ user, onRegister, onMenuClick }) {
+export default function TopBar({ user, onUserChange, onRegister, onMenuClick }) {
   const handleLogout = async () => {
     try {
       await apiLogout();
@@ -25,10 +26,7 @@ export default function TopBar({ user, onRegister, onMenuClick }) {
       </div>
       {user ? (
         <div className="user-box">
-          <span className="user-name" title={user.email || ""}>
-            {user.is_admin ? "♛ " : "👤 "}
-            {user.login}
-          </span>
+          <MiniProfilePopover user={user} onUserChange={onUserChange} />
           <button className="reg-btn reg-btn--ghost" onClick={handleLogout}>
             Выйти
           </button>

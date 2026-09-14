@@ -11,13 +11,22 @@
 """
 
 import random
+from datetime import UTC, datetime
 
 import chess
 import chess.engine
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api_gateway import state
+from backend.api_gateway.dependecies import get_current_user, get_optional_current_user
 from backend.api_gateway.models import PuzzleAnswerRequest
+from backend.db.session import get_db
+from backend.models.level_test import LevelTest
+from backend.models.puzzle_attempt import PuzzleAttempt
+from backend.models.user import User
 
 router = APIRouter(tags=["learning"])
 
@@ -25,11 +34,50 @@ router = APIRouter(tags=["learning"])
 # Диапазоны Elo по ТЗ (0-500 / 500-1000 / 1000-1500 / 1500+).
 # Соответствие с корзинами рейтинга паззлов.
 LEVEL_BUCKETS = [
-    {"level": 1, "name": "Новичок",       "min_puzzle_rating": 500,  "max_puzzle_rating": 900},
-    {"level": 2, "name": "Любитель",      "min_puzzle_rating": 900,  "max_puzzle_rating": 1300},
-    {"level": 3, "name": "Клубный",       "min_puzzle_rating": 1300, "max_puzzle_rating": 1700},
-    {"level": 4, "name": "Продвинутый",   "min_puzzle_rating": 1700, "max_puzzle_rating": 9999},
+    {
+        "level": 1,
+        "name": "Новичок",
+        "band": 500,
+        "min_puzzle_rating": 500,
+        "max_puzzle_rating": 900,
+    },
+    {
+        "level": 2,
+        "name": "Любитель",
+        "band": 1000,
+        "min_puzzle_rating": 900,
+        "max_puzzle_rating": 1300,
+    },
+    {
+        "level": 3,
+        "name": "Клубный",
+        "band": 1500,
+        "min_puzzle_rating": 1300,
+        "max_puzzle_rating": 1700,
+    },
+    {
+        "level": 4,
+        "name": "Продвинутый",
+        "band": 2000,
+        "min_puzzle_rating": 1700,
+        "max_puzzle_rating": 9999,
+    },
 ]
+
+
+class LevelTestSubmitAnswer(BaseModel):
+    puzzle_id: str = Field(min_length=1, max_length=64)
+    correct: bool
+
+
+class LevelTestSubmitRequest(BaseModel):
+    test_id: int = Field(gt=0)
+    answers: list[LevelTestSubmitAnswer] = Field(min_length=1, max_length=100)
+
+
+class PuzzleAttemptRequest(BaseModel):
+    puzzle_id: str = Field(min_length=1, max_length=64)
+    correct: bool
 
 
 def _ordinal_to_uci(board: chess.Board, san: str) -> str | None:
@@ -52,28 +100,49 @@ def _solution_for(board: chess.Board, moves_str: str) -> str | None:
 
 
 def _level_test_puzzles() -> list[dict]:
-    """Собирает тестовый набор: по 5 задач на каждый Elo-диапазон."""
+    """Собирает рандомизированный тестовый набор по Elo-диапазонам.
+
+    Из каждого диапазона случайно выбирается до 5 задач. После этого
+    итоговый список перемешивается, чтобы пользователь не получал задачи
+    в фиксированном порядке от простых к сложным.
+    """
     if not state.puzzle_base:
         return []
+
     puzzles = state.puzzle_base.get("puzzles", [])
     picked: list[dict] = []
+
     for bucket in LEVEL_BUCKETS:
         lo, hi = bucket["min_puzzle_rating"], bucket["max_puzzle_rating"]
         pool = [p for p in puzzles if lo <= p.get("rating", 0) < hi]
-        pool = sorted(pool, key=lambda p: p.get("rating", 0))
-        picked.extend(pool[:5])
+
+        # random.sample не изменяет исходный pool и гарантирует отсутствие
+        # повторов внутри выборки. min(...) сохраняет старое поведение, если
+        # в конкретном диапазоне оказалось меньше пяти задач.
+        sample_size = min(5, len(pool))
+        if sample_size:
+            picked.extend(random.sample(pool, sample_size))
+
+    # Перемешиваем задачи разных диапазонов между собой. Расчёт результата
+    # от порядка не зависит: level_test_result определяет диапазон по rating.
+    random.shuffle(picked)
     return picked
 
 
 @router.post("/api/learning/level-test/start")
-def level_test_start():
+async def level_test_start(
+    db: AsyncSession = Depends(get_db),
+    user: User | None = Depends(get_optional_current_user),
+):
     """Начинает тест определения уровня.
 
-    Возвращает набор задач (без решений) сгруппированных по сложности.
+    Для авторизованного пользователя создаёт строку level_tests и возвращает
+    test_id. Для гостя сохраняется прежнее поведение: задачи выдаются, но
+    test_id=None и записать результат в профиль нельзя.
     """
     puzzles = _level_test_puzzles()
     if not puzzles:
-        return {"error": "База паззлов не загружена", "questions": []}
+        return {"error": "База паззлов не загружена", "questions": [], "test_id": None}
 
     questions = []
     for p in puzzles:
@@ -85,7 +154,20 @@ def level_test_start():
                 "rating": p.get("rating", 0),
             }
         )
-    return {"questions": questions, "total": len(questions)}
+
+    test_id: int | None = None
+    if user is not None:
+        test = LevelTest(
+            user_id=user.id,
+            question_ids=[q["id"] for q in questions],
+            status="started",
+        )
+        db.add(test)
+        await db.commit()
+        await db.refresh(test)
+        test_id = test.id
+
+    return {"test_id": test_id, "questions": questions, "total": len(questions)}
 
 
 @router.post("/api/learning/level-test/check")
@@ -189,51 +271,225 @@ def _stockfish_matches(board: chess.Board, user_move: str, solution: str) -> tup
     return abs(user_eval - best_eval) <= 50, is_best
 
 
-@router.post("/api/learning/level-test/result")
-def level_test_result(answers: list[dict]):
-    """Считает уровень по списку ответов.
-
-    answers: [{"puzzle_id": ..., "correct": bool}, ...]
-
-    Уровень = наибольший диапазон, в котором решено >=3 задач из 5.
-    """
+def _score_level_test(answers: list[dict]) -> dict:
+    """Считает итог level-test единообразно для /result и /submit."""
     if not state.puzzle_base:
-        return {"error": "База паззлов не загружена"}
+        raise ValueError("База паззлов не загружена")
 
     by_id = {p.get("id"): p for p in state.puzzle_base.get("puzzles", [])}
 
-    scored = {level["level"]: {"total": 0, "correct": 0} for level in LEVEL_BUCKETS}
-    for bucket in LEVEL_BUCKETS:
-        lo, hi = bucket["min_puzzle_rating"], bucket["max_puzzle_rating"]
-        scored[bucket["level"]] = {"total": 0, "correct": 0, "name": bucket["name"]}
+    scored = {
+        bucket["level"]: {
+            "total": 0,
+            "correct": 0,
+            "name": bucket["name"],
+        }
+        for bucket in LEVEL_BUCKETS
+    }
 
-    for a in answers:
-        pid = a.get("puzzle_id")
-        p = by_id.get(pid)
-        if not p:
+    for answer in answers:
+        pid = answer.get("puzzle_id")
+        puzzle = by_id.get(pid)
+        if not puzzle:
             continue
-        rating = p.get("rating", 0)
+
+        rating = puzzle.get("rating", 0)
         for bucket in LEVEL_BUCKETS:
-            lo, hi = bucket["min_puzzle_rating"], bucket["max_puzzle_rating"]
+            lo = bucket["min_puzzle_rating"]
+            hi = bucket["max_puzzle_rating"]
             if lo <= rating < hi:
                 scored[bucket["level"]]["total"] += 1
-                if a.get("correct"):
+                if answer.get("correct"):
                     scored[bucket["level"]]["correct"] += 1
                 break
 
     level = 1
     for bucket in LEVEL_BUCKETS:
-        s = scored[bucket["level"]]
-        if s["total"] >= 3 and s["correct"] >= 3:
+        bucket_score = scored[bucket["level"]]
+        if bucket_score["total"] >= 3 and bucket_score["correct"] >= 3:
             level = bucket["level"]
 
+    result_bucket = next(b for b in LEVEL_BUCKETS if b["level"] == level)
     return {
         "level": level,
+        "band": result_bucket["band"],
         "score": scored,
         "result": {
             "level": level,
-            "name": next(b["name"] for b in LEVEL_BUCKETS if b["level"] == level),
+            "name": result_bucket["name"],
+            "band": result_bucket["band"],
         },
+    }
+
+
+@router.post("/api/learning/level-test/result")
+def level_test_result(answers: list[dict]):
+    """Считает уровень без изменения профиля (legacy/read-only endpoint)."""
+    try:
+        return _score_level_test(answers)
+    except ValueError as exc:
+        return {"error": str(exc)}
+
+
+@router.post("/api/learning/level-test/submit")
+async def level_test_submit(
+    req: LevelTestSubmitRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Фиксирует итог теста и записывает его Elo-band в профиль.
+
+    Идемпотентность обеспечивается строкой level_tests: она блокируется
+    SELECT ... FOR UPDATE. Если этот test_id уже был завершён, повторный
+    submit возвращает сохранённый результат и не пересчитывает его.
+    """
+    test = await db.scalar(
+        select(LevelTest)
+        .where(LevelTest.id == req.test_id, LevelTest.user_id == user.id)
+        .with_for_update()
+    )
+    if test is None:
+        raise HTTPException(status_code=404, detail="Тест не найден")
+
+    if test.status == "submitted":
+        return {
+            "ok": True,
+            "test_id": test.id,
+            "level": test.level,
+            "band": test.band,
+            "score": test.score,
+            "already_submitted": True,
+        }
+
+    answers = [answer.model_dump() for answer in req.answers]
+    answer_ids = [answer["puzzle_id"] for answer in answers]
+
+    if len(answer_ids) != len(set(answer_ids)):
+        raise HTTPException(status_code=422, detail="В ответах есть повторяющиеся puzzle_id")
+
+    expected_ids = list(test.question_ids or [])
+    if set(answer_ids) != set(expected_ids):
+        raise HTTPException(
+            status_code=422,
+            detail="Набор ответов не совпадает с задачами этого теста",
+        )
+
+    try:
+        result = _score_level_test(answers)
+    except ValueError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    # Блокируем и пользователя: два разных теста, отправленные одновременно,
+    # не должны потерять обновление профиля из-за гонки транзакций.
+    locked_user = await db.scalar(
+        select(User).where(User.id == user.id).with_for_update()
+    )
+    if locked_user is None:
+        raise HTTPException(status_code=401, detail="Пользователь не найден")
+
+    locked_user.elo = result["band"]
+
+    test.answers = answers
+    test.score = result["score"]
+    test.level = result["level"]
+    test.band = result["band"]
+    test.status = "submitted"
+    test.submitted_at = datetime.now(UTC)
+
+    await db.commit()
+
+    return {
+        "ok": True,
+        "test_id": test.id,
+        "level": test.level,
+        "band": test.band,
+        "score": test.score,
+        "already_submitted": False,
+    }
+
+
+@router.post("/api/learning/puzzle/attempt")
+async def record_puzzle_attempt(
+    req: PuzzleAttemptRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Сохраняет попытку обычного тактического пазла для прогресса.
+
+    Тренировочная страница сейчас воспроизводит полное решение на клиенте,
+    поэтому A4 фиксирует уже известный клиенту итог попытки. puzzle_id при
+    этом обязательно проверяется по загруженной базе задач.
+    """
+    if not state.puzzle_base:
+        raise HTTPException(status_code=503, detail="База паззлов не загружена")
+
+    puzzle_ids = {p.get("id") for p in state.puzzle_base.get("puzzles", [])}
+    if req.puzzle_id not in puzzle_ids:
+        raise HTTPException(status_code=404, detail="Задача не найдена")
+
+    attempt = PuzzleAttempt(
+        user_id=user.id,
+        puzzle_id=req.puzzle_id,
+        correct=req.correct,
+    )
+    db.add(attempt)
+    await db.commit()
+    await db.refresh(attempt)
+
+    return {
+        "ok": True,
+        "attempt_id": attempt.id,
+        "puzzle_id": attempt.puzzle_id,
+        "correct": attempt.correct,
+    }
+
+
+@router.get("/api/learning/progress")
+async def learning_progress(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Прогресс текущего пользователя по обычным тактическим пазлам."""
+    total_attempts = int(
+        await db.scalar(
+            select(func.count(PuzzleAttempt.id)).where(PuzzleAttempt.user_id == user.id)
+        )
+        or 0
+    )
+    correct_attempts = int(
+        await db.scalar(
+            select(func.count(PuzzleAttempt.id)).where(
+                PuzzleAttempt.user_id == user.id,
+                PuzzleAttempt.correct.is_(True),
+            )
+        )
+        or 0
+    )
+    attempted = int(
+        await db.scalar(
+            select(func.count(func.distinct(PuzzleAttempt.puzzle_id))).where(
+                PuzzleAttempt.user_id == user.id
+            )
+        )
+        or 0
+    )
+    solved = int(
+        await db.scalar(
+            select(func.count(func.distinct(PuzzleAttempt.puzzle_id))).where(
+                PuzzleAttempt.user_id == user.id,
+                PuzzleAttempt.correct.is_(True),
+            )
+        )
+        or 0
+    )
+
+    accuracy = round(correct_attempts * 100 / total_attempts, 1) if total_attempts else 0.0
+    return {
+        "attempted": attempted,
+        "solved": solved,
+        "attempts": total_attempts,
+        "correct_attempts": correct_attempts,
+        "accuracy": accuracy,
     }
 
 
@@ -248,9 +504,7 @@ def get_puzzles(count: int = 20):
     """Возвращает набор задач с полными решениями для тренировочной страницы.
 
     Отличие от level-test/start: включает поле moves (ходы решения).
-    Возвращаются только «выигрывающие» задачи: решающий после решения
-    реально побеждает (ставит мат сопернику или получает явное преимущество).
-    Задачи, где решающий лишь защищается/смягчает проигрыш, исключаются.
+    Задачи, где после решения игрок оказывается матован, исключаются.
     """
     if not state.puzzle_base:
         return {"error": "База паззлов не загружена", "puzzles": []}
@@ -269,16 +523,13 @@ def get_puzzles(count: int = 20):
 
     result = []
     for p in picked:
-        puzzle_out = {
+        result.append({
             "id": p.get("id", ""),
             "fen": p.get("fen", ""),
             "moves": p.get("moves", ""),
             "themes": p.get("themes", []),
             "rating": p.get("rating", 0),
-        }
-        if "win_score" in p:
-            puzzle_out["win_score"] = p["win_score"]
-        result.append(puzzle_out)
+        })
 
     return {"puzzles": result, "total": len(result)}
 
@@ -286,16 +537,10 @@ def get_puzzles(count: int = 20):
 def _is_puzzle_valid(puzzle: dict) -> bool:
     """Проверяет, что задача валидна для тренировки.
 
-    Возвращает только задачи, где решающий (сторона, чей ход в FEN) после
-    решения реально побеждает. База пересобирается с предвычисленным полем
-    win_score (оценка Stockfish с точки зрения решающего). Для legacy-базы
-    без win_score делаем дешёвую проверку:
-    - игрок не матован и не остаётся под шахом;
-    - у игрока есть материальное преимущество.
+    Исключает задачи, где после решения:
+    - игрок матован;
+    - игрок остаётся под шахом (позиция не стабилизировалась).
     """
-    if "win_score" in puzzle:
-        return puzzle.get("win_score", 0) >= 150
-
     try:
         board = chess.Board(puzzle["fen"])
         moves_str = puzzle.get("moves", "").strip()
@@ -314,14 +559,6 @@ def _is_puzzle_valid(puzzle: dict) -> bool:
         if board.is_check() and board.turn == player_color:
             return False
 
-        # Грубая проверка материального преимущества решающего.
-        values = {chess.PAWN: 1, chess.KNIGHT: 3, chess.BISHOP: 3, chess.ROOK: 5, chess.QUEEN: 9}
-        balance = 0
-        for sq, piece in board.piece_map().items():
-            v = values.get(piece.piece_type, 0)
-            balance += v if piece.color == chess.WHITE else -v
-        player_adv = balance if player_color == chess.WHITE else -balance
-
-        return player_adv >= 2
+        return True
     except Exception:
         return False

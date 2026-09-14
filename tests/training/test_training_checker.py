@@ -61,3 +61,40 @@ def test_make_move_any_legal():
     )
     result = check_training_task(task, {"move": "g1f3"})
     assert result.correct is True
+
+
+def test_make_move_accepted_moves_rejects_other_legal_move():
+    task = make_task(
+        task_type="make_move",
+        fen="7k/8/8/8/8/8/8/R6K w - - 0 1",
+        source_square="a1",
+        payload={"mode": "accepted_moves", "accepted_moves": ["a1a8"]},
+    )
+
+    wrong = check_training_task(task, {"move": "a1a2"})
+    right = check_training_task(task, {"move": "a1a8"})
+
+    assert wrong.correct is False
+    assert right.correct is True
+
+
+def test_choose_option():
+    task = make_task(
+        task_type="choose_option",
+        source_square=None,
+        payload={
+            "options": [
+                {"id": "mate", "label": "Мат"},
+                {"id": "stalemate", "label": "Пат"},
+            ],
+            "correct_option": "mate",
+        },
+    )
+
+    wrong = check_training_task(task, {"option": "stalemate"})
+    right = check_training_task(task, {"option": "mate"})
+
+    assert wrong.correct is False
+    assert wrong.score == 0.0
+    assert right.correct is True
+    assert right.score == 1.0

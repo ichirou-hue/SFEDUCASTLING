@@ -41,6 +41,12 @@ const MODULE_ICONS = {
   "check-mate-stalemate": "♚",
 };
 
+const TASK_TYPE_LABELS = {
+  select_squares: "Выбор клеток",
+  make_move: "Ход на доске",
+  choose_option: "Выбор ответа",
+};
+
 function getApiError(error, fallback) {
   return error?.response?.data?.detail || error?.message || fallback;
 }
@@ -56,6 +62,7 @@ export default function TrainingPage() {
   const [error, setError] = useState(null);
   const [checking, setChecking] = useState(false);
   const [selectedSquares, setSelectedSquares] = useState([]);
+  const [selectedOption, setSelectedOption] = useState(null);
   const [moveSource, setMoveSource] = useState(null);
   const [taskResult, setTaskResult] = useState(null);
   const [boardFen, setBoardFen] = useState(null);
@@ -103,6 +110,7 @@ export default function TrainingPage() {
   useEffect(() => {
     if (!currentTask) return;
     setSelectedSquares([]);
+    setSelectedOption(null);
     setMoveSource(null);
     setTaskResult(null);
     setBoardFen(currentTask.fen);
@@ -174,6 +182,7 @@ export default function TrainingPage() {
           responseTimeMs,
         );
         setTaskResult(result);
+        window.dispatchEvent(new Event("sfedu-progress-updated"));
 
         if (result.correct && moveToApply && currentTask.task_type === "make_move") {
           try {
@@ -202,6 +211,11 @@ export default function TrainingPage() {
 
   const handleCheckSquares = () => {
     submitAnswer({ selected_squares: selectedSquares });
+  };
+
+  const handleCheckOption = () => {
+    if (!selectedOption) return;
+    submitAnswer({ option: selectedOption });
   };
 
   const submitMove = useCallback(
@@ -464,9 +478,7 @@ export default function TrainingPage() {
           {currentTask && (
             <>
               <div className="training-task-type">
-                {currentTask.task_type === "select_squares"
-                  ? "Выбор клеток"
-                  : "Ход на доске"}
+                {TASK_TYPE_LABELS[currentTask.task_type] || "Учебное задание"}
               </div>
               <h2>{currentTask.title}</h2>
               <p className="training-task-instruction">{currentTask.instruction}</p>
@@ -486,6 +498,29 @@ export default function TrainingPage() {
                 <div className="training-help-text">
                   Перетащите фигуру с выделенного поля или выберите начальную и
                   конечную клетки двумя кликами.
+                </div>
+              )}
+
+              {currentTask.task_type === "choose_option" && (
+                <div className="training-options">
+                  {(currentTask.payload?.options || []).map((option) => (
+                    <button
+                      type="button"
+                      key={option.id}
+                      className={`training-option-btn ${
+                        selectedOption === option.id
+                          ? "training-option-btn--selected"
+                          : ""
+                      }`}
+                      onClick={() => {
+                        setSelectedOption(option.id);
+                        if (!taskResult?.correct) setTaskResult(null);
+                      }}
+                      disabled={checking || taskResult?.correct}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
                 </div>
               )}
 
@@ -509,6 +544,19 @@ export default function TrainingPage() {
                     disabled={checking || selectedSquares.length === 0}
                   >
                     Сбросить
+                  </button>
+                </div>
+              )}
+
+              {currentTask.task_type === "choose_option" && !taskResult?.correct && (
+                <div className="training-actions">
+                  <button
+                    type="button"
+                    className="training-primary-btn"
+                    onClick={handleCheckOption}
+                    disabled={checking || !selectedOption}
+                  >
+                    {checking ? "Проверка..." : "Проверить ответ"}
                   </button>
                 </div>
               )}

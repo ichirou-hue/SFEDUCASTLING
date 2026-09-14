@@ -1,7 +1,7 @@
 """Детерминированная проверка стандартных учебных заданий.
 
-На первом этапе подсистема обучения не использует LLM и Stockfish:
-ответы на базовые упражнения проверяются через python-chess.
+Базовый учебный курс не использует LLM и Stockfish: ответы проверяются
+через python-chess и заранее заданные варианты в payload.
 """
 
 from dataclasses import dataclass
@@ -67,7 +67,10 @@ def _moves_for_mode(
     if mode in {"capture_squares", "legal_capture"}:
         return [move for move in legal if board.is_capture(move)]
     if mode == "accepted_moves":
-        accepted = set((task.payload or {}).get("accepted_moves") or [])
+        accepted = {
+            str(move).strip().lower()
+            for move in ((task.payload or {}).get("accepted_moves") or [])
+        }
         return [move for move in legal if move.uci() in accepted]
 
     raise TrainingCheckError(f"Неизвестный режим проверки: {mode}")
@@ -97,6 +100,8 @@ def _check_select_squares(
 ) -> TrainingCheckResult:
     source = _source_square(task)
     expected_moves = _moves_for_mode(board, task, source)
+    # При превращении у пешки может быть четыре UCI-хода на одно и то же поле.
+    # Для задания выбора клеток это по-прежнему одна конечная клетка.
     expected = {chess.square_name(move.to_square) for move in expected_moves}
     selected = _normalize_squares(answer.get("selected_squares"))
 
@@ -168,6 +173,55 @@ def _check_make_move(
     )
 
 
+def _check_choose_option(
+    task: TrainingTask,
+    answer: dict[str, Any],
+) -> TrainingCheckResult:
+    payload = task.payload or {}
+    options = payload.get("options") or []
+    correct_option = payload.get("correct_option")
+
+    if not isinstance(correct_option, str) or not correct_option:
+        raise TrainingCheckError("Для choose_option не задан correct_option")
+    if not isinstance(options, list) or not options:
+        raise TrainingCheckError("Для choose_option не заданы options")
+
+    available: dict[str, str] = {}
+    for option in options:
+        if not isinstance(option, dict):
+            raise TrainingCheckError("Некорректный формат options")
+        option_id = option.get("id")
+        label = option.get("label")
+        if isinstance(option_id, str) and isinstance(label, str):
+            available[option_id] = label
+
+    if correct_option not in available:
+        raise TrainingCheckError("correct_option отсутствует в options")
+
+    selected = answer.get("option")
+    if not isinstance(selected, str) or selected not in available:
+        raise TrainingCheckError("Ожидается поле option с идентификатором варианта")
+
+    correct = selected == correct_option
+    return TrainingCheckResult(
+        correct=correct,
+        score=1.0 if correct else 0.0,
+        feedback=(
+            "Верно. Выбран правильный вариант."
+            if correct
+            else "Ответ неверный. Попробуйте ещё раз и обратитесь к теории урока."
+        ),
+        expected={
+            "option": correct_option,
+            "label": available[correct_option],
+        },
+        details={
+            "selected_option": selected,
+            "selected_label": available[selected],
+        },
+    )
+
+
 def check_training_task(
     task: TrainingTask,
     answer: dict[str, Any],
@@ -176,11 +230,15 @@ def check_training_task(
     if not isinstance(answer, dict):
         raise TrainingCheckError("answer должен быть JSON-объектом")
 
+    # FEN проверяем для всех типов заданий: даже текстовый вопрос относится
+    # к конкретной шахматной позиции, показанной пользователю.
     board = _board_for_task(task)
 
     if task.task_type == "select_squares":
         return _check_select_squares(board, task, answer)
     if task.task_type == "make_move":
         return _check_make_move(board, task, answer)
+    if task.task_type == "choose_option":
+        return _check_choose_option(task, answer)
 
     raise TrainingCheckError(f"Тип задания {task.task_type!r} пока не поддерживается")

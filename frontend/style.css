@@ -1603,18 +1603,14 @@ body {
 
 .puzzles-layout {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  align-items: stretch;
-  gap: 16px;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 20px;
   width: calc(100vw - 40px);
-  max-width: 100%;
-  margin: 2px auto 0;
+  margin: 2px 0 0 20px;
   box-sizing: border-box;
   flex: 1;
   min-height: 0;
-  overflow-y: auto;
-  padding-bottom: 16px;
 }
 
 /* ========================================= */
@@ -1727,10 +1723,8 @@ body {
   min-width: 320px;
   display: flex;
   flex-direction: column;
-  justify-content: center;
   align-items: center;
   gap: 12px;
-  padding: 8px 0;
 }
 
 .puzzle-board-wrapper {
@@ -1853,14 +1847,6 @@ body {
 }
 .puzzle-ctrl-btn--hint:hover {
   background: #b89a5e;
-}
-.puzzle-ctrl-btn--restart {
-  background: rgba(220, 120, 100, 0.35);
-  color: #7a2e20;
-  border: 1px solid rgba(220, 120, 100, 0.45);
-}
-.puzzle-ctrl-btn--restart:hover {
-  background: rgba(220, 120, 100, 0.5);
 }
 
 /* ========================================= */
@@ -2388,4 +2374,46 @@ body {
   .training-module-header {
     align-items: flex-start;
   }
+}
+
+/* Варианты ответа в заданиях choose_option */
+.training-options {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin: 14px 0 4px;
+}
+
+.training-option-btn {
+  width: 100%;
+  padding: 11px 13px;
+  border: 1px solid rgba(180, 135, 44, 0.48);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.82);
+  color: #4c4c4c;
+  font-family: "Inter", sans-serif;
+  font-size: 13px;
+  line-height: 1.4;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.16s ease, border-color 0.16s ease, transform 0.16s ease;
+}
+
+.training-option-btn:hover:not(:disabled) {
+  transform: translateX(2px);
+  background: rgba(131, 183, 135, 0.12);
+  border-color: rgba(94, 148, 99, 0.72);
+}
+
+.training-option-btn--selected {
+  background: rgba(131, 183, 135, 0.24);
+  border-color: #5e9463;
+  box-shadow: inset 0 0 0 1px rgba(94, 148, 99, 0.32);
+  color: #2f5c36;
+  font-weight: 600;
+}
+
+.training-option-btn:disabled {
+  cursor: default;
+  opacity: 0.78;
 }
