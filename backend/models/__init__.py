@@ -14,6 +14,7 @@ from backend.models.training_lesson import TrainingLesson
 from backend.models.training_module import TrainingModule
 from backend.models.training_task import TrainingTask
 from backend.models.user import RefreshToken, User
+from backend.models.user_theme_difficulty import UserThemeDifficulty
 
 __all__ = [
     "ChatMessage",
@@ -28,4 +29,5 @@ __all__ = [
     "TrainingModule",
     "TrainingTask",
     "User",
+    "UserThemeDifficulty",
 ]

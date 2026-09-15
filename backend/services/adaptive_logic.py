@@ -6,6 +6,10 @@ import random
 from collections.abc import Iterable
 
 from backend.services.course_topics import primary_course_topic_for_puzzle
+from backend.services.difficulty_logic import (
+    DEFAULT_DIFFICULTY,
+    puzzle_matches_difficulty,
+)
 
 
 def allocation_for_count(count: int) -> tuple[int, int]:
@@ -71,6 +75,7 @@ def _take_round_robin(
     count: int,
     selected_ids: set[str],
     group: str,
+    topic_difficulties: dict[str, int] | None = None,
 ) -> list[dict]:
     pools: dict[str, list[dict]] = {}
     for slug in topic_slugs:
@@ -83,8 +88,13 @@ def _take_round_robin(
             for p in puzzles
             if primary_course_topic_for_puzzle(p) == slug
         ]
-        random.shuffle(pool)
-        pools[slug] = pool
+        difficulty = int((topic_difficulties or {}).get(slug, DEFAULT_DIFFICULTY))
+        preferred = [p for p in pool if puzzle_matches_difficulty(p, difficulty)]
+        secondary = [p for p in pool if not puzzle_matches_difficulty(p, difficulty)]
+        random.shuffle(preferred)
+        random.shuffle(secondary)
+        # pop() берёт с конца: сначала выдаём preferred, затем same-topic fallback.
+        pools[slug] = secondary + preferred
 
     result: list[dict] = []
     while len(result) < count:
@@ -100,11 +110,14 @@ def _take_round_robin(
             if not puzzle_id or puzzle_id in selected_ids:
                 continue
             selected_ids.add(puzzle_id)
+            difficulty = int((topic_difficulties or {}).get(slug, DEFAULT_DIFFICULTY))
             result.append(
                 {
                     **puzzle,
                     "adaptive_group": group,
                     "adaptive_topic": slug,
+                    "adaptive_difficulty": difficulty,
+                    "difficulty_match": puzzle_matches_difficulty(puzzle, difficulty),
                 }
             )
             progressed = True
@@ -121,6 +134,7 @@ def select_adaptive_puzzles(
     weak_topics: list[dict],
     strong_topics: list[dict],
     count: int,
+    topic_difficulties: dict[str, int] | None = None,
 ) -> tuple[list[dict], dict]:
     """Формирует 70/30 выборку, по возможности сохраняя квоты."""
     count = max(1, int(count))
@@ -136,6 +150,7 @@ def select_adaptive_puzzles(
         count=weak_quota,
         selected_ids=selected_ids,
         group="weak",
+        topic_difficulties=topic_difficulties,
     )
     strong = _take_round_robin(
         puzzles,
@@ -143,6 +158,7 @@ def select_adaptive_puzzles(
         count=strong_quota,
         selected_ids=selected_ids,
         group="strong",
+        topic_difficulties=topic_difficulties,
     )
 
     picked = weak + strong
@@ -155,21 +171,29 @@ def select_adaptive_puzzles(
             if not puzzle_id:
                 continue
             selected_ids.add(puzzle_id)
+            slug = primary_course_topic_for_puzzle(puzzle)
+            difficulty = int((topic_difficulties or {}).get(slug, DEFAULT_DIFFICULTY))
             picked.append(
                 {
                     **puzzle,
                     "adaptive_group": "fallback",
-                    "adaptive_topic": primary_course_topic_for_puzzle(puzzle),
+                    "adaptive_topic": slug,
+                    "adaptive_difficulty": difficulty,
+                    "difficulty_match": puzzle_matches_difficulty(puzzle, difficulty),
                 }
             )
             fallback_count += 1
 
     random.shuffle(picked)
-    return picked[:count], {
+    final = picked[:count]
+    difficulty_matched = sum(1 for p in final if p.get("difficulty_match") is True)
+    return final, {
         "requested": count,
         "weak_quota": weak_quota,
         "strong_quota": strong_quota,
         "weak_selected": len(weak),
         "strong_selected": len(strong),
         "fallback_selected": fallback_count,
+        "difficulty_matched": difficulty_matched,
+        "difficulty_fallback": len(final) - difficulty_matched,
     }

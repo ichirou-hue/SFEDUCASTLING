@@ -29,8 +29,14 @@ from backend.models.puzzle_attempt import PuzzleAttempt
 from backend.models.user import User
 from backend.services.adaptive_logic import select_adaptive_puzzles
 from backend.services.adaptive_training import build_weakness_profile
+from backend.services.dynamic_difficulty import (
+    get_user_theme_difficulties,
+    public_difficulty_profile,
+    update_theme_difficulty_after_attempt,
+)
 from backend.services.course_topics import (
     COURSE_TOPIC_PUZZLE_THEMES,
+    primary_course_topic_for_puzzle,
     puzzle_matches_course_topic as _puzzle_matches_course_topic,
 )
 
@@ -429,9 +435,20 @@ async def record_puzzle_attempt(
     if not state.puzzle_base:
         raise HTTPException(status_code=503, detail="База паззлов не загружена")
 
-    puzzle_ids = {p.get("id") for p in state.puzzle_base.get("puzzles", [])}
-    if req.puzzle_id not in puzzle_ids:
+    puzzle_lookup = {
+        str(p.get("id")): p for p in state.puzzle_base.get("puzzles", [])
+    }
+    puzzle = puzzle_lookup.get(req.puzzle_id)
+    if puzzle is None:
         raise HTTPException(status_code=404, detail="Задача не найдена")
+
+    # До сохранения новой попытки лениво инициализируем B2 по уже накопленной
+    # истории. Так первая новая попытка меняет difficulty ровно на один шаг.
+    await get_user_theme_difficulties(
+        db,
+        user_id=user.id,
+        puzzle_base=state.puzzle_base,
+    )
 
     attempt = PuzzleAttempt(
         user_id=user.id,
@@ -442,11 +459,21 @@ async def record_puzzle_attempt(
     await db.commit()
     await db.refresh(attempt)
 
+    topic_slug = primary_course_topic_for_puzzle(puzzle)
+    difficulty_update = await update_theme_difficulty_after_attempt(
+        db,
+        user_id=user.id,
+        theme_slug=topic_slug,
+        puzzle_base=state.puzzle_base,
+    )
+
     return {
         "ok": True,
         "attempt_id": attempt.id,
         "puzzle_id": attempt.puzzle_id,
         "correct": attempt.correct,
+        "topic": topic_slug,
+        "difficulty_update": difficulty_update,
     }
 
 
@@ -499,6 +526,32 @@ async def learning_progress(
     }
 
 
+@router.get("/api/learning/difficulty")
+async def learning_difficulty(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Текущая B2-сложность пользователя по каждой учебной теме."""
+    if not state.puzzle_base:
+        raise HTTPException(status_code=503, detail="База паззлов не загружена")
+
+    profile, difficulties = await get_user_theme_difficulties(
+        db,
+        user_id=user.id,
+        puzzle_base=state.puzzle_base,
+    )
+    return {
+        "topics": public_difficulty_profile(profile, difficulties),
+        "rule": {
+            "min_difficulty": 1,
+            "max_difficulty": 3,
+            "default_difficulty": 2,
+            "increase_if_accuracy_gt": 80,
+            "decrease_if_accuracy_lt": 50,
+        },
+    }
+
+
 @router.get("/api/learning/weaknesses")
 async def learning_weaknesses(
     user: User = Depends(get_current_user),
@@ -524,7 +577,7 @@ async def get_adaptive_puzzles(
     if not state.puzzle_base:
         raise HTTPException(status_code=503, detail="База паззлов не загружена")
 
-    profile = await build_weakness_profile(
+    profile, topic_difficulties = await get_user_theme_difficulties(
         db,
         user_id=user.id,
         puzzle_base=state.puzzle_base,
@@ -537,6 +590,7 @@ async def get_adaptive_puzzles(
         weak_topics=profile["weak_topics"],
         strong_topics=profile["strong_topics"],
         count=count,
+        topic_difficulties=topic_difficulties,
     )
 
     result = [
@@ -548,6 +602,8 @@ async def get_adaptive_puzzles(
             "rating": p.get("rating", 0),
             "adaptive_group": p.get("adaptive_group"),
             "adaptive_topic": p.get("adaptive_topic"),
+            "adaptive_difficulty": p.get("adaptive_difficulty"),
+            "difficulty_match": p.get("difficulty_match"),
         }
         for p in picked
     ]
@@ -558,6 +614,7 @@ async def get_adaptive_puzzles(
         "mode": "adaptive",
         "weak_topics": profile["weak_topics"],
         "strong_topics": profile["strong_topics"],
+        "difficulty_profile": public_difficulty_profile(profile, topic_difficulties),
         "allocation": allocation,
         "selection_rule": profile["selection_rule"],
     }

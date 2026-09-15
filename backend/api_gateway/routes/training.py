@@ -10,11 +10,17 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.api_gateway import state
 from backend.api_gateway.dependecies import get_current_user, get_optional_current_user
 from backend.db.session import get_db
 from backend.models.training_task import TrainingTask
 from backend.models.user import User
 from backend.services.training_checker import TrainingCheckError, check_training_task
+from backend.services.dynamic_difficulty import (
+    get_user_theme_difficulties,
+    training_task_topic_slug,
+    update_theme_difficulty_after_attempt,
+)
 from backend.services.training_service import (
     get_lesson,
     get_training_progress,
@@ -133,6 +139,17 @@ async def check_task(
     except TrainingCheckError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
+    topic_slug = None
+    if user is not None:
+        topic_slug = await training_task_topic_slug(db, task.id)
+        # Инициализация до новой попытки: текущая попытка затем изменит
+        # difficulty максимум на один шаг по свежей общей accuracy темы.
+        await get_user_theme_difficulties(
+            db,
+            user_id=user.id,
+            puzzle_base=state.puzzle_base,
+        )
+
     attempt = await save_attempt(
         db,
         task=task,
@@ -143,6 +160,15 @@ async def check_task(
         response_time_ms=req.response_time_ms,
     )
 
+    difficulty_update = None
+    if user is not None:
+        difficulty_update = await update_theme_difficulty_after_attempt(
+            db,
+            user_id=user.id,
+            theme_slug=topic_slug,
+            puzzle_base=state.puzzle_base,
+        )
+
     return {
         "ok": True,
         "task_id": task.id,
@@ -150,6 +176,8 @@ async def check_task(
         "attempt_number": attempt.attempt_number,
         "hints_used": attempt.hints_used,
         "correct": result.correct,
+        "topic": topic_slug,
+        "difficulty_update": difficulty_update,
         "score": result.score,
         "feedback": result.feedback,
         "explanation": task.explanation,
