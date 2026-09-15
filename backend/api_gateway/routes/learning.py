@@ -15,7 +15,7 @@ from datetime import UTC, datetime
 
 import chess
 import chess.engine
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -27,6 +27,12 @@ from backend.db.session import get_db
 from backend.models.level_test import LevelTest
 from backend.models.puzzle_attempt import PuzzleAttempt
 from backend.models.user import User
+from backend.services.adaptive_logic import select_adaptive_puzzles
+from backend.services.adaptive_training import build_weakness_profile
+from backend.services.course_topics import (
+    COURSE_TOPIC_PUZZLE_THEMES,
+    puzzle_matches_course_topic as _puzzle_matches_course_topic,
+)
 
 router = APIRouter(tags=["learning"])
 
@@ -78,37 +84,6 @@ class LevelTestSubmitRequest(BaseModel):
 class PuzzleAttemptRequest(BaseModel):
     puzzle_id: str = Field(min_length=1, max_length=64)
     correct: bool
-
-
-# Связка учебного курса с тематикой Lichess-пазлов. Это не строгая
-# шахматная классификация: цель A5 — подобрать практику, близкую к модулю.
-COURSE_TOPIC_PUZZLE_THEMES: dict[str, set[str]] = {
-    "pawn": {"advancedPawn", "pawnEndgame"},
-    "knight": {"knightEndgame", "fork"},
-    "bishop": {"bishopEndgame", "pin", "skewer"},
-    "rook": {"rookEndgame", "backRankMate"},
-    "queen": {"queenEndgame", "attraction", "sacrifice"},
-    "king": {"exposedKing", "kingsideAttack", "defensiveMove"},
-    "special-rules": {"enPassant", "promotion", "underPromotion"},
-    "check-mate-stalemate": {
-        "mate",
-        "mateIn1",
-        "mateIn2",
-        "mateIn3",
-        "mateIn4",
-        "mateIn5",
-        "smotheredMate",
-        "backRankMate",
-        "doubleCheck",
-    },
-}
-
-
-def _puzzle_matches_course_topic(puzzle: dict, topic: str) -> bool:
-    wanted = COURSE_TOPIC_PUZZLE_THEMES.get(topic)
-    if not wanted:
-        return False
-    return bool(set(puzzle.get("themes") or []) & wanted)
 
 
 def _ordinal_to_uci(board: chess.Board, san: str) -> str | None:
@@ -521,6 +496,70 @@ async def learning_progress(
         "attempts": total_attempts,
         "correct_attempts": correct_attempts,
         "accuracy": accuracy,
+    }
+
+
+@router.get("/api/learning/weaknesses")
+async def learning_weaknesses(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Профиль сильных/слабых тем по объединённым учебным попыткам."""
+    if not state.puzzle_base:
+        raise HTTPException(status_code=503, detail="База паззлов не загружена")
+    return await build_weakness_profile(
+        db,
+        user_id=user.id,
+        puzzle_base=state.puzzle_base,
+    )
+
+
+@router.get("/api/learning/puzzles/adaptive")
+async def get_adaptive_puzzles(
+    count: int = Query(default=20, ge=1, le=100),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Персональный набор: 70% слабые темы, 30% сильные темы."""
+    if not state.puzzle_base:
+        raise HTTPException(status_code=503, detail="База паззлов не загружена")
+
+    profile = await build_weakness_profile(
+        db,
+        user_id=user.id,
+        puzzle_base=state.puzzle_base,
+    )
+    valid_puzzles = [
+        p for p in state.puzzle_base.get("puzzles", []) if _is_puzzle_valid(p)
+    ]
+    picked, allocation = select_adaptive_puzzles(
+        valid_puzzles,
+        weak_topics=profile["weak_topics"],
+        strong_topics=profile["strong_topics"],
+        count=count,
+    )
+
+    result = [
+        {
+            "id": p.get("id", ""),
+            "fen": p.get("fen", ""),
+            "moves": p.get("moves", ""),
+            "themes": p.get("themes", []),
+            "rating": p.get("rating", 0),
+            "adaptive_group": p.get("adaptive_group"),
+            "adaptive_topic": p.get("adaptive_topic"),
+        }
+        for p in picked
+    ]
+
+    return {
+        "puzzles": result,
+        "total": len(result),
+        "mode": "adaptive",
+        "weak_topics": profile["weak_topics"],
+        "strong_topics": profile["strong_topics"],
+        "allocation": allocation,
+        "selection_rule": profile["selection_rule"],
     }
 
 

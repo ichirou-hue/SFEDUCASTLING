@@ -247,6 +247,18 @@ export async function fetchLearningProgress() {
   return data;
 }
 
+export async function fetchWeaknessProfile() {
+  const { data } = await api.get("/api/learning/weaknesses");
+  return data;
+}
+
+export async function fetchAdaptivePuzzles(count = 20) {
+  const { data } = await api.get("/api/learning/puzzles/adaptive", {
+    params: { count },
+  });
+  return data;
+}
+
 
 // === Учебная подсистема ===
 

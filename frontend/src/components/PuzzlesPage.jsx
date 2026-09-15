@@ -4,6 +4,7 @@ import { Chess } from "chess.js";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   askLLM,
+  fetchAdaptivePuzzles,
   fetchPuzzles,
   getAccessToken,
   recordPuzzleAttempt,
@@ -157,8 +158,10 @@ export default function PuzzlesPage() {
   const [searchParams] = useSearchParams();
   const requestedTopicSlug = searchParams.get("topic");
   const requestedTopic = getCourseTopicMeta(requestedTopicSlug);
+  const adaptiveMode = searchParams.get("adaptive") === "1";
 
   const [puzzles, setPuzzles] = useState([]);
+  const [adaptiveMeta, setAdaptiveMeta] = useState(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -252,19 +255,33 @@ export default function PuzzlesPage() {
     setLoading(true);
     setError(null);
     setSolvedCount(0);
+    setAdaptiveMeta(null);
 
-    fetchPuzzles(20, requestedTopic?.slug || null)
+    const request = adaptiveMode
+      ? fetchAdaptivePuzzles(20)
+      : fetchPuzzles(20, requestedTopic?.slug || null);
+
+    request
       .then((data) => {
         const qs = data.puzzles || [];
         if (qs.length === 0) {
           puzzlesRef.current = [];
           setPuzzles([]);
           setError(
-            requestedTopic
-              ? `Для темы «${requestedTopic.title}» пока нет доступных пазлов.`
-              : "Нет доступных задач",
+            adaptiveMode
+              ? "Пока не удалось подобрать персональную тренировку."
+              : requestedTopic
+                ? `Для темы «${requestedTopic.title}» пока нет доступных пазлов.`
+                : "Нет доступных задач",
           );
           return;
+        }
+        if (adaptiveMode) {
+          setAdaptiveMeta({
+            weakTopics: data.weak_topics || [],
+            strongTopics: data.strong_topics || [],
+            allocation: data.allocation || null,
+          });
         }
         puzzlesRef.current = qs;
         setPuzzles(qs);
@@ -274,7 +291,7 @@ export default function PuzzlesPage() {
         setError("Ошибка загрузки задач: " + (e.response?.data?.detail || e.message));
       })
       .finally(() => setLoading(false));
-  }, [requestedTopic?.slug, requestedTopic?.title]);
+  }, [adaptiveMode, requestedTopic?.slug, requestedTopic?.title]);
 
   useEffect(() => {
     if (puzzles.length > 0 && puzzles[currentIndex]) {
@@ -287,7 +304,9 @@ export default function PuzzlesPage() {
     ? getThemeInfo(currentPuzzle)
     : { key: null, label: "Тактика", icon: "♟" };
   const relatedCourseTopic =
-    requestedTopic || getCourseTopicForPuzzle(currentPuzzle);
+    getCourseTopicMeta(currentPuzzle?.adaptive_topic) ||
+    requestedTopic ||
+    getCourseTopicForPuzzle(currentPuzzle);
 
   const savePuzzleProgress = useCallback(
     (correct) => {
@@ -601,7 +620,22 @@ export default function PuzzlesPage() {
           </div>
         )}
 
-        {requestedTopic && (
+        {adaptiveMode && (
+          <div className="learning-topic-filter learning-topic-filter--adaptive">
+            Персональная тренировка
+            <strong>70% слабые темы · 30% закрепление сильных</strong>
+            {adaptiveMeta?.weakTopics?.length > 0 && (
+              <div className="adaptive-topic-list">
+                Слабые: {adaptiveMeta.weakTopics.map((topic) => topic.title).join(", ")}
+              </div>
+            )}
+            <button type="button" onClick={() => navigate("/puzzles")}>
+              Обычный режим
+            </button>
+          </div>
+        )}
+
+        {!adaptiveMode && requestedTopic && (
           <div className="learning-topic-filter">
             Практика по теме
             <strong>

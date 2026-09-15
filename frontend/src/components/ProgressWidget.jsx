@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   fetchLearningProgress,
@@ -23,6 +24,7 @@ function percent(value) {
 }
 
 export default function ProgressWidget() {
+  const navigate = useNavigate();
   const [training, setTraining] = useState(null);
   const [learning, setLearning] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -153,6 +155,16 @@ export default function ProgressWidget() {
             <strong>{percent(puzzles.accuracy)}</strong>
           </div>
         </article>
+      </div>
+
+      <div className="progress-widget__adaptive">
+        <div>
+          <strong>Персональная тренировка</strong>
+          <span>70% задач по слабым темам, 30% — закрепление сильных.</span>
+        </div>
+        <button type="button" onClick={() => navigate("/puzzles?adaptive=1")}>
+          Потренировать слабые места →
+        </button>
       </div>
 
       <div className="progress-widget__topics">

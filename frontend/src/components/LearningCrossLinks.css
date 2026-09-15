@@ -72,3 +72,16 @@
   font-size: 12px;
   opacity: 0.72;
 }
+
+.learning-topic-filter--adaptive {
+  border-color: rgba(147, 105, 49, 0.28);
+  background: linear-gradient(135deg, rgba(250, 246, 235, 0.94), rgba(240, 247, 230, 0.9));
+  color: #5f532f;
+}
+
+.adaptive-topic-list {
+  margin-top: 7px;
+  font-size: 12px;
+  line-height: 1.35;
+  opacity: 0.82;
+}

@@ -205,3 +205,58 @@
     grid-template-columns: 1fr;
   }
 }
+
+.progress-widget__adaptive {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 16px;
+  padding: 13px 15px;
+  border-radius: 14px;
+  border: 1px solid rgba(147, 105, 49, 0.18);
+  background: #fbf8ef;
+}
+
+.progress-widget__adaptive > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.progress-widget__adaptive strong {
+  font-size: 14px;
+}
+
+.progress-widget__adaptive span {
+  font-size: 12px;
+  opacity: 0.68;
+}
+
+.progress-widget__adaptive button {
+  flex: 0 0 auto;
+  padding: 9px 12px;
+  border: 1px solid rgba(34, 90, 115, 0.2);
+  border-radius: 11px;
+  background: white;
+  color: #225a73;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.progress-widget__adaptive button:hover {
+  background: #f5faf7;
+}
+
+@media (max-width: 760px) {
+  .progress-widget__adaptive {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .progress-widget__adaptive button {
+    width: 100%;
+  }
+}
