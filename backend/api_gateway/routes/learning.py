@@ -516,7 +516,7 @@ async def learning_progress(
         or 0
     )
 
-    accuracy = round(correct_attempts * 100 / total_attempts, 1) if total_attempts else 0.0
+    accuracy = round(correct_attempts * 100 / total_attempts, 1) if total_attempts else None
     return {
         "attempted": attempted,
         "solved": solved,
