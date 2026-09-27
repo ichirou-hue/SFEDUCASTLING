@@ -36,6 +36,7 @@ get_evaluation() возвращает оценку с точки зрения С
   5. в корзинах предпочитаем маты, вилки, связки, жертвы и т.п.
 """
 
+import argparse
 import csv
 import io
 import json
@@ -46,13 +47,10 @@ import zstandard as zstd
 
 import chess
 
-SF_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "stockfish_engine", "stockfish.exe"))
-SOURCE = r"C:\Users\Egor\AppData\Local\Temp\opencode\lichess_db_puzzle.csv.zst"
-OUT_PATH = os.path.join(os.path.dirname(__file__), "puzzles.json")
+_DEFAULT_SF = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "..", "stockfish_engine", "stockfish.exe")
+)
 
-PER_BUCKET = 12
-MAX_PER_THEME = 3
-CANDIDATES_PER_BUCKET = 150
 BUCKETS = [
     (500, 900),
     (900, 1300),
@@ -112,9 +110,17 @@ def _decode(fen: str, moves_str: str) -> dict | None:
 
 
 def _cheap_valid(puzzle: dict) -> tuple[bool, bool]:
-    """Быстрая проверка без инжектора: ходы легальны, игрок не матован."""
+    """Быстрая проверка без инжектора: ходы легальны, игрок не матован.
+
+    Дополнительно отвергает позиции, где игрок уже под шахом: первый ход
+    обязан отбивать шах, и задача вырождается из тактики в защиту (по
+    канонам Lichess такие пазлы исключаются).
+    """
     d = _decode(puzzle["fen"], puzzle["moves"])
     if d is None:
+        return False, False
+    if chess.Board(d["presented"]).is_check():
+        # в presented ход у игрока (solver) — шах означает шах игроку
         return False, False
     b = d["final_board"]
     solver = d["solver"]
@@ -188,12 +194,58 @@ def _primary_theme(puzzle: dict) -> str:
 def main() -> None:
     from stockfish import Stockfish
 
-    random.seed(42)
-    sf = Stockfish(path=SF_PATH, depth=DEPTH, parameters={"Threads": 1, "Hash": 64})
+    parser = argparse.ArgumentParser(description="Пересборка backend/knowledge/puzzles.json из дампа Lichess")
+    parser.add_argument("--source", default=os.environ.get("PUZZLES_SOURCE", ""))
+    parser.add_argument("--sf-path", default=os.environ.get("SF_PATH", _DEFAULT_SF))
+    parser.add_argument("--out", default=os.path.join(os.path.dirname(__file__), "puzzles.json"))
+    parser.add_argument(
+        "--candidates-per-bucket",
+        type=int,
+        default=int(os.environ.get("CANDIDATES_PER_BUCKET", 150)),
+    )
+    parser.add_argument(
+        "--max-per-theme",
+        type=int,
+        default=int(os.environ.get("MAX_PER_THEME", 3)),
+    )
+    parser.add_argument(
+        "--per-bucket",
+        type=int,
+        dest="per_bucket_arg",
+        default=None,
+        help="Сколько задач набирать на корзину (цель >=500 всего = ~125 на корзину)",
+    )
+    parser.add_argument(
+        "--only-bucket",
+        default="",
+        help="Пересобрать только одну корзину вида 500-900; остальные взять из --out",
+    )
+    args = parser.parse_args()
 
-    buckets = {b: [] for b in BUCKETS}
+    source = args.source
+    if not source:
+        source = r"C:\Users\ASUS\AppData\Local\Temp\opencode\lichess_db_puzzle.csv.zst"
+        print(f"[Build] SOURCE не задан, используется фолбэк: {source}", flush=True)
+
+    sf_path = args.sf_path
+    per_bucket = args.per_bucket_arg or int(os.environ.get("PER_BUCKET", 12))
+    candidates_per_bucket = args.candidates_per_bucket
+    max_per_theme = args.max_per_theme
+    out_path = args.out
+
+    only_bucket: tuple[int, int] | None = None
+    if args.only_bucket:
+        lo_s, hi_s = args.only_bucket.split("-")
+        only_bucket = (int(lo_s), int(hi_s))
+        print(f"[Build] Только корзина {lo_s}-{hi_s}, остальные из существующего файла", flush=True)
+
+    random.seed(42)
+    sf = Stockfish(path=sf_path, depth=DEPTH, parameters={"Threads": 1, "Hash": 64})
+
+    active_buckets = [b for b in BUCKETS if only_bucket is None or b == only_bucket]
+    buckets = {b: [] for b in active_buckets}
     t0 = time.time()
-    with open(SOURCE, "rb") as fh, zstd.ZstdDecompressor().stream_reader(fh) as reader:
+    with open(source, "rb") as fh, zstd.ZstdDecompressor().stream_reader(fh) as reader:
         reader = io.TextIOWrapper(reader, encoding="utf-8")
         for row in csv.DictReader(reader):
             fen = (row.get("FEN") or "").strip()
@@ -205,11 +257,11 @@ def main() -> None:
             if not fen or not moves:
                 continue
             bucket = None
-            for (lo, hi) in BUCKETS:
+            for (lo, hi) in active_buckets:
                 if lo <= rating < hi:
                     bucket = (lo, hi)
                     break
-            if bucket is None or len(buckets[bucket]) >= CANDIDATES_PER_BUCKET:
+            if bucket is None or len(buckets[bucket]) >= candidates_per_bucket:
                 continue
             puzzle = {
                 "id": (row.get("PuzzleId") or "").strip(),
@@ -248,7 +300,7 @@ def main() -> None:
             -item[1]["first_adv"],
         ))
 
-        # Разнообразие: ротация по темам, максимум MAX_PER_THEME на тему.
+        # Разнообразие: ротация по темам, максимум max_per_theme на тему.
         thanks_groups: dict[str, list] = {}
         for p, m, theme in scored:
             thanks_groups.setdefault(theme, []).append((p, m, theme))
@@ -258,21 +310,33 @@ def main() -> None:
         cycle = list(thanks_groups.keys())
         cycle.sort(key=lambda t: 0 if t in LESSON_THEMES else 1)
         picked: list = []
-        while len(picked) < PER_BUCKET and cycle:
+        while len(picked) < per_bucket and cycle:
             progressed = False
             for t in list(cycle):
-                if len(picked) >= PER_BUCKET:
+                if len(picked) >= per_bucket:
                     break
                 g = thanks_groups[t]
                 if len(g) == 0:
                     cycle.remove(t)
                     continue
-                if sum(1 for (pp, mm, tt) in picked if tt == t) >= MAX_PER_THEME:
+                if sum(1 for (pp, mm, tt) in picked if tt == t) >= max_per_theme:
                     continue
                 picked.append(g.pop(0))
                 progressed = True
             if not progressed:
                 break
+
+        # Добор: если ротация по темам не заполнила корзину целиком,
+        # добираем лучшие оставшиеся кандидаты (статически валидные).
+        if len(picked) < per_bucket:
+            rest = [item for item in scored if item not in picked]
+            rest.sort(key=lambda item: (
+                0 if item[2] in LESSON_THEMES or item[1]["solver_mates"] else 1,
+                -item[1]["first_adv"],
+            ))
+            picked.extend(rest[: per_bucket - len(picked)])
+
+        picked = picked[:per_bucket]
 
         for p, m, theme in picked:
             d = _decode(p["fen"], p["moves"])
@@ -292,19 +356,35 @@ def main() -> None:
 
     selected.sort(key=lambda p: p["rating"])
 
+    if only_bucket is not None:
+        # Взять остальные корзины из существующего файла.
+        if not os.path.exists(out_path):
+            print(f"[Build] ОШИБКА: {out_path} не существует, не с чем объединять", flush=True)
+            return
+        with open(out_path, encoding="utf-8") as fh:
+            existing = json.load(fh).get("puzzles", [])
+        lo_o, hi_o = only_bucket
+        existing_others = [
+            p for p in existing if not (lo_o <= p["rating"] < hi_o)
+        ]
+        selected = existing_others + selected
+        selected.sort(key=lambda p: p["rating"])
+        print(f"[Build] других корзин из файла: {len(existing_others)}", flush=True)
+
     payload = {
         "source": "Lichess Puzzles (official database.lichess.org)",
         "count": len(selected),
         "puzzles": selected,
     }
-    with open(OUT_PATH, "w", encoding="utf-8") as fh:
+    with open(out_path, "w", encoding="utf-8") as fh:
         json.dump(payload, fh, ensure_ascii=False, separators=(",", ":"))
 
     print(f"[Build] Записано задач: {len(selected)}")
     for (lo, hi) in BUCKETS:
         n = sum(1 for p in selected if lo <= p["rating"] < hi)
         print(f"[Build]   {lo}-{hi}: {n}")
-    print(f"[Build] Файл: {OUT_PATH} ({os.path.getsize(OUT_PATH)//1024} KB)")
+    print(f"[Build] Файл: {out_path} ({os.path.getsize(out_path)//1024} KB)")
+    print(f"[Build] Параметры: per_bucket={per_bucket} candidates_per_bucket={candidates_per_bucket} max_per_theme={max_per_theme}")
     print(f"[Build] Итого: {time.time()-t0:.0f}s")
 
 
