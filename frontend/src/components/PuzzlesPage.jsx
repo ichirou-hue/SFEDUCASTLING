@@ -203,10 +203,14 @@ export default function PuzzlesPage() {
 
   useEffect(() => {
     const updateSize = () => {
-      const availW = window.innerWidth - 260 - 360 - 48 - 24;
-      const availH = window.innerHeight * 0.85 - 100;
+      const infoW = 230;
+      const chatW = 620;
+      const sideMargin = 24;
+      const gapW = 32;
+      const availW = window.innerWidth - infoW - chatW - sideMargin - gapW;
+      const availH = window.innerHeight * 0.92 - 110;
       const size = Math.floor(Math.min(Math.max(availW, 280), availH));
-      setBoardWidth(Math.max(320, Math.min(size, 620)));
+      setBoardWidth(Math.max(320, Math.min(size, 820)));
     };
     updateSize();
     window.addEventListener("resize", updateSize);
