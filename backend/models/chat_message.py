@@ -2,10 +2,10 @@
 
 from datetime import UTC, datetime
 
-from sqlalchemy import BigInteger, ForeignKey, String, Text, func
+from sqlalchemy import ForeignKey, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
-from backend.db.base import Base
+from backend.db.base import Base, BigIntPK
 
 
 def _now_ts() -> float:
@@ -15,7 +15,7 @@ def _now_ts() -> float:
 class ChatMessage(Base):
     __tablename__ = "chat_messages"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(BigIntPK, primary_key=True, autoincrement=True)
     role: Mapped[str] = mapped_column(String(16), default="assistant")
     text: Mapped[str] = mapped_column(Text)
     ts: Mapped[float] = mapped_column(default=_now_ts, index=True)

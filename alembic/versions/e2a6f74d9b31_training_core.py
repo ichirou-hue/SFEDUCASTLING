@@ -20,6 +20,11 @@ down_revision: str | None = "d7c9e4b1a2f3"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
+# Переносимые типы: см. комментарий в fb22cbd6384b_initial_chat_dataset_games.py
+_ID = sa.BigInteger().with_variant(sa.Integer(), "sqlite")
+_JSON = sa.JSON().with_variant(postgresql.JSONB(astext_type=sa.Text()), "postgresql")
+_NOW = sa.func.now()
+
 
 def upgrade() -> None:
     op.create_table(
@@ -79,7 +84,7 @@ def upgrade() -> None:
         sa.Column("difficulty", sa.Integer(), server_default="1", nullable=False),
         sa.Column(
             "payload",
-            postgresql.JSONB(astext_type=sa.Text()),
+            sa.JSON(),
             nullable=True,
         ),
         sa.Column("explanation", sa.Text(), nullable=True),
@@ -107,12 +112,12 @@ def upgrade() -> None:
 
     op.create_table(
         "training_attempts",
-        sa.Column("id", sa.BigInteger(), autoincrement=True, nullable=False),
+        sa.Column("id", _ID, autoincrement=True, nullable=False),
         sa.Column("user_id", sa.Integer(), nullable=True),
         sa.Column("task_id", sa.Integer(), nullable=False),
         sa.Column(
             "answer",
-            postgresql.JSONB(astext_type=sa.Text()),
+            sa.JSON(),
             nullable=False,
         ),
         sa.Column("correct", sa.Boolean(), server_default="false", nullable=False),
@@ -123,7 +128,7 @@ def upgrade() -> None:
         sa.Column(
             "created_at",
             sa.DateTime(),
-            server_default=sa.text("now()"),
+            server_default=_NOW,
             nullable=False,
         ),
         sa.ForeignKeyConstraint(

@@ -10,7 +10,7 @@ from typing import Any
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from backend.db.base import Base
+from backend.db.base import Base, JsonType
 
 
 class User(Base):
@@ -21,6 +21,15 @@ class User(Base):
     email: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True)
     password_hash: Mapped[str] = mapped_column(String(128))
     elo: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Сырые ответы онбординг-анкеты Q1-Q8. None — анкета ещё не заполнена
+    # (по этому признаку фронтенд показывает плашку «Заполните анкету»).
+    #
+    # TODO(BACKEND): временный «мешок» для ответов. По методике нужны
+    # отдельные колонки — prior_band (1..4), rating_estimate (шкала Lichess
+    # blitz), rating_scale (напр. "lichess_blitz"), pedagogy (ответ Q6).
+    # skill_band (0..4) пишет входной тест, не анкета.
+    # Подробности — блок TODO в backend/api_gateway/routes/auth.py.
+    onboarding: Mapped[dict[str, Any] | None] = mapped_column(JsonType, nullable=True)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
 
@@ -35,6 +44,7 @@ class User(Base):
             "login": self.login,
             "email": self.email,
             "elo": self.elo,
+            "onboarding": self.onboarding,
             "is_admin": self.is_admin,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }

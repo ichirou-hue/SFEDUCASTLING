@@ -15,6 +15,9 @@ revision: str = "c2f17a8d4e90"
 down_revision: Union[str, None] = "b4d8e2c91f30"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
+# Переносимые типы: см. комментарий в fb22cbd6384b_initial_chat_dataset_games.py
+
+_NOW = sa.func.now()
 
 
 def upgrade() -> None:
@@ -24,7 +27,7 @@ def upgrade() -> None:
         sa.Column("user_id", sa.Integer(), nullable=False),
         sa.Column("theme_slug", sa.String(length=64), nullable=False),
         sa.Column("current_difficulty", sa.Integer(), server_default="2", nullable=False),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False),
+        sa.Column("updated_at", sa.DateTime(), server_default=_NOW, nullable=False),
         sa.CheckConstraint(
             "current_difficulty >= 1 AND current_difficulty <= 3",
             name="ck_user_theme_difficulty_range",

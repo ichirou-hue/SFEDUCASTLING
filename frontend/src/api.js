@@ -110,6 +110,17 @@ export async function logout() {
   }
 }
 
+// === Онбординг-анкета Q1-Q8 ===
+
+export async function saveOnboarding(answers) {
+  const { data } = await api.post("/api/auth/onboarding", answers);
+  const user = data?.user;
+  if (user) {
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
+  }
+  return user;
+}
+
 export async function fetchMaiaMove(fen, elo, moves = []) {
   const { data } = await api.post("/api/maia-move", {
     fen,

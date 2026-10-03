@@ -15,16 +15,20 @@ revision: str = "b4d8e2c91f30"
 down_revision: Union[str, None] = "a3c7f14b8e21"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
+# Переносимые типы: см. комментарий в fb22cbd6384b_initial_chat_dataset_games.py
+
+_ID = sa.BigInteger().with_variant(sa.Integer(), "sqlite")
+_NOW = sa.func.now()
 
 
 def upgrade() -> None:
     op.create_table(
         "puzzle_attempts",
-        sa.Column("id", sa.BigInteger(), autoincrement=True, nullable=False),
+        sa.Column("id", _ID, autoincrement=True, nullable=False),
         sa.Column("user_id", sa.Integer(), nullable=False),
         sa.Column("puzzle_id", sa.String(length=64), nullable=False),
         sa.Column("correct", sa.Boolean(), server_default=sa.text("false"), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("now()"), nullable=False),
+        sa.Column("created_at", sa.DateTime(), server_default=_NOW, nullable=False),
         sa.ForeignKeyConstraint(["user_id"], ["users.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )

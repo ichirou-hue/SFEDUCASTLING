@@ -1,7 +1,11 @@
+import { useState } from "react";
 import { logout as apiLogout } from "../api.js";
 import MiniProfilePopover from "./MiniProfilePopover.jsx";
+import OnboardingModal from "./OnboardingModal.jsx";
 
 export default function TopBar({ user, onUserChange, onRegister, onMenuClick }) {
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
   const handleLogout = async () => {
     try {
       await apiLogout();
@@ -9,6 +13,9 @@ export default function TopBar({ user, onUserChange, onRegister, onMenuClick }) 
       window.location.reload();
     }
   };
+
+  // Плашка видна, пока анкета не заполнена (user.onboarding === null).
+  const needsOnboarding = Boolean(user) && !user?.onboarding;
 
   return (
     <div className="top-bar">
@@ -26,6 +33,15 @@ export default function TopBar({ user, onUserChange, onRegister, onMenuClick }) 
       </div>
       {user ? (
         <div className="user-box">
+          {needsOnboarding && (
+            <button
+              className="onb-badge"
+              onClick={() => setShowOnboarding(true)}
+              title="Пройти онбординг-анкету"
+            >
+              Заполните анкету
+            </button>
+          )}
           <MiniProfilePopover user={user} onUserChange={onUserChange} />
           <button className="reg-btn reg-btn--ghost" onClick={handleLogout}>
             Выйти
@@ -34,6 +50,15 @@ export default function TopBar({ user, onUserChange, onRegister, onMenuClick }) 
       ) : (
         <button className="reg-btn" onClick={onRegister}>Регистрация</button>
       )}
+
+      <OnboardingModal
+        isOpen={showOnboarding}
+        onClose={() => setShowOnboarding(false)}
+        onDone={(freshUser) => {
+          // Обновляем user в app.jsx — плашка исчезает без перезагрузки.
+          onUserChange?.(freshUser);
+        }}
+      />
     </div>
   );
 }

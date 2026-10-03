@@ -3,10 +3,9 @@
 from typing import Any
 
 from sqlalchemy import Boolean, ForeignKey, Integer, String, Text
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from backend.db.base import Base
+from backend.db.base import Base, JsonType
 
 
 class TrainingTask(Base):
@@ -32,7 +31,7 @@ class TrainingTask(Base):
 
     # Дополнительные параметры конкретного типа задания.
     # Например: {"piece": "N", "mode": "all_legal_moves"}.
-    payload: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    payload: Mapped[dict[str, Any] | None] = mapped_column(JsonType, nullable=True)
 
     # Короткое объяснение, показываемое после проверки ответа.
     explanation: Mapped[str | None] = mapped_column(Text, nullable=True)

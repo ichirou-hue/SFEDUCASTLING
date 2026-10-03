@@ -67,10 +67,12 @@ class GigachessSettings(BaseModel):
 
 
 class DatabaseSettings(BaseSettings):
-    """Настройки подключения к PostgreSQL (async SQLAlchemy + asyncpg).
+    """Настройки подключения к базе данных (async SQLAlchemy).
 
-    URL обязателен и задаётся через переменную окружения DATABASE_URL
-    (или .env). Пример:
+    URL задаётся через переменную окружения DATABASE_URL (или .env).
+    По умолчанию — локальный SQLite в корне проекта, чтобы приложение
+    запускалось «из коробки» и на Windows, и на Linux, без PostgreSQL.
+    Для PostgreSQL используйте:
         postgresql+asyncpg://user:password@127.0.0.1:5432/dbname
     """
     model_config = SettingsConfigDict(
@@ -80,7 +82,10 @@ class DatabaseSettings(BaseSettings):
         extra="ignore",
     )
 
-    url: str = Field(alias="DATABASE_URL")
+    url: str = Field(
+        default=f"sqlite+aiosqlite:///{BASE_DIR / 'backend.db'}",
+        alias="DATABASE_URL",
+    )
     echo: bool = Field(False, alias="DATABASE_ECHO")
     pool_size: int = Field(5, alias="DATABASE_POOL_SIZE")
     max_overflow: int = Field(10, alias="DATABASE_MAX_OVERFLOW")

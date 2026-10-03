@@ -9,10 +9,9 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String, func
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
-from backend.db.base import Base
+from backend.db.base import Base, JsonType
 
 
 class LevelTest(Base):
@@ -25,11 +24,11 @@ class LevelTest(Base):
 
     # Фиксируем именно тот набор задач, который был выдан пользователю.
     # Это не даёт submit подменить тест произвольными puzzle_id.
-    question_ids: Mapped[list[str]] = mapped_column(JSONB, nullable=False)
+    question_ids: Mapped[list[str]] = mapped_column(JsonType, nullable=False)
 
     # Снимок финальных ответов и результата нужен для идемпотентного ответа.
-    answers: Mapped[list[dict[str, Any]] | None] = mapped_column(JSONB, nullable=True)
-    score: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    answers: Mapped[list[dict[str, Any]] | None] = mapped_column(JsonType, nullable=True)
+    score: Mapped[dict[str, Any] | None] = mapped_column(JsonType, nullable=True)
 
     level: Mapped[int | None] = mapped_column(Integer, nullable=True)
     band: Mapped[int | None] = mapped_column(Integer, nullable=True)
