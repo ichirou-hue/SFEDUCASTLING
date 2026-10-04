@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.models.puzzle_attempt import PuzzleAttempt
@@ -127,4 +127,59 @@ async def build_weakness_profile(
             "strong_share": 0.30,
             "weak_topic_count": 3,
         },
+    }
+
+
+async def compute_learning_progress(
+    db: AsyncSession,
+    *,
+    user_id: int,
+) -> dict:
+    """Прогресс по тактическим паззлам для конкретного пользователя.
+
+    Единый источник для /api/learning/progress и для админ-просмотра
+    (GET /api/admin/users/{user_id}/stats).
+    """
+    total_attempts = int(
+        await db.scalar(
+            select(func.count(PuzzleAttempt.id)).where(PuzzleAttempt.user_id == user_id)
+        )
+        or 0
+    )
+    correct_attempts = int(
+        await db.scalar(
+            select(func.count(PuzzleAttempt.id)).where(
+                PuzzleAttempt.user_id == user_id,
+                PuzzleAttempt.correct.is_(True),
+            )
+        )
+        or 0
+    )
+    attempted = int(
+        await db.scalar(
+            select(func.count(func.distinct(PuzzleAttempt.puzzle_id))).where(
+                PuzzleAttempt.user_id == user_id
+            )
+        )
+        or 0
+    )
+    solved = int(
+        await db.scalar(
+            select(func.count(func.distinct(PuzzleAttempt.puzzle_id))).where(
+                PuzzleAttempt.user_id == user_id,
+                PuzzleAttempt.correct.is_(True),
+            )
+        )
+        or 0
+    )
+
+    accuracy = (
+        round(correct_attempts * 100 / total_attempts, 1) if total_attempts else None
+    )
+    return {
+        "attempted": attempted,
+        "solved": solved,
+        "attempts": total_attempts,
+        "correct_attempts": correct_attempts,
+        "accuracy": accuracy,
     }

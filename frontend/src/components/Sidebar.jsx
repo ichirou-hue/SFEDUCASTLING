@@ -1,6 +1,8 @@
 import { NavLink } from "react-router-dom";
 
-export default function Sidebar({ isOpen, onClose }) {
+export default function Sidebar({ isOpen, onClose, user }) {
+  const isAdmin = user?.is_admin === true || user?.role === "admin";
+
   return (
     <>
       {isOpen && <div className="sidebar-overlay" onClick={onClose} />}
@@ -43,6 +45,18 @@ export default function Sidebar({ isOpen, onClose }) {
             <span className="sidebar-icon">♘</span>
             Обучение
           </NavLink>
+          {isAdmin && (
+            <NavLink
+              to="/admin"
+              className={({ isActive }) =>
+                `sidebar-link ${isActive ? "sidebar-link--active" : ""}`
+              }
+              onClick={onClose}
+            >
+              <span className="sidebar-icon">⚙</span>
+              Администрирование
+            </NavLink>
+          )}
         </nav>
       </div>
     </>

@@ -1,4 +1,7 @@
 .user-profile-page {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   width: min(1120px, calc(100% - 40px));
   margin: 28px auto 48px;
   color: #20332d;

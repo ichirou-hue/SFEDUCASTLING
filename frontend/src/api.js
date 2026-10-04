@@ -43,6 +43,14 @@ export function clearAuth() {
   delete api.defaults.headers.common["Authorization"];
 }
 
+// Оповещаем приложение о том, что сессия истекла (например, через 24 часа),
+// чтобы React-состояние user сбросилось и пользователь вернулся в гостевой вид.
+export const AUTH_EXPIRED_EVENT = "gigachess:auth-expired";
+
+function notifyAuthExpired() {
+  window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT));
+}
+
 // Подставляем токен во все запросы автоматически
 if (getAccessToken()) {
   api.defaults.headers.common["Authorization"] = `Bearer ${getAccessToken()}`;
@@ -73,6 +81,7 @@ api.interceptors.response.use(
         return api(original);
       } catch {
         clearAuth();
+        notifyAuthExpired();
       } finally {
         refreshing = null;
       }
@@ -294,5 +303,23 @@ export async function checkTrainingTask(
 
 export async function fetchTrainingProgress() {
   const { data } = await api.get("/api/training/progress");
+  return data;
+}
+
+
+// === Администрирование ===
+
+export async function fetchAdminUsers() {
+  const { data } = await api.get("/api/admin/users");
+  return data;
+}
+
+export async function fetchAdminUser(userId) {
+  const { data } = await api.get(`/api/admin/users/${userId}`);
+  return data;
+}
+
+export async function fetchAdminUserStats(userId) {
+  const { data } = await api.get(`/api/admin/users/${userId}/stats`);
   return data;
 }

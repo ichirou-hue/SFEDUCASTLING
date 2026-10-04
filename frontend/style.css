@@ -1902,6 +1902,32 @@ body {
   color: #555;
 }
 
+.training-register-wall {
+  max-width: 560px;
+  padding: 36px 40px 42px;
+  text-align: center;
+  border-radius: 26px;
+  border: 2px solid rgba(180, 135, 44, 0.72);
+  background: rgba(255, 255, 255, 0.84);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.training-register-wall h1 {
+  margin: 10px 0 12px;
+  font-family: "Calypso", serif;
+  font-size: 30px;
+  line-height: 1.2;
+}
+
+.training-register-wall p {
+  margin: 0 0 24px;
+  font-size: 16px;
+  line-height: 1.55;
+  color: #444;
+}
+
 .training-hero,
 .training-module-header {
   max-width: 1180px;

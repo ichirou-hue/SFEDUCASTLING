@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import TopBar from "./components/TopBar.jsx";
 import Sidebar from "./components/Sidebar.jsx";
 import ChessboardComponent from "./components/Chessboard.jsx";
@@ -10,7 +10,8 @@ import RegisterModal from "./components/RegisterModal.jsx";
 import PuzzlesPage from "./components/PuzzlesPage.jsx";
 import TrainingPage from "./components/TrainingPage.jsx";
 import UserProfilePage from "./components/UserProfilePage.jsx";
-import { getStoredUser } from "./api.js";
+import AdminPage from "./components/AdminPage.jsx";
+import { getStoredUser, AUTH_EXPIRED_EVENT } from "./api.js";
 
 function MainPage() {
   const boardRef = useRef(null);
@@ -59,6 +60,12 @@ export default function App() {
   useEffect(() => {
     const stored = getStoredUser();
     if (stored) setUser(stored);
+
+    // Сессия истекла (graceful-авторизация в api.js не смогла обновить токены):
+    // сбрасываем состояние — фронт возвращается в гостевой вид.
+    const onAuthExpired = () => setUser(null);
+    window.addEventListener(AUTH_EXPIRED_EVENT, onAuthExpired);
+    return () => window.removeEventListener(AUTH_EXPIRED_EVENT, onAuthExpired);
   }, []);
 
   return (
@@ -69,14 +76,28 @@ export default function App() {
         onRegister={() => setShowRegister(true)}
         onMenuClick={() => setSidebarOpen(true)}
       />
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <Sidebar
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        user={user}
+      />
       <Routes>
         <Route path="/" element={<MainPage />} />
         <Route path="/puzzles" element={<PuzzlesPage />} />
-        <Route path="/training" element={<TrainingPage />} />
+        <Route path="/training" element={<TrainingPage user={user} onRegister={() => setShowRegister(true)} />} />
         <Route
           path="/profile"
           element={<UserProfilePage user={user} onUserChange={setUser} />}
+        />
+        <Route
+          path="/admin"
+          element={
+            user?.is_admin ? (
+              <AdminPage />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
         />
       </Routes>
       <RegisterModal
