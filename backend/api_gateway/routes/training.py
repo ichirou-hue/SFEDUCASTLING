@@ -202,30 +202,19 @@ async def check_task(
         response_time_ms=req.response_time_ms,
     )
 
-<<<<<<< HEAD
-    difficulty_update = None
-    review_update = None
-    if user is not None:
-        difficulty_update = await update_theme_difficulty_after_attempt(
-            db,
-            user_id=user.id,
-            theme_slug=topic_slug,
-            puzzle_base=state.puzzle_base,
-        )
-        review_update = await update_training_review_after_attempt(
-            db,
-            user_id=user.id,
-            task_id=task.id,
-            correct=result.correct,
-        )
-=======
     difficulty_update = await update_theme_difficulty_after_attempt(
         db,
         user_id=user.id,
         theme_slug=topic_slug,
         puzzle_base=state.puzzle_base,
     )
->>>>>>> b114ec2af5b258c4c27a34a48818b787755b478b
+
+    review_update = await update_training_review_after_attempt(
+        db,
+        user_id=user.id,
+        task_id=task.id,
+        correct=result.correct,
+    )
 
     return {
         "ok": True,

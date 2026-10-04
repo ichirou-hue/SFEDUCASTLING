@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import TopBar from "./components/TopBar.jsx";
 import Sidebar from "./components/Sidebar.jsx";
 import ChessboardComponent from "./components/Chessboard.jsx";
@@ -10,8 +10,7 @@ import RegisterModal from "./components/RegisterModal.jsx";
 import PuzzlesPage from "./components/PuzzlesPage.jsx";
 import TrainingPage from "./components/TrainingPage.jsx";
 import UserProfilePage from "./components/UserProfilePage.jsx";
-import AdminPage from "./components/AdminPage.jsx";
-import { getStoredUser, AUTH_EXPIRED_EVENT } from "./api.js";
+import { AUTH_EXPIRED_EVENT, getStoredUser } from "./api.js";
 
 function MainPage() {
   const boardRef = useRef(null);
@@ -54,6 +53,8 @@ function MainPage() {
 
 export default function App() {
   const [showRegister, setShowRegister] = useState(false);
+  const [authMode, setAuthMode] = useState("register");
+  const [authNotice, setAuthNotice] = useState("");
   const [user, setUser] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -61,11 +62,16 @@ export default function App() {
     const stored = getStoredUser();
     if (stored) setUser(stored);
 
-    // Сессия истекла (graceful-авторизация в api.js не смогла обновить токены):
-    // сбрасываем состояние — фронт возвращается в гостевой вид.
-    const onAuthExpired = () => setUser(null);
-    window.addEventListener(AUTH_EXPIRED_EVENT, onAuthExpired);
-    return () => window.removeEventListener(AUTH_EXPIRED_EVENT, onAuthExpired);
+    const handleAuthExpired = () => {
+      setUser(null);
+      setSidebarOpen(false);
+      setAuthMode("login");
+      setAuthNotice("Сессия истекла. Войдите в аккаунт снова.");
+      setShowRegister(true);
+    };
+
+    window.addEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired);
+    return () => window.removeEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired);
   }, []);
 
   return (
@@ -73,37 +79,35 @@ export default function App() {
       <TopBar
         user={user}
         onUserChange={setUser}
-        onRegister={() => setShowRegister(true)}
+        onRegister={() => {
+          setAuthMode("register");
+          setAuthNotice("");
+          setShowRegister(true);
+        }}
         onMenuClick={() => setSidebarOpen(true)}
       />
-      <Sidebar
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-        user={user}
-      />
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <Routes>
         <Route path="/" element={<MainPage />} />
         <Route path="/puzzles" element={<PuzzlesPage />} />
-        <Route path="/training" element={<TrainingPage user={user} onRegister={() => setShowRegister(true)} />} />
+        <Route path="/training" element={<TrainingPage />} />
         <Route
           path="/profile"
           element={<UserProfilePage user={user} onUserChange={setUser} />}
         />
-        <Route
-          path="/admin"
-          element={
-            user?.is_admin ? (
-              <AdminPage />
-            ) : (
-              <Navigate to="/" replace />
-            )
-          }
-        />
       </Routes>
       <RegisterModal
         isOpen={showRegister}
-        onClose={() => setShowRegister(false)}
-        onSuccess={(u) => setUser(u)}
+        initialMode={authMode}
+        notice={authNotice}
+        onClose={() => {
+          setShowRegister(false);
+          setAuthNotice("");
+        }}
+        onSuccess={(u) => {
+          setUser(u);
+          setAuthNotice("");
+        }}
       />
     </>
   );

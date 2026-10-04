@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { fetchPlayerProfile, login as apiLogin, register as apiRegister } from "../api.js";
 
 const PLATFORM_LABELS = {
@@ -14,7 +14,7 @@ const PERF_LABELS = {
   daily: "Днев.",
 };
 
-export default function AuthModal({ isOpen, onClose, onSuccess }) {
+export default function AuthModal({ isOpen, onClose, onSuccess, initialMode = "register", notice = "" }) {
   const [mode, setMode] = useState("register"); // "register" | "login"
   const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
@@ -28,6 +28,13 @@ export default function AuthModal({ isOpen, onClose, onSuccess }) {
   const [profile, setProfile] = useState(null);
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState("");
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setMode(initialMode);
+    setAuthError(notice || "");
+    setPassword("");
+  }, [isOpen, initialMode, notice]);
 
   if (!isOpen) return null;
 
@@ -231,7 +238,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess }) {
                 <input
                   type={showPassword ? "text" : "password"}
                   className="auth-input"
-                  placeholder={isRegister ? "Буквы и цифры, от 8 символов" : "Введите пароль"}
+                  placeholder={isRegister ? "Минимум 8 символов" : "Введите пароль"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleSubmit()}

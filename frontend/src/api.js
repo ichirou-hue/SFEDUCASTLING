@@ -7,6 +7,7 @@ const api = axios.create({ baseURL: "" });
 const TOKEN_KEY = "gigachess_access";
 const REFRESH_KEY = "gigachess_refresh";
 const USER_KEY = "gigachess_user";
+export const AUTH_EXPIRED_EVENT = "sfedu-auth-expired";
 
 export function getAccessToken() {
   return localStorage.getItem(TOKEN_KEY);
@@ -43,49 +44,140 @@ export function clearAuth() {
   delete api.defaults.headers.common["Authorization"];
 }
 
-// Оповещаем приложение о том, что сессия истекла (например, через 24 часа),
-// чтобы React-состояние user сбросилось и пользователь вернулся в гостевой вид.
-export const AUTH_EXPIRED_EVENT = "gigachess:auth-expired";
-
-function notifyAuthExpired() {
-  window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT));
+function getRefreshToken() {
+  return localStorage.getItem(REFRESH_KEY);
 }
 
-// Подставляем токен во все запросы автоматически
+function refreshWasRejected(error) {
+  const status = error?.response?.status;
+  return status === 401 || status === 403;
+}
+
+function requireLogin(reason = "session_expired") {
+  clearAuth();
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(
+      new CustomEvent(AUTH_EXPIRED_EVENT, { detail: { reason } }),
+    );
+  }
+}
+
+function authRequestMustNotAutoRefresh(url = "") {
+  const value = String(url);
+  return [
+    "/api/auth/login",
+    "/api/auth/register",
+    "/api/auth/refresh",
+    "/api/auth/logout",
+  ].some((path) => value.startsWith(path));
+}
+
+function accessTokenExpiresSoon(token, skewSeconds = 60) {
+  if (!token) return true;
+  try {
+    const base64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
+    const payload = JSON.parse(atob(padded));
+    if (!payload.exp) return true;
+    return payload.exp * 1000 <= Date.now() + skewSeconds * 1000;
+  } catch {
+    return true;
+  }
+}
+
+// Одна общая refresh-операция на все параллельные запросы этой вкладки.
+let refreshing = null;
+async function refreshSession() {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) throw new Error("Refresh token is missing");
+
+  if (!refreshing) {
+    refreshing = axios
+      .post("/api/auth/refresh", { refresh_token: refreshToken })
+      .then(({ data }) => {
+        saveAuth(data);
+        return data;
+      })
+      .finally(() => {
+        refreshing = null;
+      });
+  }
+  return refreshing;
+}
+
+// Подставляем сохранённый access-token сразу после загрузки приложения.
 if (getAccessToken()) {
   api.defaults.headers.common["Authorization"] = `Bearer ${getAccessToken()}`;
 }
 
-// При 401 пробуем обновить токен один раз и повторить запрос
-let refreshing = null;
+// Если access-token уже истёк или истечёт в ближайшую минуту, обновляем его
+// ДО запроса. Так пользователь не замечает истечение короткого JWT.
+api.interceptors.request.use(async (config) => {
+  if (authRequestMustNotAutoRefresh(config.url)) return config;
+
+  const accessToken = getAccessToken();
+  const refreshToken = getRefreshToken();
+
+  if (refreshToken && accessTokenExpiresSoon(accessToken)) {
+    try {
+      const data = await refreshSession();
+      config.headers = config.headers || {};
+      config.headers["Authorization"] = `Bearer ${data.access_token}`;
+      return config;
+    } catch (error) {
+      // Только 401/403 от refresh означает, что сессия действительно закончилась.
+      // Сетевой сбой/500 не должен разлогинивать пользователя.
+      if (refreshWasRejected(error)) {
+        requireLogin("refresh_rejected");
+      }
+      return Promise.reject(error);
+    }
+  }
+
+  if (accessToken) {
+    config.headers = config.headers || {};
+    config.headers["Authorization"] = `Bearer ${accessToken}`;
+  }
+  return config;
+});
+
+// Запасной механизм: если сервер всё-таки вернул 401, один раз обновляем
+// сессию и повторяем исходный запрос. Важно: /api/auth/me НЕ исключён,
+// поэтому профиль тоже автоматически оживает после истечения access-token.
 api.interceptors.response.use(
   (resp) => resp,
   async (error) => {
-    const original = error.config;
+    const original = error.config || {};
+
     if (
       error.response?.status === 401 &&
-      getAccessToken() &&
       !original._retried &&
-      !String(original.url).startsWith("/api/auth/")
+      !authRequestMustNotAutoRefresh(original.url)
     ) {
+      const refreshToken = getRefreshToken();
+
+      // Access недействителен, а refresh уже отсутствует: нужна повторная авторизация.
+      if (!refreshToken) {
+        requireLogin("refresh_missing");
+        throw error;
+      }
+
       original._retried = true;
       try {
-        refreshing =
-          refreshing ||
-          axios.post("/api/auth/refresh", {
-            refresh_token: localStorage.getItem(REFRESH_KEY),
-          });
-        const { data } = await refreshing;
-        saveAuth(data);
+        const data = await refreshSession();
+        original.headers = original.headers || {};
         original.headers["Authorization"] = `Bearer ${data.access_token}`;
         return api(original);
-      } catch {
-        clearAuth();
-        notifyAuthExpired();
-      } finally {
-        refreshing = null;
+      } catch (refreshError) {
+        // Именно отказ refresh endpoint завершает локальную сессию.
+        // Обычный 403 от бизнес-endpoint (например, нет роли admin) сюда не попадает.
+        if (refreshWasRejected(refreshError)) {
+          requireLogin("refresh_rejected");
+        }
+        throw refreshError;
       }
     }
+
     throw error;
   }
 );
@@ -117,6 +209,16 @@ export async function logout() {
   } finally {
     clearAuth();
   }
+}
+
+export async function fetchAdminUsers(limit = 100) {
+  const { data } = await api.get("/api/auth/admin/users", { params: { limit } });
+  return data;
+}
+
+export async function updateUserRole(userId, role) {
+  const { data } = await api.patch(`/api/auth/admin/users/${userId}/role`, { role });
+  return data;
 }
 
 export async function fetchMaiaMove(fen, elo, moves = []) {
@@ -303,23 +405,5 @@ export async function checkTrainingTask(
 
 export async function fetchTrainingProgress() {
   const { data } = await api.get("/api/training/progress");
-  return data;
-}
-
-
-// === Администрирование ===
-
-export async function fetchAdminUsers() {
-  const { data } = await api.get("/api/admin/users");
-  return data;
-}
-
-export async function fetchAdminUser(userId) {
-  const { data } = await api.get(`/api/admin/users/${userId}`);
-  return data;
-}
-
-export async function fetchAdminUserStats(userId) {
-  const { data } = await api.get(`/api/admin/users/${userId}/stats`);
   return data;
 }

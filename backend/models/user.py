@@ -1,17 +1,21 @@
-"""Модели пользователей и refresh-токенов (задача 64).
+"""Модели пользователей и refresh-токенов.
 
-Пароль в БД только в виде bcrypt-хеша (cost 12). Refresh-токены хранятся
-как sha256-хеши — утечка БД не даёт угнать активные сессии.
+`role` — единственный источник прав пользователя в БД: learner или admin.
+Поле `is_admin` в API вычисляется из role только для совместимости со старым frontend.
 """
 
 from datetime import datetime
 from typing import Any
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, func
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.db.base import Base
+
+
+ROLE_LEARNER = "learner"
+ROLE_ADMIN = "admin"
+VALID_USER_ROLES = {ROLE_LEARNER, ROLE_ADMIN}
 
 
 class User(Base):
@@ -22,46 +26,38 @@ class User(Base):
     email: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True)
     password_hash: Mapped[str] = mapped_column(String(128))
     elo: Mapped[int | None] = mapped_column(Integer, nullable=True)
-
-    # Роли: guest (без аккаунта, в БД нет строки) / learner (по умолчанию) / admin.
-    # `role` — единственный источник истины; is_admin рассчитывается от него.
     role: Mapped[str] = mapped_column(
-        String(16), default="learner", server_default="learner", nullable=False
+        String(32), default=ROLE_LEARNER, server_default=ROLE_LEARNER, nullable=False
     )
-
-    # Методичка оценки уровня (см. docs): онбординг → prior_band,
-    # внешний рейтинг → rating_estimate/rating_scale, входной тест → skill_band (0–4).
-    skill_band: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    prior_band: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    rating_estimate: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    rating_scale: Mapped[str | None] = mapped_column(String(32), nullable=True)
-    onboarding: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
-    parental_consent: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
-
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
-
-    @property
-    def is_admin(self) -> bool:
-        """Совместимость: администратор = роль admin (колонки is_admin больше нет)."""
-        return self.role == "admin"
 
     refresh_tokens: Mapped[list["RefreshToken"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
 
+    @property
+    def effective_role(self) -> str:
+        return self.role or ROLE_LEARNER
+
+    def set_role(self, role: str) -> None:
+        if role not in VALID_USER_ROLES:
+            raise ValueError(f"Неизвестная роль: {role}")
+        self.role = role
+
     def public(self) -> dict[str, Any]:
-        """Данные пользователя для ответов API (без хеша пароля)."""
+        """Данные пользователя для API без хеша пароля.
+
+        `is_admin` оставлен только как вычисляемое поле ответа API,
+        отдельной колонки users.is_admin в БД больше нет.
+        """
+        role = self.effective_role
         return {
             "id": self.id,
             "login": self.login,
             "email": self.email,
             "elo": self.elo,
-            "is_admin": self.is_admin,
-            "role": self.role,
-            "skill_band": self.skill_band,
-            "prior_band": self.prior_band,
-            "rating_estimate": self.rating_estimate,
-            "rating_scale": self.rating_scale,
+            "role": role,
+            "is_admin": role == ROLE_ADMIN,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 

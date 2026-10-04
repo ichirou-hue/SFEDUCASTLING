@@ -1,8 +1,6 @@
-"""Общие зависимости FastAPI.
+"""Общие зависимости FastAPI для авторизации и ролей."""
 
-get_current_user используется любым защищённым роутом:
-    user: User = Depends(get_current_user)
-"""
+from collections.abc import Callable
 
 import jwt as pyjwt
 from fastapi import Depends, HTTPException
@@ -11,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api_gateway.security import decode_access_token
 from backend.db.session import get_db
-from backend.models.user import User
+from backend.models.user import ROLE_ADMIN, User
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -20,45 +18,59 @@ async def get_current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     db: AsyncSession = Depends(get_db),
 ) -> User:
-    """Пользователь по Bearer access-токену (JWT HS256)."""
+    """Возвращает текущего пользователя по Bearer access-токену."""
     if credentials is None or credentials.scheme.lower() != "bearer":
         raise HTTPException(status_code=401, detail="Требуется авторизация")
     try:
         payload = decode_access_token(credentials.credentials)
     except pyjwt.PyJWTError:
         raise HTTPException(status_code=401, detail="Токен недействителен или истёк")
-    user = await db.get(User, int(payload["sub"]))
+
+    try:
+        user_id = int(payload["sub"])
+    except (KeyError, TypeError, ValueError):
+        raise HTTPException(status_code=401, detail="Некорректный токен")
+
+    user = await db.get(User, user_id)
     if not user:
         raise HTTPException(status_code=401, detail="Пользователь не найден")
     return user
-
-
-def require_roles(*roles: str):
-    """Зависимость ограничения доступа по роли: Depends(require_roles("admin"))."""
-    allowed = set(roles)
-
-    async def _checker(user: User = Depends(get_current_user)) -> User:
-        if user.role not in allowed:
-            raise HTTPException(status_code=403, detail="Недостаточно прав")
-        return user
-
-    return _checker
 
 
 async def get_optional_current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     db: AsyncSession = Depends(get_db),
 ) -> User | None:
-    """Пользователь по токену, но без ошибки 401: аноним -> None.
-
-    Для эндпоинтов, которые работают и для гостей
-    (чат, сохранение ходов), но хотят привязать данные к аккаунту,
-    если он есть.
-    """
+    """Как get_current_user, но для анонимного запроса возвращает None."""
     if credentials is None or credentials.scheme.lower() != "bearer":
         return None
     try:
         payload = decode_access_token(credentials.credentials)
-    except pyjwt.PyJWTError:
+        user_id = int(payload["sub"])
+    except (pyjwt.PyJWTError, KeyError, TypeError, ValueError):
         return None
-    return await db.get(User, int(payload["sub"]))
+    return await db.get(User, user_id)
+
+
+def require_roles(*allowed_roles: str) -> Callable:
+    """Фабрика FastAPI dependency для RBAC.
+
+    Пример:
+        user: User = Depends(require_roles("admin"))
+    """
+    allowed = set(allowed_roles)
+
+    async def _dependency(user: User = Depends(get_current_user)) -> User:
+        if user.effective_role not in allowed:
+            raise HTTPException(status_code=403, detail="Недостаточно прав")
+        return user
+
+    return _dependency
+
+
+async def get_current_admin(
+    user: User = Depends(get_current_user),
+) -> User:
+    if user.effective_role != ROLE_ADMIN:
+        raise HTTPException(status_code=403, detail="Нужны права администратора")
+    return user
