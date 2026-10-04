@@ -87,6 +87,31 @@ class TestRegister:
         )
         assert r.status_code == 422
 
+    def test_register_cyrillic_login_rejected(self, cleanup):
+        """Кириллица в логине не принимается."""
+        r = client.post(
+            "/api/auth/register",
+            json={"login": "игрокваня", "password": PASSWORD},
+        )
+        assert r.status_code == 422
+        assert "латинск" in r.json()["detail"][0]["msg"]
+
+    def test_register_password_letters_only_rejected(self, cleanup):
+        """Пароль без цифр не проходит."""
+        r = client.post(
+            "/api/auth/register",
+            json={"login": cleanup(_unique("u")), "password": "OnlyLetters"},
+        )
+        assert r.status_code == 422
+
+    def test_register_password_digits_only_rejected(self, cleanup):
+        """Пароль без букв не проходит."""
+        r = client.post(
+            "/api/auth/register",
+            json={"login": cleanup(_unique("u")), "password": "12345678"},
+        )
+        assert r.status_code == 422
+
     def test_password_hashed_bcrypt(self, cleanup):
         login = cleanup(_unique("user"))
         client.post("/api/auth/register", json={"login": login, "password": PASSWORD})
@@ -141,6 +166,14 @@ class TestMeAndTokens:
         r = client.get("/api/auth/me", headers={"Authorization": f"Bearer {access}"})
         assert r.status_code == 200
         assert r.json()["user"]["login"] == login
+
+    def test_new_user_has_learner_role(self, cleanup):
+        login, access, _ = self._tokens(cleanup)
+        r = client.get("/api/auth/me", headers={"Authorization": f"Bearer {access}"})
+        body = r.json()["user"]
+        assert body["role"] == "learner"
+        assert body["is_admin"] is False
+        assert "skill_band" in body
 
     def test_me_without_token(self):
         assert client.get("/api/auth/me").status_code == 401
