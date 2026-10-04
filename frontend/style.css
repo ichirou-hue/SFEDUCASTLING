@@ -29,11 +29,13 @@ body {
 }
 .main-area {
   display: flex;
-  justify-content: flex-start; /* Р‘С‹Р»Рѕ center, С‚РµРїРµСЂСЊ РїСЂРёР¶РёРјР°РµРј РІР»РµРІРѕ */
-  align-items: flex-start; /* Р’С‹СЂР°РІРЅРёРІР°РµС‚ РїР°РЅРµР»СЊ Рё РґРѕСЃРєСѓ СЂРѕРІРЅРѕ РїРѕ РІРµСЂС…РЅРµРјСѓ РєСЂР°СЋ */
-  gap: 24px; /* РћС‚СЃС‚СѓРїС‹ СЃР¶Р°С‚С‹ */
-  width: calc(100vw - 40px);
-  margin: 2px 0 0 20px; /* РћС‚СЃС‚СѓРї 20px СЃР»РµРІР° Рё СЃРІРµСЂС…Сѓ */
+  justify-content: flex-start;
+  align-items: stretch;
+  gap: 24px;
+  width: auto;
+  margin: 10px 0 0 24px;
+  flex: 1;
+  min-height: 0;
   box-sizing: border-box;
 }
 
@@ -158,7 +160,7 @@ body {
   border: 1px solid rgba(18, 107, 91, 0.4);
   margin: 0 8px;
   order: 1;
-  align-self: flex-start;
+  align-self: center;
 }
 
 .eval-bar-white {
@@ -398,17 +400,15 @@ body {
 /*               Р§РђРў (РџР РђР’РђРЇ РџРђРќР•Р›Р¬)         */
 /* ========================================= */
 .chat-section {
-  flex: 0 1 40vw; /* Чат = до 40% ширины, но ужимается, если нужно место доске */
-  min-width: 300px;
-  max-width: 40vw;
+  flex: 1 1 640px;
+  min-width: 320px;
+  max-width: 760px;
 
-  height: calc(100vh - 70px); /* Р’С‹СЃРѕС‚Р° РјРёРЅСѓСЃ TopBar */
+  height: auto;
+  align-self: stretch;
 
-  /* РР”Р•РђР›Р¬РќРћР• РџР РР›РРџРђРќРР• Рљ РљР РђРЇРњ: */
-  margin-top: 0px;
-  margin-right: calc(
-    50% - 50vw
-  ); /* РњР°РіРёС‡РµСЃРєР°СЏ С„РѕСЂРјСѓР»Р°, РїСЂРёР¶РёРјР°СЋС‰Р°СЏ СЂРѕРІРЅРѕ Рє РїСЂР°РІРѕРјСѓ РєСЂР°СЋ РјРѕРЅРёС‚РѕСЂР° */
+  margin-top: 0;
+  margin-right: 0;
 
   border-radius: 0; /* РЎС‚СЂРѕРіРёРµ РїСЂСЏРјС‹Рµ СѓРіР»С‹ */
   z-index: 1;
@@ -625,8 +625,9 @@ body {
 /* ========================================= */
 .move-history-panel {
   flex-shrink: 0;
-  width: 300px;
-  height: 85vh;
+  width: 260px;
+  height: auto;
+  align-self: stretch;
   border-radius: 30px;
   border: 3px solid rgba(180, 135, 44, 0.85);
   background: rgba(255, 255, 255, 0.87);
@@ -684,10 +685,10 @@ body {
   justify-content: space-between;
   border-radius: 41px;
   background: linear-gradient(45deg, #79b180 28%, #e2ece2 51%);
-  padding: 10px 15px;
+  padding: 8px 12px;
   margin-bottom: 25px;
   width: 100%;
-  min-height: 64px; /* Р¤РёРєСЃРёСЂСѓРµРј РјРёРЅРёРјР°Р»СЊРЅСѓСЋ РІС‹СЃРѕС‚Сѓ */
+  min-height: 56px; /* Р¤РёРєСЃРёСЂСѓРµРј РјРёРЅРёРјР°Р»СЊРЅСѓСЋ РІС‹СЃРѕС‚Сѓ */
   flex-shrink: 0; /* Р—Р°РїСЂРµС‰Р°РµРј СЃРїР»СЋС‰РёРІР°РЅРёРµ СЌР»РµРјРµРЅС‚Р° */
   box-sizing: border-box;
 }
@@ -697,10 +698,10 @@ body {
 .move-pair {
   display: flex;
   align-items: center;
-  padding: 15px 10px; /* РЎРґРµР»Р°Р»Рё СЃС‚СЂРѕРєРё С€РёСЂРµ */
-  border-bottom: 1px solid #a5d6a7; /* Р”РѕР±Р°РІРёР»Рё С‚РѕРЅРєСѓСЋ Р»РёРЅРёСЋ СЃРЅРёР·Сѓ */
+  padding: 12px 6px;
+  border-bottom: 1px solid #a5d6a7;
   font-family: "Calypso", serif;
-  font-size: 26px; /* РЎРёР»СЊРЅРѕ СѓРІРµР»РёС‡РёР»Рё С€СЂРёС„С‚ СЃР°РјРёС… С…РѕРґРѕРІ */
+  font-size: 22px;
   color: #333;
 }
 .move-pair.active {
@@ -742,8 +743,8 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 40px; /* Р‘С‹Р»Рѕ 20px, СЃРґРµР»Р°Р»Рё С€РёСЂРµ */
-  margin-bottom: 25px; /* РџРѕРґРЅСЏР»Рё СЃС‚СЂРµР»РєРё С‡СѓС‚СЊ РІС‹С€Рµ РЅР°Рґ РєРЅРѕРїРєР°РјРё */
+  gap: 16px;
+  margin-bottom: 16px;
 }
 
 /* Р”РµР»Р°РµРј СЃР°РјСѓ РєРЅРѕРїРєСѓ РЅРµРІРёРґРёРјРѕР№ РѕР±РµСЂС‚РєРѕР№ РґР»СЏ SVG */
@@ -777,8 +778,8 @@ body {
   gap: 10px; /* Р Р°СЃСЃС‚РѕСЏРЅРёРµ РјРµР¶РґСѓ РєРЅРѕРїРєРѕР№ Рё РёРЅРїСѓС‚РѕРј */
 }
 .btn-import {
-  width: 233px;
-  height: 59px;
+  width: 100%;
+  height: 52px;
   border-radius: 30px;
   background: #83b787;
   border: none;
@@ -859,9 +860,9 @@ body {
 /* РЎС‚РёР»РёР·Р°С†РёСЏ Р°РІР°С‚Р°СЂРѕРє (РµСЃР»Рё С‚С‹ РЅРµ СЌРєСЃРїРѕСЂС‚РёСЂСѓРµС€СЊ РёС… СЃ С„РѕРЅРѕРј) */
 .player-avatar img,
 .bot-avatar img {
-  /* Р“РёР±РєРёР№ СЂР°Р·РјРµСЂ РґР»СЏ СЌР»Р»РёРїСЃРѕРІ (Р±С‹Р»Рѕ 55px) */
-  width: clamp(35px, 2.5vw, 48px);
-  height: clamp(35px, 2.5vw, 48px);
+  /* Гибкий размер для эллипсов (было 55px) */
+  width: clamp(28px, 2vw, 40px);
+  height: clamp(28px, 2vw, 40px);
   border-radius: 50%;
   object-fit: cover;
   flex-shrink: 0; /* РЎС‚СЂРѕРіРѕ Р·Р°РїСЂРµС‰Р°РµРј Р±СЂР°СѓР·РµСЂСѓ СЃРїР»СЋС‰РёРІР°С‚СЊ СЃР°РјСѓ РєР°СЂС‚РёРЅРєСѓ РІ РѕРІР°Р» */
@@ -1444,6 +1445,7 @@ body {
   }
 }
 
+
 /* ========================================= */
 /*          HAMBURGER + TOP BAR LEFT         */
 /* ========================================= */
@@ -1603,14 +1605,18 @@ body {
 
 .puzzles-layout {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-start;
-  align-items: flex-start;
-  gap: 20px;
-  width: calc(100vw - 40px);
-  margin: 2px 0 0 20px;
+  align-items: stretch;
+  gap: 16px;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
   box-sizing: border-box;
   flex: 1;
   min-height: 0;
+  overflow-y: auto;
+  padding: 10px 0 16px 24px;
 }
 
 /* ========================================= */
@@ -1618,7 +1624,7 @@ body {
 /* ========================================= */
 .puzzle-info-panel {
   flex-shrink: 0;
-  width: 260px;
+  width: 230px;
   border-radius: 30px;
   border: 3px solid rgba(180, 135, 44, 0.85);
   background: rgba(255, 255, 255, 0.87);
@@ -1853,10 +1859,11 @@ body {
 /*       PUZZLE CHAT SECTION (RIGHT)         */
 /* ========================================= */
 .puzzle-chat-section {
-  flex: 0 1 360px;
-  min-width: 280px;
-  max-width: 360px;
-  height: calc(100vh - 70px);
+  flex: 1 1 600px;
+  min-width: 300px;
+  max-width: 620px;
+  height: auto;
+  align-self: stretch;
   border-radius: 0;
   z-index: 1;
   background: rgba(255, 255, 255, 0.01);
@@ -1893,6 +1900,32 @@ body {
   font-family: "Calypso", serif;
   font-size: 24px;
   color: #555;
+}
+
+.training-register-wall {
+  max-width: 560px;
+  padding: 36px 40px 42px;
+  text-align: center;
+  border-radius: 26px;
+  border: 2px solid rgba(180, 135, 44, 0.72);
+  background: rgba(255, 255, 255, 0.84);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.training-register-wall h1 {
+  margin: 10px 0 12px;
+  font-family: "Calypso", serif;
+  font-size: 30px;
+  line-height: 1.2;
+}
+
+.training-register-wall p {
+  margin: 0 0 24px;
+  font-size: 16px;
+  line-height: 1.55;
+  color: #444;
 }
 
 .training-hero,

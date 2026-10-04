@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api_gateway import state
-from backend.api_gateway.dependecies import get_current_user, get_optional_current_user
+from backend.api_gateway.dependecies import get_current_user
 from backend.db.session import get_db
 from backend.models.training_task import TrainingTask
 from backend.models.user import User
@@ -97,13 +97,23 @@ async def training_due(
 
 
 @router.get("/modules")
-async def training_modules(db: AsyncSession = Depends(get_db)):
-    """Все карточки учебных модулей, включая будущие disabled-модули."""
+async def training_modules(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Все карточки учебных модулей, включая будущие disabled-модули.
+
+    Учебный модуль доступен только зарегистрированным пользователям.
+    """
     return {"modules": await list_modules(db)}
 
 
 @router.get("/modules/{slug}")
-async def training_module(slug: str, db: AsyncSession = Depends(get_db)):
+async def training_module(
+    slug: str,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
     module = await get_module_by_slug(db, slug)
     if not module:
         raise HTTPException(status_code=404, detail="Учебный модуль не найден")
@@ -122,7 +132,11 @@ async def training_module(slug: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/lessons/{lesson_id}")
-async def training_lesson(lesson_id: int, db: AsyncSession = Depends(get_db)):
+async def training_lesson(
+    lesson_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
     lesson = await get_lesson(db, lesson_id)
     if not lesson or not lesson.enabled:
         raise HTTPException(status_code=404, detail="Учебный урок не найден")
@@ -142,7 +156,11 @@ async def training_lesson(lesson_id: int, db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/tasks/{task_id}")
-async def training_task(task_id: int, db: AsyncSession = Depends(get_db)):
+async def training_task(
+    task_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
     task = await get_task(db, task_id)
     if not task or not task.enabled:
         raise HTTPException(status_code=404, detail="Учебное задание не найдено")
@@ -154,7 +172,7 @@ async def check_task(
     task_id: int,
     req: TrainingAnswerRequest,
     db: AsyncSession = Depends(get_db),
-    user: User | None = Depends(get_optional_current_user),
+    user: User = Depends(get_current_user),
 ):
     task = await get_task(db, task_id)
     if not task or not task.enabled:
@@ -165,16 +183,14 @@ async def check_task(
     except TrainingCheckError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
-    topic_slug = None
-    if user is not None:
-        topic_slug = await training_task_topic_slug(db, task.id)
-        # Инициализация до новой попытки: текущая попытка затем изменит
-        # difficulty максимум на один шаг по свежей общей accuracy темы.
-        await get_user_theme_difficulties(
-            db,
-            user_id=user.id,
-            puzzle_base=state.puzzle_base,
-        )
+    topic_slug = await training_task_topic_slug(db, task.id)
+    # Инициализация до новой попытки: текущая попытка затем изменит
+    # difficulty максимум на один шаг по свежей общей accuracy темы.
+    await get_user_theme_difficulties(
+        db,
+        user_id=user.id,
+        puzzle_base=state.puzzle_base,
+    )
 
     attempt = await save_attempt(
         db,
@@ -186,6 +202,7 @@ async def check_task(
         response_time_ms=req.response_time_ms,
     )
 
+<<<<<<< HEAD
     difficulty_update = None
     review_update = None
     if user is not None:
@@ -201,6 +218,14 @@ async def check_task(
             task_id=task.id,
             correct=result.correct,
         )
+=======
+    difficulty_update = await update_theme_difficulty_after_attempt(
+        db,
+        user_id=user.id,
+        theme_slug=topic_slug,
+        puzzle_base=state.puzzle_base,
+    )
+>>>>>>> b114ec2af5b258c4c27a34a48818b787755b478b
 
     return {
         "ok": True,

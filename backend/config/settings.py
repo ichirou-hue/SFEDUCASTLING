@@ -101,7 +101,7 @@ class AuthSettings(BaseSettings):
 
     jwt_secret: str = Field("dev-key-change-me", alias="JWT_SECRET_KEY")
     access_token_ttl_min: int = Field(60 * 24, alias="ACCESS_TOKEN_TTL_MIN")  # 24 ч
-    refresh_token_ttl_days: int = Field(30, alias="REFRESH_TOKEN_TTL_DAYS")
+    refresh_token_ttl_days: int = Field(1, alias="REFRESH_TOKEN_TTL_DAYS")  # сессия = 24 ч
 
 
 class Settings(BaseSettings):

@@ -167,6 +167,12 @@ async def get_training_progress(db: AsyncSession, user_id: int) -> dict:
     Модуль считается пройденным, когда пользователь хотя бы один раз
     правильно выполнил каждое включённое задание этого модуля.
     Accuracy считается по всем строкам training_attempts, включая повторы.
+
+    Точность по темам курса здесь НЕ считается: единственный источник
+    совмещённого профиля (training + puzzles) — build_weakness_profile,
+    который отдаётся `/api/learning/weaknesses`. Он же питает адаптивный
+    подбор и B2, поэтому виджет показывает те же цифры, что используют
+    алгоритмы, а не независимый расчёт по одному треку.
     """
     modules = (
         await db.scalars(
@@ -215,9 +221,6 @@ async def get_training_progress(db: AsyncSession, user_id: int) -> dict:
     ).all()
 
     correct_task_ids: set[int] = set()
-    topic_stats: dict[int, dict[str, int]] = {
-        module.id: {"attempts": 0, "correct": 0} for module in modules
-    }
     activity_dates = set()
 
     total_attempts = 0
@@ -228,41 +231,19 @@ async def get_training_progress(db: AsyncSession, user_id: int) -> dict:
             total_correct += 1
             correct_task_ids.add(task_id)
 
-        if module_id in topic_stats:
-            topic_stats[module_id]["attempts"] += 1
-            if correct:
-                topic_stats[module_id]["correct"] += 1
-
         if created_at is not None:
             activity_dates.add(created_at.date())
 
     completed_modules = 0
-    topics = []
     for module in modules:
         task_ids = tasks_by_module.get(module.id, set())
         completed = bool(task_ids) and task_ids.issubset(correct_task_ids)
         if completed:
             completed_modules += 1
 
-        stats = topic_stats[module.id]
-        attempts = stats["attempts"]
-        correct = stats["correct"]
-        accuracy = round(correct * 100 / attempts, 1) if attempts else None
-        topics.append(
-            {
-                "module_id": module.id,
-                "slug": module.slug,
-                "title": module.title,
-                "attempts": attempts,
-                "correct": correct,
-                "accuracy": accuracy,
-                "completed": completed,
-            }
-        )
-
     total_modules = len(modules)
     module_percent = round(completed_modules * 100 / total_modules, 1) if total_modules else 0.0
-    overall_accuracy = round(total_correct * 100 / total_attempts, 1) if total_attempts else 0.0
+    overall_accuracy = round(total_correct * 100 / total_attempts, 1) if total_attempts else None
 
     return {
         "modules": {
@@ -275,6 +256,5 @@ async def get_training_progress(db: AsyncSession, user_id: int) -> dict:
             "correct": total_correct,
             "accuracy": overall_accuracy,
         },
-        "topics": topics,
         "streak": _current_streak(activity_dates),
     }

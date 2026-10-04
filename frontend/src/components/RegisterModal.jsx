@@ -231,7 +231,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess }) {
                 <input
                   type={showPassword ? "text" : "password"}
                   className="auth-input"
-                  placeholder={isRegister ? "Минимум 8 символов" : "Введите пароль"}
+                  placeholder={isRegister ? "Буквы и цифры, от 8 символов" : "Введите пароль"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleSubmit()}

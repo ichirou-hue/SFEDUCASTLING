@@ -18,7 +18,7 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.api_gateway.dependecies import get_current_user
+from backend.api_gateway.dependecies import get_current_user, require_roles
 from backend.api_gateway.security import (
     create_access_token,
     generate_refresh_token,
@@ -38,13 +38,21 @@ class RegisterRequest(BaseModel):
     password: str = Field(min_length=8, max_length=72)
     email: str | None = Field(default=None, max_length=255)
     elo: int | None = Field(default=None, ge=100, le=3500)
+    parental_consent: bool | None = Field(default=None)
 
     @field_validator("login")
     @classmethod
     def login_charset(cls, v: str) -> str:
-        # \w в Python юникодный: разрешаем и кириллицу, и латиницу
-        if not re.fullmatch(r"[\w-]+", v):
-            raise ValueError("Логин: только буквы (рус/eng), цифры, _ и -")
+        # Только латиница: кириллицу в логине не принимаем.
+        if not re.fullmatch(r"[A-Za-z0-9_-]+", v):
+            raise ValueError("Логин: только латинские буквы, цифры, _ и -")
+        return v
+
+    @field_validator("password")
+    @classmethod
+    def password_strength(cls, v: str) -> str:
+        if not (any(c.isalpha() for c in v) and any(c.isdigit() for c in v)):
+            raise ValueError("Пароль: минимум 8 символов, нужны буквы и цифры")
         return v
 
 
@@ -66,7 +74,7 @@ async def _issue_tokens(db: AsyncSession, user: User) -> dict:
     )
     await db.commit()
     return {
-        "access_token": create_access_token(user.id, user.login, user.is_admin),
+        "access_token": create_access_token(user.id, user.login, user.role),
         "refresh_token": raw_refresh,
         "token_type": "bearer",
         "user": user.public(),
@@ -89,6 +97,7 @@ async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
         email=req.email or None,
         elo=req.elo,
         password_hash=hash_password(req.password),
+        parental_consent=req.parental_consent,
     )
     db.add(user)
     await db.flush()
@@ -147,8 +156,6 @@ async def me(user: User = Depends(get_current_user)):
 
 
 @router.get("/admin-only")
-async def admin_only(user: User = Depends(get_current_user)):
-    """Пример защищённого ресурса: доступ только для администраторов."""
-    if not user.is_admin:
-        raise HTTPException(status_code=403, detail="Нужны права администратора")
+async def admin_only(user: User = Depends(require_roles("admin"))):
+    """Пример защищённого ресурса: доступ только для роли admin."""
     return {"ok": True, "secret": f"Секретный дамп для {user.login}"}

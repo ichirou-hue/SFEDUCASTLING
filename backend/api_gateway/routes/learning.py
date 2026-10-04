@@ -17,7 +17,7 @@ import chess
 import chess.engine
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api_gateway import state
@@ -28,7 +28,10 @@ from backend.models.level_test import LevelTest
 from backend.models.puzzle_attempt import PuzzleAttempt
 from backend.models.user import User
 from backend.services.adaptive_logic import select_adaptive_puzzles
-from backend.services.adaptive_training import build_weakness_profile
+from backend.services.adaptive_training import (
+    build_weakness_profile,
+    compute_learning_progress,
+)
 from backend.services.dynamic_difficulty import (
     get_user_theme_difficulties,
     public_difficulty_profile,
@@ -483,47 +486,7 @@ async def learning_progress(
     db: AsyncSession = Depends(get_db),
 ):
     """Прогресс текущего пользователя по обычным тактическим пазлам."""
-    total_attempts = int(
-        await db.scalar(
-            select(func.count(PuzzleAttempt.id)).where(PuzzleAttempt.user_id == user.id)
-        )
-        or 0
-    )
-    correct_attempts = int(
-        await db.scalar(
-            select(func.count(PuzzleAttempt.id)).where(
-                PuzzleAttempt.user_id == user.id,
-                PuzzleAttempt.correct.is_(True),
-            )
-        )
-        or 0
-    )
-    attempted = int(
-        await db.scalar(
-            select(func.count(func.distinct(PuzzleAttempt.puzzle_id))).where(
-                PuzzleAttempt.user_id == user.id
-            )
-        )
-        or 0
-    )
-    solved = int(
-        await db.scalar(
-            select(func.count(func.distinct(PuzzleAttempt.puzzle_id))).where(
-                PuzzleAttempt.user_id == user.id,
-                PuzzleAttempt.correct.is_(True),
-            )
-        )
-        or 0
-    )
-
-    accuracy = round(correct_attempts * 100 / total_attempts, 1) if total_attempts else 0.0
-    return {
-        "attempted": attempted,
-        "solved": solved,
-        "attempts": total_attempts,
-        "correct_attempts": correct_attempts,
-        "accuracy": accuracy,
-    }
+    return await compute_learning_progress(db, user_id=user.id)
 
 
 @router.get("/api/learning/difficulty")
