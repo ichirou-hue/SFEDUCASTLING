@@ -6,7 +6,7 @@
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,6 +16,10 @@ from backend.db.session import get_db
 from backend.models.training_task import TrainingTask
 from backend.models.user import User
 from backend.services.training_checker import TrainingCheckError, check_training_task
+from backend.services.training_reviews import (
+    get_due_training_reviews,
+    update_training_review_after_attempt,
+)
 from backend.services.dynamic_difficulty import (
     get_user_theme_difficulties,
     training_task_topic_slug,
@@ -68,6 +72,28 @@ async def training_progress(
 ):
     """Прогресс текущего пользователя по учебному курсу."""
     return await get_training_progress(db, user.id)
+
+
+@router.get("/due")
+async def training_due(
+    limit: int = Query(default=50, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Задания, которые текущему пользователю уже пора повторить."""
+    items = await get_due_training_reviews(db, user_id=user.id, limit=limit)
+    return {
+        "total": len(items),
+        "items": [
+            {
+                "review": item["review"],
+                "module": item["module"],
+                "lesson": item["lesson"],
+                "task": _task_public(item["task"]),
+            }
+            for item in items
+        ],
+    }
 
 
 @router.get("/modules")
@@ -161,12 +187,19 @@ async def check_task(
     )
 
     difficulty_update = None
+    review_update = None
     if user is not None:
         difficulty_update = await update_theme_difficulty_after_attempt(
             db,
             user_id=user.id,
             theme_slug=topic_slug,
             puzzle_base=state.puzzle_base,
+        )
+        review_update = await update_training_review_after_attempt(
+            db,
+            user_id=user.id,
+            task_id=task.id,
+            correct=result.correct,
         )
 
     return {
@@ -178,6 +211,7 @@ async def check_task(
         "correct": result.correct,
         "topic": topic_slug,
         "difficulty_update": difficulty_update,
+        "review_update": review_update,
         "score": result.score,
         "feedback": result.feedback,
         "explanation": task.explanation,
