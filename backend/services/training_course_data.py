@@ -66,6 +66,13 @@ MODULES = [
         "sort_order": 8,
         "enabled": True,
     },
+    {
+        "slug": "openings",
+        "title": "Дебюты",
+        "description": "Первые ходы партии: классические начала, борьба за центр и развитие фигур.",
+        "sort_order": 9,
+        "enabled": True,
+    },
 ]
 
 
@@ -1183,6 +1190,284 @@ CHECK_MATE_STALEMATE_LESSONS = [
 ]
 
 
+OPENINGS_LESSONS = [
+    {
+        "slug": "italian",
+        "title": "Итальянская партия",
+        "theory": (
+            "Итальянская партия начинается ходами 1.e4 e5 2.Nf3 Nc6 3.Bc4. Белые развивают коня на f3, "
+            "а затем выводят слона на c4, нацеливаясь на слабую пешку f7 перед чёрным королём. "
+            "Чёрные отвечают 3...Bc5, повторяя угрозу на f2. После 4.c3 белые подготавливают ход d2-d4 "
+            "и получают прочную пешечную цепь в центре."
+        ),
+        "sort_order": 1,
+        "tasks": [
+            {
+                "task_type": "make_move",
+                "title": "Первый ход итальянской партии",
+                "instruction": "Белые открывают игру пешкой. Сделайте ход e2-e4.",
+                "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+                "source_square": "e2",
+                "difficulty": 1,
+                "payload": {"piece": "P", "mode": "accepted_moves", "accepted_moves": ["e2e4"]},
+                "explanation": "1.e4 занимает центр и открывает диагонали слону f1 и ферзю d1.",
+                "sort_order": 1,
+            },
+            {
+                "task_type": "make_move",
+                "title": "Развитие коня",
+                "instruction": "Чёрные ответили 1...e5. Развивайте коня g1 на f3.",
+                "fen": "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+                "source_square": "g1",
+                "difficulty": 1,
+                "payload": {"piece": "N", "mode": "accepted_moves", "accepted_moves": ["g1f3"]},
+                "explanation": "2.Nf3 атакует пешку e5 и развивает коня к центру.",
+                "sort_order": 2,
+            },
+            {
+                "task_type": "make_move",
+                "title": "Слон на c4",
+                "instruction": "Чёрные сыграли 2...Nc6. Выведите слона f1 на c4.",
+                "fen": "r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3",
+                "source_square": "f1",
+                "difficulty": 2,
+                "payload": {"piece": "B", "mode": "accepted_moves", "accepted_moves": ["f1c4"]},
+                "explanation": "3.Bc4 готовит давление на пешку f7 — слабое место чёрных в начале партии.",
+                "sort_order": 3,
+            },
+            {
+                "task_type": "make_move",
+                "title": "Подготовка d2-d4",
+                "instruction": "После 3...Bc5 подготовьте продвижение пешки центра ходом c2-c3.",
+                "fen": "r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",
+                "source_square": "c2",
+                "difficulty": 3,
+                "payload": {"piece": "P", "mode": "accepted_moves", "accepted_moves": ["c2c3"]},
+                "explanation": "4.c3 поддерживает будущий ход d2-d4 и забирает у чёрных поле d4 для их коня.",
+                "sort_order": 4,
+            },
+        ],
+    },
+    {
+        "slug": "ruy-lopez",
+        "title": "Испанская партия",
+        "theory": (
+            "Испанская партия (дебют Руи Лопеса) возникает после 1.e4 e5 2.Nf3 Nc6 3.Bb5. "
+            "Слон b5 не берёт коня, но давит на него, создавая угрозу пешке e5. Это один из самых "
+            "гибких и популярных дебютов на всех уровнях игры."
+        ),
+        "sort_order": 2,
+        "tasks": [
+            {
+                "task_type": "make_move",
+                "title": "Начало испанской партии",
+                "instruction": "Сделайте первый ход белыми — e2-e4.",
+                "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+                "source_square": "e2",
+                "difficulty": 1,
+                "payload": {"piece": "P", "mode": "accepted_moves", "accepted_moves": ["e2e4"]},
+                "explanation": "1.e4 открывает партию и борется за центральные поля.",
+                "sort_order": 1,
+            },
+            {
+                "task_type": "make_move",
+                "title": "Конь против пешки e5",
+                "instruction": "После 1...e5 выведите коня g1 на f3.",
+                "fen": "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+                "source_square": "g1",
+                "difficulty": 1,
+                "payload": {"piece": "N", "mode": "accepted_moves", "accepted_moves": ["g1f3"]},
+                "explanation": "2.Nf3 атакует пешку e5 и развивает коня.",
+                "sort_order": 2,
+            },
+            {
+                "task_type": "make_move",
+                "title": "Слон на b5",
+                "instruction": "Чёрные защитили пешку ходом 2...Nc6. Поставьте слона f1 на b5.",
+                "fen": "r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3",
+                "source_square": "f1",
+                "difficulty": 2,
+                "payload": {"piece": "B", "mode": "accepted_moves", "accepted_moves": ["f1b5"]},
+                "explanation": "3.Bb5 давит на коня c6 и косвенно угрожает пешке e5.",
+                "sort_order": 3,
+            },
+        ],
+    },
+    {
+        "slug": "sicilian",
+        "title": "Сицилианская защита",
+        "theory": (
+            "Сицилианская защита начинается с 1.e4 c5. Чёрные не симметрично повторяют ход белых, "
+            "а сразу борются за центр с фланга. После 2.Nf3 d6 3.d4 позиция становится острой и "
+            "асимметричной — у чёрных есть контригра на ферзевом фланге. Это самый частый ответ "
+            "чёрных на 1.e4 на высоком уровне."
+        ),
+        "sort_order": 3,
+        "tasks": [
+            {
+                "task_type": "make_move",
+                "title": "Начало сицилианской",
+                "instruction": "Сделайте первый ход белыми — e2-e4.",
+                "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+                "source_square": "e2",
+                "difficulty": 1,
+                "payload": {"piece": "P", "mode": "accepted_moves", "accepted_moves": ["e2e4"]},
+                "explanation": "1.e4 занимает центр и открывает игру.",
+                "sort_order": 1,
+            },
+            {
+                "task_type": "make_move",
+                "title": "Мобилизация против c5",
+                "instruction": "Чёрные ответили 1...c5. Развивайте коня g1 на f3.",
+                "fen": "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+                "source_square": "g1",
+                "difficulty": 1,
+                "payload": {"piece": "N", "mode": "accepted_moves", "accepted_moves": ["g1f3"]},
+                "explanation": "2.Nf3 развивает коня и подготавливает продвижение d2-d4.",
+                "sort_order": 2,
+            },
+            {
+                "task_type": "make_move",
+                "title": "Прорыв центра",
+                "instruction": "После 2...d6 сыграйте d2-d4 — главный ход против сицилианской.",
+                "fen": "rnbqkbnr/pp2pppp/3p4/2p5/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 0 3",
+                "source_square": "d2",
+                "difficulty": 2,
+                "payload": {"piece": "P", "mode": "accepted_moves", "accepted_moves": ["d2d4"]},
+                "explanation": "3.d4 раскрывает центр; после размена пешек белые получают пространственное преимущество.",
+                "sort_order": 3,
+            },
+        ],
+    },
+    {
+        "slug": "french",
+        "title": "Французская защита",
+        "theory": (
+            "Французская защита образуется ходами 1.e4 e6 2.d4 d5. Чёрные держат свой ход d7-d5 "
+            "в качестве ответа ферзевой пешке белых и создают прочную пешечную цепь. После 3.e5 "
+            "у белых пространство на королевском фланге, а у чёрных — надёжное пешечное остов и "
+            "контригра на ферзевом фланге."
+        ),
+        "sort_order": 4,
+        "tasks": [
+            {
+                "task_type": "make_move",
+                "title": "Первый ход французской",
+                "instruction": "Сделайте первый ход белыми — e2-e4.",
+                "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+                "source_square": "e2",
+                "difficulty": 1,
+                "payload": {"piece": "P", "mode": "accepted_moves", "accepted_moves": ["e2e4"]},
+                "explanation": "1.e4 открывает партию.",
+                "sort_order": 1,
+            },
+            {
+                "task_type": "make_move",
+                "title": "Ферзевая пешка в центр",
+                "instruction": "После 1...e6 сыграйте d2-d4.",
+                "fen": "rnbqkbnr/pppp1ppp/4p3/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+                "source_square": "d2",
+                "difficulty": 1,
+                "payload": {"piece": "P", "mode": "accepted_moves", "accepted_moves": ["d2d4"]},
+                "explanation": "2.d4 занимает сильное пешечное поле в центре.",
+                "sort_order": 2,
+            },
+            {
+                "task_type": "make_move",
+                "title": "Пешечная цепь",
+                "instruction": "Чёрные ответили 2...d5. Продвиньте пешку e4 на e5.",
+                "fen": "rnbqkbnr/ppp2ppp/4p3/3p4/3PP3/8/PPP2PPP/RNBQKBNR w KQkq - 0 3",
+                "source_square": "e4",
+                "difficulty": 2,
+                "payload": {"piece": "P", "mode": "accepted_moves", "accepted_moves": ["e4e5"]},
+                "explanation": "3.e5 строит пешечную цепь с поддержкой в центре и отступает пешке d5 назад нельзя.",
+                "sort_order": 3,
+            },
+        ],
+    },
+    {
+        "slug": "queens-gambit",
+        "title": "Ферзевый гамбит",
+        "theory": (
+            "Ферзевый гамбит начинается ходами 1.d4 d5 2.c4. Белые предлагают пешку в обмен на "
+            "контроль над центром при ходе 2...dxc4. Если чёрные принимают гамбит, белые развиваются "
+            "с большим комфортом и получают давление по центральным линиям. Обычно чёрные либо "
+            "принимают, либо удерживают центр ходом 2...e6."
+        ),
+        "sort_order": 5,
+        "tasks": [
+            {
+                "task_type": "make_move",
+                "title": "Начало ферзевого гамбита",
+                "instruction": "Сделайте первый ход белыми — d2-d4.",
+                "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+                "source_square": "d2",
+                "difficulty": 1,
+                "payload": {"piece": "P", "mode": "accepted_moves", "accepted_moves": ["d2d4"]},
+                "explanation": "1.d4 борется за центральные поля d5 и e5.",
+                "sort_order": 1,
+            },
+            {
+                "task_type": "make_move",
+                "title": "Предложение пешки",
+                "instruction": "После 1...d5 сыграйте c2-c4.",
+                "fen": "rnbqkbnr/ppp1pppp/8/3p4/3P4/8/PPP1PPPP/RNBQKBNR w KQkq - 0 2",
+                "source_square": "c2",
+                "difficulty": 2,
+                "payload": {"piece": "P", "mode": "accepted_moves", "accepted_moves": ["c2c4"]},
+                "explanation": "2.c4 атакует пешку d5 и предлагает чёрным принять гамбит ходом 2...dxc4.",
+                "sort_order": 2,
+            },
+            {
+                "task_type": "make_move",
+                "title": "Развитие коня",
+                "instruction": "Чёрные укрепили центр ходом 2...e6. Развивайте коня b1 на c3.",
+                "fen": "rnbqkbnr/ppp2ppp/4p3/3p4/2PP4/8/PP2PPPP/RNBQKBNR w KQkq - 0 3",
+                "source_square": "b1",
+                "difficulty": 2,
+                "payload": {"piece": "N", "mode": "accepted_moves", "accepted_moves": ["b1c3"]},
+                "explanation": "3.Nc3 развивает коня и поддерживает пешку c4.",
+                "sort_order": 3,
+            },
+        ],
+    },
+    {
+        "slug": "english",
+        "title": "Английское начало",
+        "theory": (
+            "Английское начало открывается ходом 1.c4. Белые контролируют поле d5 и готовятся "
+            "к игре на ферзевом фланге ещё до занятия центра пешками. После 1...e5 2.Nc3 белые "
+            "развивают коня и создают давление на пешку e5 — классическая борьба за центральные поля."
+        ),
+        "sort_order": 6,
+        "tasks": [
+            {
+                "task_type": "make_move",
+                "title": "Первый ход англичан",
+                "instruction": "Сделайте первый ход белыми — c2-c4.",
+                "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+                "source_square": "c2",
+                "difficulty": 1,
+                "payload": {"piece": "P", "mode": "accepted_moves", "accepted_moves": ["c2c4"]},
+                "explanation": "1.c4 занимает ферзевый фланг и контролирует поле d5.",
+                "sort_order": 1,
+            },
+            {
+                "task_type": "make_move",
+                "title": "Нажим на пешку e5",
+                "instruction": "Чёрные ответили 1...e5. Развивайте коня b1 на c3.",
+                "fen": "rnbqkbnr/pppp1ppp/8/4p3/2P5/8/PP1PPPPP/RNBQKBNR w KQkq - 0 2",
+                "source_square": "b1",
+                "difficulty": 2,
+                "payload": {"piece": "N", "mode": "accepted_moves", "accepted_moves": ["b1c3"]},
+                "explanation": "2.Nc3 развивает коня и давит на пешку e5, не давая чёрным развиваться по стандартной схеме.",
+                "sort_order": 2,
+            },
+        ],
+    },
+]
+
+
 LESSONS_BY_MODULE = {
     "pawn": PAWN_LESSONS,
     "knight": KNIGHT_LESSONS,
@@ -1192,4 +1477,5 @@ LESSONS_BY_MODULE = {
     "king": KING_LESSONS,
     "special-rules": SPECIAL_RULES_LESSONS,
     "check-mate-stalemate": CHECK_MATE_STALEMATE_LESSONS,
+    "openings": OPENINGS_LESSONS,
 }
