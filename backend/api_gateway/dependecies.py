@@ -33,6 +33,18 @@ async def get_current_user(
     return user
 
 
+def require_roles(*roles: str):
+    """Зависимость ограничения доступа по роли: Depends(require_roles("admin"))."""
+    allowed = set(roles)
+
+    async def _checker(user: User = Depends(get_current_user)) -> User:
+        if user.role not in allowed:
+            raise HTTPException(status_code=403, detail="Недостаточно прав")
+        return user
+
+    return _checker
+
+
 async def get_optional_current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     db: AsyncSession = Depends(get_db),

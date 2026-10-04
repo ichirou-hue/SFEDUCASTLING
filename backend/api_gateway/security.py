@@ -27,12 +27,13 @@ def verify_password(password: str, password_hash: str) -> bool:
         return False
 
 
-def create_access_token(user_id: int, login: str, is_admin: bool) -> str:
+def create_access_token(user_id: int, login: str, role: str = "learner") -> str:
     now = datetime.now(UTC)
     payload = {
         "sub": str(user_id),
         "login": login,
-        "admin": is_admin,
+        "admin": role == "admin",
+        "role": role,
         "type": "access",
         "iat": now,
         "exp": now + timedelta(minutes=settings.auth.access_token_ttl_min),

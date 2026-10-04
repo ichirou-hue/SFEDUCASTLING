@@ -3,8 +3,9 @@
 Использование (из корня проекта, с активированным venv):
     python -m scripts.create_admin <login> <password> [--email me@example.com]
 
-Если логин уже существует — пользователь повышается до админа (is_admin=True),
-пароль НЕ меняется. Для смены пароля используйте --set-password.
+Если логин уже существует — пользователь повышается до админа
+(role='admin'), пароль НЕ меняется. Для смены пароля используйте --set-password.
+Единственный источник истины о правах — колонка users.role.
 """
 
 import argparse
@@ -27,17 +28,17 @@ async def create_admin(login: str, password: str, email: str | None, set_passwor
                 login=login,
                 email=email,
                 password_hash=hash_password(password),
-                is_admin=True,
+                role="admin",
             )
             db.add(user)
             action = "создан"
         else:
-            user.is_admin = True
+            user.role = "admin"
             if email:
                 user.email = email
             if set_password:
                 user.password_hash = hash_password(password)
-            action = "обновлён (is_admin=True)"
+            action = "обновлён (role=admin)"
         await db.commit()
         print(f"Админ '{login}' {action}: id={user.id}")
         return 0
