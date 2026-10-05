@@ -93,7 +93,19 @@ export default function App() {
       <Routes>
         <Route path="/" element={<MainPage />} />
         <Route path="/puzzles" element={<PuzzlesPage />} />
-        <Route path="/training" element={<TrainingPage />} />
+        <Route
+          path="/training"
+          element={
+            <TrainingPage
+              user={user}
+              onRegister={() => {
+                setAuthMode("register");
+                setAuthNotice("");
+                setShowRegister(true);
+              }}
+            />
+          }
+        />
         <Route path="/assessment" element={<AssessmentPage />} />
         <Route path="/level-test" element={<AssessmentPage />} />
         <Route
