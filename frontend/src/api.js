@@ -338,7 +338,7 @@ export async function fetchPuzzles(count = 20, topic = null) {
 }
 
 export async function checkPuzzle(puzzleId, move) {
-  const { data } = await api.post("/api/learning/level-test/check", {
+  const { data } = await api.post("/api/learning/puzzle/check", {
     puzzle_id: puzzleId,
     move,
   });
@@ -405,5 +405,49 @@ export async function checkTrainingTask(
 
 export async function fetchTrainingProgress() {
   const { data } = await api.get("/api/training/progress");
+  return data;
+}
+
+// === Стартовая оценка пользователя: Q1-Q8 + персональный level-test ===
+
+export async function fetchAssessmentStatus() {
+  const { data } = await api.get("/api/learning/assessment/status");
+  return data;
+}
+
+export async function submitAssessmentOnboarding(payload) {
+  const { data } = await api.post("/api/learning/assessment/onboarding", payload);
+  return data;
+}
+
+export async function startLevelTest() {
+  const { data } = await api.post("/api/learning/level-test/start");
+  return data;
+}
+
+export async function checkLevelTestAnswer(testId, puzzleId, move, responseTimeMs = null) {
+  const { data } = await api.post("/api/learning/level-test/check", {
+    test_id: testId,
+    puzzle_id: puzzleId,
+    move,
+    response_time_ms: responseTimeMs,
+  });
+  return data;
+}
+
+export async function skipLevelTestQuestion(testId, puzzleId, responseTimeMs = null) {
+  const { data } = await api.post("/api/learning/level-test/skip", {
+    test_id: testId,
+    puzzle_id: puzzleId,
+    response_time_ms: responseTimeMs,
+  });
+  return data;
+}
+
+export async function finishLevelTest(testId, answers = []) {
+  const { data } = await api.post("/api/learning/level-test/submit", {
+    test_id: testId,
+    answers,
+  });
   return data;
 }

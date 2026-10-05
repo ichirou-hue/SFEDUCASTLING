@@ -10,6 +10,8 @@ import RegisterModal from "./components/RegisterModal.jsx";
 import PuzzlesPage from "./components/PuzzlesPage.jsx";
 import TrainingPage from "./components/TrainingPage.jsx";
 import UserProfilePage from "./components/UserProfilePage.jsx";
+import AssessmentPage from "./components/AssessmentPage.jsx";
+import AssessmentNudge from "./components/AssessmentNudge.jsx";
 import { AUTH_EXPIRED_EVENT, getStoredUser } from "./api.js";
 
 function MainPage() {
@@ -87,10 +89,13 @@ export default function App() {
         onMenuClick={() => setSidebarOpen(true)}
       />
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <AssessmentNudge user={user} />
       <Routes>
         <Route path="/" element={<MainPage />} />
         <Route path="/puzzles" element={<PuzzlesPage />} />
         <Route path="/training" element={<TrainingPage />} />
+        <Route path="/assessment" element={<AssessmentPage />} />
+        <Route path="/level-test" element={<AssessmentPage />} />
         <Route
           path="/profile"
           element={<UserProfilePage user={user} onUserChange={setUser} />}

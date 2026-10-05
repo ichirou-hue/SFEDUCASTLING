@@ -5,6 +5,7 @@ import { Chess } from "chess.js";
 import {
   checkLevelTestAnswer,
   finishLevelTest,
+  skipLevelTestQuestion,
   startLevelTest,
 } from "../api.js";
 
@@ -63,7 +64,7 @@ function uciFromMove(move) {
   return `${move.from}${move.to}${move.promotion || ""}`;
 }
 
-export default function LevelTestPage() {
+export default function LevelTestPage({ onCompleted = null }) {
   const navigate = useNavigate();
   const [phase, setPhase] = useState("intro");
   const [questions, setQuestions] = useState([]);
@@ -80,8 +81,11 @@ export default function LevelTestPage() {
   const [error, setError] = useState(null);
   const [result, setResult] = useState(null);
   const [pendingPromotion, setPendingPromotion] = useState(null);
+  const [testId, setTestId] = useState(null);
+  const [personalization, setPersonalization] = useState(null);
 
   const gameRef = useRef(makeGame(START_FEN));
+  const questionStartedAtRef = useRef(Date.now());
 
   const currentQuestion = questions[currentIndex] || null;
   const progress = questions.length
@@ -112,6 +116,7 @@ export default function LevelTestPage() {
     setQuestionState("ready");
     setFeedback(null);
     setPendingPromotion(null);
+    questionStartedAtRef.current = Date.now();
   }, []);
 
   useEffect(() => {
@@ -130,9 +135,24 @@ export default function LevelTestPage() {
       if (!loaded.length) {
         throw new Error(data.error || "Сервер не вернул задачи для теста");
       }
+      const restoredAnswers = data.answers || [];
+      const answeredIds = new Set(restoredAnswers.map((item) => String(item.puzzle_id)));
+      let resumeIndex = loaded.findIndex((item) => !answeredIds.has(String(item.id)));
+      if (resumeIndex < 0) resumeIndex = loaded.length - 1;
+
+      setTestId(data.test_id);
+      setPersonalization(data.personalization || null);
       setQuestions(loaded);
-      setAnswers([]);
-      setCurrentIndex(0);
+      setAnswers(restoredAnswers.map((item) => ({
+        puzzle_id: item.puzzle_id,
+        correct: Boolean(item.correct),
+      })));
+      setCurrentIndex(Math.max(0, resumeIndex));
+
+      if (restoredAnswers.length >= loaded.length) {
+        await finishTest(restoredAnswers, data.test_id);
+        return;
+      }
       setPhase("testing");
     } catch (e) {
       setError(e?.response?.data?.detail || e?.message || "Не удалось начать тест");
@@ -140,14 +160,21 @@ export default function LevelTestPage() {
     }
   };
 
-  const finishTest = async (finalAnswers) => {
+  const finishTest = async (finalAnswers, explicitTestId = null) => {
+    const id = explicitTestId || testId;
+    if (!id) {
+      setError("Не найден идентификатор теста. Запустите тест заново.");
+      return;
+    }
     setPhase("finishing");
     setError(null);
     try {
-      const data = await finishLevelTest(finalAnswers);
+      const data = await finishLevelTest(id, finalAnswers || []);
       if (data.error) throw new Error(data.error);
       setResult(data);
       setPhase("result");
+      window.dispatchEvent(new Event("sfedu-assessment-updated"));
+      onCompleted?.(data);
     } catch (e) {
       setError(e?.response?.data?.detail || e?.message || "Не удалось рассчитать результат");
       setPhase("testing");
@@ -164,7 +191,12 @@ export default function LevelTestPage() {
     setFen(nextFen);
 
     try {
-      const checked = await checkLevelTestAnswer(currentQuestion.id, uci);
+      const checked = await checkLevelTestAnswer(
+        testId,
+        currentQuestion.id,
+        uci,
+        Math.max(0, Date.now() - questionStartedAtRef.current),
+      );
       const strictCorrect = Boolean(checked.correct);
       const strongAlternative = !strictCorrect && Boolean(checked.strong_but_different);
       const answer = {
@@ -266,18 +298,32 @@ export default function LevelTestPage() {
   };
 
   const handleSkip = async () => {
-    if (!currentQuestion || questionState !== "ready") return;
-    const nextAnswers = [
-      ...answers,
-      { puzzle_id: currentQuestion.id, correct: false },
-    ];
-    setAnswers(nextAnswers);
+    if (!currentQuestion || questionState !== "ready" || !testId) return;
+    setQuestionState("checking");
+    try {
+      await skipLevelTestQuestion(
+        testId,
+        currentQuestion.id,
+        Math.max(0, Date.now() - questionStartedAtRef.current),
+      );
+      const nextAnswers = [
+        ...answers.filter((item) => item.puzzle_id !== currentQuestion.id),
+        { puzzle_id: currentQuestion.id, correct: false },
+      ];
+      setAnswers(nextAnswers);
 
-    if (currentIndex >= questions.length - 1) {
-      await finishTest(nextAnswers);
-      return;
+      if (currentIndex >= questions.length - 1) {
+        await finishTest(nextAnswers);
+        return;
+      }
+      setCurrentIndex((index) => index + 1);
+    } catch (e) {
+      setQuestionState("ready");
+      setFeedback({
+        type: "error",
+        text: e?.response?.data?.detail || e?.message || "Не удалось сохранить пропуск",
+      });
     }
-    setCurrentIndex((index) => index + 1);
   };
 
   const squareStyles = {};
@@ -308,17 +354,25 @@ export default function LevelTestPage() {
           <div className="level-test-kicker">SFEDUCASTLING</div>
           <h1>Проверка шахматного уровня</h1>
           <p>
-            Тест состоит из 20 тактических позиций: по 5 задач из каждого диапазона сложности.
-            Конкретные позиции и их порядок выбираются заново при каждом запуске.
+            Тест состоит из 20 персонально подобранных тактических позиций.
+            Большая часть соответствует вашей предварительной оценке, а соседние уровни проверяют границы.
           </p>
           <div className="level-test-rules">
             <div><strong>20</strong><span>задач</span></div>
             <div><strong>1</strong><span>ход на позицию</span></div>
-            <div><strong>4</strong><span>диапазона сложности</span></div>
+            <div><strong>4</strong><span>рейтинговых диапазона</span></div>
           </div>
           <p className="level-test-note">
             Во время теста рейтинг позиции, подсказки и решение скрыты, чтобы результат отражал ваш текущий уровень.
           </p>
+          {personalization?.rating_group && (
+            <div className="level-test-personalization">
+              Стартовый диапазон: <strong>{personalization.rating_group}</strong>
+              {personalization.weak_topic_titles?.length > 0 && (
+                <span> · учтены слабые темы: {personalization.weak_topic_titles.join(", ")}</span>
+              )}
+            </div>
+          )}
           {error && <div className="level-test-error">{error}</div>}
           <button className="level-test-primary-btn" onClick={beginTest} disabled={phase === "loading"}>
             {phase === "loading" ? "Формируем новый набор..." : "Начать проверку уровня"}
@@ -339,11 +393,12 @@ export default function LevelTestPage() {
   if (phase === "result" && result) {
     const level = result.result?.level ?? result.level ?? 1;
     const name = result.result?.name || "Новичок";
-    const breakdown = Object.entries(result.score || {})
+    const breakdown = Object.entries(result.score?.by_group || {})
       .map(([key, value]) => ({ level: Number(key), ...value }))
       .sort((a, b) => a.level - b.level);
-    const totalCorrect = breakdown.reduce((sum, item) => sum + (item.correct || 0), 0);
-    const totalQuestions = breakdown.reduce((sum, item) => sum + (item.total || 0), 0);
+    const totalCorrect = result.score?.correct ?? breakdown.reduce((sum, item) => sum + (item.correct || 0), 0);
+    const totalQuestions = result.score?.total ?? breakdown.reduce((sum, item) => sum + (item.total || 0), 0);
+    const finalRating = result.rating ?? result.score?.final_rating ?? result.result?.rating;
 
     return (
       <main className="level-test-page level-test-page--centered">
@@ -352,6 +407,9 @@ export default function LevelTestPage() {
           <div className="level-test-kicker">Результат проверки</div>
           <h1>{name}</h1>
           <div className="level-test-level-badge">Уровень {level} из 4</div>
+          {finalRating != null && (
+            <div className="level-test-rating-value">Итоговый рейтинг: <strong>{finalRating}</strong></div>
+          )}
           <p>{LEVEL_DESCRIPTIONS[level]}</p>
           <div className="level-test-total-score">
             <strong>{totalCorrect}</strong>
@@ -363,7 +421,7 @@ export default function LevelTestPage() {
               <div className="level-test-breakdown-row" key={item.level}>
                 <div>
                   <strong>{item.name}</strong>
-                  <span>Диапазон {item.level}</span>
+                  <span>{item.range || `Диапазон ${item.level}`}</span>
                 </div>
                 <div className="level-test-breakdown-score">
                   {item.correct} / {item.total}
@@ -372,12 +430,17 @@ export default function LevelTestPage() {
             ))}
           </div>
 
+          {result.feedback?.length > 0 && (
+            <div className="level-test-result-feedback">
+              {result.feedback.map((item) => <div key={item}>• {item}</div>)}
+            </div>
+          )}
           <div className="level-test-result-actions">
-            <button className="level-test-primary-btn" onClick={beginTest}>
-              Пройти ещё раз
-            </button>
-            <button className="level-test-secondary-btn" onClick={() => navigate("/training")}>
+            <button className="level-test-primary-btn" onClick={() => navigate("/training")}>
               Перейти к обучению
+            </button>
+            <button className="level-test-secondary-btn" onClick={() => navigate("/")}>
+              На главную
             </button>
           </div>
         </section>

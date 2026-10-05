@@ -8,6 +8,7 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, func
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.db.base import Base
@@ -25,7 +26,20 @@ class User(Base):
     login: Mapped[str] = mapped_column(String(32), unique=True, index=True)
     email: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True)
     password_hash: Mapped[str] = mapped_column(String(128))
+    # elo — итоговая числовая оценка после level-test.
     elo: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    # Поля стартовой оценки. Часть из них уже могла быть создана старой
+    # миграцией методики; новая миграция добавляет только отсутствующие.
+    skill_band: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    prior_band: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    rating_estimate: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    rating_scale: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    onboarding: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    assessment_completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
     role: Mapped[str] = mapped_column(
         String(32), default=ROLE_LEARNER, server_default=ROLE_LEARNER, nullable=False
     )
@@ -56,6 +70,14 @@ class User(Base):
             "login": self.login,
             "email": self.email,
             "elo": self.elo,
+            "skill_band": self.skill_band,
+            "prior_band": self.prior_band,
+            "rating_estimate": self.rating_estimate,
+            "rating_scale": self.rating_scale,
+            "onboarding_completed": bool(
+                isinstance(self.onboarding, dict) and self.onboarding.get("submitted_at")
+            ),
+            "assessment_completed": self.assessment_completed_at is not None,
             "role": role,
             "is_admin": role == ROLE_ADMIN,
             "created_at": self.created_at.isoformat() if self.created_at else None,
