@@ -451,3 +451,23 @@ export async function finishLevelTest(testId, answers = []) {
   });
   return data;
 }
+
+// === Связанные шахматные аккаунты (soft link, без OAuth) ===
+
+export async function fetchLinkedChessAccounts() {
+  const { data } = await api.get("/api/chess-profile/linked");
+  return data;
+}
+
+export async function linkChessAccount(username, platform = "lichess") {
+  const { data } = await api.post("/api/chess-profile/link", {
+    username,
+    platform,
+  });
+  return data;
+}
+
+export async function unlinkChessAccount(platform = "lichess") {
+  const { data } = await api.delete(`/api/chess-profile/link/${platform}`);
+  return data;
+}

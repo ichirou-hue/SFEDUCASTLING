@@ -92,11 +92,12 @@ def onboarding_rating(answers: dict[str, Any]) -> tuple[int, str, int]:
     """Возвращает (rating_estimate, rating_scale, prior_band)."""
     q2 = answers.get("q2") or {}
     external_rating = q2.get("rating")
-    if q2.get("has_rating") and external_rating is not None:
+    rating_usable = q2.get("rating_usable", True)
+    if q2.get("has_rating") and rating_usable and external_rating is not None:
         rating = max(0, min(3500, int(external_rating)))
         platform = str(q2.get("platform") or "external")
         rating_type = str(q2.get("rating_type") or "unknown")
-        scale = f"{platform}_{rating_type}"
+        scale = str(q2.get("rating_scale") or f"{platform}_{rating_type}")
     else:
         rating = Q1_ESTIMATES.get(str(answers.get("q1")), 800)
         scale = "self_report"
@@ -117,7 +118,17 @@ def build_onboarding_feedback(answers: dict[str, Any], rating: int) -> list[str]
         feedback.append(f"Самооценка опыта: «{q1}». Она используется как резервная оценка, если нет внешнего рейтинга.")
 
     q2 = answers.get("q2") or {}
-    if q2.get("has_rating"):
+    if q2.get("linked_account") and q2.get("rating_usable") and q2.get("rating") is not None:
+        feedback.append(
+            f"Для старта учтён рейтинг связанного аккаунта {q2.get('username')}: "
+            f"{q2.get('rating')} ({q2.get('platform')}, {q2.get('rating_type')})."
+        )
+    elif q2.get("linked_account"):
+        feedback.append(
+            f"Аккаунт {q2.get('username')} привязан, но его рейтинг не прошёл критерии надёжности; "
+            "для стартовой оценки использована самооценка Q1."
+        )
+    elif q2.get("has_rating"):
         feedback.append(
             f"Для старта учтён внешний рейтинг {q2.get('rating')} ({q2.get('platform')}, {q2.get('rating_type')})."
         )

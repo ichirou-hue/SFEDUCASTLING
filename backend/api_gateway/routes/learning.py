@@ -20,6 +20,7 @@ from backend.db.session import get_db
 from backend.models.level_test import LevelTest
 from backend.models.puzzle_attempt import PuzzleAttempt
 from backend.models.user import ROLE_ADMIN, User
+from backend.models.user_chess_account import UserChessAccount
 from backend.services.adaptive_logic import select_adaptive_puzzles
 from backend.services.adaptive_training import (
     build_weakness_profile,
@@ -63,14 +64,18 @@ class OnboardingQ2(BaseModel):
     has_rating: bool = False
     platform: Literal["lichess", "chesscom"] | None = None
     username: str | None = Field(default=None, max_length=64)
+    # Эти поля принимает старый клиент, но новый backend не доверяет им:
+    # при отправке анкеты рейтинг заново берётся из user_chess_accounts.
     rating_type: Literal["blitz", "rapid", "bullet"] | None = None
     rating: int | None = Field(default=None, ge=0, le=3500)
+    rating_scale: str | None = Field(default=None, max_length=64)
+    rating_usable: bool | None = None
+    linked_account: bool | None = None
 
     @model_validator(mode="after")
-    def validate_external_rating(self):
-        if self.has_rating:
-            if not self.platform or not self.rating_type or self.rating is None:
-                raise ValueError("Для внешнего рейтинга укажите платформу, тип и значение")
+    def validate_external_account(self):
+        if self.has_rating and (not self.platform or not self.username):
+            raise ValueError("Для внешнего рейтинга укажите платформу и имя связанного аккаунта")
         return self
 
 
@@ -282,6 +287,53 @@ async def assessment_onboarding(
         raise HTTPException(status_code=409, detail="Стартовая оценка уже завершена")
 
     answers = req.model_dump()
+
+    # Внешнему рейтингу из тела запроса не доверяем. Если Q2 включён, берём
+    # рейтинг только из сохранённой soft-link записи, созданной через
+    # POST /api/chess-profile/link. Это не даёт вручную подменить Elo в DevTools.
+    if req.q2.has_rating:
+        linked = await db.scalar(
+            select(UserChessAccount).where(
+                UserChessAccount.user_id == user.id,
+                UserChessAccount.platform == req.q2.platform,
+            )
+        )
+        if linked is None:
+            raise HTTPException(
+                status_code=409,
+                detail="Сначала найдите и привяжите шахматный аккаунт в вопросе Q2",
+            )
+        if (linked.username or "").casefold() != (req.q2.username or "").strip().casefold():
+            raise HTTPException(
+                status_code=409,
+                detail="Указанный профиль не совпадает с сохранённой привязкой. Привяжите аккаунт заново.",
+            )
+        answers["q2"] = {
+            "has_rating": True,
+            "platform": linked.platform,
+            "username": linked.username,
+            "rating_type": linked.rating_type,
+            "rating": linked.rating if linked.rating_usable else None,
+            "rating_scale": linked.rating_scale,
+            "rating_usable": bool(linked.rating_usable),
+            "linked_account": True,
+            "verified": bool(linked.verified),
+            "games": linked.games,
+            "rating_deviation": linked.rating_deviation,
+        }
+    else:
+        answers["q2"] = {
+            "has_rating": False,
+            "platform": None,
+            "username": None,
+            "rating_type": None,
+            "rating": None,
+            "rating_scale": None,
+            "rating_usable": False,
+            "linked_account": False,
+            "verified": False,
+        }
+
     rating, scale, prior_band = onboarding_rating(answers)
     feedback = build_onboarding_feedback(answers, rating)
 
@@ -296,7 +348,7 @@ async def assessment_onboarding(
         "answers": answers,
         "feedback": feedback,
         "submitted_at": datetime.now(UTC).isoformat(),
-        "version": 2,
+        "version": 3,
     }
     await db.commit()
 

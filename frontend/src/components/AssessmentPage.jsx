@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   fetchAssessmentStatus,
+  fetchLinkedChessAccounts,
+  linkChessAccount,
   submitAssessmentOnboarding,
 } from "../api.js";
 import LevelTestPage from "./LevelTestPage.jsx";
@@ -34,8 +36,11 @@ const initialForm = {
     has_rating: false,
     platform: "lichess",
     username: "",
-    rating_type: "blitz",
-    rating: "",
+    rating_type: null,
+    rating: null,
+    rating_scale: null,
+    rating_usable: false,
+    linked_account: false,
   },
   q3: [],
   q4: "",
@@ -64,14 +69,57 @@ function ChoiceGrid({ options, value, onChange }) {
   );
 }
 
+function platformTitle(platform) {
+  return platform === "chesscom" ? "Chess.com" : "Lichess";
+}
+
+function ratingTypeTitle(value) {
+  if (value === "rapid") return "Rapid";
+  if (value === "bullet") return "Bullet";
+  return "Blitz";
+}
+
 function OnboardingForm({ onDone }) {
   const [form, setForm] = useState(initialForm);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [feedback, setFeedback] = useState(null);
+  const [linking, setLinking] = useState(false);
+  const [linkError, setLinkError] = useState("");
+  const [linkedResult, setLinkedResult] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchLinkedChessAccounts()
+      .then((data) => {
+        if (cancelled) return;
+        const accounts = data?.items || [];
+        const account = accounts.find((item) => item.platform === "lichess") || accounts[0];
+        if (!account) return;
+        setForm((prev) => ({
+          ...prev,
+          q2: {
+            ...prev.q2,
+            has_rating: true,
+            platform: account.platform,
+            username: account.username || "",
+            rating_type: account.rating_type || null,
+            rating: account.rating ?? null,
+            rating_scale: account.rating_scale || null,
+            rating_usable: Boolean(account.rating_usable),
+            linked_account: true,
+          },
+        }));
+        setLinkedResult({ account, profile: null, assessment_rating: null });
+      })
+      .catch(() => {
+        // Привязка необязательна; ошибка чтения не блокирует анкету.
+      });
+    return () => { cancelled = true; };
+  }, []);
 
   const canSubmit = useMemo(() => {
-    const q2ok = !form.q2.has_rating || Boolean(form.q2.rating);
+    const q2ok = !form.q2.has_rating || Boolean(form.q2.linked_account && form.q2.username);
     const consentOk = form.q7 !== "under10" || form.parental_consent;
     return Boolean(
       form.q1 &&
@@ -105,6 +153,74 @@ function OnboardingForm({ onDone }) {
     });
   };
 
+  const changeExternalPlatform = (platform) => {
+    setLinkedResult(null);
+    setLinkError("");
+    setForm((prev) => ({
+      ...prev,
+      q2: {
+        ...prev.q2,
+        platform,
+        username: "",
+        rating_type: null,
+        rating: null,
+        rating_scale: null,
+        rating_usable: false,
+        linked_account: false,
+      },
+    }));
+  };
+
+  const changeExternalUsername = (username) => {
+    setLinkedResult(null);
+    setLinkError("");
+    setForm((prev) => ({
+      ...prev,
+      q2: {
+        ...prev.q2,
+        username,
+        rating_type: null,
+        rating: null,
+        rating_scale: null,
+        rating_usable: false,
+        linked_account: false,
+      },
+    }));
+  };
+
+  const linkExternalAccount = async () => {
+    const username = form.q2.username.trim();
+    if (!username) {
+      setLinkError("Введите логин шахматного аккаунта.");
+      return;
+    }
+    setLinking(true);
+    setLinkError("");
+    try {
+      const data = await linkChessAccount(username, form.q2.platform);
+      const account = data.account;
+      setLinkedResult(data);
+      setForm((prev) => ({
+        ...prev,
+        q2: {
+          ...prev.q2,
+          has_rating: true,
+          platform: account.platform,
+          username: account.username,
+          rating_type: account.rating_type || null,
+          rating: account.rating ?? null,
+          rating_scale: account.rating_scale || null,
+          rating_usable: Boolean(account.rating_usable),
+          linked_account: true,
+        },
+      }));
+    } catch (e) {
+      setLinkError(e?.response?.data?.detail || e?.message || "Не удалось привязать аккаунт");
+    } finally {
+      setLinking(false);
+    }
+  };
+
   const submit = async (event) => {
     event.preventDefault();
     if (!canSubmit) return;
@@ -113,11 +229,22 @@ function OnboardingForm({ onDone }) {
     try {
       const payload = {
         ...form,
-        q2: {
-          ...form.q2,
-          username: form.q2.username || null,
-          rating: form.q2.has_rating ? Number(form.q2.rating) : null,
-        },
+        q2: form.q2.has_rating
+          ? {
+              ...form.q2,
+              username: form.q2.username || null,
+              rating: form.q2.rating == null ? null : Number(form.q2.rating),
+            }
+          : {
+              has_rating: false,
+              platform: null,
+              username: null,
+              rating_type: null,
+              rating: null,
+              rating_scale: null,
+              rating_usable: false,
+              linked_account: false,
+            },
         q8: form.q8 || null,
         guardian_contact: form.guardian_contact || null,
       };
@@ -149,6 +276,10 @@ function OnboardingForm({ onDone }) {
     );
   }
 
+  const linkedAccount = linkedResult?.account;
+  const ratingInfo = linkedResult?.assessment_rating;
+  const profilePerfs = linkedResult?.profile?.perfs;
+
   return (
     <form className="assessment-card assessment-form" onSubmit={submit}>
       <div className="assessment-kicker">Шаг 1 из 2 · около 2 минут</div>
@@ -164,24 +295,107 @@ function OnboardingForm({ onDone }) {
       </fieldset>
 
       <fieldset>
-        <legend>Q2. Есть ли у вас внешний шахматный рейтинг?</legend>
+        <legend>Q2. Есть ли у вас аккаунт Lichess или Chess.com?</legend>
         <div className="assessment-inline-toggle">
-          <label><input type="radio" checked={!form.q2.has_rating} onChange={() => setForm({ ...form, q2: { ...form.q2, has_rating: false } })} /> Нет</label>
-          <label><input type="radio" checked={form.q2.has_rating} onChange={() => setForm({ ...form, q2: { ...form.q2, has_rating: true } })} /> Да</label>
+          <label>
+            <input
+              type="radio"
+              checked={!form.q2.has_rating}
+              onChange={() => setForm((prev) => ({ ...prev, q2: { ...prev.q2, has_rating: false } }))}
+            />
+            Нет / не хочу использовать
+          </label>
+          <label>
+            <input
+              type="radio"
+              checked={form.q2.has_rating}
+              onChange={() => setForm((prev) => ({ ...prev, q2: { ...prev.q2, has_rating: true } }))}
+            />
+            Да, привязать
+          </label>
         </div>
+
         {form.q2.has_rating && (
-          <div className="assessment-q2-grid">
-            <select value={form.q2.platform} onChange={(e) => setForm({ ...form, q2: { ...form.q2, platform: e.target.value } })}>
-              <option value="lichess">Lichess</option>
-              <option value="chesscom">Chess.com</option>
-            </select>
-            <select value={form.q2.rating_type} onChange={(e) => setForm({ ...form, q2: { ...form.q2, rating_type: e.target.value } })}>
-              <option value="blitz">Blitz</option>
-              <option value="rapid">Rapid</option>
-              <option value="bullet">Bullet</option>
-            </select>
-            <input value={form.q2.username} placeholder="Логин (необязательно)" onChange={(e) => setForm({ ...form, q2: { ...form.q2, username: e.target.value } })} />
-            <input type="number" min="0" max="3500" required value={form.q2.rating} placeholder="Рейтинг" onChange={(e) => setForm({ ...form, q2: { ...form.q2, rating: e.target.value } })} />
+          <div className="assessment-account-link">
+            <div className="assessment-q2-grid assessment-q2-grid--link">
+              <select
+                value={form.q2.platform}
+                onChange={(e) => changeExternalPlatform(e.target.value)}
+                disabled={linking}
+              >
+                <option value="lichess">Lichess</option>
+                <option value="chesscom">Chess.com</option>
+              </select>
+              <input
+                value={form.q2.username}
+                placeholder={`Логин ${platformTitle(form.q2.platform)}`}
+                onChange={(e) => changeExternalUsername(e.target.value)}
+                disabled={linking}
+              />
+            </div>
+            <button
+              type="button"
+              className="assessment-secondary assessment-link-btn"
+              onClick={linkExternalAccount}
+              disabled={linking || !form.q2.username.trim()}
+            >
+              {linking ? "Проверяем профиль..." : "Найти и привязать аккаунт"}
+            </button>
+
+            {linkError && <div className="assessment-error">{String(linkError)}</div>}
+
+            {linkedAccount && (
+              <div className={`assessment-linked-account ${linkedAccount.rating_usable ? "is-usable" : "is-warning"}`}>
+                <div className="assessment-linked-head">
+                  <div>
+                    <strong>{platformTitle(linkedAccount.platform)} · {linkedAccount.username}</strong>
+                    <span>Аккаунт связан с вашим профилем SFEDUCASTLING</span>
+                  </div>
+                  <span className="assessment-linked-badge">Привязан</span>
+                </div>
+
+                {profilePerfs && (
+                  <div className="assessment-perfs">
+                    {["blitz", "rapid", "bullet"].map((type) => {
+                      const perf = profilePerfs[type];
+                      if (!perf?.rating) return null;
+                      return (
+                        <div key={type}>
+                          <span>{ratingTypeTitle(type)}</span>
+                          <strong>{perf.rating}</strong>
+                          <small>{perf.games || 0} партий</small>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {linkedAccount.rating != null && (
+                  <p className="assessment-linked-rating">
+                    Для оценки выбран: <strong>{ratingTypeTitle(linkedAccount.rating_type)} {linkedAccount.rating}</strong>
+                    {linkedAccount.games ? ` · ${linkedAccount.games} партий` : ""}
+                    {linkedAccount.rating_deviation != null ? ` · RD ${Math.round(linkedAccount.rating_deviation)}` : ""}
+                  </p>
+                )}
+
+                {linkedAccount.rating_usable ? (
+                  <p className="assessment-link-ok">
+                    Этот рейтинг будет использован как предварительный при подборе входного теста.
+                  </p>
+                ) : (
+                  <p className="assessment-link-warning">
+                    Профиль сохранён, но рейтинг пока не подходит для стартовой оценки. Будет использован ответ Q1.
+                  </p>
+                )}
+
+                {(ratingInfo?.warnings || []).map((warning) => (
+                  <small className="assessment-link-note" key={warning}>{warning}</small>
+                ))}
+                <small className="assessment-link-note">
+                  Это мягкая привязка по публичному профилю: без OAuth SFEDUCASTLING не может доказать владение аккаунтом.
+                </small>
+              </div>
+            )}
           </div>
         )}
       </fieldset>

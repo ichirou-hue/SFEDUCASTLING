@@ -483,3 +483,125 @@
   .assessment-nudge-banner { align-items: flex-start; flex-direction: column; }
   .assessment-q2-grid { grid-template-columns: 1fr; }
 }
+
+/* Q2: привязка публичного шахматного аккаунта */
+.assessment-account-link {
+  margin-top: 12px;
+  display: grid;
+  gap: 12px;
+}
+
+.assessment-q2-grid--link {
+  grid-template-columns: minmax(150px, 220px) minmax(220px, 1fr);
+}
+
+.assessment-link-btn {
+  justify-self: start;
+}
+
+.assessment-linked-account {
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid #cbd5c7;
+  background: #f8faf6;
+  display: grid;
+  gap: 10px;
+}
+
+.assessment-linked-account.is-usable {
+  border-color: #8fb286;
+  background: #f1f8ee;
+}
+
+.assessment-linked-account.is-warning {
+  border-color: #dec678;
+  background: #fff9e8;
+}
+
+.assessment-linked-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.assessment-linked-head > div {
+  display: grid;
+  gap: 3px;
+}
+
+.assessment-linked-head span {
+  color: #687267;
+  font-size: 13px;
+}
+
+.assessment-linked-badge {
+  flex-shrink: 0;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: #dfeeda;
+  color: #3e6538 !important;
+  font-weight: 800;
+  font-size: 12px !important;
+}
+
+.assessment-perfs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(110px, 1fr));
+  gap: 8px;
+}
+
+.assessment-perfs > div {
+  padding: 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .75);
+  display: grid;
+  gap: 2px;
+}
+
+.assessment-perfs span,
+.assessment-perfs small {
+  color: #6b7569;
+  font-size: 12px;
+}
+
+.assessment-perfs strong {
+  font-size: 18px;
+  color: #33482f;
+}
+
+.assessment-linked-rating,
+.assessment-link-ok,
+.assessment-link-warning,
+.assessment-link-note {
+  margin: 0;
+}
+
+.assessment-link-ok {
+  color: #34652f;
+}
+
+.assessment-link-warning {
+  color: #7a5c12;
+}
+
+.assessment-link-note {
+  display: block;
+  color: #71796f;
+  line-height: 1.45;
+}
+
+@media (max-width: 680px) {
+  .assessment-q2-grid--link,
+  .assessment-perfs {
+    grid-template-columns: 1fr;
+  }
+
+  .assessment-link-btn {
+    width: 100%;
+  }
+
+  .assessment-linked-head {
+    flex-direction: column;
+  }
+}
