@@ -45,13 +45,17 @@ export default function AssessmentNudge({ user }) {
   const total = status.active_test?.total || 20;
   const title = status.phase === "onboarding"
     ? "Определите свой шахматный уровень"
-    : answered > 0
-      ? `Продолжите оценку уровня — ${answered} из ${total}`
-      : "Анкета готова — осталось пройти персональный тест";
+    : status.phase === "feedback"
+      ? "Тест завершён — остался короткий отзыв"
+      : answered > 0
+        ? `Продолжите оценку уровня — ${answered} из ${total}`
+        : "Анкета готова — осталось пройти персональный тест";
 
   const subtitle = status.phase === "onboarding"
     ? "8 коротких вопросов и 20 персональных задач помогут подобрать обучение под ваш уровень."
-    : `Предварительный диапазон: ${status.rating_group || "определён"}. После теста напоминание исчезнет.`;
+    : status.phase === "feedback"
+      ? "Последний шаг: расскажите, что можно улучшить, или пропустите отзыв и посмотрите итог."
+      : `Предварительный диапазон: ${status.rating_group || "определён"}. После задач останется короткий необязательный отзыв.`;
 
   const go = () => {
     setShowModal(false);
@@ -70,7 +74,7 @@ export default function AssessmentNudge({ user }) {
           <strong>{title}</strong>
           <span>{subtitle}</span>
         </div>
-        <button onClick={go}>{answered > 0 ? "Продолжить" : "Пройти оценку"}</button>
+        <button onClick={go}>{status.phase === "feedback" ? "Завершить" : answered > 0 ? "Продолжить" : "Пройти оценку"}</button>
       </div>
 
       {showModal && (
@@ -81,7 +85,7 @@ export default function AssessmentNudge({ user }) {
             <h2>{title}</h2>
             <p>{subtitle}</p>
             <div className="assessment-modal-actions">
-              <button className="assessment-primary" onClick={go}>{answered > 0 ? "Продолжить" : "Пройти сейчас"}</button>
+              <button className="assessment-primary" onClick={go}>{status.phase === "feedback" ? "Завершить" : answered > 0 ? "Продолжить" : "Пройти сейчас"}</button>
               <button className="assessment-secondary" onClick={later}>Позже</button>
             </div>
             <small>Если отложить, напоминание останется под верхней панелью и появится снова в следующей сессии.</small>

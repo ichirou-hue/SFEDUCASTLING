@@ -420,6 +420,14 @@ export async function submitAssessmentOnboarding(payload) {
   return data;
 }
 
+export async function submitAssessmentUserFeedback(text = null, skipped = false) {
+  const { data } = await api.post("/api/learning/assessment/feedback", {
+    text,
+    skipped,
+  });
+  return data;
+}
+
 export async function startLevelTest() {
   const { data } = await api.post("/api/learning/level-test/start");
   return data;

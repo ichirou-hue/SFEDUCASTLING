@@ -171,10 +171,18 @@ export default function LevelTestPage({ onCompleted = null }) {
     try {
       const data = await finishLevelTest(id, finalAnswers || []);
       if (data.error) throw new Error(data.error);
+      window.dispatchEvent(new Event("sfedu-assessment-updated"));
+
+      // В составе обязательного assessment результат пока не показываем:
+      // сначала пользователь видит отдельный экран фидбэка, и только затем итог.
+      if (onCompleted) {
+        onCompleted(data);
+        return;
+      }
+
+      // Standalone-режим LevelTestPage сохраняет старое поведение.
       setResult(data);
       setPhase("result");
-      window.dispatchEvent(new Event("sfedu-assessment-updated"));
-      onCompleted?.(data);
     } catch (e) {
       setError(e?.response?.data?.detail || e?.message || "Не удалось рассчитать результат");
       setPhase("testing");
@@ -351,7 +359,7 @@ export default function LevelTestPage({ onCompleted = null }) {
     return (
       <main className="level-test-page level-test-page--centered">
         <section className="level-test-intro-card">
-          <div className="level-test-kicker">SFEDUCASTLING</div>
+          <div className="level-test-kicker">{onCompleted ? "Шаг 2 из 3 · персональный тест" : "SFEDUCASTLING"}</div>
           <h1>Проверка шахматного уровня</h1>
           <p>
             Тест состоит из 20 персонально подобранных тактических позиций.

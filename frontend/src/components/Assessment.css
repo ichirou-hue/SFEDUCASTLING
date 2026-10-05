@@ -605,3 +605,85 @@
     flex-direction: column;
   }
 }
+
+
+/* Необязательный пользовательский отзыв после Q1-Q8 */
+.assessment-user-feedback {
+  margin: 22px 0;
+  padding: 18px;
+  border: 1px solid #d9dfd5;
+  border-radius: 14px;
+  background: #f8faf6;
+}
+
+.assessment-user-feedback__head > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.assessment-user-feedback__head strong {
+  color: #2f402c;
+}
+
+.assessment-user-feedback__head span {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #ecefe9;
+  color: #737a70;
+  font-size: 12px;
+}
+
+.assessment-user-feedback__head p {
+  margin: 7px 0 12px;
+  color: #626b60;
+  line-height: 1.5;
+}
+
+.assessment-user-feedback textarea {
+  width: 100%;
+  min-height: 118px;
+  resize: vertical;
+  box-sizing: border-box;
+  padding: 12px 13px;
+  border: 1px solid #cad3c6;
+  border-radius: 11px;
+  background: #fff;
+  color: #263224;
+  font: inherit;
+  line-height: 1.45;
+}
+
+.assessment-user-feedback textarea:focus {
+  outline: 2px solid rgba(95, 127, 85, .18);
+  border-color: #6f9163;
+}
+
+.assessment-user-feedback textarea:disabled {
+  background: #f0f3ee;
+  color: #667064;
+}
+
+.assessment-user-feedback__footer {
+  margin-top: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.assessment-user-feedback__footer small {
+  color: #81887f;
+}
+
+.assessment-feedback-saved {
+  color: #3f7038;
+  font-weight: 700;
+}
+
+@media (max-width: 560px) {
+  .assessment-user-feedback__footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

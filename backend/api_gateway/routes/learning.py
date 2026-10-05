@@ -104,6 +104,21 @@ class OnboardingRequest(BaseModel):
         return self
 
 
+class AssessmentFeedbackRequest(BaseModel):
+    text: str | None = Field(default=None, max_length=2000)
+    skipped: bool = False
+
+    @model_validator(mode="after")
+    def normalize_feedback(self):
+        if self.text is not None:
+            self.text = self.text.strip()
+            if not self.text:
+                self.text = None
+        if self.text is None and not self.skipped:
+            raise ValueError("Введите отзыв или отметьте его как пропущенный")
+        return self
+
+
 class LevelTestCheckRequest(BaseModel):
     test_id: int = Field(gt=0)
     puzzle_id: str = Field(min_length=1, max_length=64)
@@ -241,24 +256,42 @@ async def assessment_status(
             "level_test_completed": False,
         }
 
-    onboarding_completed = bool(
-        isinstance(user.onboarding, dict) and user.onboarding.get("submitted_at")
-    )
-    completed = user.assessment_completed_at is not None
-    active = None if completed else await _latest_personal_test(db, user.id)
+    onboarding_data = user.onboarding if isinstance(user.onboarding, dict) else {}
+    onboarding_completed = bool(onboarding_data.get("submitted_at"))
+    level_test_completed = user.assessment_completed_at is not None
+    feedback_completed = bool(onboarding_data.get("post_test_feedback_completed_at"))
+    completed = level_test_completed and feedback_completed
 
-    if completed:
-        phase = "completed"
-    elif not onboarding_completed:
+    active = None if level_test_completed else await _latest_personal_test(db, user.id)
+    latest_submitted = None
+    if level_test_completed:
+        latest_submitted = await db.scalar(
+            select(LevelTest)
+            .where(
+                LevelTest.user_id == user.id,
+                LevelTest.status == "submitted",
+            )
+            .order_by(LevelTest.id.desc())
+            .limit(1)
+        )
+
+    if not onboarding_completed:
         phase = "onboarding"
-    else:
+    elif not level_test_completed:
         phase = "level_test"
+    elif not feedback_completed:
+        phase = "feedback"
+    else:
+        phase = "completed"
+
+    latest_score = dict(latest_submitted.score or {}) if latest_submitted else None
 
     return {
         "required": not completed,
         "phase": phase,
         "onboarding_completed": onboarding_completed,
-        "level_test_completed": completed,
+        "level_test_completed": level_test_completed,
+        "feedback_completed": feedback_completed,
         "rating_estimate": user.rating_estimate,
         "rating_group": rating_group_for(user.rating_estimate)["key"] if user.rating_estimate is not None else None,
         "skill_band": user.skill_band,
@@ -270,6 +303,16 @@ async def assessment_status(
                 "total": len(active.question_ids or []),
             }
             if active
+            else None
+        ),
+        "test_result": (
+            {
+                "test_id": latest_submitted.id,
+                "result": latest_score.get("result"),
+                "score": latest_score,
+                "feedback": latest_score.get("feedback", []),
+            }
+            if latest_submitted
             else None
         ),
     }
@@ -360,6 +403,52 @@ async def assessment_onboarding(
         "prior_band": prior_band,
         "rating_group": group,
         "feedback": feedback,
+    }
+
+
+@router.post("/api/learning/assessment/feedback")
+async def assessment_feedback(
+    req: AssessmentFeedbackRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Сохраняет необязательный отзыв ПОСЛЕ 20 пазлов и завершает assessment-поток.
+
+    Последовательность: Q1-Q8 -> пазлы -> отзыв -> итоговый вывод.
+    Отзыв не влияет на rating_estimate, skill_band, Elo или подбор задач.
+    Храним его внутри users.onboarding, поэтому отдельная миграция не нужна.
+    """
+    if user.effective_role == ROLE_ADMIN:
+        raise HTTPException(status_code=403, detail="Администратору стартовая оценка не требуется")
+
+    locked_user = await db.scalar(select(User).where(User.id == user.id).with_for_update())
+    if locked_user is None:
+        raise HTTPException(status_code=401, detail="Пользователь не найден")
+    if not isinstance(locked_user.onboarding, dict) or not locked_user.onboarding.get("submitted_at"):
+        raise HTTPException(status_code=409, detail="Сначала завершите анкету Q1-Q8")
+    if locked_user.assessment_completed_at is None:
+        raise HTTPException(status_code=409, detail="Сначала завершите персональный тест из 20 задач")
+
+    onboarding = dict(locked_user.onboarding)
+    now = datetime.now(UTC).isoformat()
+
+    if req.text is not None:
+        onboarding["user_feedback"] = req.text
+        onboarding["user_feedback_submitted_at"] = now
+        onboarding["user_feedback_skipped"] = False
+    else:
+        onboarding["user_feedback_skipped"] = True
+
+    onboarding["post_test_feedback_completed_at"] = now
+    locked_user.onboarding = onboarding
+    await db.commit()
+
+    return {
+        "ok": True,
+        "saved": req.text is not None,
+        "skipped": req.text is None,
+        "user_feedback": req.text,
+        "completed_at": now,
     }
 
 

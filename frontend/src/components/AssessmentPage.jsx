@@ -5,6 +5,7 @@ import {
   fetchLinkedChessAccounts,
   linkChessAccount,
   submitAssessmentOnboarding,
+  submitAssessmentUserFeedback,
 } from "../api.js";
 import LevelTestPage from "./LevelTestPage.jsx";
 import "./Assessment.css";
@@ -83,7 +84,6 @@ function OnboardingForm({ onDone }) {
   const [form, setForm] = useState(initialForm);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [feedback, setFeedback] = useState(null);
   const [linking, setLinking] = useState(false);
   const [linkError, setLinkError] = useState("");
   const [linkedResult, setLinkedResult] = useState(null);
@@ -249,8 +249,8 @@ function OnboardingForm({ onDone }) {
         guardian_contact: form.guardian_contact || null,
       };
       const data = await submitAssessmentOnboarding(payload);
-      setFeedback(data);
       window.dispatchEvent(new Event("sfedu-assessment-updated"));
+      onDone?.(data);
     } catch (e) {
       setError(e?.response?.data?.detail || e?.message || "Не удалось сохранить анкету");
     } finally {
@@ -258,23 +258,6 @@ function OnboardingForm({ onDone }) {
     }
   };
 
-  if (feedback) {
-    return (
-      <section className="assessment-card assessment-feedback-card">
-        <div className="assessment-kicker">Анкета завершена</div>
-        <h1>Предварительный уровень определён</h1>
-        <div className="assessment-rating-chip">
-          ≈ {feedback.rating_estimate} · {feedback.rating_group?.key}
-        </div>
-        <div className="assessment-feedback-list">
-          {(feedback.feedback || []).map((item) => <div key={item}>• {item}</div>)}
-        </div>
-        <button className="assessment-primary" onClick={() => onDone(feedback)}>
-          Перейти к персональному тесту
-        </button>
-      </section>
-    );
-  }
 
   const linkedAccount = linkedResult?.account;
   const ratingInfo = linkedResult?.assessment_rating;
@@ -282,7 +265,7 @@ function OnboardingForm({ onDone }) {
 
   return (
     <form className="assessment-card assessment-form" onSubmit={submit}>
-      <div className="assessment-kicker">Шаг 1 из 2 · около 2 минут</div>
+      <div className="assessment-kicker">Шаг 1 из 3 · около 2 минут</div>
       <h1>Расскажите немного о своей игре</h1>
       <p className="assessment-lead">
         Ответы нужны только для стартовой персонализации. После анкеты вы получите 20 задач,
@@ -483,9 +466,85 @@ function OnboardingForm({ onDone }) {
 
       {error && <div className="assessment-error">{String(error)}</div>}
       <button className="assessment-primary" disabled={!canSubmit || submitting}>
-        {submitting ? "Сохраняем..." : "Получить предварительную оценку"}
+        {submitting ? "Сохраняем..." : "Сохранить анкету и перейти к задачам"}
       </button>
     </form>
+  );
+}
+
+
+function PostTestFeedback({ onDone }) {
+  const [text, setText] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const complete = async (skipped) => {
+    if (saving) return;
+    const value = text.trim();
+    if (!skipped && !value) return;
+
+    setSaving(true);
+    setError("");
+    try {
+      await submitAssessmentUserFeedback(skipped ? null : value, skipped);
+      window.dispatchEvent(new Event("sfedu-assessment-updated"));
+      await onDone?.();
+    } catch (e) {
+      setError(e?.response?.data?.detail || e?.message || "Не удалось сохранить отзыв");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <main className="assessment-page">
+      <section className="assessment-card assessment-feedback-card">
+        <div className="assessment-kicker">Шаг 3 из 3 · тест завершён</div>
+        <h1>Помогите нам улучшить SFEDUCASTLING</h1>
+        <p className="assessment-lead">
+          Что бы вы улучшили в платформе или что хотели бы видеть в следующих версиях?
+          Отзыв необязателен и не влияет на ваш рейтинг или результат теста.
+        </p>
+
+        <div className="assessment-user-feedback">
+          <textarea
+            value={text}
+            maxLength={2000}
+            rows={6}
+            disabled={saving}
+            placeholder="Например: хотелось бы больше разборов партий, новые типы задач, подробную статистику прогресса..."
+            onChange={(e) => {
+              setText(e.target.value);
+              setError("");
+            }}
+          />
+          <div className="assessment-user-feedback__footer">
+            <small>{text.length}/2000</small>
+          </div>
+        </div>
+
+        {error && <div className="assessment-error">{String(error)}</div>}
+
+        <div className="assessment-modal-actions">
+          <button
+            type="button"
+            className="assessment-primary"
+            disabled={!text.trim() || saving}
+            onClick={() => complete(false)}
+          >
+            {saving ? "Сохраняем..." : "Отправить и посмотреть результат"}
+          </button>
+          <button
+            type="button"
+            className="assessment-secondary"
+            disabled={saving}
+            onClick={() => complete(true)}
+          >
+            Пропустить и посмотреть результат
+          </button>
+        </div>
+      </section>
+    </main>
   );
 }
 
@@ -521,14 +580,41 @@ export default function AssessmentPage() {
     );
   }
 
+  if (status.phase === "feedback") {
+    return <PostTestFeedback onDone={loadStatus} />;
+  }
+
   if (status.phase === "completed") {
+    const testResult = status.test_result || {};
+    const score = testResult.score || {};
+    const result = testResult.result || score.result || {};
+    const finalRating = result.rating ?? score.final_rating ?? status.elo;
+    const level = result.level ?? result.band ?? status.skill_band;
+    const total = score.total ?? 20;
+    const correct = score.correct;
+
     return (
       <main className="assessment-page">
         <section className="assessment-card assessment-feedback-card">
           <div className="assessment-kicker">Оценка завершена</div>
           <h1>Ваш стартовый профиль готов</h1>
-          <div className="assessment-rating-chip">Рейтинг {status.elo ?? "—"} · уровень {status.skill_band ?? "—"} из 4</div>
-          <p>Напоминание больше показываться не будет. Дальнейшая сложность будет корректироваться по вашей практике.</p>
+          <div className="assessment-rating-chip">
+            Рейтинг {finalRating ?? "—"} · уровень {level ?? "—"} из 4
+          </div>
+
+          {correct != null && (
+            <p><strong>{correct}</strong> из {total} задач решено точно.</p>
+          )}
+
+          {(testResult.feedback || score.feedback || []).length > 0 && (
+            <div className="assessment-feedback-list">
+              {(testResult.feedback || score.feedback || []).map((item) => (
+                <div key={item}>• {item}</div>
+              ))}
+            </div>
+          )}
+
+          <p>Стартовая оценка завершена. Напоминание больше показываться не будет, а дальнейшая сложность будет корректироваться по вашей практике.</p>
           <button className="assessment-primary" onClick={() => navigate("/training")}>Перейти к обучению</button>
         </section>
       </main>
