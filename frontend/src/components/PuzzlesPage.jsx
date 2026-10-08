@@ -10,6 +10,7 @@ import {
   recordPuzzleAttempt,
 } from "../api.js";
 import MiniBoard from "./MiniBoard.jsx";
+import PuzzleRegisterGate from "./PuzzleRegisterGate.jsx";
 import { getCourseTopicForPuzzle, getCourseTopicMeta } from "../learningLinks.js";
 import "./LearningCrossLinks.css";
 
@@ -153,7 +154,7 @@ function formatMarkdown(text) {
   return s;
 }
 
-export default function PuzzlesPage() {
+export default function PuzzlesPage({ user, onRegister }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const requestedTopicSlug = searchParams.get("topic");
@@ -180,6 +181,10 @@ export default function PuzzlesPage() {
   const [boardArrows, setBoardArrows] = useState([]);
   const [boardOrientation, setBoardOrientation] = useState("white");
   const [puzzleSolved, setPuzzleSolved] = useState(false);
+  const [regGate, setRegGate] = useState(false);
+
+  // Гейт показывается на предпоследнем ходу только незарегистрированным.
+  const showRegGate = regGate && !user;
 
   const [chatMessages, setChatMessages] = useState([
     {
@@ -243,6 +248,7 @@ export default function PuzzlesPage() {
       setHintArrow(null);
       setBoardArrows([]);
       setPuzzleSolved(false);
+      setRegGate(false);
 
       const turn = puzzle.fen.split(" ")[1];
       setBoardOrientation(turn === "b" ? "black" : "white");
@@ -328,7 +334,7 @@ export default function PuzzlesPage() {
 
   const handleMove = useCallback(
     (sourceSquare, targetSquare) => {
-      if (waitingForOpponent || showSolution) return false;
+      if (waitingForOpponent || showSolution || showRegGate) return false;
 
       const expectedMove = solutionMovesRef.current[solutionIndexRef.current];
       if (!expectedMove) return false;
@@ -365,6 +371,10 @@ export default function PuzzlesPage() {
           savePuzzleProgress(true);
           return true;
         }
+
+        // Предпоследний ход игрока сделан (остался ответ соперника и финальный
+        // ход) — незарегистрированный обязан зарегистрироваться, дальше нельзя.
+        if (remaining === 2 && !user) setRegGate(true);
 
         if (
           solutionIndexRef.current % 2 === 1 &&
@@ -408,12 +418,12 @@ export default function PuzzlesPage() {
       savePuzzleProgress(false);
       return false;
     },
-    [waitingForOpponent, showSolution, savePuzzleProgress],
+    [waitingForOpponent, showSolution, showRegGate, user, savePuzzleProgress],
   );
 
   const onSquareClick = useCallback(
     (square) => {
-      if (waitingForOpponent || showSolution) return;
+      if (waitingForOpponent || showSolution || showRegGate) return;
 
       const game = gameRef.current;
       const piece = game.get(square);
@@ -445,7 +455,7 @@ export default function PuzzlesPage() {
         setLegalMovesForSelected(moves.map((m) => m.to));
       }
     },
-    [selectedSquare, waitingForOpponent, showSolution, handleMove],
+    [selectedSquare, waitingForOpponent, showSolution, showRegGate, handleMove],
   );
 
   const handleShowSolution = () => {
@@ -826,6 +836,8 @@ export default function PuzzlesPage() {
           </button>
         </div>
       </div>
+
+      <PuzzleRegisterGate open={showRegGate} onRegister={onRegister} />
     </div>
   );
 }

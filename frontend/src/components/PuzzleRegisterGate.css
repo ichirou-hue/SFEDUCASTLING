@@ -1,0 +1,86 @@
+/* Гейт регистрации в пазлах: предпоследний ход, закрыть нельзя */
+
+.prg-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 1000;
+}
+
+.prg-card {
+  background: #fff;
+  border: 1px solid rgba(201, 169, 110, 0.55);
+  border-radius: 20px;
+  width: 420px;
+  max-width: 100%;
+  padding: 34px 40px;
+  text-align: center;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.25);
+}
+
+.prg-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.prg-brand-icon {
+  font-size: 18px;
+  line-height: 1;
+  color: #b88a3e;
+}
+
+.prg-brand-name {
+  font-family: "Orbitron", "Inter", sans-serif;
+  font-weight: 900;
+  font-size: 16px;
+  letter-spacing: 0.14em;
+  color: #2f5c36;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+}
+
+.prg-title {
+  font-family: "Calypso", serif;
+  font-size: 26px;
+  color: #333;
+  margin: 0 0 8px;
+}
+
+.prg-text {
+  font-size: 14px;
+  line-height: 1.55;
+  color: #666;
+  margin: 0 0 22px;
+}
+
+.prg-submit {
+  font-family: "Calypso", serif;
+  font-size: 17px;
+  color: #fff;
+  background: #83b787;
+  border: none;
+  border-radius: 30px;
+  padding: 12px 40px;
+  cursor: pointer;
+  transition: background 0.2s;
+  box-shadow: 0 6px 16px rgba(94, 148, 99, 0.35);
+}
+.prg-submit:hover {
+  background: #76a87a;
+}
+
+@media (max-width: 600px) {
+  .prg-card {
+    padding: 26px 22px;
+  }
+  .prg-title {
+    font-size: 22px;
+  }
+}

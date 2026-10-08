@@ -14,6 +14,11 @@ const PERF_LABELS = {
   daily: "Днев.",
 };
 
+// Ссылка на документ внизу формы регистрации (открывается в новой вкладке).
+// TODO: подставить реальный URL и подпись, когда документ будет приложен.
+const REG_DOC_URL = "#";
+const REG_DOC_LABEL = "Документ для ознакомления";
+
 export default function AuthModal({ isOpen, onClose, onSuccess }) {
   const [mode, setMode] = useState("register"); // "register" | "login"
   const [login, setLogin] = useState("");
@@ -261,6 +266,17 @@ export default function AuthModal({ isOpen, onClose, onSuccess }) {
                 ? "Зарегистрироваться"
                 : "Войти"}
           </button>
+
+          {isRegister && (
+            <a
+              className="auth-reg-doc"
+              href={REG_DOC_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {REG_DOC_LABEL}
+            </a>
+          )}
 
           <p className="auth-footer">
             {isRegister ? (

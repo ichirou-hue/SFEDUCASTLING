@@ -72,7 +72,12 @@ export default function App() {
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <Routes>
         <Route path="/" element={<MainPage />} />
-        <Route path="/puzzles" element={<PuzzlesPage />} />
+        <Route
+          path="/puzzles"
+          element={
+            <PuzzlesPage user={user} onRegister={() => setShowRegister(true)} />
+          }
+        />
         <Route path="/training" element={<TrainingPage />} />
         <Route
           path="/profile"
