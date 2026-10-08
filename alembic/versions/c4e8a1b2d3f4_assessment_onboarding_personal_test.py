@@ -5,14 +5,17 @@ Revises: 7b2c4d5e6f81
 Create Date: 2026-10-04
 """
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects import postgresql
 
 revision = "c4e8a1b2d3f4"
 down_revision = "7b2c4d5e6f81"
 branch_labels = None
 depends_on = None
+
+# Переносимый тип: PostgreSQL — JSONB, SQLite — JSON (см. fb22cbd6384b).
+_JSON = sa.JSON().with_variant(postgresql.JSONB(astext_type=sa.Text()), "postgresql")
 
 
 def _columns(table_name: str) -> set[str]:
@@ -33,7 +36,7 @@ def upgrade() -> None:
     if "rating_scale" not in user_cols:
         op.add_column("users", sa.Column("rating_scale", sa.String(length=64), nullable=True))
     if "onboarding" not in user_cols:
-        op.add_column("users", sa.Column("onboarding", postgresql.JSONB(astext_type=sa.Text()), nullable=True))
+        op.add_column("users", sa.Column("onboarding", _JSON, nullable=True))
     if "assessment_completed_at" not in user_cols:
         op.add_column("users", sa.Column("assessment_completed_at", sa.DateTime(timezone=True), nullable=True))
 
@@ -45,7 +48,7 @@ def upgrade() -> None:
     if "rating_group" not in test_cols:
         op.add_column("level_tests", sa.Column("rating_group", sa.String(length=32), nullable=True))
     if "metrics_snapshot" not in test_cols:
-        op.add_column("level_tests", sa.Column("metrics_snapshot", postgresql.JSONB(astext_type=sa.Text()), nullable=True))
+        op.add_column("level_tests", sa.Column("metrics_snapshot", _JSON, nullable=True))
 
 
 def downgrade() -> None:

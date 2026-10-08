@@ -1,9 +1,17 @@
 """Тесты обучающих endpoint'ов: /api/learning/level-test/*, /api/learning/puzzle/check."""
 
+import asyncio
+import uuid
+
 import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import patch
+from sqlalchemy import delete, select
+
 from backend.app import app
+from backend.db.session import async_session_factory
+from backend.models.level_test import LevelTest
+from backend.models.user import User
 
 client = TestClient(app)
 
@@ -28,66 +36,176 @@ NEW_PUZZLES = {
 
 MATCH_ANCHOR = "backend.api_gateway.state.puzzle_base"
 
+PASSWORD = "Sup3rSecret!"
+
+# Минимальная валидная анкета Q1-Q8: без неё /level-test/start отвечает 409.
+ONBOARDING = {
+    "q1": "sometimes",
+    "q3": ["family", "online_rating"],
+    "q4": "lt1",
+    "q5": ["puzzles", "games", "lessons"],
+    "q6": "stuck",
+    "q7": "age10_16",
+    "q8": "internet",
+}
+
+
+def _headers(token: str) -> dict:
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture()
+def cleanup():
+    """Удаляет созданных в тесте пользователей вместе с их level-test'ами."""
+    logins: list[str] = []
+
+    def track(login: str) -> str:
+        logins.append(login)
+        return login
+
+    yield track
+
+    async def _clean():
+        if not logins:
+            return
+        async with async_session_factory() as db:
+            user_ids = list(
+                (
+                    await db.scalars(select(User.id).where(User.login.in_(logins)))
+                ).all()
+            )
+            if user_ids:
+                await db.execute(
+                    delete(LevelTest).where(LevelTest.user_id.in_(user_ids))
+                )
+            await db.execute(delete(User).where(User.login.in_(logins)))
+            await db.commit()
+
+    asyncio.run(_clean())
+
+
+def _authed_user(cleanup) -> str:
+    """Регистрирует пользователя и проходит анкету — условие /level-test/start."""
+    login = cleanup(f"lvltest_{uuid.uuid4().hex[:8]}")
+    r = client.post(
+        "/api/auth/register", json={"login": login, "password": PASSWORD}
+    )
+    assert r.status_code == 201, r.text
+    token = r.json()["access_token"]
+    r = client.post(
+        "/api/auth/onboarding", json=ONBOARDING, headers=_headers(token)
+    )
+    assert r.status_code == 200, r.text
+    return token
+
+
+def _start_test(token: str) -> tuple[int, list[str]]:
+    with patch(MATCH_ANCHOR, NEW_PUZZLES):
+        resp = client.post("/api/learning/level-test/start", headers=_headers(token))
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    return data["test_id"], [q["id"] for q in data["questions"]]
+
 
 class TestLevelTestStart:
-    def test_without_puzzle_base(self):
+    def test_without_puzzle_base(self, cleanup):
+        token = _authed_user(cleanup)
         with patch(MATCH_ANCHOR, None):
-            resp = client.post("/api/learning/level-test/start")
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data.get("error") == "База паззлов не загружена"
-        assert data.get("questions") == []
+            resp = client.post(
+                "/api/learning/level-test/start", headers=_headers(token)
+            )
+        assert resp.status_code == 503
+        assert resp.json()["detail"] == "База паззлов не загружена"
 
-    def test_returns_questions_without_solutions(self):
+    def test_requires_onboarding(self, cleanup):
+        login = cleanup(f"lvltest_{uuid.uuid4().hex[:8]}")
+        r = client.post(
+            "/api/auth/register", json={"login": login, "password": PASSWORD}
+        )
+        assert r.status_code == 201, r.text
+        token = r.json()["access_token"]
         with patch(MATCH_ANCHOR, NEW_PUZZLES):
-            resp = client.post("/api/learning/level-test/start")
-        assert resp.status_code == 200
+            resp = client.post(
+                "/api/learning/level-test/start", headers=_headers(token)
+            )
+        assert resp.status_code == 409
+        assert "анкет" in resp.json()["detail"].lower()
+
+    def test_returns_questions_without_solutions(self, cleanup):
+        token = _authed_user(cleanup)
+        with patch(MATCH_ANCHOR, NEW_PUZZLES):
+            resp = client.post(
+                "/api/learning/level-test/start", headers=_headers(token)
+            )
+        assert resp.status_code == 200, resp.text
         data = resp.json()
-        assert data["total"] == 10
-        assert all("fen" in q and "id" in q and "themes" in q for q in data["questions"])
-        assert all("moves" not in q and "solution" not in q for q in data["questions"])
+        assert data["resumed"] is False
+        assert data["total"] == len(data["questions"]) == 10
+        ids = [q["id"] for q in data["questions"]]
+        assert len(set(ids)) == 10
+        assert all("fen" in q and "id" in q for q in data["questions"])
+        assert all(
+            "moves" not in q and "solution" not in q and "themes" not in q
+            for q in data["questions"]
+        )
+        assert data["personalization"]["target_allocation"]
 
 
 class TestLevelTestCheck:
-    def test_without_puzzle_base(self):
+    def test_puzzle_base_gone_after_start(self, cleanup):
+        token = _authed_user(cleanup)
+        test_id, question_ids = _start_test(token)
         with patch(MATCH_ANCHOR, None):
             resp = client.post(
                 "/api/learning/level-test/check",
-                json={"puzzle_id": "a1", "move": "b1b8"},
+                json={"test_id": test_id, "puzzle_id": question_ids[0], "move": "b1b8"},
+                headers=_headers(token),
             )
-        assert resp.status_code == 200
-        assert resp.json().get("error") == "База паззлов не загружена"
+        assert resp.status_code == 404
+        assert resp.json()["detail"] == "Задача не найдена"
 
-    def test_correct_answer(self):
+    def test_correct_answer(self, cleanup):
+        token = _authed_user(cleanup)
+        test_id, question_ids = _start_test(token)
         with patch(MATCH_ANCHOR, NEW_PUZZLES):
             resp = client.post(
                 "/api/learning/level-test/check",
-                json={"puzzle_id": "b5", "move": "b1b8"},
+                json={"test_id": test_id, "puzzle_id": question_ids[0], "move": "b1b8"},
+                headers=_headers(token),
             )
-        assert resp.status_code == 200
+        assert resp.status_code == 200, resp.text
         data = resp.json()
         assert data["correct"] is True
-        assert data["solution"] == "b1b8"
+        assert data["recorded"] is True
+        # Эталон не выдаётся до submit.
+        assert "solution" not in data
 
-    def test_wrong_answer(self):
+    def test_wrong_answer(self, cleanup):
+        token = _authed_user(cleanup)
+        test_id, question_ids = _start_test(token)
         with NO_STOCKFISH:
             with patch(MATCH_ANCHOR, NEW_PUZZLES):
                 resp = client.post(
                     "/api/learning/level-test/check",
-                    json={"puzzle_id": "b5", "move": "b1b1"},
+                    json={"test_id": test_id, "puzzle_id": question_ids[0], "move": "b1b1"},
+                    headers=_headers(token),
                 )
-        assert resp.status_code == 200
+        assert resp.status_code == 200, resp.text
         data = resp.json()
         assert data["correct"] is False
+        assert data["recorded"] is True
 
-    def test_unknown_puzzle(self):
+    def test_unknown_puzzle(self, cleanup):
+        token = _authed_user(cleanup)
+        test_id, _ = _start_test(token)
         with patch(MATCH_ANCHOR, NEW_PUZZLES):
             resp = client.post(
                 "/api/learning/level-test/check",
-                json={"puzzle_id": "zzz", "move": "b1b8"},
+                json={"test_id": test_id, "puzzle_id": "zzz", "move": "b1b8"},
+                headers=_headers(token),
             )
-        assert resp.status_code == 200
-        assert resp.json().get("error") == "Задача не найдена"
+        assert resp.status_code == 422
+        assert resp.json()["detail"] == "Эта задача не относится к тесту"
 
 
 class TestLevelTestResult:

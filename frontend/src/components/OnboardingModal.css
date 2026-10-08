@@ -1,0 +1,432 @@
+/* Онбординг-анкета Q1-Q8 (плашка «Заполните анкету» в TopBar) */
+
+.onb-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 1000;
+}
+
+.onb-card {
+  position: relative;
+  background: #fff;
+  border-radius: 20px;
+  width: 640px;
+  max-width: 100%;
+  max-height: calc(100vh - 48px);
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.25);
+}
+
+.onb-close {
+  position: absolute;
+  top: 16px;
+  right: 20px;
+  background: none;
+  border: none;
+  font-size: 20px;
+  color: #999;
+  cursor: pointer;
+  z-index: 1;
+}
+.onb-close:hover {
+  color: #333;
+}
+
+.onb-head {
+  padding: 34px 44px 0;
+  text-align: center;
+}
+
+/* Бренд — как в RegisterModal (.auth-brand-*), но компактнее */
+.onb-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.onb-brand-icon {
+  font-size: 18px;
+  line-height: 1;
+  color: #b88a3e;
+}
+
+.onb-brand-name {
+  font-family: "Orbitron", "Inter", sans-serif;
+  font-weight: 900;
+  font-size: 16px;
+  letter-spacing: 0.14em;
+  color: #2f5c36;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+}
+
+.onb-title {
+  font-family: "Calypso", serif;
+  font-size: 26px;
+  color: #333;
+  margin: 0 0 6px;
+}
+
+.onb-subtitle {
+  font-size: 14px;
+  color: #888;
+  margin: 0 0 18px;
+}
+
+.onb-divider {
+  width: 40px;
+  height: 2px;
+  background: #cda970;
+  margin: 0 auto;
+  border-radius: 1px;
+}
+
+.onb-body {
+  padding: 24px 44px;
+  overflow-y: auto;
+}
+
+.onb-q {
+  padding: 16px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+.onb-q:last-of-type {
+  border-bottom: none;
+}
+
+.onb-q-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 12px;
+}
+
+.onb-optional {
+  font-size: 12px;
+  font-weight: 400;
+  color: #a0a0a0;
+}
+
+/* Радио-кнопки */
+.onb-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.onb-options--wrap {
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+
+.onb-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: #f7f7f7;
+  border: 1px solid #e0e0e0;
+  border-radius: 10px;
+  font-size: 14px;
+  color: #444;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.onb-option:hover:not(:disabled) {
+  border-color: #c9a96e;
+}
+.onb-option--active {
+  background: rgba(201, 169, 110, 0.14);
+  border-color: #c9a96e;
+  color: #333;
+}
+.onb-option--disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.onb-option-mark {
+  width: 14px;
+  height: 14px;
+  border: 2px solid #c0c0c0;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+.onb-option--active .onb-option-mark {
+  border-color: #c9a96e;
+  background: #c9a96e;
+  box-shadow: inset 0 0 0 2px #fff;
+}
+
+/* Чекбоксы */
+.onb-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #555;
+  cursor: pointer;
+  margin-bottom: 4px;
+}
+.onb-check input {
+  accent-color: #c9a96e;
+  width: 16px;
+  height: 16px;
+}
+
+/* Второй вопрос: строчки с полем и пилюлями */
+.onb-q2 {
+  margin-top: 12px;
+  padding: 14px;
+  background: #fafafa;
+  border: 1px solid #eee;
+  border-radius: 12px;
+}
+
+.onb-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.onb-row:last-child {
+  margin-bottom: 0;
+}
+
+.onb-row-label {
+  font-size: 13px;
+  color: #777;
+  width: 96px;
+  flex-shrink: 0;
+}
+
+.onb-pills {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.onb-pill {
+  padding: 6px 14px;
+  border: 1px solid #e0e0e0;
+  border-radius: 16px;
+  background: #fff;
+  font-size: 13px;
+  color: #555;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.onb-pill:hover {
+  border-color: #c9a96e;
+}
+.onb-pill--active {
+  background: #c9a96e;
+  border-color: #c9a96e;
+  color: #fff;
+}
+
+.onb-input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 10px;
+  background: #fff;
+  font-size: 14px;
+  color: #333;
+}
+.onb-input:focus {
+  outline: none;
+  border-color: #c9a96e;
+}
+.onb-input--short {
+  flex: 0 0 140px;
+}
+
+/* Ранжирование Q5 */
+.onb-rank {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.onb-rank-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: #f7f7f7;
+  border: 1px solid #e0e0e0;
+  border-radius: 10px;
+}
+
+.onb-rank-pos {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #c9a96e;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.onb-rank-label {
+  flex: 1;
+  font-size: 14px;
+  color: #444;
+}
+
+.onb-rank-arrows {
+  display: flex;
+  gap: 4px;
+}
+
+.onb-rank-btn {
+  width: 28px;
+  height: 28px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background: #fff;
+  color: #777;
+  font-size: 11px;
+  cursor: pointer;
+}
+.onb-rank-btn:hover:not(:disabled) {
+  border-color: #c9a96e;
+  color: #333;
+}
+.onb-rank-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* Согласие родителя */
+.onb-consent {
+  margin-top: 12px;
+  padding: 12px 14px;
+  background: #fff8ec;
+  border: 1px solid #f0dcb4;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.onb-consent .onb-input {
+  background: #fff;
+}
+
+.onb-error {
+  margin-top: 14px;
+  padding: 10px 14px;
+  background: #fdecec;
+  border: 1px solid #f3c2c2;
+  border-radius: 10px;
+  font-size: 13px;
+  color: #b33636;
+}
+
+.onb-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 44px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.onb-skip {
+  background: none;
+  border: none;
+  font-size: 14px;
+  color: #999;
+  cursor: pointer;
+  padding: 8px 4px;
+}
+.onb-skip:hover {
+  color: #555;
+}
+
+.onb-submit {
+  font-family: "Calypso", serif;
+  font-size: 16px;
+  color: #333;
+  background: #c9a96e;
+  border: none;
+  border-radius: 20px;
+  padding: 10px 32px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.onb-submit:hover:not(:disabled) {
+  background: #b89a5e;
+}
+.onb-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Плашка в TopBar */
+.onb-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  background: #c9a96e;
+  border: none;
+  border-radius: 20px;
+  font-family: "Calypso", serif;
+  font-size: 14px;
+  color: #333;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s, transform 0.1s;
+  animation: onb-badge-pulse 2.4s ease-in-out infinite;
+}
+.onb-badge:hover {
+  background: #b89a5e;
+}
+.onb-badge:active {
+  transform: scale(0.97);
+}
+
+@keyframes onb-badge-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(201, 169, 110, 0.55); }
+  50% { box-shadow: 0 0 0 7px rgba(201, 169, 110, 0); }
+}
+
+@media (max-width: 720px) {
+  .onb-head,
+  .onb-body,
+  .onb-footer {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+  .onb-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+  .onb-row-label {
+    width: auto;
+  }
+  .onb-badge {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+}

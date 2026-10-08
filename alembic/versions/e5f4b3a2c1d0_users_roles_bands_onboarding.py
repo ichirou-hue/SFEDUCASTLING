@@ -20,6 +20,14 @@ down_revision: str | None = "d8b41a2c6f70"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
+# Переносимый тип: PostgreSQL — JSONB, SQLite — JSON (см. fb22cbd6384b).
+_JSON = sa.JSON().with_variant(postgresql.JSONB(astext_type=sa.Text()), "postgresql")
+
+
+def _columns(table_name: str) -> set[str]:
+    bind = op.get_bind()
+    return {col["name"] for col in sa.inspect(bind).get_columns(table_name)}
+
 
 def upgrade() -> None:
     op.add_column(
@@ -30,10 +38,9 @@ def upgrade() -> None:
     op.add_column("users", sa.Column("prior_band", sa.Integer(), nullable=True))
     op.add_column("users", sa.Column("rating_estimate", sa.Integer(), nullable=True))
     op.add_column("users", sa.Column("rating_scale", sa.String(length=32), nullable=True))
-    op.add_column(
-        "users",
-        sa.Column("onboarding", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
-    )
+    # Колонку могла добавить параллельная ветка (7ab260ccce8a, наша анкета).
+    if "onboarding" not in _columns("users"):
+        op.add_column("users", sa.Column("onboarding", _JSON, nullable=True))
     op.add_column("users", sa.Column("parental_consent", sa.Boolean(), nullable=True))
 
     # Наследуем роль администратора из старого булевого флага.

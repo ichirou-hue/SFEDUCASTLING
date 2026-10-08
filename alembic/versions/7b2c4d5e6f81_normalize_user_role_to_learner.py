@@ -11,9 +11,8 @@ migration restores the original naming and makes ``learner`` the DB default.
 
 from collections.abc import Sequence
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 revision: str = "7b2c4d5e6f81"
 down_revision: str | None = "519591271e20"
@@ -23,21 +22,23 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     op.execute("UPDATE users SET role = 'learner' WHERE role = 'user'")
-    op.alter_column(
-        "users",
-        "role",
-        existing_type=sa.String(length=32),
-        existing_nullable=False,
-        server_default="learner",
-    )
+    # batch_alter_table: SQLite не умеет ALTER COLUMN — таблица пересоздаётся,
+    # на PostgreSQL batch выполняет обычные ALTER.
+    with op.batch_alter_table("users") as batch_op:
+        batch_op.alter_column(
+            "role",
+            existing_type=sa.String(length=32),
+            existing_nullable=False,
+            server_default="learner",
+        )
 
 
 def downgrade() -> None:
     op.execute("UPDATE users SET role = 'user' WHERE role = 'learner'")
-    op.alter_column(
-        "users",
-        "role",
-        existing_type=sa.String(length=32),
-        existing_nullable=False,
-        server_default="user",
-    )
+    with op.batch_alter_table("users") as batch_op:
+        batch_op.alter_column(
+            "role",
+            existing_type=sa.String(length=32),
+            existing_nullable=False,
+            server_default="user",
+        )

@@ -7,6 +7,7 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    Index,
     Integer,
     UniqueConstraint,
     func,
@@ -22,6 +23,8 @@ class TrainingReview(Base):
         UniqueConstraint("user_id", "task_id", name="uq_training_review_user_task"),
         CheckConstraint("ease >= 1.0", name="ck_training_review_ease"),
         CheckConstraint("reps >= 0", name="ck_training_review_reps"),
+        # Составной индекс из e4a51c7d92f1 — иначе alembic check предлагает его удалить.
+        Index("ix_training_reviews_user_due", "user_id", "next_review_at"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)

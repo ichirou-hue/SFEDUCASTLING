@@ -5,11 +5,11 @@ from __future__ import annotations
 import random
 import secrets
 from datetime import UTC, datetime
-from typing import Any, Literal
+from typing import Any
 
 import chess
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,7 +20,6 @@ from backend.db.session import get_db
 from backend.models.level_test import LevelTest
 from backend.models.puzzle_attempt import PuzzleAttempt
 from backend.models.user import ROLE_ADMIN, User
-from backend.models.user_chess_account import UserChessAccount
 from backend.services.adaptive_logic import select_adaptive_puzzles
 from backend.services.adaptive_training import (
     build_weakness_profile,
@@ -28,23 +27,23 @@ from backend.services.adaptive_training import (
 )
 from backend.services.assessment import (
     RATING_GROUPS,
-    build_onboarding_feedback,
     build_test_feedback,
     calculate_performance_rating,
-    onboarding_rating,
     personalized_level_test_puzzles,
     puzzle_rating_group,
     rating_group_for,
+)
+from backend.services.course_topics import (
+    COURSE_TOPIC_PUZZLE_THEMES,
+    primary_course_topic_for_puzzle,
+)
+from backend.services.course_topics import (
+    puzzle_matches_course_topic as _puzzle_matches_course_topic,
 )
 from backend.services.dynamic_difficulty import (
     get_user_theme_difficulties,
     public_difficulty_profile,
     update_theme_difficulty_after_attempt,
-)
-from backend.services.course_topics import (
-    COURSE_TOPIC_PUZZLE_THEMES,
-    primary_course_topic_for_puzzle,
-    puzzle_matches_course_topic as _puzzle_matches_course_topic,
 )
 
 router = APIRouter(tags=["learning"])
@@ -58,65 +57,6 @@ LEVEL_BUCKETS = [
     {"min_puzzle_rating": 1501, "max_puzzle_rating": 1901},
     {"min_puzzle_rating": 1901, "max_puzzle_rating": 10000},
 ]
-
-
-class OnboardingQ2(BaseModel):
-    has_rating: bool = False
-    platform: Literal["lichess", "chesscom"] | None = None
-    username: str | None = Field(default=None, max_length=64)
-    # Эти поля принимает старый клиент, но новый backend не доверяет им:
-    # при отправке анкеты рейтинг заново берётся из user_chess_accounts.
-    rating_type: Literal["blitz", "rapid", "bullet"] | None = None
-    rating: int | None = Field(default=None, ge=0, le=3500)
-    rating_scale: str | None = Field(default=None, max_length=64)
-    rating_usable: bool | None = None
-    linked_account: bool | None = None
-
-    @model_validator(mode="after")
-    def validate_external_account(self):
-        if self.has_rating and (not self.platform or not self.username):
-            raise ValueError("Для внешнего рейтинга укажите платформу и имя связанного аккаунта")
-        return self
-
-
-class OnboardingRequest(BaseModel):
-    q1: Literal["never", "know_moves", "sometimes", "regularly", "tournaments"]
-    q2: OnboardingQ2 = Field(default_factory=OnboardingQ2)
-    q3: list[Literal["friends_family", "online_rating", "tournaments", "child"]] = Field(
-        min_length=1, max_length=2
-    )
-    q4: Literal["lt1", "1_3", "3_5", "5plus"]
-    q5: list[Literal["puzzles", "games", "lessons"]] = Field(min_length=3, max_length=3)
-    q6: Literal["yes", "stuck", "no"]
-    q7: Literal["under10", "10_16", "17plus"]
-    q8: Literal["coach", "friends", "internet", "school", "other"] | None = None
-    parental_consent: bool = False
-    guardian_contact: str | None = Field(default=None, max_length=255)
-
-    @model_validator(mode="after")
-    def validate_questionnaire(self):
-        if len(set(self.q3)) != len(self.q3):
-            raise ValueError("Q3 не должен содержать повторяющиеся цели")
-        if len(set(self.q5)) != 3:
-            raise ValueError("Q5 должен содержать уникальный порядок из трёх форматов")
-        if self.q7 == "under10" and not self.parental_consent:
-            raise ValueError("Для группы до 10 лет требуется согласие родителя/опекуна")
-        return self
-
-
-class AssessmentFeedbackRequest(BaseModel):
-    text: str | None = Field(default=None, max_length=2000)
-    skipped: bool = False
-
-    @model_validator(mode="after")
-    def normalize_feedback(self):
-        if self.text is not None:
-            self.text = self.text.strip()
-            if not self.text:
-                self.text = None
-        if self.text is None and not self.skipped:
-            raise ValueError("Введите отзыв или отметьте его как пропущенный")
-        return self
 
 
 class LevelTestCheckRequest(BaseModel):
@@ -239,217 +179,6 @@ def _upsert_test_answer(test: LevelTest, answer: dict[str, Any]) -> None:
     ]
     answers.append(answer)
     test.answers = answers
-
-
-@router.get("/api/learning/assessment/status")
-async def assessment_status(
-    user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """Состояние обязательной стартовой оценки для глобального уведомления."""
-    if user.effective_role == ROLE_ADMIN:
-        return {
-            "required": False,
-            "phase": "not_applicable",
-            "reason": "admin",
-            "onboarding_completed": False,
-            "level_test_completed": False,
-        }
-
-    onboarding_data = user.onboarding if isinstance(user.onboarding, dict) else {}
-    onboarding_completed = bool(onboarding_data.get("submitted_at"))
-    level_test_completed = user.assessment_completed_at is not None
-    feedback_completed = bool(onboarding_data.get("post_test_feedback_completed_at"))
-    completed = level_test_completed and feedback_completed
-
-    active = None if level_test_completed else await _latest_personal_test(db, user.id)
-    latest_submitted = None
-    if level_test_completed:
-        latest_submitted = await db.scalar(
-            select(LevelTest)
-            .where(
-                LevelTest.user_id == user.id,
-                LevelTest.status == "submitted",
-            )
-            .order_by(LevelTest.id.desc())
-            .limit(1)
-        )
-
-    if not onboarding_completed:
-        phase = "onboarding"
-    elif not level_test_completed:
-        phase = "level_test"
-    elif not feedback_completed:
-        phase = "feedback"
-    else:
-        phase = "completed"
-
-    latest_score = dict(latest_submitted.score or {}) if latest_submitted else None
-
-    return {
-        "required": not completed,
-        "phase": phase,
-        "onboarding_completed": onboarding_completed,
-        "level_test_completed": level_test_completed,
-        "feedback_completed": feedback_completed,
-        "rating_estimate": user.rating_estimate,
-        "rating_group": rating_group_for(user.rating_estimate)["key"] if user.rating_estimate is not None else None,
-        "skill_band": user.skill_band,
-        "elo": user.elo,
-        "active_test": (
-            {
-                "test_id": active.id,
-                "answered": len(active.answers or []),
-                "total": len(active.question_ids or []),
-            }
-            if active
-            else None
-        ),
-        "test_result": (
-            {
-                "test_id": latest_submitted.id,
-                "result": latest_score.get("result"),
-                "score": latest_score,
-                "feedback": latest_score.get("feedback", []),
-            }
-            if latest_submitted
-            else None
-        ),
-    }
-
-
-@router.post("/api/learning/assessment/onboarding")
-async def assessment_onboarding(
-    req: OnboardingRequest,
-    user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    if user.effective_role == ROLE_ADMIN:
-        raise HTTPException(status_code=403, detail="Администратору стартовая оценка не требуется")
-    if user.assessment_completed_at is not None:
-        raise HTTPException(status_code=409, detail="Стартовая оценка уже завершена")
-
-    answers = req.model_dump()
-
-    # Внешнему рейтингу из тела запроса не доверяем. Если Q2 включён, берём
-    # рейтинг только из сохранённой soft-link записи, созданной через
-    # POST /api/chess-profile/link. Это не даёт вручную подменить Elo в DevTools.
-    if req.q2.has_rating:
-        linked = await db.scalar(
-            select(UserChessAccount).where(
-                UserChessAccount.user_id == user.id,
-                UserChessAccount.platform == req.q2.platform,
-            )
-        )
-        if linked is None:
-            raise HTTPException(
-                status_code=409,
-                detail="Сначала найдите и привяжите шахматный аккаунт в вопросе Q2",
-            )
-        if (linked.username or "").casefold() != (req.q2.username or "").strip().casefold():
-            raise HTTPException(
-                status_code=409,
-                detail="Указанный профиль не совпадает с сохранённой привязкой. Привяжите аккаунт заново.",
-            )
-        answers["q2"] = {
-            "has_rating": True,
-            "platform": linked.platform,
-            "username": linked.username,
-            "rating_type": linked.rating_type,
-            "rating": linked.rating if linked.rating_usable else None,
-            "rating_scale": linked.rating_scale,
-            "rating_usable": bool(linked.rating_usable),
-            "linked_account": True,
-            "verified": bool(linked.verified),
-            "games": linked.games,
-            "rating_deviation": linked.rating_deviation,
-        }
-    else:
-        answers["q2"] = {
-            "has_rating": False,
-            "platform": None,
-            "username": None,
-            "rating_type": None,
-            "rating": None,
-            "rating_scale": None,
-            "rating_usable": False,
-            "linked_account": False,
-            "verified": False,
-        }
-
-    rating, scale, prior_band = onboarding_rating(answers)
-    feedback = build_onboarding_feedback(answers, rating)
-
-    locked_user = await db.scalar(select(User).where(User.id == user.id).with_for_update())
-    if locked_user is None:
-        raise HTTPException(status_code=401, detail="Пользователь не найден")
-
-    locked_user.rating_estimate = rating
-    locked_user.rating_scale = scale
-    locked_user.prior_band = prior_band
-    locked_user.onboarding = {
-        "answers": answers,
-        "feedback": feedback,
-        "submitted_at": datetime.now(UTC).isoformat(),
-        "version": 3,
-    }
-    await db.commit()
-
-    group = rating_group_for(rating)
-    return {
-        "ok": True,
-        "rating_estimate": rating,
-        "rating_scale": scale,
-        "prior_band": prior_band,
-        "rating_group": group,
-        "feedback": feedback,
-    }
-
-
-@router.post("/api/learning/assessment/feedback")
-async def assessment_feedback(
-    req: AssessmentFeedbackRequest,
-    user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """Сохраняет необязательный отзыв ПОСЛЕ 20 пазлов и завершает assessment-поток.
-
-    Последовательность: Q1-Q8 -> пазлы -> отзыв -> итоговый вывод.
-    Отзыв не влияет на rating_estimate, skill_band, Elo или подбор задач.
-    Храним его внутри users.onboarding, поэтому отдельная миграция не нужна.
-    """
-    if user.effective_role == ROLE_ADMIN:
-        raise HTTPException(status_code=403, detail="Администратору стартовая оценка не требуется")
-
-    locked_user = await db.scalar(select(User).where(User.id == user.id).with_for_update())
-    if locked_user is None:
-        raise HTTPException(status_code=401, detail="Пользователь не найден")
-    if not isinstance(locked_user.onboarding, dict) or not locked_user.onboarding.get("submitted_at"):
-        raise HTTPException(status_code=409, detail="Сначала завершите анкету Q1-Q8")
-    if locked_user.assessment_completed_at is None:
-        raise HTTPException(status_code=409, detail="Сначала завершите персональный тест из 20 задач")
-
-    onboarding = dict(locked_user.onboarding)
-    now = datetime.now(UTC).isoformat()
-
-    if req.text is not None:
-        onboarding["user_feedback"] = req.text
-        onboarding["user_feedback_submitted_at"] = now
-        onboarding["user_feedback_skipped"] = False
-    else:
-        onboarding["user_feedback_skipped"] = True
-
-    onboarding["post_test_feedback_completed_at"] = now
-    locked_user.onboarding = onboarding
-    await db.commit()
-
-    return {
-        "ok": True,
-        "saved": req.text is not None,
-        "skipped": req.text is None,
-        "user_feedback": req.text,
-        "completed_at": now,
-    }
 
 
 @router.post("/api/learning/level-test/start")

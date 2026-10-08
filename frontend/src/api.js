@@ -211,6 +211,17 @@ export async function logout() {
   }
 }
 
+// === Онбординг-анкета Q1-Q8 ===
+
+export async function saveOnboarding(answers) {
+  const { data } = await api.post("/api/auth/onboarding", answers);
+  const user = data?.user;
+  if (user) {
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
+  }
+  return user;
+}
+
 export async function fetchAdminUsers(limit = 100) {
   const { data } = await api.get("/api/auth/admin/users", { params: { limit } });
   return data;
@@ -408,25 +419,7 @@ export async function fetchTrainingProgress() {
   return data;
 }
 
-// === Стартовая оценка пользователя: Q1-Q8 + персональный level-test ===
-
-export async function fetchAssessmentStatus() {
-  const { data } = await api.get("/api/learning/assessment/status");
-  return data;
-}
-
-export async function submitAssessmentOnboarding(payload) {
-  const { data } = await api.post("/api/learning/assessment/onboarding", payload);
-  return data;
-}
-
-export async function submitAssessmentUserFeedback(text = null, skipped = false) {
-  const { data } = await api.post("/api/learning/assessment/feedback", {
-    text,
-    skipped,
-  });
-  return data;
-}
+// === Стартовая оценка пользователя: персональный level-test ===
 
 export async function startLevelTest() {
   const { data } = await api.post("/api/learning/level-test/start");

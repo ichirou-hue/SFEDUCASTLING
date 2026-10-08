@@ -4,10 +4,9 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, UniqueConstraint, func
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
-from backend.db.base import Base
+from backend.db.base import Base, JsonType
 
 
 class UserChessAccount(Base):
@@ -31,6 +30,6 @@ class UserChessAccount(Base):
     rating_usable: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
     # До OAuth это всегда False: soft link подтверждает выбор профиля, не владение им.
     verified: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
-    profile_snapshot: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    profile_snapshot: Mapped[dict[str, Any] | None] = mapped_column(JsonType, nullable=True)
     linked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)

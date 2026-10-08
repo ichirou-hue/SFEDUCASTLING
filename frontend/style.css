@@ -1031,7 +1031,7 @@ body {
 .auth-overlay {
   position: fixed;
   inset: 0;
-  z-index: 1000;
+  z-index: 1001;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1432,6 +1432,19 @@ body {
   font-weight: normal;
 }
 .auth-footer a:hover {
+  text-decoration: underline;
+}
+
+/* Ссылка на документ внизу формы регистрации (новая вкладка) */
+.auth-reg-doc {
+  display: block;
+  margin-top: 12px;
+  font-size: 13px;
+  color: #83b787;
+  text-align: center;
+  text-decoration: none;
+}
+.auth-reg-doc:hover {
   text-decoration: underline;
 }
 

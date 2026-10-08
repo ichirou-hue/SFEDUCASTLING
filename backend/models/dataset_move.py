@@ -3,21 +3,20 @@
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import BigInteger, DateTime, ForeignKey, String, Text, func
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import DateTime, ForeignKey, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
-from backend.db.base import Base
+from backend.db.base import Base, BigIntPK, JsonType
 
 
 class DatasetMove(Base):
     __tablename__ = "dataset_moves"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(BigIntPK, primary_key=True, autoincrement=True)
     fen: Mapped[str] = mapped_column(Text)
     user_move: Mapped[str] = mapped_column(String(16))
     stockfish_move: Mapped[str | None] = mapped_column(String(16), nullable=True)
-    stockfish_eval: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    stockfish_eval: Mapped[dict[str, Any] | None] = mapped_column(JsonType, nullable=True)
     user_id: Mapped[int | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,

@@ -3,17 +3,16 @@
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import BigInteger, Boolean, Float, ForeignKey, Integer, func
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import Boolean, Float, ForeignKey, Integer, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from backend.db.base import Base
+from backend.db.base import Base, BigIntPK, JsonType
 
 
 class TrainingAttempt(Base):
     __tablename__ = "training_attempts"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(BigIntPK, primary_key=True, autoincrement=True)
     user_id: Mapped[int | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
@@ -27,7 +26,7 @@ class TrainingAttempt(Base):
     # Универсальный JSON-ответ:
     # select_squares -> {"selected_squares": ["c3", "d2", ...]}
     # make_move      -> {"move": "e4f6"}
-    answer: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    answer: Mapped[dict[str, Any]] = mapped_column(JsonType)
 
     correct: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     score: Mapped[float] = mapped_column(Float, default=0.0, server_default="0")

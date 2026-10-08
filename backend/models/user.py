@@ -8,11 +8,9 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, func
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from backend.db.base import Base
-
+from backend.db.base import Base, JsonType
 
 ROLE_LEARNER = "learner"
 ROLE_ADMIN = "admin"
@@ -28,6 +26,14 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(String(128))
     # elo — итоговая числовая оценка после level-test.
     elo: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Сырые ответы онбординг-анкеты Q1-Q8. None — анкета ещё не заполнена
+    # (по этому признаку фронтенд показывает плашку «Заполните анкету»).
+    #
+    # TODO(BACKEND): временный «мешок» для ответов. По методике нужны
+    # отдельные колонки — prior_band (1..4), rating_estimate (шкала Lichess
+    # blitz), rating_scale (напр. "lichess_blitz"), pedagogy (ответ Q6).
+    # skill_band (0..4) пишет входной тест, не анкета.
+    # Подробности — блок TODO в backend/api_gateway/routes/auth.py.
 
     # Поля стартовой оценки. Часть из них уже могла быть создана старой
     # миграцией методики; новая миграция добавляет только отсутствующие.
@@ -35,7 +41,7 @@ class User(Base):
     prior_band: Mapped[int | None] = mapped_column(Integer, nullable=True)
     rating_estimate: Mapped[int | None] = mapped_column(Integer, nullable=True)
     rating_scale: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    onboarding: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    onboarding: Mapped[dict[str, Any] | None] = mapped_column(JsonType, nullable=True)
     assessment_completed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
@@ -45,7 +51,7 @@ class User(Base):
     )
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
 
-    refresh_tokens: Mapped[list["RefreshToken"]] = relationship(
+    refresh_tokens: Mapped[list[RefreshToken]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
 
@@ -70,6 +76,9 @@ class User(Base):
             "login": self.login,
             "email": self.email,
             "elo": self.elo,
+            # Наша анкета: сырой ответ (TopBar-плашка «Заполните анкету»
+            # и OnboardingModal проверяют user.onboarding !== null).
+            "onboarding": self.onboarding,
             "skill_band": self.skill_band,
             "prior_band": self.prior_band,
             "rating_estimate": self.rating_estimate,

@@ -15,6 +15,10 @@ revision: str = "a3c7f14b8e21"
 down_revision: str | None = "e2a6f74d9b31"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
+# Переносимые типы: см. комментарий в fb22cbd6384b_initial_chat_dataset_games.py
+
+_JSON = sa.JSON().with_variant(postgresql.JSONB(astext_type=sa.Text()), "postgresql")
+_NOW = sa.func.now()
 
 
 def upgrade() -> None:
@@ -24,17 +28,17 @@ def upgrade() -> None:
         sa.Column("user_id", sa.Integer(), nullable=False),
         sa.Column(
             "question_ids",
-            postgresql.JSONB(astext_type=sa.Text()),
+            _JSON,
             nullable=False,
         ),
         sa.Column(
             "answers",
-            postgresql.JSONB(astext_type=sa.Text()),
+            _JSON,
             nullable=True,
         ),
         sa.Column(
             "score",
-            postgresql.JSONB(astext_type=sa.Text()),
+            _JSON,
             nullable=True,
         ),
         sa.Column("level", sa.Integer(), nullable=True),
@@ -43,7 +47,7 @@ def upgrade() -> None:
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
-            server_default=sa.text("now()"),
+            server_default=_NOW,
             nullable=False,
         ),
         sa.Column("submitted_at", sa.DateTime(timezone=True), nullable=True),

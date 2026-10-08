@@ -2,16 +2,19 @@
 
 from datetime import datetime
 
-from sqlalchemy import BigInteger, Boolean, ForeignKey, String, func
+from sqlalchemy import Boolean, ForeignKey, Index, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
-from backend.db.base import Base
+from backend.db.base import Base, BigIntPK
 
 
 class PuzzleAttempt(Base):
     __tablename__ = "puzzle_attempts"
+    __table_args__ = (
+        Index("ix_puzzle_attempts_user_puzzle", "user_id", "puzzle_id"),
+    )
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(BigIntPK, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,

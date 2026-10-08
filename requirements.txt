@@ -4,10 +4,15 @@ uvicorn>=0.20.0
 python-multipart>=0.0.6
 requests>=2.28.0
 
-# === Database (PostgreSQL) ===
+# === Database (PostgreSQL + SQLite) ===
 sqlalchemy[asyncio]>=2.0.0
 asyncpg>=0.29.0
+aiosqlite>=0.19.0
 alembic>=1.13.0
+
+# === Config (.env) ===
+python-dotenv>=1.0.0
+pydantic-settings>=2.0.0
 
 # === Auth (задача 64) ===
 bcrypt>=4.0.0
@@ -20,6 +25,8 @@ python-chess>=1.999
 # === Testing ===
 pytest>=7.0.0
 pytest-cov>=4.0.0
+pytest-asyncio>=0.23.0
+httpx>=0.24.0
 
 # === ML / Vision deps ===
 numpy>=1.24.4
