@@ -98,7 +98,7 @@ export default function ProgressWidget() {
   if (error && !training && !learning && !weakness) {
     return (
       <section className="progress-widget progress-widget--error">
-        {error}
+        Не удалось загрузить прогресс. Обновите страницу или попробуйте позже.
       </section>
     );
   }

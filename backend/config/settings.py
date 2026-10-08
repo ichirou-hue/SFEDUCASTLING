@@ -16,6 +16,7 @@ print(
     repr(os.getenv("GIGACHESS_BASE_URL")),
 )
 
+
 class ServerSettings(BaseModel):
     host: str = Field("127.0.0.1", alias="SERVER_HOST")
     port: int = Field(8005, alias="SERVER_PORT")
@@ -29,15 +30,16 @@ class CorsSettings(BaseModel):
 
 class ModelsSettings(BaseModel):
     stockfish_path: Path | None = Field(None, alias="STOCKFISH_PATH")
-    stockfish_depth: int = Field(20, alias="STOCKFISH_DEPTH")          # добавлено
+    stockfish_depth: int = Field(20, alias="STOCKFISH_DEPTH")
     stockfish_top_moves: int = Field(5, alias="STOCKFISH_TOP_MOVES")
     knowledge_path: Path | None = Field(None, alias="KNOWLEDGE_PATH")
     llava_model_path: Path | None = Field(None, alias="LLAVA_MODEL_PATH")
-    llava_model_id: str = Field("llava-hf/llava-1.5-7b-hf", alias="LLAVA_MODEL_ID")   # добавлено
+    llava_model_id: str = Field("llava-hf/llava-1.5-7b-hf", alias="LLAVA_MODEL_ID")
 
 
 class Maia3Settings(BaseModel):
     """Настройки движка Maia3 (человекоподобная игра по уровням)."""
+
     model_id: str = Field("maia3-5m", alias="MAIA3_MODEL_ID")
     device: str = Field("cpu", alias="MAIA3_DEVICE")
     default_elo: int = Field(1500, alias="MAIA3_DEFAULT_ELO")
@@ -51,7 +53,7 @@ class DataSettings(BaseModel):
     max_games_to_parse: int = Field(10, alias="MAX_GAMES_TO_PARSE")
 
 
-class LichessSettings(BaseModel):      # новая группа
+class LichessSettings(BaseModel):
     explorer_url: str = Field("https://explorer.lichess.ovh/masters", alias="LICHESS_EXPLORER_URL")
     timeout: int = Field(5, alias="LICHESS_TIMEOUT")
 
@@ -75,6 +77,7 @@ class DatabaseSettings(BaseSettings):
     Для PostgreSQL используйте:
         postgresql+asyncpg://user:password@127.0.0.1:5432/dbname
     """
+
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env",
         env_file_encoding="utf-8",
@@ -92,9 +95,12 @@ class DatabaseSettings(BaseSettings):
 
 
 class AuthSettings(BaseSettings):
-    """JWT и токены (задача 64).
+    """JWT и долговременные пользовательские сессии.
 
-    jwt_secret обязательно сменить в проде через переменную JWT_SECRET_KEY.
+    Access-токен живёт 7 дней, refresh-токен — 90 дней. При успешном
+    refresh выдаётся новая пара токенов, поэтому активная сессия скользящая:
+    пока пользователь возвращается в приложение хотя бы раз в 90 дней,
+    повторный ввод пароля не требуется.
     """
 
     model_config = SettingsConfigDict(
@@ -105,8 +111,8 @@ class AuthSettings(BaseSettings):
     )
 
     jwt_secret: str = Field("dev-key-change-me", alias="JWT_SECRET_KEY")
-    access_token_ttl_min: int = Field(60 * 24, alias="ACCESS_TOKEN_TTL_MIN")  # 24 ч
-    refresh_token_ttl_days: int = Field(30, alias="REFRESH_TOKEN_TTL_DAYS")
+    access_token_ttl_min: int = Field(60 * 24 * 7, alias="ACCESS_TOKEN_TTL_MIN")  # 7 суток
+    refresh_token_ttl_days: int = Field(90, alias="REFRESH_TOKEN_TTL_DAYS")
 
 
 class Settings(BaseSettings):
@@ -123,9 +129,8 @@ class Settings(BaseSettings):
 
     lichess: LichessSettings = LichessSettings()
     gigachess: GigachessSettings = GigachessSettings()
-    database: DatabaseSettings = DatabaseSettings()   # добавлено
-    auth: AuthSettings = AuthSettings()               # задача 64 (регистрация)
-
+    database: DatabaseSettings = DatabaseSettings()
+    auth: AuthSettings = AuthSettings()
 
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env",
@@ -135,8 +140,8 @@ class Settings(BaseSettings):
         env_nested_delimiter="__",
     )
 
-env_path = BASE_DIR / ".env"
 
+env_path = BASE_DIR / ".env"
 settings = Settings()
 
 print("[Config] BASE_DIR:", BASE_DIR)

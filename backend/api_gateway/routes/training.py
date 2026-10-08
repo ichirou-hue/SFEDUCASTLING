@@ -6,16 +6,20 @@
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api_gateway import state
-from backend.api_gateway.dependecies import get_current_user, get_optional_current_user
+from backend.api_gateway.dependecies import get_current_user
 from backend.db.session import get_db
 from backend.models.training_task import TrainingTask
 from backend.models.user import User
 from backend.services.training_checker import TrainingCheckError, check_training_task
+from backend.services.training_reviews import (
+    get_due_training_reviews,
+    update_training_review_after_attempt,
+)
 from backend.services.dynamic_difficulty import (
     get_user_theme_difficulties,
     training_task_topic_slug,
@@ -70,14 +74,46 @@ async def training_progress(
     return await get_training_progress(db, user.id)
 
 
+@router.get("/due")
+async def training_due(
+    limit: int = Query(default=50, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Задания, которые текущему пользователю уже пора повторить."""
+    items = await get_due_training_reviews(db, user_id=user.id, limit=limit)
+    return {
+        "total": len(items),
+        "items": [
+            {
+                "review": item["review"],
+                "module": item["module"],
+                "lesson": item["lesson"],
+                "task": _task_public(item["task"]),
+            }
+            for item in items
+        ],
+    }
+
+
 @router.get("/modules")
-async def training_modules(db: AsyncSession = Depends(get_db)):
-    """Все карточки учебных модулей, включая будущие disabled-модули."""
+async def training_modules(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Все карточки учебных модулей, включая будущие disabled-модули.
+
+    Учебный модуль доступен только зарегистрированным пользователям.
+    """
     return {"modules": await list_modules(db)}
 
 
 @router.get("/modules/{slug}")
-async def training_module(slug: str, db: AsyncSession = Depends(get_db)):
+async def training_module(
+    slug: str,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
     module = await get_module_by_slug(db, slug)
     if not module:
         raise HTTPException(status_code=404, detail="Учебный модуль не найден")
@@ -96,7 +132,11 @@ async def training_module(slug: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/lessons/{lesson_id}")
-async def training_lesson(lesson_id: int, db: AsyncSession = Depends(get_db)):
+async def training_lesson(
+    lesson_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
     lesson = await get_lesson(db, lesson_id)
     if not lesson or not lesson.enabled:
         raise HTTPException(status_code=404, detail="Учебный урок не найден")
@@ -116,7 +156,11 @@ async def training_lesson(lesson_id: int, db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/tasks/{task_id}")
-async def training_task(task_id: int, db: AsyncSession = Depends(get_db)):
+async def training_task(
+    task_id: int,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
     task = await get_task(db, task_id)
     if not task or not task.enabled:
         raise HTTPException(status_code=404, detail="Учебное задание не найдено")
@@ -128,7 +172,7 @@ async def check_task(
     task_id: int,
     req: TrainingAnswerRequest,
     db: AsyncSession = Depends(get_db),
-    user: User | None = Depends(get_optional_current_user),
+    user: User = Depends(get_current_user),
 ):
     task = await get_task(db, task_id)
     if not task or not task.enabled:
@@ -139,16 +183,14 @@ async def check_task(
     except TrainingCheckError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
-    topic_slug = None
-    if user is not None:
-        topic_slug = await training_task_topic_slug(db, task.id)
-        # Инициализация до новой попытки: текущая попытка затем изменит
-        # difficulty максимум на один шаг по свежей общей accuracy темы.
-        await get_user_theme_difficulties(
-            db,
-            user_id=user.id,
-            puzzle_base=state.puzzle_base,
-        )
+    topic_slug = await training_task_topic_slug(db, task.id)
+    # Инициализация до новой попытки: текущая попытка затем изменит
+    # difficulty максимум на один шаг по свежей общей accuracy темы.
+    await get_user_theme_difficulties(
+        db,
+        user_id=user.id,
+        puzzle_base=state.puzzle_base,
+    )
 
     attempt = await save_attempt(
         db,
@@ -160,14 +202,19 @@ async def check_task(
         response_time_ms=req.response_time_ms,
     )
 
-    difficulty_update = None
-    if user is not None:
-        difficulty_update = await update_theme_difficulty_after_attempt(
-            db,
-            user_id=user.id,
-            theme_slug=topic_slug,
-            puzzle_base=state.puzzle_base,
-        )
+    difficulty_update = await update_theme_difficulty_after_attempt(
+        db,
+        user_id=user.id,
+        theme_slug=topic_slug,
+        puzzle_base=state.puzzle_base,
+    )
+
+    review_update = await update_training_review_after_attempt(
+        db,
+        user_id=user.id,
+        task_id=task.id,
+        correct=result.correct,
+    )
 
     return {
         "ok": True,
@@ -178,6 +225,7 @@ async def check_task(
         "correct": result.correct,
         "topic": topic_slug,
         "difficulty_update": difficulty_update,
+        "review_update": review_update,
         "score": result.score,
         "feedback": result.feedback,
         "explanation": task.explanation,

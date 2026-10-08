@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   fetchCurrentUser,
@@ -20,6 +20,39 @@ export default function MiniProfilePopover({ user, onUserChange }) {
   const [error, setError] = useState("");
   const [loaded, setLoaded] = useState(false);
   const [dirty, setDirty] = useState(true);
+  const closeTimer = useRef(null);
+
+  const cancelClose = useCallback(() => {
+    if (closeTimer.current) {
+      clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+  }, []);
+
+  const scheduleClose = useCallback(() => {
+    cancelClose();
+    // Задержка позволяет пересечь "мёртвую зону" между триггером и всплывающим окном,
+    // не потеряв его: наведение на само окно (линк «Открыть полный профиль»)
+    // отменяет закрытие.
+    closeTimer.current = setTimeout(() => setOpen(false), 200);
+  }, [cancelClose]);
+
+  const openPopover = useCallback(() => {
+    cancelClose();
+    setOpen(true);
+  }, [cancelClose]);
+
+  const handleKeyboardBlur = (event) => {
+    // Фокус ушёл полностью за пределы триггера и поповера — закрываем.
+    if (!event.currentTarget.contains(event.relatedTarget)) {
+      cancelClose();
+      setOpen(false);
+    }
+  };
+
+  useEffect(() => {
+    return () => cancelClose();
+  }, [cancelClose]);
 
   useEffect(() => {
     setProfile(user || null);
@@ -81,19 +114,13 @@ export default function MiniProfilePopover({ user, onUserChange }) {
   const solvedPuzzles = safeNumber(learning?.solved);
   const streak = safeNumber(training?.streak);
 
-  const handleBlur = (event) => {
-    if (!event.currentTarget.contains(event.relatedTarget)) {
-      setOpen(false);
-    }
-  };
-
   return (
     <div
       className="mini-profile"
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
-      onFocus={() => setOpen(true)}
-      onBlur={handleBlur}
+      onMouseEnter={openPopover}
+      onMouseLeave={scheduleClose}
+      onFocus={openPopover}
+      onBlur={handleKeyboardBlur}
     >
       <Link
         to="/profile"
@@ -108,6 +135,8 @@ export default function MiniProfilePopover({ user, onUserChange }) {
         className={`mini-profile__popover ${open ? "mini-profile__popover--open" : ""}`}
         role="status"
         aria-hidden={!open}
+        onMouseEnter={openPopover}
+        onMouseLeave={scheduleClose}
       >
         <div className="mini-profile__arrow" aria-hidden="true" />
 

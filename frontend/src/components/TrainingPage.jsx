@@ -80,7 +80,7 @@ function getTaskHint(task) {
   return "Вернитесь к теории урока и разбейте задачу на один простой шаг.";
 }
 
-export default function TrainingPage() {
+export default function TrainingPage({ user, onRegister }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const requestedModuleSlug = searchParams.get("module");
@@ -106,6 +106,9 @@ export default function TrainingPage() {
   const openingModuleRef = useRef(null);
 
   const currentTask = tasks[taskIndex] || null;
+  // Следим за конкретным пользователем, а не за объектом целиком:
+  // обновление профиля (идентичный id) не должно перезагружать курс.
+  const userId = user?.id ?? null;
 
   useEffect(() => {
     let cancelled = false;
@@ -119,17 +122,34 @@ export default function TrainingPage() {
       } catch (err) {
         if (!cancelled) {
           setError(getApiError(err, "Не удалось загрузить учебные модули."));
+          setModules([]);
         }
       } finally {
         if (!cancelled) setLoading(false);
       }
     }
 
+    if (!userId) {
+      // Гость: вместо списка показывается заглушка «после регистрации».
+      // Сбрасываем состояние при выходе/переключении аккаунта, иначе после
+      // входа останутся старые данные (пустой список или гостевой 401).
+      setModules([]);
+      setSelectedModule(null);
+      setLessons([]);
+      setLesson(null);
+      setTasks([]);
+      setTaskIndex(0);
+      setError(null);
+      setLoading(false);
+      return;
+    }
+
     loadModules();
+
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
     const updateSize = () => {
@@ -366,10 +386,32 @@ export default function TrainingPage() {
     }
   };
 
-  if (loading && modules.length === 0) {
+  if (loading && modules.length === 0 && user) {
     return (
       <div className="training-page training-page--centered">
         <div className="training-loading">Загрузка учебного курса...</div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="training-page training-page--centered">
+        <div className="training-register-wall">
+          <div className="training-kicker">Учебный режим</div>
+          <h1>Обучение доступно после регистрации</h1>
+          <p>
+            Зарегистрируйтесь, чтобы проходить учебные модули по шахматам
+            и сохранять свой прогресс.
+          </p>
+          <button
+            type="button"
+            className="training-primary-btn"
+            onClick={onRegister}
+          >
+            Зарегистрироваться
+          </button>
+        </div>
       </div>
     );
   }

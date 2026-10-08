@@ -10,7 +10,7 @@ import RegisterModal from "./components/RegisterModal.jsx";
 import PuzzlesPage from "./components/PuzzlesPage.jsx";
 import TrainingPage from "./components/TrainingPage.jsx";
 import UserProfilePage from "./components/UserProfilePage.jsx";
-import { getStoredUser } from "./api.js";
+import { AUTH_EXPIRED_EVENT, getStoredUser } from "./api.js";
 
 function MainPage() {
   const boardRef = useRef(null);
@@ -53,12 +53,25 @@ function MainPage() {
 
 export default function App() {
   const [showRegister, setShowRegister] = useState(false);
+  const [authMode, setAuthMode] = useState("register");
+  const [authNotice, setAuthNotice] = useState("");
   const [user, setUser] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     const stored = getStoredUser();
     if (stored) setUser(stored);
+
+    const handleAuthExpired = () => {
+      setUser(null);
+      setSidebarOpen(false);
+      setAuthMode("login");
+      setAuthNotice("Сессия истекла. Войдите в аккаунт снова.");
+      setShowRegister(true);
+    };
+
+    window.addEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired);
+    return () => window.removeEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired);
   }, []);
 
   return (
@@ -66,7 +79,11 @@ export default function App() {
       <TopBar
         user={user}
         onUserChange={setUser}
-        onRegister={() => setShowRegister(true)}
+        onRegister={() => {
+          setAuthMode("register");
+          setAuthNotice("");
+          setShowRegister(true);
+        }}
         onMenuClick={() => setSidebarOpen(true)}
       />
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
@@ -75,10 +92,29 @@ export default function App() {
         <Route
           path="/puzzles"
           element={
-            <PuzzlesPage user={user} onRegister={() => setShowRegister(true)} />
+            <PuzzlesPage
+              user={user}
+              onRegister={() => {
+                setAuthMode("register");
+                setAuthNotice("");
+                setShowRegister(true);
+              }}
+            />
           }
         />
-        <Route path="/training" element={<TrainingPage />} />
+        <Route
+          path="/training"
+          element={
+            <TrainingPage
+              user={user}
+              onRegister={() => {
+                setAuthMode("register");
+                setAuthNotice("");
+                setShowRegister(true);
+              }}
+            />
+          }
+        />
         <Route
           path="/profile"
           element={<UserProfilePage user={user} onUserChange={setUser} />}
@@ -86,8 +122,16 @@ export default function App() {
       </Routes>
       <RegisterModal
         isOpen={showRegister}
-        onClose={() => setShowRegister(false)}
-        onSuccess={(u) => setUser(u)}
+        initialMode={authMode}
+        notice={authNotice}
+        onClose={() => {
+          setShowRegister(false);
+          setAuthNotice("");
+        }}
+        onSuccess={(u) => {
+          setUser(u);
+          setAuthNotice("");
+        }}
       />
     </>
   );

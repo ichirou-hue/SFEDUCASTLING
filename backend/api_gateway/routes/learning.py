@@ -1,80 +1,80 @@
-"""Обучающие endpoint'ы: тест определения уровня, проверка тактических задач.
+"""Обучение, стартовая оценка и адаптивные тактические задания."""
 
-Задача 2.1 «Определение уровня» по ТЗ: тест из N задач возрастающей
-сложности (по 5 на каждый Elo-диапазон). Оценка пользователя ставится
-по максимальному диапазону, в котором он решает большинство задач.
-
-Проверка ответа гибридная:
-- совпадение с эталонным решением (из базы паззлов) — засчитываем;
-- иначе — спрашиваем Stockfish: если ход почти так же хорош, как лучший,
-  то засчитываем частично (это лояльно к сильным, но не точным ответам).
-"""
+from __future__ import annotations
 
 import random
+import secrets
 from datetime import UTC, datetime
+from typing import Any
 
 import chess
-import chess.engine
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api_gateway import state
-from backend.api_gateway.dependecies import get_current_user, get_optional_current_user
+from backend.api_gateway.dependecies import get_current_user
 from backend.api_gateway.models import PuzzleAnswerRequest
 from backend.db.session import get_db
 from backend.models.level_test import LevelTest
 from backend.models.puzzle_attempt import PuzzleAttempt
-from backend.models.user import User
+from backend.models.user import ROLE_ADMIN, User
 from backend.services.adaptive_logic import select_adaptive_puzzles
-from backend.services.adaptive_training import build_weakness_profile
+from backend.services.adaptive_training import (
+    build_weakness_profile,
+    compute_learning_progress,
+)
+from backend.services.assessment import (
+    RATING_GROUPS,
+    build_test_feedback,
+    calculate_performance_rating,
+    personalized_level_test_puzzles,
+    puzzle_rating_group,
+    rating_group_for,
+)
+from backend.services.course_topics import (
+    COURSE_TOPIC_PUZZLE_THEMES,
+    primary_course_topic_for_puzzle,
+)
+from backend.services.course_topics import (
+    puzzle_matches_course_topic as _puzzle_matches_course_topic,
+)
 from backend.services.dynamic_difficulty import (
     get_user_theme_difficulties,
     public_difficulty_profile,
     update_theme_difficulty_after_attempt,
 )
-from backend.services.course_topics import (
-    COURSE_TOPIC_PUZZLE_THEMES,
-    primary_course_topic_for_puzzle,
-    puzzle_matches_course_topic as _puzzle_matches_course_topic,
-)
 
 router = APIRouter(tags=["learning"])
 
 
-# Диапазоны Elo по ТЗ (0-500 / 500-1000 / 1000-1500 / 1500+).
-# Соответствие с корзинами рейтинга паззлов.
+# Общие рейтинговые корзины для обычной страницы паззлов. Границы совпадают
+# с новой стартовой оценкой: 0–1000 / 1001–1500 / 1501–1900 / 1901+.
 LEVEL_BUCKETS = [
-    {
-        "level": 1,
-        "name": "Новичок",
-        "band": 500,
-        "min_puzzle_rating": 500,
-        "max_puzzle_rating": 900,
-    },
-    {
-        "level": 2,
-        "name": "Любитель",
-        "band": 1000,
-        "min_puzzle_rating": 900,
-        "max_puzzle_rating": 1300,
-    },
-    {
-        "level": 3,
-        "name": "Клубный",
-        "band": 1500,
-        "min_puzzle_rating": 1300,
-        "max_puzzle_rating": 1700,
-    },
-    {
-        "level": 4,
-        "name": "Продвинутый",
-        "band": 2000,
-        "min_puzzle_rating": 1700,
-        "max_puzzle_rating": 9999,
-    },
+    {"min_puzzle_rating": 0, "max_puzzle_rating": 1001},
+    {"min_puzzle_rating": 1001, "max_puzzle_rating": 1501},
+    {"min_puzzle_rating": 1501, "max_puzzle_rating": 1901},
+    {"min_puzzle_rating": 1901, "max_puzzle_rating": 10000},
 ]
+
+
+class LevelTestCheckRequest(BaseModel):
+    test_id: int = Field(gt=0)
+    puzzle_id: str = Field(min_length=1, max_length=64)
+    move: str = Field(min_length=4, max_length=16)
+    response_time_ms: int | None = Field(default=None, ge=0, le=3_600_000)
+
+
+class LevelTestSkipRequest(BaseModel):
+    test_id: int = Field(gt=0)
+    puzzle_id: str = Field(min_length=1, max_length=64)
+    response_time_ms: int | None = Field(default=None, ge=0, le=3_600_000)
+
+
+class PuzzleAttemptRequest(BaseModel):
+    puzzle_id: str = Field(min_length=1, max_length=64)
+    correct: bool
 
 
 class LevelTestSubmitAnswer(BaseModel):
@@ -84,16 +84,28 @@ class LevelTestSubmitAnswer(BaseModel):
 
 class LevelTestSubmitRequest(BaseModel):
     test_id: int = Field(gt=0)
-    answers: list[LevelTestSubmitAnswer] = Field(min_length=1, max_length=100)
+    # Оставлено для совместимости со старым клиентом. Новый клиент хранит
+    # прогресс на сервере через /check и /skip.
+    answers: list[LevelTestSubmitAnswer] = Field(default_factory=list, max_length=100)
 
 
-class PuzzleAttemptRequest(BaseModel):
-    puzzle_id: str = Field(min_length=1, max_length=64)
-    correct: bool
+def _puzzle_lookup() -> dict[str, dict[str, Any]]:
+    return {
+        str(p.get("id")): p
+        for p in (state.puzzle_base or {}).get("puzzles", [])
+        if p.get("id")
+    }
+
+
+def _public_question(puzzle: dict[str, Any]) -> dict[str, Any]:
+    # Не возвращаем rating/themes/moves: они могут подсказать сложность и решение.
+    return {
+        "id": str(puzzle.get("id", "")),
+        "fen": puzzle.get("fen", ""),
+    }
 
 
 def _ordinal_to_uci(board: chess.Board, san: str) -> str | None:
-    """Переводит SAN-ход (например 'Nxe5') в UCI для текущей позиции."""
     try:
         move = board.parse_san(san)
         if move in board.legal_moves:
@@ -104,172 +116,37 @@ def _ordinal_to_uci(board: chess.Board, san: str) -> str | None:
 
 
 def _solution_for(board: chess.Board, moves_str: str) -> str | None:
-    """Возвращает UCI первого хода решения из строки Moves (все в UCI)."""
     parts = [p for p in moves_str.split() if p]
-    if not parts:
-        return None
-    return parts[0]
-
-
-def _level_test_puzzles() -> list[dict]:
-    """Собирает рандомизированный тестовый набор по Elo-диапазонам.
-
-    Из каждого диапазона случайно выбирается до 5 задач. После этого
-    итоговый список перемешивается, чтобы пользователь не получал задачи
-    в фиксированном порядке от простых к сложным.
-    """
-    if not state.puzzle_base:
-        return []
-
-    puzzles = state.puzzle_base.get("puzzles", [])
-    picked: list[dict] = []
-
-    for bucket in LEVEL_BUCKETS:
-        lo, hi = bucket["min_puzzle_rating"], bucket["max_puzzle_rating"]
-        pool = [p for p in puzzles if lo <= p.get("rating", 0) < hi]
-
-        # random.sample не изменяет исходный pool и гарантирует отсутствие
-        # повторов внутри выборки. min(...) сохраняет старое поведение, если
-        # в конкретном диапазоне оказалось меньше пяти задач.
-        sample_size = min(5, len(pool))
-        if sample_size:
-            picked.extend(random.sample(pool, sample_size))
-
-    # Перемешиваем задачи разных диапазонов между собой. Расчёт результата
-    # от порядка не зависит: level_test_result определяет диапазон по rating.
-    random.shuffle(picked)
-    return picked
-
-
-@router.post("/api/learning/level-test/start")
-async def level_test_start(
-    db: AsyncSession = Depends(get_db),
-    user: User | None = Depends(get_optional_current_user),
-):
-    """Начинает тест определения уровня.
-
-    Для авторизованного пользователя создаёт строку level_tests и возвращает
-    test_id. Для гостя сохраняется прежнее поведение: задачи выдаются, но
-    test_id=None и записать результат в профиль нельзя.
-    """
-    puzzles = _level_test_puzzles()
-    if not puzzles:
-        return {"error": "База паззлов не загружена", "questions": [], "test_id": None}
-
-    questions = []
-    for p in puzzles:
-        questions.append(
-            {
-                "id": p.get("id", ""),
-                "fen": p.get("fen", ""),
-                "themes": p.get("themes", []),
-                "rating": p.get("rating", 0),
-            }
-        )
-
-    test_id: int | None = None
-    if user is not None:
-        test = LevelTest(
-            user_id=user.id,
-            question_ids=[q["id"] for q in questions],
-            status="started",
-        )
-        db.add(test)
-        await db.commit()
-        await db.refresh(test)
-        test_id = test.id
-
-    return {"test_id": test_id, "questions": questions, "total": len(questions)}
-
-
-@router.post("/api/learning/level-test/check")
-def level_test_check(req: PuzzleAnswerRequest):
-    """Проверяет ответ на задачу теста уровня.
-
-    Возвращает: correct (bool), solution, explanation.
-    """
-    if not state.puzzle_base:
-        return {"error": "База паззлов не загружена", "correct": False, "solution": None}
-
-    puzzles = state.puzzle_base.get("puzzles", [])
-    puzzle = next((p for p in puzzles if p.get("id") == req.puzzle_id), None)
-    if puzzle is None:
-        return {"error": "Задача не найдена", "correct": False, "solution": None}
-
-    try:
-        board = chess.Board(puzzle["fen"])
-    except Exception:
-        return {"error": "Некорректная позиция в задаче", "correct": False, "solution": None}
-
-    solution = _solution_for(board, puzzle.get("moves", ""))
-    if solution is None:
-        return {"error": "У задачи нет решения", "correct": False, "solution": None}
-
-    # Пытаемся принять SAN, если пользователь прислал не UCI.
-    user_move = req.move.strip()
-    if len(user_move) not in (4, 5):
-        uci_san = _ordinal_to_uci(board, user_move)
-        if uci_san is None:
-            return {"correct": False, "solution": solution, "message": "Некорректный ход"}
-        user_move = uci_san
-
-    correct = user_move == solution
-
-    result = {
-        "correct": correct,
-        "solution": solution,
-        "puzzle_rating": puzzle.get("rating", 0),
-        "themes": puzzle.get("themes", []),
-    }
-    if not correct:
-        # Гибкая проверка через Stockfish: сильный ход засчитываем частично.
-        try:
-            move_ok, is_best = _stockfish_matches(board, user_move, solution)
-            result["strong_but_different"] = move_ok
-            result["is_best"] = is_best
-        except Exception:
-            pass
-    return result
+    return parts[0] if parts else None
 
 
 def _stockfish_matches(board: chess.Board, user_move: str, solution: str) -> tuple[bool, bool]:
-    """Выясняет, насколько ход пользователя близок к лучшему по Stockfish.
-
-    Возвращает (ходит_почти_так_же_хорошо, это_лучший_ход).
-    """
     engine = state.ensure_stockfish()
     if engine is None:
         return False, False
-
-    try:
-        import stockfish as sf_module  # только для типа
-    except Exception:
-        pass
-
     engine.set_fen_position(board.fen())
     try:
         best = engine.get_best_move()
     except Exception:
         return False, False
 
-    is_best = (user_move == best)
+    is_best = user_move == best
 
-    # Сравниваем оценки хода пользователя и лучшего хода.
     def _eval_uci(uci: str) -> float | None:
         try:
-            m = chess.Move.from_uci(uci)
-            if m not in board.legal_moves:
+            move = chess.Move.from_uci(uci)
+            if move not in board.legal_moves:
                 return None
-            board.push(m)
+            board.push(move)
             engine.set_fen_position(board.fen())
             try:
                 info = engine.get_evaluation()
             finally:
                 board.pop()
             if info.get("type") == "cp":
-                return info["value"]
+                return float(info["value"])
             if info.get("type") == "mate":
-                return 10000 if info["value"] > 0 else -10000
+                return 10000.0 if info["value"] > 0 else -10000.0
         except Exception:
             return None
         return None
@@ -277,70 +154,210 @@ def _stockfish_matches(board: chess.Board, user_move: str, solution: str) -> tup
     user_eval = _eval_uci(user_move)
     best_eval = _eval_uci(best) if best else None
     if user_eval is None or best_eval is None:
-        return False, False
-
-    # Если разница не больше 50 центипешек — ход почти так же хорош.
+        return False, is_best
     return abs(user_eval - best_eval) <= 50, is_best
 
 
-def _score_level_test(answers: list[dict]) -> dict:
-    """Считает итог level-test единообразно для /result и /submit."""
-    if not state.puzzle_base:
-        raise ValueError("База паззлов не загружена")
+async def _latest_personal_test(db: AsyncSession, user_id: int) -> LevelTest | None:
+    return await db.scalar(
+        select(LevelTest)
+        .where(
+            LevelTest.user_id == user_id,
+            LevelTest.status == "started",
+            LevelTest.initial_rating.is_not(None),
+        )
+        .order_by(LevelTest.id.desc())
+        .limit(1)
+    )
 
-    by_id = {p.get("id"): p for p in state.puzzle_base.get("puzzles", [])}
 
-    scored = {
-        bucket["level"]: {
-            "total": 0,
-            "correct": 0,
-            "name": bucket["name"],
+def _upsert_test_answer(test: LevelTest, answer: dict[str, Any]) -> None:
+    answers = [
+        item
+        for item in (test.answers or [])
+        if str(item.get("puzzle_id")) != str(answer.get("puzzle_id"))
+    ]
+    answers.append(answer)
+    test.answers = answers
+
+
+@router.post("/api/learning/level-test/start")
+async def level_test_start(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Создаёт или возобновляет персональный 20-задачный level-test."""
+    if user.effective_role == ROLE_ADMIN:
+        raise HTTPException(status_code=403, detail="Администратору стартовая оценка не требуется")
+    if not isinstance(user.onboarding, dict) or not user.onboarding.get("submitted_at"):
+        raise HTTPException(status_code=409, detail="Сначала заполните анкету Q1–Q8")
+
+    lookup = _puzzle_lookup()
+    if not lookup:
+        raise HTTPException(status_code=503, detail="База паззлов не загружена")
+
+    active = await _latest_personal_test(db, user.id)
+    if active is not None:
+        questions = [_public_question(lookup[pid]) for pid in active.question_ids if pid in lookup]
+        answered = list(active.answers or [])
+        return {
+            "test_id": active.id,
+            "questions": questions,
+            "total": len(questions),
+            "answers": answered,
+            "resumed": True,
+            "personalization": active.metrics_snapshot or {},
         }
-        for bucket in LEVEL_BUCKETS
-    }
 
-    for answer in answers:
-        pid = answer.get("puzzle_id")
-        puzzle = by_id.get(pid)
-        if not puzzle:
-            continue
+    rating_estimate = int(user.rating_estimate or user.elo or 800)
+    seed = secrets.randbelow(2_147_483_647)
+    puzzles, metrics = await personalized_level_test_puzzles(
+        db,
+        user_id=user.id,
+        rating_estimate=rating_estimate,
+        puzzle_base=state.puzzle_base,
+        seed=seed,
+        total=20,
+    )
+    if not puzzles:
+        raise HTTPException(status_code=503, detail="Не удалось сформировать персональный тест")
 
-        rating = puzzle.get("rating", 0)
-        for bucket in LEVEL_BUCKETS:
-            lo = bucket["min_puzzle_rating"]
-            hi = bucket["max_puzzle_rating"]
-            if lo <= rating < hi:
-                scored[bucket["level"]]["total"] += 1
-                if answer.get("correct"):
-                    scored[bucket["level"]]["correct"] += 1
-                break
+    group = rating_group_for(rating_estimate)
+    test = LevelTest(
+        user_id=user.id,
+        question_ids=[str(p.get("id")) for p in puzzles],
+        answers=[],
+        status="started",
+        seed=seed,
+        initial_rating=rating_estimate,
+        rating_group=group["key"],
+        metrics_snapshot=metrics,
+    )
+    db.add(test)
+    await db.commit()
+    await db.refresh(test)
 
-    level = 1
-    for bucket in LEVEL_BUCKETS:
-        bucket_score = scored[bucket["level"]]
-        if bucket_score["total"] >= 3 and bucket_score["correct"] >= 3:
-            level = bucket["level"]
-
-    result_bucket = next(b for b in LEVEL_BUCKETS if b["level"] == level)
     return {
-        "level": level,
-        "band": result_bucket["band"],
-        "score": scored,
-        "result": {
-            "level": level,
-            "name": result_bucket["name"],
-            "band": result_bucket["band"],
-        },
+        "test_id": test.id,
+        "questions": [_public_question(p) for p in puzzles],
+        "total": len(puzzles),
+        "answers": [],
+        "resumed": False,
+        "personalization": metrics,
     }
+
+
+@router.post("/api/learning/level-test/check")
+async def level_test_check(
+    req: LevelTestCheckRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    test = await db.scalar(
+        select(LevelTest).where(
+            LevelTest.id == req.test_id,
+            LevelTest.user_id == user.id,
+        )
+    )
+    if test is None:
+        raise HTTPException(status_code=404, detail="Тест не найден")
+    if test.status != "started":
+        raise HTTPException(status_code=409, detail="Тест уже завершён")
+    if req.puzzle_id not in set(test.question_ids or []):
+        raise HTTPException(status_code=422, detail="Эта задача не относится к тесту")
+
+    puzzle = _puzzle_lookup().get(req.puzzle_id)
+    if puzzle is None:
+        raise HTTPException(status_code=404, detail="Задача не найдена")
+
+    try:
+        board = chess.Board(puzzle["fen"])
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Некорректная позиция в задаче") from exc
+
+    solution = _solution_for(board, puzzle.get("moves", ""))
+    if solution is None:
+        raise HTTPException(status_code=500, detail="У задачи нет решения")
+
+    user_move = req.move.strip()
+    if len(user_move) not in (4, 5):
+        user_move = _ordinal_to_uci(board, user_move) or ""
+    correct = user_move == solution
+    strong_but_different = False
+    is_best = False
+    if not correct and user_move:
+        try:
+            strong_but_different, is_best = _stockfish_matches(board, user_move, solution)
+        except Exception:
+            pass
+
+    _upsert_test_answer(
+        test,
+        {
+            "puzzle_id": req.puzzle_id,
+            "correct": bool(correct),
+            "move": req.move,
+            "response_time_ms": req.response_time_ms,
+            "skipped": False,
+        },
+    )
+    await db.commit()
+
+    # Эталон намеренно не выдаётся до submit.
+    return {
+        "correct": bool(correct),
+        "strong_but_different": bool(strong_but_different),
+        "is_best": bool(is_best),
+        "recorded": True,
+    }
+
+
+@router.post("/api/learning/level-test/skip")
+async def level_test_skip(
+    req: LevelTestSkipRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    test = await db.scalar(
+        select(LevelTest).where(LevelTest.id == req.test_id, LevelTest.user_id == user.id)
+    )
+    if test is None:
+        raise HTTPException(status_code=404, detail="Тест не найден")
+    if test.status != "started":
+        raise HTTPException(status_code=409, detail="Тест уже завершён")
+    if req.puzzle_id not in set(test.question_ids or []):
+        raise HTTPException(status_code=422, detail="Эта задача не относится к тесту")
+
+    _upsert_test_answer(
+        test,
+        {
+            "puzzle_id": req.puzzle_id,
+            "correct": False,
+            "move": None,
+            "response_time_ms": req.response_time_ms,
+            "skipped": True,
+        },
+    )
+    await db.commit()
+    return {"ok": True, "recorded": True}
 
 
 @router.post("/api/learning/level-test/result")
 def level_test_result(answers: list[dict]):
-    """Считает уровень без изменения профиля (legacy/read-only endpoint)."""
-    try:
-        return _score_level_test(answers)
-    except ValueError as exc:
-        return {"error": str(exc)}
+    """Legacy preview без записи в профиль."""
+    lookup = _puzzle_lookup()
+    if not lookup:
+        return {"error": "База паззлов не загружена"}
+    final_rating = calculate_performance_rating(
+        initial_rating=1000, answers=answers, puzzle_lookup=lookup
+    )
+    group = rating_group_for(final_rating)
+    return {
+        "level": group["id"],
+        "band": group["id"],
+        "rating": final_rating,
+        "result": {"level": group["id"], "name": group["title"], "band": group["id"], "rating": final_rating},
+    }
 
 
 @router.post("/api/learning/level-test/submit")
@@ -349,12 +366,6 @@ async def level_test_submit(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Фиксирует итог теста и записывает его Elo-band в профиль.
-
-    Идемпотентность обеспечивается строкой level_tests: она блокируется
-    SELECT ... FOR UPDATE. Если этот test_id уже был завершён, повторный
-    submit возвращает сохранённый результат и не пересчитывает его.
-    """
     test = await db.scalar(
         select(LevelTest)
         .where(LevelTest.id == req.test_id, LevelTest.user_id == user.id)
@@ -369,45 +380,89 @@ async def level_test_submit(
             "test_id": test.id,
             "level": test.level,
             "band": test.band,
+            "rating": (test.score or {}).get("final_rating"),
             "score": test.score,
+            "result": (test.score or {}).get("result"),
+            "feedback": (test.score or {}).get("feedback", []),
             "already_submitted": True,
         }
 
-    answers = [answer.model_dump() for answer in req.answers]
-    answer_ids = [answer["puzzle_id"] for answer in answers]
+    expected_ids = [str(x) for x in (test.question_ids or [])]
+    recorded = list(test.answers or [])
 
-    if len(answer_ids) != len(set(answer_ids)):
-        raise HTTPException(status_code=422, detail="В ответах есть повторяющиеся puzzle_id")
+    # Старый клиент мог прислать ответы только на submit. Новый сохраняет их
+    # серверно после каждого вопроса. При наличии полного серверного прогресса
+    # клиентские bool игнорируются.
+    recorded_by_id = {str(a.get("puzzle_id")): a for a in recorded}
+    if set(recorded_by_id) != set(expected_ids) and req.answers:
+        client_answers = [a.model_dump() for a in req.answers]
+        if {str(a["puzzle_id"]) for a in client_answers} == set(expected_ids):
+            recorded = client_answers
+            recorded_by_id = {str(a["puzzle_id"]): a for a in recorded}
 
-    expected_ids = list(test.question_ids or [])
-    if set(answer_ids) != set(expected_ids):
+    if set(recorded_by_id) != set(expected_ids):
         raise HTTPException(
             status_code=422,
-            detail="Набор ответов не совпадает с задачами этого теста",
+            detail=f"Ответьте на все задачи: сохранено {len(recorded_by_id)} из {len(expected_ids)}",
         )
 
-    try:
-        result = _score_level_test(answers)
-    except ValueError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
-
-    # Блокируем и пользователя: два разных теста, отправленные одновременно,
-    # не должны потерять обновление профиля из-за гонки транзакций.
-    locked_user = await db.scalar(
-        select(User).where(User.id == user.id).with_for_update()
+    answers = [recorded_by_id[pid] for pid in expected_ids]
+    lookup = _puzzle_lookup()
+    initial_rating = int(test.initial_rating or user.rating_estimate or user.elo or 800)
+    final_rating = calculate_performance_rating(
+        initial_rating=initial_rating,
+        answers=answers,
+        puzzle_lookup=lookup,
     )
+    group = rating_group_for(final_rating)
+
+    by_group = {
+        str(g["id"]): {"name": g["title"], "range": g["key"], "total": 0, "correct": 0}
+        for g in RATING_GROUPS
+    }
+    for answer in answers:
+        puzzle = lookup.get(str(answer.get("puzzle_id")))
+        if not puzzle:
+            continue
+        gid = str(puzzle_rating_group(puzzle))
+        by_group[gid]["total"] += 1
+        if answer.get("correct"):
+            by_group[gid]["correct"] += 1
+
+    correct_count = sum(1 for a in answers if a.get("correct"))
+    feedback = build_test_feedback(final_rating, answers, lookup)
+    score = {
+        "total": len(answers),
+        "correct": correct_count,
+        "accuracy": round(correct_count * 100 / len(answers), 1) if answers else 0,
+        "initial_rating": initial_rating,
+        "final_rating": final_rating,
+        "rating_group": group["key"],
+        "by_group": by_group,
+        "feedback": feedback,
+        "result": {
+            "level": int(group["id"]),
+            "name": group["title"],
+            "band": int(group["id"]),
+            "rating": final_rating,
+            "rating_group": group["key"],
+        },
+    }
+
+    locked_user = await db.scalar(select(User).where(User.id == user.id).with_for_update())
     if locked_user is None:
         raise HTTPException(status_code=401, detail="Пользователь не найден")
 
-    locked_user.elo = result["band"]
+    locked_user.elo = final_rating
+    locked_user.skill_band = int(group["id"])
+    locked_user.assessment_completed_at = datetime.now(UTC)
 
     test.answers = answers
-    test.score = result["score"]
-    test.level = result["level"]
-    test.band = result["band"]
+    test.score = score
+    test.level = int(group["id"])
+    test.band = int(group["id"])
     test.status = "submitted"
     test.submitted_at = datetime.now(UTC)
-
     await db.commit()
 
     return {
@@ -415,7 +470,10 @@ async def level_test_submit(
         "test_id": test.id,
         "level": test.level,
         "band": test.band,
-        "score": test.score,
+        "rating": final_rating,
+        "score": score,
+        "result": score["result"],
+        "feedback": feedback,
         "already_submitted": False,
     }
 
@@ -483,47 +541,7 @@ async def learning_progress(
     db: AsyncSession = Depends(get_db),
 ):
     """Прогресс текущего пользователя по обычным тактическим пазлам."""
-    total_attempts = int(
-        await db.scalar(
-            select(func.count(PuzzleAttempt.id)).where(PuzzleAttempt.user_id == user.id)
-        )
-        or 0
-    )
-    correct_attempts = int(
-        await db.scalar(
-            select(func.count(PuzzleAttempt.id)).where(
-                PuzzleAttempt.user_id == user.id,
-                PuzzleAttempt.correct.is_(True),
-            )
-        )
-        or 0
-    )
-    attempted = int(
-        await db.scalar(
-            select(func.count(func.distinct(PuzzleAttempt.puzzle_id))).where(
-                PuzzleAttempt.user_id == user.id
-            )
-        )
-        or 0
-    )
-    solved = int(
-        await db.scalar(
-            select(func.count(func.distinct(PuzzleAttempt.puzzle_id))).where(
-                PuzzleAttempt.user_id == user.id,
-                PuzzleAttempt.correct.is_(True),
-            )
-        )
-        or 0
-    )
-
-    accuracy = round(correct_attempts * 100 / total_attempts, 1) if total_attempts else None
-    return {
-        "attempted": attempted,
-        "solved": solved,
-        "attempts": total_attempts,
-        "correct_attempts": correct_attempts,
-        "accuracy": accuracy,
-    }
+    return await compute_learning_progress(db, user_id=user.id)
 
 
 @router.get("/api/learning/difficulty")
@@ -622,8 +640,28 @@ async def get_adaptive_puzzles(
 
 @router.post("/api/learning/puzzle/check")
 def puzzle_check(req: PuzzleAnswerRequest):
-    """Проверка решения отдельного паззла (для миттельшпиля, Задача 2.4)."""
-    return level_test_check(req)
+    """Проверка отдельного тренировочного паззла с показом решения."""
+    puzzle = _puzzle_lookup().get(req.puzzle_id)
+    if puzzle is None:
+        raise HTTPException(status_code=404, detail="Задача не найдена")
+    try:
+        board = chess.Board(puzzle["fen"])
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Некорректная позиция в задаче") from exc
+    solution = _solution_for(board, puzzle.get("moves", ""))
+    if solution is None:
+        raise HTTPException(status_code=500, detail="У задачи нет решения")
+
+    user_move = req.move.strip()
+    if len(user_move) not in (4, 5):
+        user_move = _ordinal_to_uci(board, user_move) or ""
+    correct = user_move == solution
+    return {
+        "correct": bool(correct),
+        "solution": solution,
+        "puzzle_rating": puzzle.get("rating", 0),
+        "themes": puzzle.get("themes", []),
+    }
 
 
 @router.get("/api/learning/puzzles")

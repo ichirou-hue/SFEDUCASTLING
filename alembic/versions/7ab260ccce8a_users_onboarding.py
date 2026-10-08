@@ -33,9 +33,17 @@ depends_on: str | Sequence[str] | None = None
 _JSON = sa.JSON().with_variant(postgresql.JSONB(astext_type=sa.Text()), "postgresql")
 
 
+def _columns(table_name: str) -> set[str]:
+    bind = op.get_bind()
+    return {col["name"] for col in sa.inspect(bind).get_columns(table_name)}
+
+
 def upgrade() -> None:
-    op.add_column("users", sa.Column("onboarding", _JSON, nullable=True))
+    # Колонку могла добавить параллельная ветка (e5f4b3a2c1d0 на origin/main).
+    if "onboarding" not in _columns("users"):
+        op.add_column("users", sa.Column("onboarding", _JSON, nullable=True))
 
 
 def downgrade() -> None:
-    op.drop_column("users", "onboarding")
+    if "onboarding" in _columns("users"):
+        op.drop_column("users", "onboarding")

@@ -77,10 +77,14 @@ export default function UserProfilePage({ user, onUserChange }) {
           </div>
 
           <div className="user-profile-stats">
-            <div className="user-profile-stat">
-              <span>Шахматный уровень</span>
-              <strong>{profile?.elo ?? "Не определён"}</strong>
-            </div>
+<div className="user-profile-stat">
+          <span>Роль</span>
+          <strong>{profile?.role === "admin" ? "Администратор" : "Ученик"}</strong>
+        </div>
+        <div className="user-profile-stat">
+          <span>Шахматный уровень</span>
+          <strong>{profile?.elo ?? "Не определён"}</strong>
+        </div>
             <div className="user-profile-stat">
               <span>Email</span>
               <strong>{profile?.email || "Не указан"}</strong>

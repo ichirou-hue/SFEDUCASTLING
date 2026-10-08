@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { fetchPlayerProfile, login as apiLogin, register as apiRegister } from "../api.js";
 
 const PLATFORM_LABELS = {
@@ -19,7 +19,7 @@ const PERF_LABELS = {
 const REG_DOC_URL = "#";
 const REG_DOC_LABEL = "Документ для ознакомления";
 
-export default function AuthModal({ isOpen, onClose, onSuccess }) {
+export default function AuthModal({ isOpen, onClose, onSuccess, initialMode = "register", notice = "" }) {
   const [mode, setMode] = useState("register"); // "register" | "login"
   const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
@@ -33,6 +33,13 @@ export default function AuthModal({ isOpen, onClose, onSuccess }) {
   const [profile, setProfile] = useState(null);
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState("");
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setMode(initialMode);
+    setAuthError(notice || "");
+    setPassword("");
+  }, [isOpen, initialMode, notice]);
 
   if (!isOpen) return null;
 

@@ -26,7 +26,15 @@ class LevelTest(Base):
     # Это не даёт submit подменить тест произвольными puzzle_id.
     question_ids: Mapped[list[str]] = mapped_column(JsonType, nullable=False)
 
-    # Снимок финальных ответов и результата нужен для идемпотентного ответа.
+    # Персонализация конкретной попытки. seed позволяет воспроизвести набор,
+    # initial_rating и rating_group фиксируют стартовую гипотезу, а
+    # metrics_snapshot объясняет, какие метрики повлияли на выборку.
+    seed: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    initial_rating: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    rating_group: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    metrics_snapshot: Mapped[dict[str, Any] | None] = mapped_column(JsonType, nullable=True)
+
+    # answers хранит и промежуточные ответы started-теста, и финальный снимок.
     answers: Mapped[list[dict[str, Any]] | None] = mapped_column(JsonType, nullable=True)
     score: Mapped[dict[str, Any] | None] = mapped_column(JsonType, nullable=True)
 

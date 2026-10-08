@@ -1,7 +1,7 @@
-"""Модели пользователей и refresh-токенов (задача 64).
+"""Модели пользователей и refresh-токенов.
 
-Пароль в БД только в виде bcrypt-хеша (cost 12). Refresh-токены хранятся
-как sha256-хеши — утечка БД не даёт угнать активные сессии.
+`role` — единственный источник прав пользователя в БД: learner или admin.
+Поле `is_admin` в API вычисляется из role только для совместимости со старым frontend.
 """
 
 from datetime import datetime
@@ -12,6 +12,10 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.db.base import Base, JsonType
 
+ROLE_LEARNER = "learner"
+ROLE_ADMIN = "admin"
+VALID_USER_ROLES = {ROLE_LEARNER, ROLE_ADMIN}
+
 
 class User(Base):
     __tablename__ = "users"
@@ -20,6 +24,7 @@ class User(Base):
     login: Mapped[str] = mapped_column(String(32), unique=True, index=True)
     email: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True)
     password_hash: Mapped[str] = mapped_column(String(128))
+    # elo — итоговая числовая оценка после level-test.
     elo: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # Сырые ответы онбординг-анкеты Q1-Q8. None — анкета ещё не заполнена
     # (по этому признаку фронтенд показывает плашку «Заполните анкету»).
@@ -29,23 +34,61 @@ class User(Base):
     # blitz), rating_scale (напр. "lichess_blitz"), pedagogy (ответ Q6).
     # skill_band (0..4) пишет входной тест, не анкета.
     # Подробности — блок TODO в backend/api_gateway/routes/auth.py.
+
+    # Поля стартовой оценки. Часть из них уже могла быть создана старой
+    # миграцией методики; новая миграция добавляет только отсутствующие.
+    skill_band: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    prior_band: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    rating_estimate: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    rating_scale: Mapped[str | None] = mapped_column(String(64), nullable=True)
     onboarding: Mapped[dict[str, Any] | None] = mapped_column(JsonType, nullable=True)
-    is_admin: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    assessment_completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    role: Mapped[str] = mapped_column(
+        String(32), default=ROLE_LEARNER, server_default=ROLE_LEARNER, nullable=False
+    )
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
 
-    refresh_tokens: Mapped[list["RefreshToken"]] = relationship(
+    refresh_tokens: Mapped[list[RefreshToken]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
 
+    @property
+    def effective_role(self) -> str:
+        return self.role or ROLE_LEARNER
+
+    def set_role(self, role: str) -> None:
+        if role not in VALID_USER_ROLES:
+            raise ValueError(f"Неизвестная роль: {role}")
+        self.role = role
+
     def public(self) -> dict[str, Any]:
-        """Данные пользователя для ответов API (без хеша пароля)."""
+        """Данные пользователя для API без хеша пароля.
+
+        `is_admin` оставлен только как вычисляемое поле ответа API,
+        отдельной колонки users.is_admin в БД больше нет.
+        """
+        role = self.effective_role
         return {
             "id": self.id,
             "login": self.login,
             "email": self.email,
             "elo": self.elo,
+            # Наша анкета: сырой ответ (TopBar-плашка «Заполните анкету»
+            # и OnboardingModal проверяют user.onboarding !== null).
             "onboarding": self.onboarding,
-            "is_admin": self.is_admin,
+            "skill_band": self.skill_band,
+            "prior_band": self.prior_band,
+            "rating_estimate": self.rating_estimate,
+            "rating_scale": self.rating_scale,
+            "onboarding_completed": bool(
+                isinstance(self.onboarding, dict) and self.onboarding.get("submitted_at")
+            ),
+            "assessment_completed": self.assessment_completed_at is not None,
+            "role": role,
+            "is_admin": role == ROLE_ADMIN,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 
