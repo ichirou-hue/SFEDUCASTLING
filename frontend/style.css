@@ -620,6 +620,31 @@ body {
   background: #76a87a;
 }
 
+/* --- Кнопка «Определить дебют» (база знаний) --- */
+.chat-opening-btn {
+  margin: 0 40px 22px;
+  padding: 9px 16px;
+  align-self: flex-start;
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  border-radius: 14px;
+  color: #4a6b4d;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.chat-opening-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: #79b180;
+}
+
+.chat-opening-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
 /* ========================================= */
 /*       Р›Р•Р’РђРЇ РџРђРќР•Р›Р¬: РРЎРўРћР РРЇ РҐРћР”РћР’         */
 /* ========================================= */
@@ -2462,4 +2487,98 @@ body {
 .training-option-btn:disabled {
   cursor: default;
   opacity: 0.78;
+}
+
+/* === Секция «Пора повторить» (spaced repetition) на странице курса === */
+
+.training-due-section {
+  margin-bottom: 26px;
+  padding: 18px 20px;
+  border: 1px solid rgba(180, 135, 44, 0.3);
+  border-radius: 18px;
+  background: #fdf8ec;
+}
+
+.training-due-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.training-due-heading strong,
+.training-due-heading span {
+  display: block;
+}
+
+.training-due-heading span:not(.training-due-icon) {
+  margin-top: 3px;
+  font-size: 13px;
+  opacity: 0.7;
+}
+
+.training-due-icon {
+  font-size: 22px;
+}
+
+.training-due-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.training-due-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid rgba(180, 135, 44, 0.25);
+  border-radius: 13px;
+  background: #fff;
+  color: #20332d;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.training-due-card:hover {
+  background: #fdf3dd;
+  border-color: rgba(180, 135, 44, 0.5);
+}
+
+.training-due-card-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.training-due-card-main strong,
+.training-due-card-main span {
+  display: block;
+}
+
+.training-due-card-main strong {
+  overflow: hidden;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.training-due-card-main span {
+  margin-top: 2px;
+  font-size: 12px;
+  opacity: 0.62;
+}
+
+.training-due-card-meta {
+  flex-shrink: 0;
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.training-due-card-arrow {
+  flex-shrink: 0;
+  font-size: 16px;
+  opacity: 0.6;
 }

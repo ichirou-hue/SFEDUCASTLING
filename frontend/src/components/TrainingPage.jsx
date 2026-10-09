@@ -4,6 +4,7 @@ import { Chess } from "chess.js";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   checkTrainingTask,
+  fetchTrainingDue,
   fetchTrainingLesson,
   fetchTrainingModule,
   fetchTrainingModules,
@@ -86,6 +87,7 @@ export default function TrainingPage({ user, onRegister }) {
   const requestedModuleSlug = searchParams.get("module");
 
   const [modules, setModules] = useState([]);
+  const [dueItems, setDueItems] = useState([]);
   const [selectedModule, setSelectedModule] = useState(null);
   const [lessons, setLessons] = useState([]);
   const [lesson, setLesson] = useState(null);
@@ -129,11 +131,23 @@ export default function TrainingPage({ user, onRegister }) {
       }
     }
 
+    async function loadDue() {
+      try {
+        const data = await fetchTrainingDue(20);
+        if (!cancelled) setDueItems(data.items || []);
+      } catch {
+        // Просроченные повторения — вспомогательная секция:
+        // её сбой не должен ломать загрузку курса.
+        if (!cancelled) setDueItems([]);
+      }
+    }
+
     if (!userId) {
       // Гость: вместо списка показывается заглушка «после регистрации».
       // Сбрасываем состояние при выходе/переключении аккаунта, иначе после
       // входа останутся старые данные (пустой список или гостевой 401).
       setModules([]);
+      setDueItems([]);
       setSelectedModule(null);
       setLessons([]);
       setLesson(null);
@@ -145,6 +159,7 @@ export default function TrainingPage({ user, onRegister }) {
     }
 
     loadModules();
+    loadDue();
 
     return () => {
       cancelled = true;
@@ -224,6 +239,17 @@ export default function TrainingPage({ user, onRegister }) {
       setLoading(false);
     }
   }, []);
+
+  // Просроченное повторение ведёт сразу в урок, где живёт задание.
+  const openDueItem = useCallback(
+    async (item) => {
+      const module = modules.find((m) => m.slug === item.module?.slug && m.enabled);
+      if (!module) return;
+      await openModule(module);
+      await openLesson(item.lesson.id);
+    },
+    [modules, openModule, openLesson],
+  );
 
   const backToModules = () => {
     navigate("/training");
@@ -429,6 +455,45 @@ export default function TrainingPage({ user, onRegister }) {
         </section>
 
         {error && <div className="training-global-error">{error}</div>}
+
+        {dueItems.length > 0 && (
+          <section className="training-due-section">
+            <div className="training-due-heading">
+              <span className="training-due-icon">🔁</span>
+              <div>
+                <strong>
+                  Пора повторить: {dueItems.length}{" "}
+                  {dueItems.length === 1 ? "задание" : "задания"}
+                </strong>
+                <span>
+                  Интервальное повторение закрепляет материал — пройдите
+                  просроченные задания.
+                </span>
+              </div>
+            </div>
+            <div className="training-due-list">
+              {dueItems.map((item) => (
+                <button
+                  type="button"
+                  key={item.review.id}
+                  className="training-due-card"
+                  onClick={() => openDueItem(item)}
+                >
+                  <span className="training-due-card-main">
+                    <strong>{item.task.title}</strong>
+                    <span>
+                      {item.module.title} · {item.lesson.title}
+                    </span>
+                  </span>
+                  <span className="training-due-card-meta">
+                    повторений: {item.review.reps}
+                  </span>
+                  <span className="training-due-card-arrow">→</span>
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
 
         <div className="training-modules-grid">
           {modules.map((module) => (

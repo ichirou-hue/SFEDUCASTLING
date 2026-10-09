@@ -1,0 +1,281 @@
+.level-test-kicker {
+  font-size: 12px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: #5f7d58;
+  font-weight: 800;
+}
+
+.level-test-page h1 {
+  margin: 8px 0 10px;
+  color: #243023;
+}
+
+.level-test-primary-btn {
+  border: 0;
+  border-radius: 12px;
+  padding: 12px 18px;
+  background: #55794c;
+  color: white;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.level-test-primary-btn:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}
+
+.level-test-secondary-btn,
+.level-test-skip-btn {
+  border: 1px solid #b9c5b5;
+  border-radius: 12px;
+  padding: 11px 16px;
+  background: #fff;
+  color: #40503d;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.level-test-error {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #ffe8e6;
+  color: #912f2a;
+}
+
+.level-test-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(19, 27, 18, .62);
+}
+
+.level-test-result-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin: 20px 0 10px;
+  flex-wrap: wrap;
+}
+
+.level-test-page {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 26px;
+  background: #f4f1e8;
+  box-sizing: border-box;
+}
+
+.level-test-page--centered {
+  display: grid;
+  place-items: center;
+}
+
+.level-test-intro-card,
+.level-test-result-card,
+.level-test-loading-card {
+  width: min(760px, 100%);
+  padding: 28px;
+  border-radius: 20px;
+  background: #fffef9;
+  box-shadow: 0 16px 45px rgba(31, 42, 31, 0.12);
+  text-align: center;
+}
+
+.level-test-rules {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin: 22px 0;
+}
+
+.level-test-rules > div {
+  padding: 14px;
+  border-radius: 14px;
+  background: #edf3e9;
+  display: grid;
+  gap: 3px;
+}
+
+.level-test-rules strong {
+  font-size: 24px;
+}
+
+.level-test-note,
+.level-test-privacy-note {
+  color: #6c746a;
+  font-size: 14px;
+}
+
+.level-test-personalization,
+.level-test-rating-value {
+  margin: 12px 0;
+  color: #486442;
+}
+
+.level-test-shell {
+  width: min(1180px, 100%);
+  margin: 0 auto;
+}
+
+.level-test-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 20px;
+}
+
+.level-test-counter {
+  font-weight: 800;
+  color: #55794c;
+}
+
+.level-test-progress-track {
+  height: 8px;
+  background: #dfe5dc;
+  border-radius: 999px;
+  overflow: hidden;
+  margin: 12px 0 20px;
+}
+
+.level-test-progress-fill {
+  height: 100%;
+  background: #64865a;
+  transition: width .2s ease;
+}
+
+.level-test-content {
+  display: grid;
+  grid-template-columns: minmax(320px, auto) 330px;
+  justify-content: center;
+  gap: 24px;
+  align-items: start;
+}
+
+.level-test-board-wrap,
+.level-test-side-card {
+  border-radius: 18px;
+  background: #fffef9;
+  box-shadow: 0 12px 35px rgba(31, 42, 31, .10);
+}
+
+.level-test-board-wrap {
+  padding: 14px;
+}
+
+.level-test-side-card {
+  padding: 22px;
+}
+
+.level-test-side-number {
+  color: #66805f;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.level-test-turn {
+  margin: 16px 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #edf3e9;
+}
+
+.level-test-feedback {
+  margin: 12px 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+}
+
+.level-test-feedback--success {
+ background: #e7f5e4; color: #2f6a2d;
+}
+
+.level-test-feedback--error {
+ background: #ffe8e6; color: #8d302b;
+}
+
+.level-test-feedback--strong {
+ background: #fff2cf; color: #775b13;
+}
+
+.level-test-feedback--checking {
+ background: #e9eef7; color: #415b7b;
+}
+
+.level-test-side-card button {
+  width: 100%;
+  margin-top: 8px;
+}
+
+.level-test-total-score {
+  display: grid;
+  margin: 18px 0;
+}
+
+.level-test-total-score strong {
+  font-size: 36px;
+  color: #55794c;
+}
+
+.level-test-breakdown {
+  display: grid;
+  gap: 8px;
+  text-align: left;
+}
+
+.level-test-breakdown-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #f1f4ee;
+}
+
+.level-test-breakdown-row > div:first-child {
+  display: grid;
+}
+
+.level-test-breakdown-row span {
+  color: #7a8278;
+  font-size: 12px;
+}
+
+.level-test-breakdown-score {
+  font-weight: 800;
+}
+
+.level-test-result-feedback {
+  margin: 18px 0;
+  text-align: left;
+  line-height: 1.6;
+}
+
+.level-test-promotion-modal {
+  background: #fff;
+  border-radius: 16px;
+  padding: 22px;
+  text-align: center;
+}
+
+.level-test-promotion-options {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.level-test-promotion-options button {
+  font-size: 34px;
+  padding: 8px 12px;
+}
+
+@media (max-width: 900px) {
+  .level-test-content { grid-template-columns: 1fr; }
+  .level-test-side-card { width: auto; }
+}

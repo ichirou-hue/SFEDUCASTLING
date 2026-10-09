@@ -13,29 +13,21 @@ import FenBar from "./FenBar.jsx";
 import {
   fetchMaiaMove,
   fetchEval,
-  fetchStockfishAnalysis,
   fetchCompareMoves,
   saveMoveToDataset,
   fetchExplainMove,
   finishGame,
+  getStoredUser,
 } from "../api.js";
 
 /*
  * id залогиненного пользователя (число) или null для анонима.
  * Ходы и партии анонимов уходят в БД с user_id = NULL.
+ * Используем getStoredUser из api.js: ключ хранения — gigachess_user.
  */
 function getCurrentUserId() {
-  try {
-    const raw = localStorage.getItem("sfedu_user");
-
-    if (raw) {
-      const parsedId = JSON.parse(raw).id;
-
-      if (Number.isFinite(parsedId)) return parsedId;
-    }
-  } catch {}
-
-  return null;
+  const id = getStoredUser()?.id;
+  return Number.isFinite(id) ? id : null;
 }
 
 let gameId = "game_" + Date.now();

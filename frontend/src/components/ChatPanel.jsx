@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { askLLM } from "../api.js";
+import { askLLM, fetchOpeningByFen } from "../api.js";
 import MiniBoard from "./MiniBoard.jsx";
 
 const GREETING_ONLY = /^(привет|здравствуй|хай|hello|hi|hey|пока|до свидания|спасибо|благодарю)$/i;
@@ -131,6 +131,39 @@ export default function ChatPanel({ onAnalyze, onLoadOpening, hintMessage, curre
     setMessages((prev) => [...prev, { role, text, fen, arrows }]);
   };
 
+  /*
+   * Дебют из базы знаний: определяем дебют по текущей позиции и
+   * показываем карточку прямо в чате.
+   */
+  const handleShowOpening = async () => {
+    if (loading) return;
+    const fen = (currentFen || "").trim();
+    if (!fen) {
+      addMessage("ai", "Позиция на доске ещё не определена.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const data = await fetchOpeningByFen(fen);
+      if (data.error) {
+        addMessage("ai", data.error);
+      } else if (!data.opening) {
+        addMessage("ai", data.message || "Дебют не найден в базе знаний.");
+      } else {
+        const o = data.opening;
+        const lines = [`**${o.name}**${o.eco ? ` (${o.eco})` : ""}`];
+        if (o.pgn) {
+          lines.push(`Продолжение: ${o.pgn}`);
+        }
+        addMessage("ai", lines.join("\n"));
+      }
+    } catch {
+      addMessage("ai", "Не удалось загрузить данные о дебюте.");
+    }
+    setLoading(false);
+  };
+
   const handleSend = async () => {
     const text = input.trim();
     if (!text || loading) return;
@@ -229,6 +262,16 @@ export default function ChatPanel({ onAnalyze, onLoadOpening, hintMessage, curre
           Отправить
         </button>
       </div>
+
+      <button
+        type="button"
+        className="chat-opening-btn"
+        onClick={handleShowOpening}
+        disabled={loading}
+        title="Определить дебют по текущей позиции"
+      >
+        ♟ Определить дебют
+      </button>
     </div>
   );
 }

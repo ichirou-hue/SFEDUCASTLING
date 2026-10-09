@@ -8,6 +8,7 @@ import {
   skipLevelTestQuestion,
   startLevelTest,
 } from "../api.js";
+import "./LevelTestPage.css";
 
 const START_FEN = "8/8/8/8/8/8/8/8 w - - 0 1";
 

@@ -168,3 +168,144 @@
     text-align: left;
   }
 }
+
+/* === Действия профиля: проверка уровня === */
+
+.user-profile-actions {
+  margin-top: 18px;
+}
+
+.user-profile-level-test-btn {
+  padding: 10px 18px;
+  border: 1px solid rgba(71, 112, 85, 0.35);
+  border-radius: 12px;
+  background: #47705a;
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.user-profile-level-test-btn:hover {
+  background: #3c5f4c;
+}
+
+/* === Привязанные шахматные аккаунты === */
+
+.user-profile-section {
+  margin-top: 26px;
+  padding: 22px 24px;
+  border: 1px solid rgba(34, 90, 115, 0.16);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 10px 32px rgba(25, 52, 43, 0.07);
+}
+
+.user-profile-muted {
+  margin: 12px 0;
+  font-size: 13px;
+  opacity: 0.66;
+}
+
+.user-profile-warning--ok {
+  background: #eef5ef;
+  border-color: rgba(71, 112, 85, 0.25);
+  color: #47705a;
+}
+
+.user-profile-accounts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.user-profile-account {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid rgba(71, 112, 85, 0.16);
+  border-radius: 13px;
+  background: #f7faf7;
+}
+
+.user-profile-account-main strong,
+.user-profile-account-main span {
+  display: block;
+}
+
+.user-profile-account-main span {
+  margin-top: 2px;
+  font-size: 12px;
+  opacity: 0.65;
+}
+
+.user-profile-account-remove {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  border: 1px solid rgba(154, 63, 56, 0.3);
+  border-radius: 10px;
+  background: #fdf3f0;
+  color: #9a3f38;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.user-profile-account-remove:hover:not(:disabled) {
+  background: #f9e7e2;
+}
+
+.user-profile-account-remove:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.user-profile-account-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.user-profile-account-form select,
+.user-profile-account-form input {
+  padding: 9px 12px;
+  border: 1px solid rgba(34, 90, 115, 0.2);
+  border-radius: 11px;
+  background: #fff;
+  font: inherit;
+  font-size: 13px;
+  color: #20332d;
+}
+
+.user-profile-account-form input {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+.user-profile-account-form button {
+  padding: 9px 16px;
+  border: 1px solid #47705a;
+  border-radius: 11px;
+  background: #47705a;
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.user-profile-account-form button:hover:not(:disabled) {
+  background: #3c5f4c;
+}
+
+.user-profile-account-form button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
