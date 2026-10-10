@@ -32,6 +32,9 @@ async def update_training_review_after_attempt(
     if current.tzinfo is None:
         current = current.replace(tzinfo=UTC)
 
+    # Явно проставляем created_at/updated_at: в старых базах у этих колонок
+    # сломанный server_default "now()" (функции нет в SQLite), и INSERT падал
+    # с "unknown function: now()". Явные значения работают на обоих диалектах.
     stmt = (
         pg_insert(TrainingReview)
         .values(
@@ -40,6 +43,8 @@ async def update_training_review_after_attempt(
             next_review_at=current,
             ease=DEFAULT_EASE,
             reps=0,
+            created_at=current,
+            updated_at=current,
         )
         .on_conflict_do_nothing(constraint="uq_training_review_user_task")
     )

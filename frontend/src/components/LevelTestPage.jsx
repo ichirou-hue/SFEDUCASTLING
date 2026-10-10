@@ -486,6 +486,13 @@ export default function LevelTestPage({ onCompleted = null }) {
               <ReactChessboard
                 position={fen}
                 boardOrientation={orientation}
+                showBoardNotation={true}
+                customNotationStyle={{
+                  fontSize: "12px",
+                  fontFamily: "Cormorant Garamond, Georgia, serif",
+                  fontWeight: "500",
+                  color: "#4a3220",
+                }}
                 boardWidth={boardWidth}
                 onPieceDrop={(source, target) => {
                   attemptMove(source, target);

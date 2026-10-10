@@ -633,6 +633,12 @@ export default function TrainingPage({ user, onRegister }) {
                 animationDuration={180}
                 boardOrientation="white"
                 showBoardNotation={true}
+                customNotationStyle={{
+                  fontSize: "12px",
+                  fontFamily: "Cormorant Garamond, Georgia, serif",
+                  fontWeight: "500",
+                  color: "#4a3220",
+                }}
                 customPieces={customPieces}
                 customSquareStyles={customSquareStyles}
                 customBoardStyle={{

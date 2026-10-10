@@ -1705,7 +1705,7 @@ const fetchBestMove = useCallback(
               fontFamily:
                 "Cormorant Garamond, Georgia, serif",
               fontWeight: "500",
-              color: "#225a73",
+              color: "#4a3220",
             }}
             areArrowsAllowed={true}
 
