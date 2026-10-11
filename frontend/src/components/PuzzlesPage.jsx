@@ -36,6 +36,9 @@ const customPieces = Object.fromEntries(
   ]),
 );
 
+// Пауза перед автопереключением на следующую задачу после решения (мс).
+const AUTO_ADVANCE_DELAY_MS = 1800;
+
 const THEME_LABELS = {
   mateIn1: "Мат в 1 ход",
   mateIn2: "Мат в 2 хода",
@@ -512,6 +515,22 @@ export default function PuzzlesPage({ user, onRegister }) {
     }
   };
 
+  // Автопереключение после решения: даём полюбоваться оверлеем «Задача
+  // решена!» и переходим к следующей. На последней задаче таймер не
+  // ставим — оверлей остаётся, пользователь решает сам. Ручное навигирование
+  // (кнопки «→»/«←») меняет currentIndex → таймер отменяется, а новая
+  // задача сбрасывает puzzleSolved в loadPuzzle.
+  useEffect(() => {
+    if (!puzzleSolved) return undefined;
+    if (currentIndex >= puzzles.length - 1) return undefined;
+
+    const timer = setTimeout(() => {
+      setCurrentIndex((i) => i + 1);
+    }, AUTO_ADVANCE_DELAY_MS);
+
+    return () => clearTimeout(timer);
+  }, [puzzleSolved, currentIndex, puzzles.length]);
+
   const handlePrevPuzzle = () => {
     if (currentIndex > 0) {
       setCurrentIndex((i) => i - 1);
@@ -745,6 +764,11 @@ export default function PuzzlesPage({ user, onRegister }) {
             <div className="puzzle-solved-overlay">
               <div className="puzzle-solved-checkmark">✓</div>
               <div className="puzzle-solved-text">Задача решена!</div>
+              {currentIndex < puzzles.length - 1 && (
+                <div className="puzzle-solved-hint">
+                  Следующая задача откроется автоматически…
+                </div>
+              )}
             </div>
           )}
         </div>

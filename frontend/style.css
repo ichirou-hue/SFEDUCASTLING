@@ -1835,6 +1835,14 @@ body {
   text-shadow: 0 1px 2px rgba(255, 255, 255, 0.6);
 }
 
+/* Подсказка об автопереключении под «Задача решена!». */
+.puzzle-solved-hint {
+  margin-top: 8px;
+  font-size: 13px;
+  color: #4a7a4f;
+  opacity: 0.85;
+}
+
 .puzzle-result {
   font-family: "Calypso", serif;
   font-size: 18px;
@@ -2452,6 +2460,13 @@ body {
 
 .training-result-score {
   font-weight: 700;
+}
+
+/* Подсказка об автопереключении в блоке «Верно!». */
+.training-auto-hint {
+  font-size: 12px;
+  font-style: italic;
+  opacity: 0.75;
 }
 
 .training-next-btn {

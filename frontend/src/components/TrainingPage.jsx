@@ -34,6 +34,10 @@ const customPieces = Object.fromEntries(
   ]),
 );
 
+// Пауза перед автопереключением на следующее задание после верного
+// ответа (мс): достаточно, чтобы прочитать разбор, но не скучно ждать.
+const AUTO_ADVANCE_DELAY_MS = 2500;
+
 const MODULE_ICONS = {
   pawn: "♙",
   knight: "♘",
@@ -269,6 +273,22 @@ export default function TrainingPage({ user, onRegister }) {
     setHintVisible(false);
     taskStartedAtRef.current = Date.now();
   }, [currentTask?.id]);
+
+  // Автопереключение после верного ответа: даём время прочитать разбор
+  // и переходим к следующему заданию. На последнем задании таймер не
+  // ставим — показывается блок «Урок завершён». Ручной переход (кнопка
+  // «Следующее задание», дотсы) меняет taskIndex → таймер отменяется,
+  // а новый урок сбрасывает taskResult в эффекте выше.
+  useEffect(() => {
+    if (!taskResult?.correct) return undefined;
+    if (taskIndex >= tasks.length - 1) return undefined;
+
+    const timer = setTimeout(() => {
+      setTaskIndex((index) => index + 1);
+    }, AUTO_ADVANCE_DELAY_MS);
+
+    return () => clearTimeout(timer);
+  }, [taskResult?.correct, taskIndex, tasks.length]);
 
   const openModule = useCallback(async (module) => {
     if (!module.enabled) return;
@@ -970,6 +990,11 @@ export default function TrainingPage({ user, onRegister }) {
                   </span>
                   {taskResult.correct && taskResult.explanation && (
                     <p>{taskResult.explanation}</p>
+                  )}
+                  {taskResult.correct && taskIndex < tasks.length - 1 && (
+                    <span className="training-auto-hint">
+                      Следующее задание откроется автоматически…
+                    </span>
                   )}
                 </div>
               )}
