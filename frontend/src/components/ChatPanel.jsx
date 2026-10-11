@@ -152,7 +152,16 @@ export default function ChatPanel({ onAnalyze, onLoadOpening, hintMessage, curre
         addMessage("ai", data.message || "Дебют не найден в базе знаний.");
       } else {
         const o = data.opening;
-        const lines = [`**${o.name}**${o.eco ? ` (${o.eco})` : ""}`];
+        /*
+         * Название показываем по-русски. Если бэкенд не смог перевести
+         * какое-то редкое имя, name_ru не будет — тогда остаётся
+         * оригинальное английское.
+         */
+        const title = o.name_ru || o.name;
+        const lines = [`**${title}**${o.eco ? ` (${o.eco})` : ""}`];
+        if (o.name_ru && o.name && o.name_ru !== o.name) {
+          lines.push(`*${o.name}*`);
+        }
         if (o.pgn) {
           lines.push(`Продолжение: ${o.pgn}`);
         }

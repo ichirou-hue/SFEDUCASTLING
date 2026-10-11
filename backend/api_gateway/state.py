@@ -603,6 +603,31 @@ KNOWLEDGE_PATH = os.path.abspath(
 )
 
 
+def _attach_russian_names(openings: list) -> int:
+    """Дополняет записи дебютов полем ``name_ru``.
+
+    Имена в ``openings.json`` только английские, а интерфейс русский.
+    Перевод считается на старте (3810 записей — доли секунды) и кладётся
+    прямо в объект: словарь полей не ограничен, поле просто пройдёт дальше
+    в JSON ответа. Если переводить не удалось, ``name_ru`` не ставится —
+    фронт покажет оригинальное английское имя.
+    """
+    from backend.knowledge.openings_ru import translate_opening_name
+
+    translated = 0
+
+    for opening in openings:
+
+        name_ru = translate_opening_name(opening.get("name"))
+
+        if name_ru:
+
+            opening["name_ru"] = name_ru
+            translated += 1
+
+    return translated
+
+
 def load_knowledge():
     """Загружает базу дебютов из JSON."""
 
@@ -628,12 +653,14 @@ def load_knowledge():
 
             knowledge_base = json.load(f)
 
-        count = len(
-            knowledge_base.get(
-                "openings",
-                [],
-            )
+        openings = knowledge_base.get(
+            "openings",
+            [],
         )
+
+        _attach_russian_names(openings)
+
+        count = len(openings)
 
         print(
             "[Knowledge] "

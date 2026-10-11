@@ -93,6 +93,7 @@ def check_move(req: FenRequest):
     return {
         "in_theory": True,
         "opening": opening.get("name"),
+        "opening_ru": opening.get("name_ru"),
         "eco": opening.get("eco"),
         "pgn": opening.get("pgn"),
         "next_moves": book,
