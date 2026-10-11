@@ -168,6 +168,13 @@ async def get_training_progress(db: AsyncSession, user_id: int) -> dict:
     правильно выполнил каждое включённое задание этого модуля.
     Accuracy считается по всем строкам training_attempts, включая повторы.
 
+    Помимо итогов, ответ несёт разбивку ``modules.items``: по каждому
+    модулю — счётчики заданий и список уроков. Она нужна фронту для
+    прогресс-баров на карточках модулей и для отметки решённых заданий
+    в списке уроков. Разбивка лежит внутри ``modules``, а не на верхнем
+    уровне: контракт /api/training/progress фиксирует ровно три ключа
+    (modules, attempts, streak) — см. test_training_progress_contract.
+
     Точность по темам курса здесь НЕ считается: единственный источник
     совмещённого профиля (training + puzzles) — build_weakness_profile,
     который отдаётся `/api/learning/weaknesses`. Он же питает адаптивный
@@ -184,11 +191,16 @@ async def get_training_progress(db: AsyncSession, user_id: int) -> dict:
 
     module_ids = [module.id for module in modules]
     tasks_by_module: dict[int, set[int]] = {module.id: set() for module in modules}
+    tasks_by_lesson: dict[int, set[int]] = {}
 
     if module_ids:
         task_rows = (
             await db.execute(
-                select(TrainingTask.id, TrainingLesson.module_id)
+                select(
+                    TrainingTask.id,
+                    TrainingLesson.id,
+                    TrainingLesson.module_id,
+                )
                 .join(TrainingLesson, TrainingTask.lesson_id == TrainingLesson.id)
                 .where(
                     TrainingLesson.module_id.in_(module_ids),
@@ -197,8 +209,25 @@ async def get_training_progress(db: AsyncSession, user_id: int) -> dict:
                 )
             )
         ).all()
-        for task_id, module_id in task_rows:
+        for task_id, lesson_id, module_id in task_rows:
             tasks_by_module[module_id].add(task_id)
+            tasks_by_lesson.setdefault(lesson_id, set()).add(task_id)
+
+    lesson_ids_by_module: dict[int, list[int]] = {module.id: [] for module in modules}
+
+    if module_ids:
+        lesson_rows = (
+            await db.execute(
+                select(TrainingLesson.id, TrainingLesson.module_id)
+                .where(
+                    TrainingLesson.module_id.in_(module_ids),
+                    TrainingLesson.enabled.is_(True),
+                )
+                .order_by(TrainingLesson.sort_order, TrainingLesson.id)
+            )
+        ).all()
+        for lesson_id, module_id in lesson_rows:
+            lesson_ids_by_module[module_id].append(lesson_id)
 
     attempt_rows = (
         await db.execute(
@@ -235,11 +264,50 @@ async def get_training_progress(db: AsyncSession, user_id: int) -> dict:
             activity_dates.add(created_at.date())
 
     completed_modules = 0
+    module_items = []
+
     for module in modules:
         task_ids = tasks_by_module.get(module.id, set())
+        solved = len(task_ids & correct_task_ids)
+        total = len(task_ids)
         completed = bool(task_ids) and task_ids.issubset(correct_task_ids)
         if completed:
             completed_modules += 1
+
+        lessons = []
+        for lesson_id in lesson_ids_by_module.get(module.id, []):
+            lesson_tasks = tasks_by_lesson.get(lesson_id, set())
+            lesson_total = len(lesson_tasks)
+            solved_ids = lesson_tasks & correct_task_ids
+            lesson_solved = len(solved_ids)
+            lessons.append(
+                {
+                    "id": lesson_id,
+                    "tasks_total": lesson_total,
+                    "tasks_solved": lesson_solved,
+                    "percent": (
+                        round(lesson_solved * 100 / lesson_total, 1)
+                        if lesson_total
+                        else 0.0
+                    ),
+                    # ID решённых заданий — фронт по ним красит «прогресс-дотсы»
+                    # в списке заданий урока и переживает перезаход.
+                    "solved_task_ids": sorted(solved_ids),
+                }
+            )
+
+        module_items.append(
+            {
+                "id": module.id,
+                "slug": module.slug,
+                "title": module.title,
+                "tasks_total": total,
+                "tasks_solved": solved,
+                "percent": round(solved * 100 / total, 1) if total else 0.0,
+                "completed": completed,
+                "lessons": lessons,
+            }
+        )
 
     total_modules = len(modules)
     module_percent = round(completed_modules * 100 / total_modules, 1) if total_modules else 0.0
@@ -250,6 +318,7 @@ async def get_training_progress(db: AsyncSession, user_id: int) -> dict:
             "completed": completed_modules,
             "total": total_modules,
             "percent": module_percent,
+            "items": module_items,
         },
         "attempts": {
             "total": total_attempts,

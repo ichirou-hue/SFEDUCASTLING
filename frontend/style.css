@@ -2188,12 +2188,21 @@ body {
 }
 
 .training-task-counter {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  min-width: 150px;
   padding: 7px 13px;
   border-radius: 18px;
   background: rgba(131, 183, 135, 0.22);
   color: #2f5c36;
   font-size: 13px;
   font-weight: 600;
+}
+
+.training-task-counter .training-progress-bar {
+  width: 150px;
 }
 
 .training-lesson-layout {
@@ -2253,6 +2262,84 @@ body {
   background: #83b787;
   border-color: #5e9463;
   color: #fff;
+}
+
+.training-progress-dot--solved {
+  background: #83b787;
+  border-color: #5e9463;
+  color: #fff;
+}
+
+.training-progress-dot--solved.training-progress-dot--active {
+  background: #5e9463;
+  border-color: #4a7a4f;
+}
+
+/* Прогресс-бары обучения. Повторяем визуал .progress-meter из
+   ProgressWidget, чтобы процент выглядел одинаково в профиле и здесь. */
+.training-progress-bar {
+  width: 100%;
+  height: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(54, 89, 66, 0.12);
+}
+
+.training-progress-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #4f935c, #8db56f);
+  transition: width 0.25s ease;
+}
+
+.training-course-progress {
+  margin-top: 18px;
+  max-width: 520px;
+}
+
+.training-course-progress__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 7px;
+  font-size: 13px;
+  color: #555;
+}
+
+.training-course-progress__head strong {
+  font-size: 17px;
+  color: #2f5c36;
+}
+
+.training-module-progress {
+  width: 100%;
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  text-align: left;
+}
+
+.training-module-progress__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+  color: #666;
+}
+
+.training-module-progress__head strong {
+  font-size: 13px;
+  color: #2f5c36;
+}
+
+.training-lesson-progress-bar {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
 }
 
 .training-board-column {

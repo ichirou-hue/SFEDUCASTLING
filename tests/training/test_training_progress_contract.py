@@ -31,23 +31,25 @@ class _FakeDB:
     """Синтаксис-заглушка БД без реального Postgres.
 
     db.scalars(select(TrainingModule)) -> список модулей.
-    db.execute(...)                    -> task_rows, затем attempt_rows.
+    db.execute(...)                    -> по порядку: задания модулей
+    (task_id, lesson_id, module_id), уроки модулей (lesson_id, module_id),
+    затем попытки пользователя.
     """
 
-    def __init__(self, modules, task_rows=(), attempt_rows=()):
+    def __init__(self, modules, task_rows=(), lesson_rows=(), attempt_rows=()):
         self._modules = modules
-        self._task_rows = list(task_rows)
-        self._attempt_rows = list(attempt_rows)
-        self._task_used = False
+        self._exec_results = [
+            list(task_rows),
+            list(lesson_rows),
+            list(attempt_rows),
+        ]
 
     async def scalars(self, stmt):
         return _Result(self._modules)
 
     async def execute(self, stmt):
-        if not self._task_used:
-            self._task_used = True
-            return _Result(self._task_rows)
-        return _Result(self._attempt_rows)
+        rows = self._exec_results.pop(0) if self._exec_results else []
+        return _Result(rows)
 
 
 def _run(coro):
@@ -57,7 +59,8 @@ def _run(coro):
 def _progress(attempt_rows=()):
     db = _FakeDB(
         modules=[_Module(1, "pawn", "Пешка"), _Module(2, "rook", "Ладья")],
-        task_rows=[(100, 1), (101, 2)],
+        task_rows=[(100, 10, 1), (101, 20, 2)],
+        lesson_rows=[(10, 1), (20, 2)],
         attempt_rows=attempt_rows,
     )
     return _run(get_training_progress(db, user_id=1))
