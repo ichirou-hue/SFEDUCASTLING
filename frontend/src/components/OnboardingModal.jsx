@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { saveOnboarding } from "../api.js";
+import { linkChessAccount, saveOnboarding } from "../api.js";
 import "./OnboardingModal.css";
 
 // Дословно из «Анкеты оценки уровня игры», раздел 1 / приложение Д.1.
@@ -162,6 +162,9 @@ export default function OnboardingModal({ isOpen, onClose, onDone }) {
             ? { granted: true, contact: a.consentContact.trim() || null }
             : null,
       };
+      if (a.useQ2) {
+        await linkChessAccount(a.q2.login.trim(), a.q2.platform);
+      }
       const user = await saveOnboarding(payload);
       onDone?.(user);
       onClose();

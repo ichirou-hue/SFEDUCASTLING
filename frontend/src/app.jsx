@@ -89,9 +89,20 @@ export default function App() {
       setAuthNotice("Сессия истекла. Войдите в аккаунт снова.");
       setShowRegister(true);
     };
+    const refreshAfterAssessment = () => {
+      fetchCurrentUser()
+        .then((fresh) => {
+          if (fresh) setUser(fresh);
+        })
+        .catch(() => {});
+    };
 
     window.addEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired);
-    return () => window.removeEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired);
+    window.addEventListener("sfedu-assessment-updated", refreshAfterAssessment);
+    return () => {
+      window.removeEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired);
+      window.removeEventListener("sfedu-assessment-updated", refreshAfterAssessment);
+    };
   }, []);
 
   return (

@@ -1,9 +1,11 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { logout as apiLogout } from "../api.js";
 import MiniProfilePopover from "./MiniProfilePopover.jsx";
 import OnboardingModal from "./OnboardingModal.jsx";
 
 export default function TopBar({ user, onUserChange, onRegister, onMenuClick }) {
+  const navigate = useNavigate();
   const [showOnboarding, setShowOnboarding] = useState(false);
 
   const handleLogout = async () => {
@@ -57,6 +59,13 @@ export default function TopBar({ user, onUserChange, onRegister, onMenuClick }) 
         onDone={(freshUser) => {
           // Обновляем user в app.jsx — плашка исчезает без перезагрузки.
           onUserChange?.(freshUser);
+          if (
+            !freshUser?.is_admin &&
+            freshUser?.role !== "admin" &&
+            !freshUser?.assessment_completed
+          ) {
+            navigate("/level-test");
+          }
         }}
       />
     </div>

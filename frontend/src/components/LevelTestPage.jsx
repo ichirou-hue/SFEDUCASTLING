@@ -408,6 +408,7 @@ export default function LevelTestPage({ onCompleted = null }) {
     const totalCorrect = result.score?.correct ?? breakdown.reduce((sum, item) => sum + (item.correct || 0), 0);
     const totalQuestions = result.score?.total ?? breakdown.reduce((sum, item) => sum + (item.total || 0), 0);
     const finalRating = result.rating ?? result.score?.final_rating ?? result.result?.rating;
+    const advancedPractice = Number(finalRating) >= 2000;
 
     return (
       <main className="level-test-page level-test-page--centered">
@@ -445,8 +446,13 @@ export default function LevelTestPage({ onCompleted = null }) {
             </div>
           )}
           <div className="level-test-result-actions">
-            <button className="level-test-primary-btn" onClick={() => navigate("/training")}>
-              Перейти к обучению
+            <button
+              className="level-test-primary-btn"
+              onClick={() =>
+                navigate(advancedPractice ? "/puzzles?rating_min=2000" : "/training")
+              }
+            >
+              {advancedPractice ? "Решать задачи своего уровня" : "Перейти к обучению"}
             </button>
             <button className="level-test-secondary-btn" onClick={() => navigate("/")}>
               На главную

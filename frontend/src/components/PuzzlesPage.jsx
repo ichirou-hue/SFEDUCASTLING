@@ -102,7 +102,7 @@ const THEME_ICONS = {
   fork: "♞", pin: "♝", skewer: "♝",
   discoveredAttack: "♜", discoveredCheck: "♜",
   deflection: "♟", attraction: "♛", sacrifice: "♛",
-  endgame: "♟", middlegame: "♝", opening: "♞",
+  endgame: "♔", middlegame: "♝", opening: "♘",
   promotion: "♟", backRankMate: "♜",
   hangingPiece: "♞", capturingDefender: "♝",
   advantage: "♟", crushing: "♛", exposedKing: "♚",
@@ -163,6 +163,11 @@ export default function PuzzlesPage({ user, onRegister }) {
   const requestedTopicSlug = searchParams.get("topic");
   const requestedTopic = getCourseTopicMeta(requestedTopicSlug);
   const adaptiveMode = searchParams.get("adaptive") === "1";
+  const ratingMinParam = searchParams.get("rating_min");
+  const ratingMin =
+    ratingMinParam != null && /^\d+$/.test(ratingMinParam)
+      ? Number(ratingMinParam)
+      : null;
 
   const [puzzles, setPuzzles] = useState([]);
   const [adaptiveMeta, setAdaptiveMeta] = useState(null);
@@ -272,7 +277,7 @@ export default function PuzzlesPage({ user, onRegister }) {
 
     const request = adaptiveMode
       ? fetchAdaptivePuzzles(20)
-      : fetchPuzzles(20, requestedTopic?.slug || null);
+      : fetchPuzzles(20, requestedTopic?.slug || null, ratingMin);
 
     request
       .then((data) => {
@@ -285,6 +290,8 @@ export default function PuzzlesPage({ user, onRegister }) {
               ? "Пока не удалось подобрать персональную тренировку."
               : requestedTopic
                 ? `Для темы «${requestedTopic.title}» пока нет доступных пазлов.`
+                : ratingMin != null
+                  ? `Пока нет доступных пазлов с рейтингом от ${ratingMin}.`
                 : "Нет доступных задач",
           );
           return;
@@ -304,7 +311,7 @@ export default function PuzzlesPage({ user, onRegister }) {
         setError("Ошибка загрузки задач: " + (e.response?.data?.detail || e.message));
       })
       .finally(() => setLoading(false));
-  }, [adaptiveMode, requestedTopic?.slug, requestedTopic?.title]);
+  }, [adaptiveMode, ratingMin, requestedTopic?.slug, requestedTopic?.title]);
 
   useEffect(() => {
     if (puzzles.length > 0 && puzzles[currentIndex]) {
@@ -640,6 +647,12 @@ export default function PuzzlesPage({ user, onRegister }) {
           позиции
         </div>
 
+        {currentPuzzle && (
+          <div className="puzzle-turn-indicator">
+            Ход {currentPuzzle.fen.split(" ")[1] === "b" ? "чёрных" : "белых"}
+          </div>
+        )}
+
         <div className="puzzle-moves-left-label">
           Осталось
           <br />
@@ -674,6 +687,16 @@ export default function PuzzlesPage({ user, onRegister }) {
             <strong>
               {requestedTopic.icon} {requestedTopic.title}
             </strong>
+            <button type="button" onClick={() => navigate("/puzzles")}>
+              Показать все пазлы
+            </button>
+          </div>
+        )}
+
+        {!adaptiveMode && ratingMin != null && (
+          <div className="learning-topic-filter">
+            Подбор по рейтингу
+            <strong>От {ratingMin}</strong>
             <button type="button" onClick={() => navigate("/puzzles")}>
               Показать все пазлы
             </button>

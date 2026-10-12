@@ -1705,6 +1705,15 @@ body {
   margin: 8px 0;
 }
 
+.puzzle-turn-indicator {
+  padding: 6px 12px;
+  border: 1px solid rgba(34, 90, 115, 0.16);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.75);
+  color: #225a73;
+  font: 600 13px "Inter", sans-serif;
+}
+
 .puzzle-moves-left-label {
   font-family: "Calypso", serif;
   font-size: 16px;
@@ -2264,6 +2273,32 @@ body {
   background: rgba(255, 255, 255, 0.8);
   color: #555;
   cursor: pointer;
+}
+
+.training-progress-nav {
+  width: 34px;
+  height: 34px;
+  border: 1px solid #c9a96e;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.8);
+  color: #225a73;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.training-progress-nav:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.training-theory-navigation {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 14px;
+  color: #64748b;
+  font-size: 12px;
 }
 
 .training-progress-dot--active {

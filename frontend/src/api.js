@@ -353,9 +353,10 @@ export async function fetchExplainMove(
   return data;
 }
 
-export async function fetchPuzzles(count = 20, topic = null) {
+export async function fetchPuzzles(count = 20, topic = null, ratingMin = null) {
   const params = { count };
   if (topic) params.topic = topic;
+  if (ratingMin != null) params.rating_min = ratingMin;
   const { data } = await api.get("/api/learning/puzzles", { params });
   return data;
 }

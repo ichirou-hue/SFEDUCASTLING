@@ -105,6 +105,8 @@ export default function ProgressWidget() {
 
   const modules = training?.modules;
   const trainingAttempts = training?.attempts;
+  const hasLearningAttempts =
+    Number(trainingAttempts?.total || 0) > 0 || Number(learning?.attempts || 0) > 0;
 
   return (
     <section className="progress-widget" aria-label="Общий прогресс обучения">
@@ -166,25 +168,27 @@ export default function ProgressWidget() {
         </article>
       </div>
 
-      <div className="progress-widget__adaptive">
-        <div>
-          <strong>Персональная тренировка</strong>
-          <span>
-            {Number.isFinite(weakShare) && Number.isFinite(strongShare)
-              ? `${Math.round(weakShare)}% задач по слабым темам, ${Math.round(
-                  strongShare,
-                )}% — закрепление сильных.`
-              : "Тренируем слабые темы, закрепляем сильные."}
-          </span>
+      {hasLearningAttempts && (
+        <div className="progress-widget__adaptive">
+          <div>
+            <strong>Персональная тренировка</strong>
+            <span>
+              {Number.isFinite(weakShare) && Number.isFinite(strongShare)
+                ? `${Math.round(weakShare)}% задач по слабым темам, ${Math.round(
+                    strongShare,
+                  )}% — закрепление сильных.`
+                : "Тренируем слабые темы, закрепляем сильные."}
+            </span>
+          </div>
+          <button type="button" onClick={() => navigate("/puzzles?adaptive=1")}>
+            Потренировать слабые места →
+          </button>
         </div>
-        <button type="button" onClick={() => navigate("/puzzles?adaptive=1")}>
-          Потренировать слабые места →
-        </button>
-      </div>
+      )}
 
-      <div className="progress-widget__topics">
-        <div className="progress-widget__topics-title">Точность по темам курса</div>
-        {activeTopics.length > 0 ? (
+      {activeTopics.length > 0 && (
+        <div className="progress-widget__topics">
+          <div className="progress-widget__topics-title">Точность по темам курса</div>
           <div className="progress-topic-list">
             {activeTopics.map((topic) => (
               <div className="progress-topic" key={topic.slug}>
@@ -201,12 +205,8 @@ export default function ProgressWidget() {
               </div>
             ))}
           </div>
-        ) : (
-          <div className="progress-widget__empty">
-            Выполните первое задание курса — здесь появится точность по темам.
-          </div>
-        )}
-      </div>
+        </div>
+      )}
     </section>
   );
 }

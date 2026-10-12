@@ -20,6 +20,7 @@ from backend.db.session import get_db
 from backend.models.level_test import LevelTest
 from backend.models.puzzle_attempt import PuzzleAttempt
 from backend.models.user import ROLE_ADMIN, User
+from backend.models.user_chess_account import UserChessAccount
 from backend.services.adaptive_logic import select_adaptive_puzzles
 from backend.services.adaptive_training import (
     build_weakness_profile,
@@ -171,6 +172,32 @@ async def _latest_personal_test(db: AsyncSession, user_id: int) -> LevelTest | N
     )
 
 
+async def _starting_rating(db: AsyncSession, user: User) -> int:
+    onboarding = user.onboarding if isinstance(user.onboarding, dict) else {}
+    answers = onboarding.get("answers") if isinstance(onboarding.get("answers"), dict) else {}
+    q2 = answers.get("q2") if isinstance(answers.get("q2"), dict) else {}
+    requested_platform = str(q2.get("platform") or "").strip().lower()
+    if requested_platform in {"chess.com", "chess_com", "chess"}:
+        requested_platform = "chesscom"
+    if requested_platform not in {"lichess", "chesscom"}:
+        requested_platform = ""
+
+    account_query = select(UserChessAccount).where(
+        UserChessAccount.user_id == user.id,
+        UserChessAccount.rating.is_not(None),
+        UserChessAccount.rating_usable.is_(True),
+    )
+    if requested_platform:
+        account_query = account_query.where(
+            UserChessAccount.platform == requested_platform
+        )
+    account = await db.scalar(account_query.order_by(UserChessAccount.updated_at.desc()))
+    if account is not None:
+        return max(0, min(3500, int(account.rating)))
+
+    return max(0, min(3500, int(user.rating_estimate or user.elo or 800)))
+
+
 def _upsert_test_answer(test: LevelTest, answer: dict[str, Any]) -> None:
     answers = [
         item
@@ -209,7 +236,7 @@ async def level_test_start(
             "personalization": active.metrics_snapshot or {},
         }
 
-    rating_estimate = int(user.rating_estimate or user.elo or 800)
+    rating_estimate = await _starting_rating(db, user)
     seed = secrets.randbelow(2_147_483_647)
     puzzles, metrics = await personalized_level_test_puzzles(
         db,
@@ -665,7 +692,11 @@ def puzzle_check(req: PuzzleAnswerRequest):
 
 
 @router.get("/api/learning/puzzles")
-def get_puzzles(count: int = 20, topic: str | None = None):
+def get_puzzles(
+    count: int = Query(default=20, ge=1, le=100),
+    topic: str | None = None,
+    rating_min: int | None = Query(default=None, ge=0, le=10000),
+):
     """Возвращает набор задач с полными решениями для тренировочной страницы.
 
     ``topic`` — slug модуля учебного курса. Если он передан, выдаются только
@@ -688,6 +719,10 @@ def get_puzzles(count: int = 20, topic: str | None = None):
     if normalized_topic:
         valid_puzzles = [
             p for p in valid_puzzles if _puzzle_matches_course_topic(p, normalized_topic)
+        ]
+    if rating_min is not None:
+        valid_puzzles = [
+            p for p in valid_puzzles if int(p.get("rating") or 0) >= rating_min
         ]
 
     picked: list[dict] = []
