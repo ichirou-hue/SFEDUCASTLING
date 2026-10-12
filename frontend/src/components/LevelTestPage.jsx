@@ -8,6 +8,7 @@ import {
   skipLevelTestQuestion,
   startLevelTest,
 } from "../api.js";
+import "./LevelTestPage.css";
 
 const START_FEN = "8/8/8/8/8/8/8/8 w - - 0 1";
 
@@ -485,6 +486,13 @@ export default function LevelTestPage({ onCompleted = null }) {
               <ReactChessboard
                 position={fen}
                 boardOrientation={orientation}
+                showBoardNotation={true}
+                customNotationStyle={{
+                  fontSize: "12px",
+                  fontFamily: "Cormorant Garamond, Georgia, serif",
+                  fontWeight: "500",
+                  color: "#4a3220",
+                }}
                 boardWidth={boardWidth}
                 onPieceDrop={(source, target) => {
                   attemptMove(source, target);

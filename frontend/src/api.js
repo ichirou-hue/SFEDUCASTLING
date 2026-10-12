@@ -222,8 +222,20 @@ export async function saveOnboarding(answers) {
   return user;
 }
 
-export async function fetchAdminUsers(limit = 100) {
-  const { data } = await api.get("/api/auth/admin/users", { params: { limit } });
+// === Админ-панель: пользователи, профиль, статистика, роли ===
+
+export async function fetchAdminUsers() {
+  const { data } = await api.get("/api/admin/users");
+  return data;
+}
+
+export async function fetchAdminUser(userId) {
+  const { data } = await api.get(`/api/admin/users/${userId}`);
+  return data;
+}
+
+export async function fetchAdminUserStats(userId) {
+  const { data } = await api.get(`/api/admin/users/${userId}/stats`);
   return data;
 }
 
@@ -416,6 +428,20 @@ export async function checkTrainingTask(
 
 export async function fetchTrainingProgress() {
   const { data } = await api.get("/api/training/progress");
+  return data;
+}
+
+export async function fetchTrainingDue(limit = 20) {
+  const { data } = await api.get("/api/training/due", { params: { limit } });
+  return data;
+}
+
+// === База знаний: дебюты ===
+
+export async function fetchOpeningByFen(fen) {
+  const { data } = await api.get("/api/knowledge/opening", {
+    params: { fen },
+  });
   return data;
 }
 

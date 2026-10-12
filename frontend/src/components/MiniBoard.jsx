@@ -50,6 +50,12 @@ export default function MiniBoard({ fen, width = 220, lastMove = null, arrows = 
         animationDuration={0}
         boardOrientation="white"
         showBoardNotation={true}
+        customNotationStyle={{
+          fontSize: "12px",
+          fontFamily: "Cormorant Garamond, Georgia, serif",
+          fontWeight: "500",
+          color: "#4a3220",
+        }}
         areArrowsAllowed={true}
         customArrows={customArrows}
         customArrowColor={STOCKFISH_GREEN}

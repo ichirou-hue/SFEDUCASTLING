@@ -4,9 +4,11 @@ import { Chess } from "chess.js";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   checkTrainingTask,
+  fetchTrainingDue,
   fetchTrainingLesson,
   fetchTrainingModule,
   fetchTrainingModules,
+  fetchTrainingProgress,
 } from "../api.js";
 import "./LearningCrossLinks.css";
 
@@ -32,6 +34,10 @@ const customPieces = Object.fromEntries(
   ]),
 );
 
+// Пауза перед автопереключением на следующее задание после верного
+// ответа (мс): достаточно, чтобы прочитать разбор, но не скучно ждать.
+const AUTO_ADVANCE_DELAY_MS = 2500;
+
 const MODULE_ICONS = {
   pawn: "♙",
   knight: "♘",
@@ -51,6 +57,28 @@ const TASK_TYPE_LABELS = {
 
 function getApiError(error, fallback) {
   return error?.response?.data?.detail || error?.message || fallback;
+}
+
+/*
+ * Тонкий прогресс-бар. Повторяет визуал .progress-meter из ProgressWidget,
+ * чтобы процент прохождения выглядел одинаково в профиле и в обучении.
+ */
+function ProgressBar({ value, label }) {
+  const safe = Math.min(100, Math.max(0, Number(value) || 0));
+
+  return (
+    <div
+      className="training-progress-bar"
+      role="progressbar"
+      aria-valuenow={Math.round(safe)}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-label={label}
+      title={label}
+    >
+      <span style={{ width: `${safe}%` }} />
+    </div>
+  );
 }
 
 function getTaskHint(task) {
@@ -86,11 +114,20 @@ export default function TrainingPage({ user, onRegister }) {
   const requestedModuleSlug = searchParams.get("module");
 
   const [modules, setModules] = useState([]);
+  const [dueItems, setDueItems] = useState([]);
+  // Прогресс курса: modules.items[] несёт счётчики заданий по каждому
+  // модулю и его урокам. Грузится отдельно от списка модулей, потому что
+  // требует JWT и считается по training_attempts.
+  const [progress, setProgress] = useState(null);
   const [selectedModule, setSelectedModule] = useState(null);
   const [lessons, setLessons] = useState([]);
   const [lesson, setLesson] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [taskIndex, setTaskIndex] = useState(0);
+  // ID заданий текущего урока, решённые верно. Серверные данные из
+  // lessonProgressById.solved_task_ids плюс то, что решено в этой сессии —
+  // так дотсы не теряют состояние при переходах внутри урока.
+  const [solvedTaskIds, setSolvedTaskIds] = useState(() => new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [checking, setChecking] = useState(false);
@@ -109,6 +146,37 @@ export default function TrainingPage({ user, onRegister }) {
   // Следим за конкретным пользователем, а не за объектом целиком:
   // обновление профиля (идентичный id) не должно перезагружать курс.
   const userId = user?.id ?? null;
+
+  // Быстрый доступ к прогрессу: по слагу модуля и по id урока.
+  const moduleProgressBySlug = useMemo(() => {
+    const map = new Map();
+    for (const item of progress?.modules?.items || []) {
+      map.set(item.slug, item);
+    }
+    return map;
+  }, [progress]);
+
+  const lessonProgressById = useMemo(() => {
+    const map = new Map();
+    for (const item of progress?.modules?.items || []) {
+      for (const lessonItem of item.lessons || []) {
+        map.set(lessonItem.id, lessonItem);
+      }
+    }
+    return map;
+  }, [progress]);
+
+  // Сколько заданий текущего урока решено. Пересекаемся с tasks:
+  // solvedTaskIds заполняется по конкретному уроку, но защищаемся,
+  // если после смены урока state ещё не успел сброситься.
+  const solvedCount = useMemo(() => {
+    if (!tasks.length) return 0;
+    let count = 0;
+    for (const task of tasks) {
+      if (solvedTaskIds.has(task.id)) count += 1;
+    }
+    return count;
+  }, [solvedTaskIds, tasks]);
 
   useEffect(() => {
     let cancelled = false;
@@ -129,11 +197,34 @@ export default function TrainingPage({ user, onRegister }) {
       }
     }
 
+    async function loadDue() {
+      try {
+        const data = await fetchTrainingDue(20);
+        if (!cancelled) setDueItems(data.items || []);
+      } catch {
+        // Просроченные повторения — вспомогательная секция:
+        // её сбой не должен ломать загрузку курса.
+        if (!cancelled) setDueItems([]);
+      }
+    }
+
+    async function loadProgress() {
+      try {
+        const data = await fetchTrainingProgress();
+        if (!cancelled) setProgress(data || null);
+      } catch {
+        // Без прогресса курс всё равно читается — просто не показываем бары.
+        if (!cancelled) setProgress(null);
+      }
+    }
+
     if (!userId) {
       // Гость: вместо списка показывается заглушка «после регистрации».
       // Сбрасываем состояние при выходе/переключении аккаунта, иначе после
       // входа останутся старые данные (пустой список или гостевой 401).
       setModules([]);
+      setDueItems([]);
+      setProgress(null);
       setSelectedModule(null);
       setLessons([]);
       setLesson(null);
@@ -145,9 +236,17 @@ export default function TrainingPage({ user, onRegister }) {
     }
 
     loadModules();
+    loadDue();
+    loadProgress();
+
+    // После каждого верного ответа страница сама шлёт это событие —
+    // перечитываем прогресс, чтобы бары обновились без перезахода.
+    const refreshProgress = () => loadProgress();
+    window.addEventListener("sfedu-progress-updated", refreshProgress);
 
     return () => {
       cancelled = true;
+      window.removeEventListener("sfedu-progress-updated", refreshProgress);
     };
   }, [userId]);
 
@@ -174,6 +273,22 @@ export default function TrainingPage({ user, onRegister }) {
     setHintVisible(false);
     taskStartedAtRef.current = Date.now();
   }, [currentTask?.id]);
+
+  // Автопереключение после верного ответа: даём время прочитать разбор
+  // и переходим к следующему заданию. На последнем задании таймер не
+  // ставим — показывается блок «Урок завершён». Ручной переход (кнопка
+  // «Следующее задание», дотсы) меняет taskIndex → таймер отменяется,
+  // а новый урок сбрасывает taskResult в эффекте выше.
+  useEffect(() => {
+    if (!taskResult?.correct) return undefined;
+    if (taskIndex >= tasks.length - 1) return undefined;
+
+    const timer = setTimeout(() => {
+      setTaskIndex((index) => index + 1);
+    }, AUTO_ADVANCE_DELAY_MS);
+
+    return () => clearTimeout(timer);
+  }, [taskResult?.correct, taskIndex, tasks.length]);
 
   const openModule = useCallback(async (module) => {
     if (!module.enabled) return;
@@ -225,6 +340,30 @@ export default function TrainingPage({ user, onRegister }) {
     }
   }, []);
 
+  // Заполняем решённые задания урока из серверного прогресса.
+  // Зависим только от id урока: перезагрузка прогресса после ответа не
+  // должна сбрасывать локально добавленные решения.
+  useEffect(() => {
+    if (!lesson) {
+      setSolvedTaskIds(new Set());
+      return;
+    }
+    const lessonProgress = lessonProgressById.get(lesson.id);
+    setSolvedTaskIds(new Set(lessonProgress?.solved_task_ids || []));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lesson?.id]);
+
+  // Просроченное повторение ведёт сразу в урок, где живёт задание.
+  const openDueItem = useCallback(
+    async (item) => {
+      const module = modules.find((m) => m.slug === item.module?.slug && m.enabled);
+      if (!module) return;
+      await openModule(module);
+      await openLesson(item.lesson.id);
+    },
+    [modules, openModule, openLesson],
+  );
+
   const backToModules = () => {
     navigate("/training");
     setSelectedModule(null);
@@ -257,6 +396,15 @@ export default function TrainingPage({ user, onRegister }) {
           responseTimeMs,
         );
         setTaskResult(result);
+        if (result.correct) {
+          // Дотсы урока обновляются сразу; после ответа страница шлёт
+          // sfedu-progress-updated, так что бары модулей перечитаются сами.
+          setSolvedTaskIds((prev) => {
+            const next = new Set(prev);
+            next.add(currentTask.id);
+            return next;
+          });
+        }
         window.dispatchEvent(new Event("sfedu-progress-updated"));
 
         if (result.correct && moveToApply && currentTask.task_type === "make_move") {
@@ -417,6 +565,8 @@ export default function TrainingPage({ user, onRegister }) {
   }
 
   if (!selectedModule) {
+    const course = progress?.modules;
+
     return (
       <div className="training-page">
         <section className="training-hero">
@@ -426,37 +576,112 @@ export default function TrainingPage({ user, onRegister }) {
             Изучайте особенности каждой фигуры последовательно: сначала теория,
             затем интерактивные задания на шахматной доске.
           </p>
+
+          {course && course.total > 0 && (
+            <div className="training-course-progress">
+              <div className="training-course-progress__head">
+                <span>
+                  Пройдено модулей: {course.completed} из {course.total}
+                </span>
+                <strong>{Math.round(course.percent)}%</strong>
+              </div>
+              <ProgressBar
+                value={course.percent}
+                label={`Прогресс курса: ${Math.round(course.percent)}%`}
+              />
+            </div>
+          )}
         </section>
 
         {error && <div className="training-global-error">{error}</div>}
 
+        {dueItems.length > 0 && (
+          <section className="training-due-section">
+            <div className="training-due-heading">
+              <span className="training-due-icon">🔁</span>
+              <div>
+                <strong>
+                  Пора повторить: {dueItems.length}{" "}
+                  {dueItems.length === 1 ? "задание" : "задания"}
+                </strong>
+                <span>
+                  Интервальное повторение закрепляет материал — пройдите
+                  просроченные задания.
+                </span>
+              </div>
+            </div>
+            <div className="training-due-list">
+              {dueItems.map((item) => (
+                <button
+                  type="button"
+                  key={item.review.id}
+                  className="training-due-card"
+                  onClick={() => openDueItem(item)}
+                >
+                  <span className="training-due-card-main">
+                    <strong>{item.task.title}</strong>
+                    <span>
+                      {item.module.title} · {item.lesson.title}
+                    </span>
+                  </span>
+                  <span className="training-due-card-meta">
+                    повторений: {item.review.reps}
+                  </span>
+                  <span className="training-due-card-arrow">→</span>
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
+
         <div className="training-modules-grid">
-          {modules.map((module) => (
-            <button
-              type="button"
-              key={module.id}
-              className={`training-module-card ${
-                module.enabled ? "" : "training-module-card--disabled"
-              }`}
-              onClick={() =>
-                navigate(`/training?module=${encodeURIComponent(module.slug)}`)
-              }
-              disabled={!module.enabled}
-            >
-              <span className="training-module-icon">
-                {MODULE_ICONS[module.slug] || "♟"}
-              </span>
-              <span className="training-module-title">{module.title}</span>
-              <span className="training-module-description">
-                {module.description}
-              </span>
-              <span className="training-module-meta">
-                {module.enabled
-                  ? `${module.lesson_count} уроков · ${module.task_count} заданий`
-                  : "Скоро"}
-              </span>
-            </button>
-          ))}
+          {modules.map((module) => {
+            const moduleProgress = moduleProgressBySlug.get(module.slug);
+
+            return (
+              <button
+                type="button"
+                key={module.id}
+                className={`training-module-card ${
+                  module.enabled ? "" : "training-module-card--disabled"
+                }`}
+                onClick={() =>
+                  navigate(`/training?module=${encodeURIComponent(module.slug)}`)
+                }
+                disabled={!module.enabled}
+              >
+                <span className="training-module-icon">
+                  {MODULE_ICONS[module.slug] || "♟"}
+                </span>
+                <span className="training-module-title">{module.title}</span>
+                <span className="training-module-description">
+                  {module.description}
+                </span>
+
+                {module.enabled && moduleProgress && (
+                  <span className="training-module-progress">
+                    <span className="training-module-progress__head">
+                      <span>
+                        {moduleProgress.tasks_solved} из{" "}
+                        {moduleProgress.tasks_total} заданий
+                      </span>
+                      <strong>{Math.round(moduleProgress.percent)}%</strong>
+                    </span>
+                    <ProgressBar
+                      value={moduleProgress.percent}
+                      label={`${module.title}: ${Math.round(moduleProgress.percent)}%`}
+                    />
+                  </span>
+                )}
+
+                <span className="training-module-meta">
+                  {module.enabled
+                    ? `${module.lesson_count} уроков · ${module.task_count} заданий`
+                    : "Скоро"}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
     );
@@ -492,23 +717,37 @@ export default function TrainingPage({ user, onRegister }) {
         {error && <div className="training-global-error">{error}</div>}
 
         <div className="training-lessons-list">
-          {lessons.map((item, index) => (
-            <button
-              type="button"
-              className="training-lesson-card"
-              key={item.id}
-              onClick={() => openLesson(item.id)}
-            >
-              <span className="training-lesson-number">{index + 1}</span>
-              <span className="training-lesson-content">
-                <span className="training-lesson-title">{item.title}</span>
-                <span className="training-lesson-meta">
-                  {item.task_count} {item.task_count === 1 ? "задание" : "задания"}
+          {lessons.map((item, index) => {
+            const lessonProgress = lessonProgressById.get(item.id);
+
+            return (
+              <button
+                type="button"
+                className="training-lesson-card"
+                key={item.id}
+                onClick={() => openLesson(item.id)}
+              >
+                <span className="training-lesson-number">{index + 1}</span>
+                <span className="training-lesson-content">
+                  <span className="training-lesson-title">{item.title}</span>
+                  <span className="training-lesson-meta">
+                    {item.task_count}{" "}
+                    {item.task_count === 1 ? "задание" : "задания"}
+                  </span>
+
+                  {lessonProgress && (
+                    <span className="training-lesson-progress-bar">
+                      <ProgressBar
+                        value={lessonProgress.percent}
+                        label={`${item.title}: ${lessonProgress.tasks_solved} из ${lessonProgress.tasks_total}`}
+                      />
+                    </span>
+                  )}
                 </span>
-              </span>
-              <span className="training-lesson-arrow">→</span>
-            </button>
-          ))}
+                <span className="training-lesson-arrow">→</span>
+              </button>
+            );
+          })}
         </div>
       </div>
     );
@@ -528,7 +767,15 @@ export default function TrainingPage({ user, onRegister }) {
           Проверить на пазлах этой темы →
         </button>
         <div className="training-task-counter">
-          Задание {Math.min(taskIndex + 1, tasks.length)} из {tasks.length}
+          <span>
+            Задание {Math.min(taskIndex + 1, tasks.length)} из {tasks.length}
+          </span>
+          {tasks.length > 0 && (
+            <ProgressBar
+              value={(solvedCount * 100) / tasks.length}
+              label={`Решено ${solvedCount} из ${tasks.length} заданий урока`}
+            />
+          )}
         </div>
       </div>
 
@@ -541,19 +788,29 @@ export default function TrainingPage({ user, onRegister }) {
           <p>{lesson.theory}</p>
 
           <div className="training-lesson-progress">
-            {tasks.map((task, index) => (
-              <button
-                type="button"
-                key={task.id}
-                className={`training-progress-dot ${
-                  index === taskIndex ? "training-progress-dot--active" : ""
-                }`}
-                onClick={() => setTaskIndex(index)}
-                title={`Задание ${index + 1}: ${task.title}`}
-              >
-                {index + 1}
-              </button>
-            ))}
+            {tasks.map((task, index) => {
+              const solved = solvedTaskIds.has(task.id);
+
+              return (
+                <button
+                  type="button"
+                  key={task.id}
+                  className={[
+                    "training-progress-dot",
+                    index === taskIndex ? "training-progress-dot--active" : "",
+                    solved ? "training-progress-dot--solved" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                  onClick={() => setTaskIndex(index)}
+                  title={`Задание ${index + 1}: ${task.title}${
+                    solved ? " — решено" : ""
+                  }`}
+                >
+                  {index + 1}
+                </button>
+              );
+            })}
           </div>
         </aside>
 
@@ -568,6 +825,12 @@ export default function TrainingPage({ user, onRegister }) {
                 animationDuration={180}
                 boardOrientation="white"
                 showBoardNotation={true}
+                customNotationStyle={{
+                  fontSize: "12px",
+                  fontFamily: "Cormorant Garamond, Georgia, serif",
+                  fontWeight: "500",
+                  color: "#4a3220",
+                }}
                 customPieces={customPieces}
                 customSquareStyles={customSquareStyles}
                 customBoardStyle={{
@@ -727,6 +990,11 @@ export default function TrainingPage({ user, onRegister }) {
                   </span>
                   {taskResult.correct && taskResult.explanation && (
                     <p>{taskResult.explanation}</p>
+                  )}
+                  {taskResult.correct && taskIndex < tasks.length - 1 && (
+                    <span className="training-auto-hint">
+                      Следующее задание откроется автоматически…
+                    </span>
                   )}
                 </div>
               )}
