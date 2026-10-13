@@ -48,6 +48,7 @@ const MODULE_ICONS = {
   king: "♔",
   "special-rules": "♙",
   "check-mate-stalemate": "♚",
+  endgames: "♔",
 };
 
 const TASK_TYPE_LABELS = {

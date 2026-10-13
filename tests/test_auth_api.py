@@ -209,6 +209,37 @@ class TestMeAndTokens:
             == 401
         )
 
+    def test_logout_invalidates_access_token(self, cleanup):
+        """logout отзывает и access-токен: доступ с прежним JWT сразу закрыт."""
+        login, access, refresh_tok = self._tokens(cleanup)
+        h = {"Authorization": f"Bearer {access}"}
+        assert client.get("/api/auth/me", headers=h).status_code == 200
+        assert client.get("/api/training/modules", headers=h).status_code == 200
+
+        assert (
+            client.post("/api/auth/logout", json={"refresh_token": refresh_tok}).status_code
+            == 200
+        )
+
+        # Старый access больше не действует ни на один защищённый эндпоинт.
+        assert client.get("/api/auth/me", headers=h).status_code == 401
+        assert client.get("/api/training/modules", headers=h).status_code == 401
+
+        # Но логин с теми же креденшалами снова работает (новая сессия).
+        r = client.post("/api/auth/login", json={"login": login, "password": PASSWORD})
+        assert r.status_code == 200
+        new_access = r.json()["access_token"]
+        assert (
+            client.get("/api/auth/me", headers={"Authorization": f"Bearer {new_access}"}).status_code
+            == 200
+        )
+
+    def test_logout_unknown_refresh_is_ok(self):
+        """logout с неизвестным refresh-токеном отвечает 200 (идемпотентно)."""
+        r = client.post("/api/auth/logout", json={"refresh_token": "x" * 64})
+        assert r.status_code == 200
+        assert r.json() == {"ok": True}
+
     def test_refresh_garbage(self):
         assert (
             client.post("/api/auth/refresh", json={"refresh_token": "x" * 64}).status_code

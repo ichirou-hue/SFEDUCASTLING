@@ -47,7 +47,7 @@ const THEME_LABELS = {
   mateIn4: "Мат в 4 хода",
   fork: "Вилка",
   pin: "Связка",
-  skewer: "Кол",
+  skewer: "Сквозной удар",
   discoveredAttack: "Открытая атака",
   discoveredCheck: "Шах с открывания",
   deflection: "Отвлечение",

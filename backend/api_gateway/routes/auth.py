@@ -252,6 +252,7 @@ async def _issue_tokens(db: AsyncSession, user: User) -> dict:
             user.id,
             user.login,
             user.effective_role,
+            token_version=user.token_version,
         ),
         "refresh_token": raw_refresh,
         "token_type": "bearer",
@@ -315,12 +316,20 @@ async def refresh(req: RefreshRequest, db: AsyncSession = Depends(get_db)):
 
 @router.post("/logout")
 async def logout(req: RefreshRequest, db: AsyncSession = Depends(get_db)):
+    """Отменяет refresh-токен и мгновенно отзывает все access-токены пользователя.
+
+    Access-токены stateless, поэтому отзываем их версией сессии: инкремент
+    users.token_version делает недействительными все ранее выданные JWT.
+    """
     token_hash = hash_refresh_token(req.refresh_token)
     row = await db.scalar(
         select(RefreshToken).where(RefreshToken.token_hash == token_hash)
     )
     if row and not row.revoked:
         row.revoked = True
+        user = await db.get(User, row.user_id)
+        if user:
+            user.token_version += 1
         await db.commit()
     return {"ok": True}
 

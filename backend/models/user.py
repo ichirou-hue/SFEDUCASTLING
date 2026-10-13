@@ -49,6 +49,12 @@ class User(Base):
     role: Mapped[str] = mapped_column(
         String(32), default=ROLE_LEARNER, server_default=ROLE_LEARNER, nullable=False
     )
+    # Версия сессии. Инкрементируется при logout: все ранее выданные JWT
+    # access-токены становятся недействительными мгновенно (см. security.py,
+    # dependecies.py). Ротация refresh сама по себе версию не трогает.
+    token_version: Mapped[int] = mapped_column(
+        Integer, default=0, server_default="0", nullable=False
+    )
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
 
     refresh_tokens: Mapped[list[RefreshToken]] = relationship(
