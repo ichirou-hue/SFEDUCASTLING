@@ -34,6 +34,10 @@ async def get_current_user(
     user = await db.get(User, user_id)
     if not user:
         raise HTTPException(status_code=401, detail="Пользователь не найден")
+    # Сверяем версию сессии из JWT с текущей в БД: после logout она
+    # инкрементируется, поэтому старые access-токены мгновенно отзываются.
+    if payload.get("tv") != user.token_version:
+        raise HTTPException(status_code=401, detail="Сессия завершена, войдите заново")
     return user
 
 
@@ -49,7 +53,10 @@ async def get_optional_current_user(
         user_id = int(payload["sub"])
     except (pyjwt.PyJWTError, KeyError, TypeError, ValueError):
         return None
-    return await db.get(User, user_id)
+    user = await db.get(User, user_id)
+    if user is None or payload.get("tv") != user.token_version:
+        return None
+    return user
 
 
 def require_roles(*allowed_roles: str) -> Callable:
