@@ -18,10 +18,23 @@ fi
 source .venv/bin/activate
 
 # 2. Зависимости (устанавливаем только если чего-то не хватает)
+# Maia3 лежит git-сабмодулем: инициализируем до pip install, иначе
+# установка -e ./maia3 из requirements.txt упадёт на пустом каталоге.
+# Нефатально: без сети/гита движок просто останется недоступен.
+if [ -d ".git" ] && [ ! -f "maia3/pyproject.toml" ]; then
+    echo "Инициализирую сабмодуль maia3..."
+    git submodule update --init maia3 2>/dev/null || true
+fi
 if ! python -c "import fastapi, alembic, sqlalchemy, aiosqlite, dotenv" 2>/dev/null; then
     echo "Устанавливаю зависимости..."
     python -m pip install --upgrade pip
     python -m pip install -r requirements.txt
+fi
+# Maia3 ставится из сабмодуля (-e ./maia3): доустанавливаем отдельно,
+# если основной набор зависимостей уже был, а движка в venv нет.
+if [ -f "maia3/pyproject.toml" ] && ! python -c "import maia3.uci" 2>/dev/null; then
+    echo "Устанавливаю движок maia3 из сабмодуля..."
+    python -m pip install -e ./maia3
 fi
 
 # 3. Конфигурация

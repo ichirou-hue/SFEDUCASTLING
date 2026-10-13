@@ -68,13 +68,23 @@
   min-height: 0;
   overflow: auto;
   padding: 26px;
-  background: #f4f1e8;
+  /* Без собственного фона — как у остальных страниц: виден общий мрамор body. */
   box-sizing: border-box;
 }
 
 .level-test-page--centered {
-  display: grid;
-  place-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Обёртка центрируемой карточки: margin auto держит её по центру
+   свободного места, а футер остаётся внизу контейнера. */
+.level-test-center-wrap {
+  margin: auto;
+  width: min(760px, 100%);
+  display: flex;
+  justify-content: center;
 }
 
 .level-test-intro-card,
@@ -111,6 +121,12 @@
 .level-test-privacy-note {
   color: #6c746a;
   font-size: 14px;
+}
+
+/* Отделяем поясняющий текст от кнопки «Начать проверку уровня»,
+   чтобы он не лип к ней. */
+.level-test-intro-card .level-test-primary-btn {
+  margin-top: 20px;
 }
 
 .level-test-personalization,
@@ -165,8 +181,13 @@
   box-shadow: 0 12px 35px rgba(31, 42, 31, .10);
 }
 
+/* Рамка вокруг доски — как у остальных досок сайта
+   (.board-wrapper, .puzzle-board-wrapper, .training-board-wrapper). */
 .level-test-board-wrap {
   padding: 14px;
+  border: 3px solid rgba(180, 135, 44, 0.85);
+  background: #f0f2ea;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
 }
 
 .level-test-side-card {

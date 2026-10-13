@@ -8,6 +8,7 @@ import {
   skipLevelTestQuestion,
   startLevelTest,
 } from "../api.js";
+import SiteFooter from "./SiteFooter.jsx";
 import "./LevelTestPage.css";
 
 const START_FEN = "8/8/8/8/8/8/8/8 w - - 0 1";
@@ -359,6 +360,7 @@ export default function LevelTestPage({ onCompleted = null }) {
   if (phase === "intro" || phase === "loading") {
     return (
       <main className="level-test-page level-test-page--centered">
+        <div className="level-test-center-wrap">
         <section className="level-test-intro-card">
           <div className="level-test-kicker">{onCompleted ? "Шаг 2 из 3 · персональный тест" : "SFEDUCASTLING"}</div>
           <h1>Проверка шахматного уровня</h1>
@@ -387,6 +389,8 @@ export default function LevelTestPage({ onCompleted = null }) {
             {phase === "loading" ? "Формируем новый набор..." : "Начать проверку уровня"}
           </button>
         </section>
+        </div>
+        <SiteFooter />
       </main>
     );
   }
@@ -411,6 +415,7 @@ export default function LevelTestPage({ onCompleted = null }) {
 
     return (
       <main className="level-test-page level-test-page--centered">
+        <div className="level-test-center-wrap">
         <section className="level-test-result-card">
           <div className="level-test-result-icon">♕</div>
           <div className="level-test-kicker">Результат проверки</div>
@@ -453,6 +458,8 @@ export default function LevelTestPage({ onCompleted = null }) {
             </button>
           </div>
         </section>
+        </div>
+        <SiteFooter />
       </main>
     );
   }
@@ -503,9 +510,29 @@ export default function LevelTestPage({ onCompleted = null }) {
                 animationDuration={180}
                 customPieces={customPieces}
                 customSquareStyles={squareStyles}
-                customBoardStyle={{ borderRadius: "14px" }}
-                customDarkSquareStyle={{ backgroundColor: "#6f9163" }}
-                customLightSquareStyle={{ backgroundColor: "#e8e0c8" }}
+                customBoardStyle={{
+                  borderRadius: "15px",
+                  backgroundImage:
+                    "linear-gradient(0deg, rgba(74, 178, 45, 0.43) 0%, rgba(74, 178, 45, 0.43) 100%), url(/textures/green-marble.png)",
+                  backgroundPosition: "-0.111px 0px",
+                  backgroundSize: "100.027% 100%",
+                  backgroundRepeat: "no-repeat",
+                  backgroundColor: "lightgray",
+                }}
+                customDarkSquareStyle={{
+                  boxShadow:
+                    "inset 1px 0 0 rgba(226, 213, 124, 0.5), inset 0 1px 0 rgba(226, 213, 124, 0.5)",
+                  backgroundColor: "rgba(223, 239, 252, 0.20)",
+                }}
+                customLightSquareStyle={{
+                  boxShadow:
+                    "inset 1px 0 0 rgba(226, 213, 124, 0.5), inset 0 1px 0 rgba(226, 213, 124, 0.5)",
+                  backgroundImage: "url(/textures/white-marble.png)",
+                  backgroundPosition: "50%",
+                  backgroundSize: "cover",
+                  backgroundRepeat: "no-repeat",
+                  backgroundColor: "rgba(255, 255, 255, 0.75)",
+                }}
               />
             </div>
           </div>
@@ -576,6 +603,7 @@ export default function LevelTestPage({ onCompleted = null }) {
           </div>
         </div>
       )}
+      <SiteFooter />
     </main>
   );
 }

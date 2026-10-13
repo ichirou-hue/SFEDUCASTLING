@@ -20,7 +20,7 @@ const TOPIC_ICONS = {
 };
 
 function percent(value) {
-  if (value === null || value === undefined) return "—";
+  if (value === null || value === undefined) return "0%";
   return `${Math.round(value)}%`;
 }
 
@@ -81,6 +81,18 @@ export default function ProgressWidget() {
     [weakness],
   );
 
+  // Блок «Персональная тренировка» показываем, только когда профиль
+  // настоящий с обеих сторон: есть подтверждённые попытками слабые темы
+  // И сильные («70% слабые · 30% сильные» иначе не из чего собирать).
+  // Без истории бэкенд присылает фабрикат: нижние 3 темы с нейтральными
+  // 50% и attempts=0 (см. rank_topic_profile).
+  const hasRealProfile = useMemo(() => {
+    const observed = (topic) => topic.observed || (topic.attempts || 0) > 0;
+    const hasWeak = (weakness?.weak_topics || []).some(observed);
+    const hasStrong = (weakness?.strong_topics || []).some(observed);
+    return hasWeak && hasStrong;
+  }, [weakness]);
+
   const selectionRule = weakness?.selection_rule;
   const weakShare = Number(selectionRule?.weak_share ?? 0) * 100;
   const strongShare = Number(selectionRule?.strong_share ?? 0) * 100;
@@ -116,7 +128,7 @@ export default function ProgressWidget() {
         <div className="progress-widget__streak" title="Серия учебных дней">
           <span className="progress-widget__streak-icon">🔥</span>
           <span>
-            <strong>{training?.streak ?? "—"}</strong>
+            <strong>{training?.streak ?? 0}</strong>
             <small>дн. подряд</small>
           </span>
         </div>
@@ -129,7 +141,7 @@ export default function ProgressWidget() {
             <strong>Курс</strong>
           </div>
           <div className="progress-track-card__value">
-            {modules ? `${modules.completed} / ${modules.total}` : "—"}
+            {modules ? `${modules.completed} / ${modules.total}` : "0 / 0"}
           </div>
           <div className="progress-track-card__caption">модулей пройдено</div>
           {modules?.percent != null && (
@@ -149,10 +161,10 @@ export default function ProgressWidget() {
             <strong>Пазлы</strong>
           </div>
           <div className="progress-track-card__value">
-            {learning?.solved ?? "—"}
+            {learning?.solved ?? 0}
           </div>
           <div className="progress-track-card__caption">
-            решено · {learning?.attempted ?? "—"} попробовано
+            решено · {learning?.attempted ?? 0} попробовано
           </div>
           {learning?.accuracy != null && (
             <div className="progress-meter" aria-hidden="true">
@@ -166,21 +178,23 @@ export default function ProgressWidget() {
         </article>
       </div>
 
-      <div className="progress-widget__adaptive">
-        <div>
-          <strong>Персональная тренировка</strong>
-          <span>
-            {Number.isFinite(weakShare) && Number.isFinite(strongShare)
-              ? `${Math.round(weakShare)}% задач по слабым темам, ${Math.round(
-                  strongShare,
-                )}% — закрепление сильных.`
-              : "Тренируем слабые темы, закрепляем сильные."}
-          </span>
+      {hasRealProfile && (
+        <div className="progress-widget__adaptive">
+          <div>
+            <strong>Персональная тренировка</strong>
+            <span>
+              {Number.isFinite(weakShare) && Number.isFinite(strongShare)
+                ? `${Math.round(weakShare)}% задач по слабым темам, ${Math.round(
+                    strongShare,
+                  )}% — закрепление сильных.`
+                : "Тренируем слабые темы, закрепляем сильные."}
+            </span>
+          </div>
+          <button type="button" onClick={() => navigate("/puzzles?adaptive=1")}>
+            Потренировать слабые места →
+          </button>
         </div>
-        <button type="button" onClick={() => navigate("/puzzles?adaptive=1")}>
-          Потренировать слабые места →
-        </button>
-      </div>
+      )}
 
       <div className="progress-widget__topics">
         <div className="progress-widget__topics-title">Точность по темам курса</div>

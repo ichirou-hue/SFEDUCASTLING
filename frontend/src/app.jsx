@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import TopBar from "./components/TopBar.jsx";
 import Sidebar from "./components/Sidebar.jsx";
+import SiteFooter from "./components/SiteFooter.jsx";
 import ChessboardComponent from "./components/Chessboard.jsx";
 import MoveHistory from "./components/MoveHistory.jsx";
 import ChatPanel from "./components/ChatPanel.jsx";
@@ -33,26 +34,31 @@ function MainPage() {
   });
 
   return (
-    <div className="main-area">
-      <MoveHistory
-        moveHistory={boardState.moveHistory}
-        positionSnapshots={boardState.positionSnapshots}
-        viewIndex={boardState.viewIndex}
-        isViewMode={boardState.isViewMode}
-        maiaRating={boardState.maiaRating}
-        onNavigate={(dir) => boardRef.current?.onNavigate(dir)}
-      />
-      <EvalBar
-        diff={boardState.materialDiff}
-        flipped={boardState.boardFlipped}
-        height={boardState.boardHeight}
-      />
-      <ChessboardComponent ref={boardRef} onStateChange={setBoardState} />
-      <ChatPanel
-        hintMessage={boardState.hintMessage}
-        currentFen={boardState.fen}
-        currentMoves={boardState.moveHistory}
-      />
+    // Своя скролл-колонка: футер в потоке контента (внизу при проскролле),
+    // а не зафиксированной полосой поверх страницы.
+    <div className="main-page-scroll">
+      <div className="main-area">
+        <MoveHistory
+          moveHistory={boardState.moveHistory}
+          positionSnapshots={boardState.positionSnapshots}
+          viewIndex={boardState.viewIndex}
+          isViewMode={boardState.isViewMode}
+          maiaRating={boardState.maiaRating}
+          onNavigate={(dir) => boardRef.current?.onNavigate(dir)}
+        />
+        <EvalBar
+          diff={boardState.materialDiff}
+          flipped={boardState.boardFlipped}
+          height={boardState.boardHeight}
+        />
+        <ChessboardComponent ref={boardRef} onStateChange={setBoardState} />
+        <ChatPanel
+          hintMessage={boardState.hintMessage}
+          currentFen={boardState.fen}
+          currentMoves={boardState.moveHistory}
+        />
+      </div>
+      <SiteFooter />
     </div>
   );
 }
@@ -151,25 +157,28 @@ export default function App() {
             ) : (
               // Тест уровня требует аккаунт: сервер вернёт 401 без токена.
               <div className="training-page training-page--centered">
-                <div className="training-register-wall">
-                  <div className="training-kicker">Проверка уровня</div>
-                  <h1>Тест доступен после регистрации</h1>
-                  <p>
-                    Персональный тест из 20 задач помогает определить ваш уровень
-                    и подобрать подходящее обучение.
-                  </p>
-                  <button
-                    type="button"
-                    className="training-primary-btn"
-                    onClick={() => {
-                      setAuthMode("register");
-                      setAuthNotice("");
-                      setShowRegister(true);
-                    }}
-                  >
-                    Зарегистрироваться
-                  </button>
+                <div className="training-center-wrap">
+                  <div className="training-register-wall">
+                    <div className="training-kicker">Проверка уровня</div>
+                    <h1>Тест доступен после регистрации</h1>
+                    <p>
+                      Персональный тест из 20 задач помогает определить ваш уровень
+                      и подобрать подходящее обучение.
+                    </p>
+                    <button
+                      type="button"
+                      className="training-primary-btn"
+                      onClick={() => {
+                        setAuthMode("register");
+                        setAuthNotice("");
+                        setShowRegister(true);
+                      }}
+                    >
+                      Зарегистрироваться
+                    </button>
+                  </div>
                 </div>
+                <SiteFooter />
               </div>
             )
           }
