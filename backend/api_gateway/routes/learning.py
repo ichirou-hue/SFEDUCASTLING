@@ -27,7 +27,6 @@ from backend.services.adaptive_training import (
 )
 from backend.services.assessment import (
     RATING_GROUPS,
-    allowed_rating_groups,
     build_test_feedback,
     calculate_performance_rating,
     max_puzzle_rating_for_user,
@@ -611,13 +610,22 @@ async def get_adaptive_puzzles(
         p for p in state.puzzle_base.get("puzzles", []) if _is_puzzle_valid(p)
     ]
     # Жёсткий потолок: не предлагаем задачи сложнее рейтинга игрока более чем
-    # на 200 — ни в слабых, ни в сильных темах.
+    # на 200 — ни в слабых, ни в сильных темах. Плюс ограничиваем выборку
+    # ТОЛЬКО текущей рейтинговой корзиной игрока (как и в обычной практике).
     rating, _ = rating_for_selection(user.elo, user.rating_estimate, user.prior_band)
     max_puzzle_rating = max_puzzle_rating_for_user(rating)
-    if max_puzzle_rating is not None:
-        capped = [p for p in valid_puzzles if _puzzle_rating(p) <= max_puzzle_rating]
-        if capped:
-            valid_puzzles = capped
+    if rating is not None:
+        own_group = int(rating_group_for(rating)["id"])
+        own_pool = [p for p in valid_puzzles if puzzle_rating_group(p) == own_group]
+        pool = own_pool
+        if max_puzzle_rating is not None:
+            capped = [p for p in own_pool if _puzzle_rating(p) <= max_puzzle_rating]
+            # Потолок не должен обнулять корзину: если в пределах +200 задач
+            # нет, остаёмся в своей корзине без потолка.
+            if capped:
+                pool = capped
+        if pool:
+            valid_puzzles = pool
 
     picked, allocation = select_adaptive_puzzles(
         valid_puzzles,
@@ -717,53 +725,11 @@ def _sample_puzzles_by_buckets(puzzles: list[dict], count: int) -> list[dict]:
     return picked
 
 
-def _sample_puzzles_by_rating(
-    puzzles: list[dict],
-    *,
-    count: int,
-    own_group: int,
-    allowed_groups: set[int],
-) -> list[dict]:
-    """Свой диапазон — около половины набора, остальное из соседних.
-
-    Если задач в диапазоне мало, добор идёт из всего переданного пула,
-    поэтому выборка всегда старается вернуть ``count`` позиций.
-    """
-    picked: list[dict] = []
-    selected: set[str] = set()
-
-    def take(pool: list[dict], limit: int) -> None:
-        random.shuffle(pool)
-        for puzzle in pool:
-            if limit <= 0:
-                break
-            pid = str(puzzle.get("id", ""))
-            if not pid or pid in selected:
-                continue
-            picked.append(puzzle)
-            selected.add(pid)
-            limit -= 1
-
-    own_pool = [p for p in puzzles if puzzle_rating_group(p) == own_group]
-    take(own_pool, max(1, (count + 1) // 2))
-
-    neighbors = [g for g in sorted(allowed_groups) if g != own_group]
-    if neighbors and len(picked) < count:
-        per_neighbor = max(1, (count - len(picked)) // len(neighbors))
-        for group in neighbors:
-            if len(picked) >= count:
-                break
-            take([p for p in puzzles if puzzle_rating_group(p) == group], per_neighbor)
-
-    for pool in (
-        own_pool,
-        [p for p in puzzles if puzzle_rating_group(p) in allowed_groups],
-        puzzles,
-    ):
-        if len(picked) >= count:
-            break
-        take(pool, count - len(picked))
-    return picked
+def _shuffled_sample(puzzles: list[dict], count: int) -> list[dict]:
+    """Случайная выборка до ``count`` задач из переданного пула."""
+    pool = list(puzzles)
+    random.shuffle(pool)
+    return pool[: max(0, count)]
 
 
 @router.get("/api/learning/puzzles")
@@ -776,12 +742,16 @@ def get_puzzles(
 
     ``topic`` — slug модуля учебного курса. Если он передан, выдаются только
     связанные с этим модулем Lichess-темы. Так TrainingPage может отправить
-    пользователя сразу на релевантную практику.
+    пользователя сразу на релевантную практику. Практика по теме НЕ привязана
+    к рейтингу: показываются все пазлы темы (иначе для редких тем и высоких
+    корзин задач почти не остаётся).
 
-    Для авторизованного пользователя подбор привязан к его рейтингу
-    (elo после входного теста > assessment из анкеты): берутся задачи своего
-    диапазона и соседних, а не равномерно по всем рейтингам. Гость получает
-    прежнюю равномерную выборку.
+    Иначе (без темы) для авторизованного пользователя подбор привязан к его
+    рейтингу (elo после входного теста > assessment из анкеты): берутся задачи
+    ТОЛЬКО его текущей рейтинговой корзины (свой диапазон), а не соседних
+    диапазонов и не равномерно по всем рейтингам. Потолок «рейтинг + 200»
+    остаётся жёстким максимумом сложности. Гость получает прежнюю равномерную
+    выборку.
 
     Отличие от level-test/start: включает поле moves (ходы решения).
     Задачи, где после решения игрок оказывается матован, исключаются.
@@ -807,28 +777,23 @@ def get_puzzles(
         user.prior_band if user else None,
     )
     personalization: dict[str, Any] = {
-        "source": rating_source,
+        "source": rating_source if normalized_topic is None else None,
         "group": None,
         "max_rating": None,
     }
 
-    if rating is not None:
-        # Жёсткий потолок: задача сложнее рейтинга игрока более чем на 200
-        # в практике не предлагается.
+    if rating is not None and normalized_topic is None:
+        # Только текущая корзина пользователя. Потолок «рейтинг + 200» —
+        # жёсткий максимум: более сложные задачи в практике не предлагаются.
         ceiling = max_puzzle_rating_for_user(rating)
-        capped = [p for p in valid_puzzles if _puzzle_rating(p) <= ceiling]
-        if capped:
-            valid_puzzles = capped
-
         own_group = int(rating_group_for(rating)["id"])
-        allowed_groups = allowed_rating_groups(own_group)
-        scoped = [p for p in valid_puzzles if puzzle_rating_group(p) in allowed_groups]
-        # Если в диапазоне «свой ± соседний» мало задач, не сужаем пул, а лишь
-        # отдаём приоритет своему диапазону и соседям (мягкий режим).
-        base = scoped if len(scoped) >= count else valid_puzzles
-        picked = _sample_puzzles_by_rating(
-            base, count=count, own_group=own_group, allowed_groups=allowed_groups
-        )
+        own_pool = [p for p in valid_puzzles if puzzle_rating_group(p) == own_group]
+        pool = [p for p in own_pool if _puzzle_rating(p) <= ceiling]
+        # Потолок не должен обнулять корзину: если в пределах +200 задач нет
+        # (например, у самого низа диапазона), остаёмся в своей корзине.
+        if not pool:
+            pool = own_pool
+        picked = _shuffled_sample(pool, count)
         personalization = {
             "source": rating_source,
             "group": own_group,

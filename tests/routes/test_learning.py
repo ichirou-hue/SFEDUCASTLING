@@ -60,6 +60,17 @@ RATING_PUZZLES = {
     ]
 }
 
+# Пазлы темы «Ладья»: тема rookEndgame + ладья делает ход в решении, поэтому
+# они проходят и проверку темы, и проверку профильной фигуры модуля.
+TOPIC_PUZZLES = {
+    "puzzles": [
+        {"id": "rook_low", "fen": RATING_FEN, "moves": RATING_MOVES, "rating": 500, "themes": ["rookEndgame"]},
+        {"id": "rook_mid", "fen": RATING_FEN, "moves": RATING_MOVES, "rating": 1200, "themes": ["rookEndgame"]},
+        {"id": "rook_high", "fen": RATING_FEN, "moves": RATING_MOVES, "rating": 1600, "themes": ["rookEndgame"]},
+        {"id": "rook_top", "fen": RATING_FEN, "moves": RATING_MOVES, "rating": 2100, "themes": ["rookEndgame"]},
+    ]
+}
+
 # Минимальная валидная анкета Q1-Q8: без неё /level-test/start отвечает 409.
 ONBOARDING = {
     "q1": "sometimes",
@@ -319,7 +330,7 @@ class TestPuzzleSelectionByRating:
             "max_rating": None,
         }
 
-    def test_rated_user_gets_own_and_neighbor_groups(self, cleanup):
+    def test_rated_user_gets_only_own_group(self, cleanup):
         token = _authed_user_with_rating(cleanup, 1200)
         with patch(MATCH_ANCHOR, RATING_PUZZLES):
             resp = client.get(
@@ -330,14 +341,16 @@ class TestPuzzleSelectionByRating:
         assert resp.status_code == 200, resp.text
         data = resp.json()
         # Привязанный рейтинг 1200 -> группа 2, потолок 1400.
+        # Только своя корзина: соседняя (low) и выше потолка (high) не выдаются.
         assert data["personalization"] == {
             "source": "onboarding",
             "group": 2,
             "max_rating": 1400,
         }
         ids = {p["id"] for p in data["puzzles"]}
-        assert ids == {"low1", "low2", "mid1", "mid2", "mid3"}
-        assert data["total"] == len(ids) == 5
+        assert ids == {"mid1", "mid2", "mid3"}
+        assert "low1" not in ids and "low2" not in ids
+        assert data["total"] == len(ids) == 3
 
     def test_puzzles_above_rating_plus_200_are_never_offered(self, cleanup):
         token = _authed_user_with_rating(cleanup, 1200)
@@ -353,7 +366,50 @@ class TestPuzzleSelectionByRating:
         assert data["personalization"]["max_rating"] == 1400
         assert all(p["rating"] <= 1400 for p in data["puzzles"])
         ids = {p["id"] for p in data["puzzles"]}
+        # Ни выше потолка, ни из чужой (нижней) корзины.
         assert "high1" not in ids and "high2" not in ids and "top1" not in ids
+        assert "low1" not in ids and "low2" not in ids
+
+    def test_topic_practice_ignores_rating(self, cleanup):
+        # Практика по теме модуля не привязана к рейтингу: доступны все пазлы
+        # темы, включая сильно ниже и выше корзины пользователя.
+        token = _authed_user_with_rating(cleanup, 1200)
+        with patch(MATCH_ANCHOR, TOPIC_PUZZLES):
+            resp = client.get(
+                "/api/learning/puzzles",
+                params={"count": 20, "topic": "rook"},
+                headers=_headers(token),
+            )
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data["personalization"] == {
+            "source": None,
+            "group": None,
+            "max_rating": None,
+        }
+        ids = {p["id"] for p in data["puzzles"]}
+        assert ids == {"rook_low", "rook_mid", "rook_high", "rook_top"}
+
+
+class TestAdaptivePuzzleSelectionByRating:
+    def test_adaptive_caps_to_own_group(self, cleanup):
+        # Персональная тренировка тоже ограничена текущей корзиной (+200).
+        token = _authed_user_with_rating(cleanup, 1200)
+        with patch(MATCH_ANCHOR, RATING_PUZZLES):
+            resp = client.get(
+                "/api/learning/puzzles/adaptive",
+                params={"count": 20},
+                headers=_headers(token),
+            )
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data["max_puzzle_rating"] == 1400
+        assert data["total"] > 0
+        for p in data["puzzles"]:
+            assert 1001 <= p["rating"] <= 1400
+        ids = {p["id"] for p in data["puzzles"]}
+        assert "low1" not in ids and "low2" not in ids
+        assert "high1" not in ids and "top1" not in ids
 
 
 class TestLearningProgressAccuracy:
