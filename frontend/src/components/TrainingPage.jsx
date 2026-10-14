@@ -10,6 +10,7 @@ import {
   fetchTrainingModules,
   fetchTrainingProgress,
 } from "../api.js";
+import SiteFooter from "./SiteFooter.jsx";
 import "./LearningCrossLinks.css";
 
 const PIECE_IMAGES = {
@@ -546,21 +547,24 @@ export default function TrainingPage({ user, onRegister }) {
   if (!user) {
     return (
       <div className="training-page training-page--centered">
-        <div className="training-register-wall">
-          <div className="training-kicker">Учебный режим</div>
-          <h1>Обучение доступно после регистрации</h1>
-          <p>
-            Зарегистрируйтесь, чтобы проходить учебные модули по шахматам
-            и сохранять свой прогресс.
-          </p>
-          <button
-            type="button"
-            className="training-primary-btn"
-            onClick={onRegister}
-          >
-            Зарегистрироваться
-          </button>
+        <div className="training-center-wrap">
+          <div className="training-register-wall">
+            <div className="training-kicker">Учебный режим</div>
+            <h1>Обучение доступно после регистрации</h1>
+            <p>
+              Зарегистрируйтесь, чтобы проходить учебные модули по шахматам
+              и сохранять свой прогресс.
+            </p>
+            <button
+              type="button"
+              className="training-primary-btn"
+              onClick={onRegister}
+            >
+              Зарегистрироваться
+            </button>
+          </div>
         </div>
+        <SiteFooter />
       </div>
     );
   }
@@ -684,6 +688,7 @@ export default function TrainingPage({ user, onRegister }) {
             );
           })}
         </div>
+        <SiteFooter />
       </div>
     );
   }
@@ -750,6 +755,7 @@ export default function TrainingPage({ user, onRegister }) {
             );
           })}
         </div>
+        <SiteFooter />
       </div>
     );
   }
@@ -1020,6 +1026,7 @@ export default function TrainingPage({ user, onRegister }) {
           )}
         </aside>
       </div>
+      <SiteFooter />
     </div>
   );
 }

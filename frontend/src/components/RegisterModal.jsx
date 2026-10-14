@@ -226,9 +226,9 @@ export default function AuthModal({ isOpen, onClose, onSuccess, initialMode = "r
                     ))}
                   </div>
                   <div className="auth-profile-stats">
-                    Партий: <b>{profile.counts?.all ?? "—"}</b>
+                    Партий: <b>{profile.counts?.all ?? 0}</b>
                     <span className="auth-stat-sep" />
-                    Побед: <b>{profile.counts?.wins ?? "—"}</b>
+                    Побед: <b>{profile.counts?.wins ?? 0}</b>
                   </div>
                 </div>
               )}

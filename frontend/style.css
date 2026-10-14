@@ -61,6 +61,50 @@ body {
   display: inline-block;
 }
 
+/* Главная страница: своя скролл-колонка, чтобы футер был в потоке
+   контента (внизу при проскролле), а не зафиксированной полосой. */
+.main-page-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Футер в строке пазлов (flex-wrap): на всю ширину следующей строкой. */
+.puzzles-layout > .site-footer {
+  flex: 1 1 100%;
+}
+.site-footer {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 7px 16px;
+  border-top: 1px solid rgba(180, 135, 44, 0.35);
+  background: rgba(255, 255, 255, 0.55);
+  font-size: 12px;
+  color: #888;
+}
+
+.site-footer-brand {
+  font-family: "Calypso", serif;
+  letter-spacing: 0.04em;
+}
+
+.site-footer-link {
+  color: #2f5c36;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.site-footer-link:hover {
+  color: #5e9463;
+}
+
 .gigachess-logo {
   height: 58px;
   width: auto;
@@ -123,6 +167,80 @@ body {
   padding: 12px 16px;
   box-sizing: border-box;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+}
+
+/* Итог партии на главной доске (в духе chess.com):
+   затемнение + всплывающая карточка со счётом и причиной. */
+.gameover-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(20, 28, 20, 0.45);
+  border-radius: 15px;
+  animation: gameoverFadeIn 0.25s ease;
+}
+
+.gameover-card {
+  min-width: 240px;
+  max-width: 82%;
+  padding: 22px 30px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 3px solid rgba(180, 135, 44, 0.85);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+  text-align: center;
+  animation: gameoverPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.gameover-card--win {
+  border-color: #5e9463;
+}
+
+.gameover-card--loss {
+  border-color: #b3543a;
+}
+
+.gameover-title {
+  margin-top: 6px;
+  font-family: "Calypso", serif;
+  font-size: 24px;
+  color: #333;
+}
+
+.gameover-reason {
+  margin-top: 6px;
+  font-size: 14px;
+  color: #666;
+}
+
+.gameover-btn {
+  margin-top: 14px;
+  padding: 9px 28px;
+  border: none;
+  border-radius: 20px;
+  background: #c9a96e;
+  color: #333;
+  font-family: "Calypso", serif;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.gameover-btn:hover {
+  background: #b89a5e;
+}
+
+@keyframes gameoverFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes gameoverPop {
+  0% { transform: scale(0.7); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
 }
 
 .material-display {
@@ -1705,6 +1823,32 @@ body {
   margin: 8px 0;
 }
 
+/* Сторона, за которую ищутся ходы (очередь хода из FEN задачи). */
+.puzzle-side {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: "Calypso", serif;
+  font-size: 17px;
+  color: #2f5c36;
+}
+
+.puzzle-side-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid #9a783b;
+  flex-shrink: 0;
+}
+
+.puzzle-side-dot--w {
+  background: #f5f0e1;
+}
+
+.puzzle-side-dot--b {
+  background: #3a3a3a;
+}
+
 .puzzle-moves-left-label {
   font-family: "Calypso", serif;
   font-size: 16px;
@@ -1938,7 +2082,16 @@ body {
 
 .training-page--centered {
   display: flex;
+  flex-direction: column;
   align-items: center;
+}
+
+/* Обёртка центрируемого блока: margin auto держит его по центру
+   свободного места, а футер остаётся внизу контейнера. */
+.training-center-wrap {
+  margin: auto;
+  width: min(760px, 100%);
+  display: flex;
   justify-content: center;
 }
 

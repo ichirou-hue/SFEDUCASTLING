@@ -11,6 +11,7 @@ import {
 } from "../api.js";
 import MiniBoard from "./MiniBoard.jsx";
 import PuzzleRegisterGate from "./PuzzleRegisterGate.jsx";
+import SiteFooter from "./SiteFooter.jsx";
 import { getCourseTopicForPuzzle, getCourseTopicMeta } from "../learningLinks.js";
 import "./LearningCrossLinks.css";
 
@@ -316,6 +317,22 @@ export default function PuzzlesPage({ user, onRegister }) {
   const themeInfo = currentPuzzle
     ? getThemeInfo(currentPuzzle)
     : { key: null, label: "Тактика", icon: "♟" };
+  // Сторона, за которую нужно найти ходы, — это очередь хода из FEN
+  // (в lichess-паззлах игрок всегда ходит первым). boardOrientation
+  // выставляется по тому же признаку в loadPuzzle.
+  const sideToMove = currentPuzzle?.fen?.split(" ")?.[1] === "b" ? "b" : "w";
+
+  // Показываем персонализацию, только когда профиль настоящий с обеих
+  // сторон: есть подтверждённые попытками слабые И сильные темы.
+  // Без истории бэкенд присылает фабрикат (см. rank_topic_profile).
+  const observedWeakTopics = (adaptiveMeta?.weakTopics || []).filter(
+    (topic) => topic.observed || (topic.attempts || 0) > 0,
+  );
+  const observedStrongTopics = (adaptiveMeta?.strongTopics || []).filter(
+    (topic) => topic.observed || (topic.attempts || 0) > 0,
+  );
+  const hasRealProfile =
+    observedWeakTopics.length > 0 && observedStrongTopics.length > 0;
   const relatedCourseTopic =
     getCourseTopicMeta(currentPuzzle?.adaptive_topic) ||
     requestedTopic ||
@@ -640,6 +657,14 @@ export default function PuzzlesPage({ user, onRegister }) {
           позиции
         </div>
 
+        <div className="puzzle-side">
+          <span
+            className={`puzzle-side-dot puzzle-side-dot--${sideToMove}`}
+            aria-hidden="true"
+          />
+          Играете за {sideToMove === "b" ? "чёрных" : "белых"}
+        </div>
+
         <div className="puzzle-moves-left-label">
           Осталось
           <br />
@@ -653,15 +678,24 @@ export default function PuzzlesPage({ user, onRegister }) {
           </div>
         )}
 
-        {adaptiveMode && (
+        {adaptiveMode && hasRealProfile && (
           <div className="learning-topic-filter learning-topic-filter--adaptive">
             Персональная тренировка
             <strong>70% слабые темы · 30% закрепление сильных</strong>
-            {adaptiveMeta?.weakTopics?.length > 0 && (
-              <div className="adaptive-topic-list">
-                Слабые: {adaptiveMeta.weakTopics.map((topic) => topic.title).join(", ")}
-              </div>
-            )}
+            <div className="adaptive-topic-list">
+              Слабые: {observedWeakTopics.map((topic) => topic.title).join(", ")}
+            </div>
+            <button type="button" onClick={() => navigate("/puzzles")}>
+              Обычный режим
+            </button>
+          </div>
+        )}
+
+        {/* Прямой заход на ?adaptive=1 без настоящего профиля (нет истории
+            или есть только слабые/только сильные): персонализации нет,
+            поэтому заголовок и «слабые» не показываем — только выход. */}
+        {adaptiveMode && !hasRealProfile && (
+          <div className="learning-topic-filter learning-topic-filter--adaptive">
             <button type="button" onClick={() => navigate("/puzzles")}>
               Обычный режим
             </button>
@@ -862,6 +896,7 @@ export default function PuzzlesPage({ user, onRegister }) {
       </div>
 
       <PuzzleRegisterGate open={showRegGate} onRegister={onRegister} />
+      <SiteFooter />
     </div>
   );
 }
