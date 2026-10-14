@@ -21,11 +21,13 @@ def allocation_for_count(count: int) -> tuple[int, int]:
 
 
 def rank_topic_profile(topics: list[dict]) -> tuple[list[dict], list[dict]]:
-    """Выбирает нижние 3 и верхние 3 темы.
+    """Выбирает нижние 3 и верхние 3 темы среди реально пройденных.
 
-    Для тем без истории используются нейтральные 50% только при ранжировании
-    слабых направлений. Фактическая accuracy остаётся None. В strong_topics
-    попадают только темы с реальными попытками пользователя (observed=True).
+    Тема без попыток (observed=False) не может считаться ни слабой, ни
+    сильной: по ней ещё нет данных. Поэтому в weak_topics/strong_topics
+    попадают только темы с attempts > 0. При нулевом прогрессе оба списка
+    пусты — иначе витрина/админка показывала бы «слабые: пешка, конь, слон»
+    у пользователя без единой попытки.
     """
     enriched = []
     for index, topic in enumerate(topics):
@@ -38,22 +40,16 @@ def rank_topic_profile(topics: list[dict]) -> tuple[list[dict], list[dict]]:
         item["_order"] = index
         enriched.append(item)
 
+    observed = [item for item in enriched if item["observed"]]
+
     weak = sorted(
-        enriched,
+        observed,
         key=lambda x: (x["rank_accuracy"], -int(x.get("attempts") or 0), x["_order"]),
     )[:3]
 
     weak_slugs = {item["slug"] for item in weak}
-    # «Сильная» тема должна подтверждаться реальными попытками пользователя.
-    # Неизученная тема (observed=False) сохраняет нейтральный rank_accuracy=50
-    # для общего профиля/ранжирования, но не может считаться сильной.
-    strong_candidates = [
-        item
-        for item in enriched
-        if item["slug"] not in weak_slugs and item["observed"]
-    ]
     strong = sorted(
-        strong_candidates,
+        (item for item in observed if item["slug"] not in weak_slugs),
         key=lambda x: (-x["rank_accuracy"], -int(x.get("attempts") or 0), x["_order"]),
     )[:3]
 

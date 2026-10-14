@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { saveOnboarding } from "../api.js";
+import { linkChessAccount, saveOnboarding } from "../api.js";
 import "./OnboardingModal.css";
 
 // Дословно из «Анкеты оценки уровня игры», раздел 1 / приложение Д.1.
@@ -141,6 +141,15 @@ export default function OnboardingModal({ isOpen, onClose, onDone }) {
     setSubmitting(true);
     setError("");
     try {
+      // Если пользователь указал аккаунт, сначала пробуем привязать его:
+      // привязка Lichess/Chess.com — условие стартовой оценки выше 800.
+      if (a.useQ2 && a.q2.login.trim()) {
+        try {
+          await linkChessAccount(a.q2.login.trim(), a.q2.platform);
+        } catch {
+          // Не мешаем сохранению анкеты: бэкенд просто ограничит оценку.
+        }
+      }
       const payload = {
         q1: a.q1,
         q2: a.useQ2

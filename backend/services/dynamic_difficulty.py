@@ -43,12 +43,16 @@ async def ensure_user_theme_difficulties(
     *,
     user_id: int,
     profile: dict,
+    base_difficulty: int = DEFAULT_DIFFICULTY,
 ) -> dict[str, int]:
     """Создаёт отсутствующие строки difficulty один раз.
 
-    Для уже накопленной до B2 истории стартуем с нейтрального уровня 2 и
-    однократно применяем текущее accuracy. Повторные GET не меняют difficulty.
-    PostgreSQL ON CONFLICT защищает ленивую инициализацию от гонки.
+    Для уже накопленной до B2 истории стартуем с ``base_difficulty`` и
+    однократно применяем текущее accuracy. ``base_difficulty`` приходит из
+    рейтинга пользователя (анкета/входной тест), поэтому новичок не получает
+    задачи сложности выше своей, а опытный — не начинает с нейтральной 2.
+    Повторные GET не меняют difficulty. PostgreSQL ON CONFLICT защищает
+    ленивую инициализацию от гонки.
     """
     existing = (
         await db.scalars(
@@ -62,7 +66,7 @@ async def ensure_user_theme_difficulties(
     for slug in COURSE_TOPIC_META:
         if slug in existing_slugs:
             continue
-        initial = next_difficulty(DEFAULT_DIFFICULTY, accuracy_by_slug.get(slug))
+        initial = next_difficulty(base_difficulty, accuracy_by_slug.get(slug))
         stmt = (
             pg_insert(UserThemeDifficulty)
             .values(
@@ -91,6 +95,7 @@ async def get_user_theme_difficulties(
     *,
     user_id: int,
     puzzle_base: dict | None,
+    base_difficulty: int = DEFAULT_DIFFICULTY,
 ) -> tuple[dict, dict[str, int]]:
     profile = await build_weakness_profile(
         db,
@@ -101,6 +106,7 @@ async def get_user_theme_difficulties(
         db,
         user_id=user_id,
         profile=profile,
+        base_difficulty=base_difficulty,
     )
     return profile, difficulties
 

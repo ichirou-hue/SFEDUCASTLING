@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import TopBar from "./components/TopBar.jsx";
 import Sidebar from "./components/Sidebar.jsx";
 import ChessboardComponent from "./components/Chessboard.jsx";
@@ -7,6 +7,7 @@ import MoveHistory from "./components/MoveHistory.jsx";
 import ChatPanel from "./components/ChatPanel.jsx";
 import EvalBar from "./components/EvalBar.jsx";
 import RegisterModal from "./components/RegisterModal.jsx";
+import OnboardingModal from "./components/OnboardingModal.jsx";
 import PuzzlesPage from "./components/PuzzlesPage.jsx";
 import TrainingPage from "./components/TrainingPage.jsx";
 import UserProfilePage from "./components/UserProfilePage.jsx";
@@ -58,6 +59,7 @@ function MainPage() {
 }
 
 export default function App() {
+  const navigate = useNavigate();
   const [showRegister, setShowRegister] = useState(false);
   const [authMode, setAuthMode] = useState("register");
   const [authNotice, setAuthNotice] = useState("");
@@ -65,8 +67,16 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   // Пока не прочитали localStorage, роль неизвестна — нельзя редиректить с /admin.
   const [authChecked, setAuthChecked] = useState(false);
+  // Анкета открывается автоматически после регистрации/входа, пока не заполнена.
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  // После анкеты сразу запускаем входной тест на /level-test.
+  const [autoStartTest, setAutoStartTest] = useState(false);
 
   const isAdmin = user?.is_admin === true || user?.role === "admin";
+
+  // Пользователь без заполненной анкеты (и не админ) должен увидеть её сразу.
+  const needsOnboarding = (u) =>
+    Boolean(u) && !u.onboarding_completed && !(u.is_admin === true || u.role === "admin");
 
   useEffect(() => {
     const stored = getStoredUser();
@@ -94,11 +104,22 @@ export default function App() {
     return () => window.removeEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired);
   }, []);
 
+  const handleAuthSuccess = (u) => {
+    setUser(u);
+    setAuthNotice("");
+    // Автоматический онбординг: анкета, затем входной тест.
+    if (needsOnboarding(u)) {
+      setAutoStartTest(false);
+      setShowOnboarding(true);
+    }
+  };
+
   return (
     <>
       <TopBar
         user={user}
         onUserChange={setUser}
+        onOpenOnboarding={() => setShowOnboarding(true)}
         onRegister={() => {
           setAuthMode("register");
           setAuthNotice("");
@@ -147,7 +168,10 @@ export default function App() {
           path="/level-test"
           element={
             !authChecked ? null : user ? (
-              <LevelTestPage />
+              <LevelTestPage
+                autoStart={autoStartTest}
+                onAutoStartHandled={() => setAutoStartTest(false)}
+              />
             ) : (
               // Тест уровня требует аккаунт: сервер вернёт 401 без токена.
               <div className="training-page training-page--centered">
@@ -194,9 +218,17 @@ export default function App() {
           setShowRegister(false);
           setAuthNotice("");
         }}
-        onSuccess={(u) => {
-          setUser(u);
-          setAuthNotice("");
+        onSuccess={handleAuthSuccess}
+      />
+      <OnboardingModal
+        isOpen={showOnboarding}
+        onClose={() => setShowOnboarding(false)}
+        onDone={(freshUser) => {
+          if (freshUser) setUser(freshUser);
+          setShowOnboarding(false);
+          // Сразу после анкеты — входной тест (страница сама его запускает).
+          setAutoStartTest(true);
+          navigate("/level-test");
         }}
       />
     </>
