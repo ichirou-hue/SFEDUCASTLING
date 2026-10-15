@@ -242,17 +242,17 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
     if (g.isCheckmate()) {
       setGameResult(
         g.turn() === "w"
-          ? { outcome: "loss", reason: "Мат — победили чёрные" }
+          ? { outcome: "loss", reason: "Мат - победили чёрные" }
           : { outcome: "win", reason: "Мат! Вы победили" },
       );
     } else if (g.isStalemate()) {
-      setGameResult({ outcome: "draw", reason: "Пат — ничья" });
+      setGameResult({ outcome: "draw", reason: "Пат - ничья" });
     } else if (g.isThreefoldRepetition()) {
-      setGameResult({ outcome: "draw", reason: "Троекратное повторение — ничья" });
+      setGameResult({ outcome: "draw", reason: "Троекратное повторение - ничья" });
     } else if (g.isInsufficientMaterial()) {
-      setGameResult({ outcome: "draw", reason: "Недостаточно материала — ничья" });
+      setGameResult({ outcome: "draw", reason: "Недостаточно материала - ничья" });
     } else if (g.isDrawByFiftyMoves()) {
-      setGameResult({ outcome: "draw", reason: "Правило 50 ходов — ничья" });
+      setGameResult({ outcome: "draw", reason: "Правило 50 ходов - ничья" });
     } else {
       setGameResult({ outcome: "draw", reason: "Ничья" });
     }
@@ -2087,7 +2087,7 @@ const fetchBestMove = useCallback(
               >
                 {compareData.same_move
                   ? "Maia3 выбрала оптимальный ход Stockfish."
-                  : "Maia3 выбрала другой ход — это и есть различие между оптимальной и человекоподобной игрой."}
+                  : "Maia3 выбрала другой ход - это и есть различие между оптимальной и человекоподобной игрой."}
               </div>
             )}
           </div>

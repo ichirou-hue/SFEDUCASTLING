@@ -55,10 +55,10 @@ def test_adaptive_selection_prefers_current_topic_difficulty():
     ]
     picked, allocation = select_adaptive_puzzles(
         puzzles,
-        weak_topics=[{"slug": "knight"}],
+        weak_topics=[{"slug": "tactics"}],
         strong_topics=[],
         count=1,
-        topic_difficulties={"knight": 1},
+        topic_difficulties={"tactics": 1},
     )
     assert picked[0]["id"] == "easy-knight"
     assert picked[0]["adaptive_difficulty"] == 1
@@ -77,12 +77,12 @@ def test_same_topic_fallback_preserves_topic_when_rating_band_is_empty():
     ]
     picked, allocation = select_adaptive_puzzles(
         puzzles,
-        weak_topics=[{"slug": "knight"}],
+        weak_topics=[{"slug": "tactics"}],
         strong_topics=[],
         count=1,
-        topic_difficulties={"knight": 1},
+        topic_difficulties={"tactics": 1},
     )
-    assert picked[0]["adaptive_topic"] == "knight"
+    assert picked[0]["adaptive_topic"] == "tactics"
     assert picked[0]["adaptive_difficulty"] == 1
     assert picked[0]["difficulty_match"] is False
     assert allocation["difficulty_matched"] == 0

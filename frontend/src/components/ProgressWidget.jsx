@@ -9,14 +9,11 @@ import {
 import "./ProgressWidget.css";
 
 const TOPIC_ICONS = {
-  pawn: "♙",
-  knight: "♘",
-  bishop: "♗",
-  rook: "♖",
-  queen: "♕",
-  king: "♔",
-  "special-rules": "♙",
-  "check-mate-stalemate": "♚",
+  pieces: "♟",
+  "king-safety": "♚",
+  endgames: "♔",
+  tactics: "♞",
+  openings: "♜",
 };
 
 function percent(value) {
@@ -186,7 +183,7 @@ export default function ProgressWidget() {
               {Number.isFinite(weakShare) && Number.isFinite(strongShare)
                 ? `${Math.round(weakShare)}% задач по слабым темам, ${Math.round(
                     strongShare,
-                  )}% — закрепление сильных.`
+                  )}% - закрепление сильных.`
                 : "Тренируем слабые темы, закрепляем сильные."}
             </span>
           </div>
@@ -217,7 +214,7 @@ export default function ProgressWidget() {
           </div>
         ) : (
           <div className="progress-widget__empty">
-            Выполните первое задание курса — здесь появится точность по темам.
+            Выполните первое задание курса - здесь появится точность по темам.
           </div>
         )}
       </div>

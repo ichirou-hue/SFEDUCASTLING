@@ -693,7 +693,7 @@ export default function PuzzlesPage({ user, onRegister }) {
 
         {/* Прямой заход на ?adaptive=1 без настоящего профиля (нет истории
             или есть только слабые/только сильные): персонализации нет,
-            поэтому заголовок и «слабые» не показываем — только выход. */}
+            поэтому заголовок и «слабые» не показываем - только выход. */}
         {adaptiveMode && !hasRealProfile && (
           <div className="learning-topic-filter learning-topic-filter--adaptive">
             <button type="button" onClick={() => navigate("/puzzles")}>

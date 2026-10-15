@@ -25,7 +25,7 @@ export default function PuzzleRegisterGate({ open, onRegister }) {
           Остался один ход
         </h2>
         <p className="prg-text" id="prg-text">
-          Решение не сохранится без аккаунта. Позиция останется на доске —
+          Решение не сохранится без аккаунта. Позиция останется на доске -
           зарегистрируйтесь и сделайте последний ход.
         </p>
         <button className="prg-submit" onClick={onRegister} autoFocus>

@@ -266,7 +266,7 @@ export default function AdminPage({ user, onUserChange }) {
 
             {visibleUsers.length === 0 ? (
               <p className="admin-muted admin-panel-hint">
-                Ничего не найдено — измените поиск или фильтр.
+                Ничего не найдено - измените поиск или фильтр.
               </p>
             ) : (
               visibleUsers.map((u) => (

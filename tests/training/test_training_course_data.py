@@ -6,8 +6,11 @@ from backend.services.training_course_data import LESSONS_BY_MODULE, MODULES
 
 @pytest.mark.parametrize("module", MODULES, ids=lambda item: item["slug"])
 def test_every_module_has_lessons(module):
+    # Disabled-модуль — заявленный плейсхолдер будущего контента
+    # (tactics): уроков может не быть, открываться он не должен.
+    if not module["enabled"]:
+        return
     lessons = LESSONS_BY_MODULE.get(module["slug"])
-    assert module["enabled"] is True
     assert lessons, f"У модуля {module['slug']} нет уроков"
     assert all(lesson["tasks"] for lesson in lessons)
 
