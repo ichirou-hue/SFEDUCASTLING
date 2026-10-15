@@ -14,7 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api_gateway import state
-from backend.api_gateway.dependecies import get_current_user
+from backend.api_gateway.dependecies import get_current_user, get_optional_current_user
 from backend.api_gateway.models import PuzzleAnswerRequest
 from backend.db.session import get_db
 from backend.models.level_test import LevelTest
@@ -29,9 +29,11 @@ from backend.services.assessment import (
     RATING_GROUPS,
     build_test_feedback,
     calculate_performance_rating,
+    max_puzzle_rating_for_user,
     personalized_level_test_puzzles,
     puzzle_rating_group,
     rating_group_for,
+    rating_for_selection,
 )
 from backend.services.course_topics import (
     COURSE_TOPIC_PUZZLE_THEMES,
@@ -45,6 +47,7 @@ from backend.services.dynamic_difficulty import (
     public_difficulty_profile,
     update_theme_difficulty_after_attempt,
 )
+from backend.services.difficulty_logic import difficulty_for_rating
 
 router = APIRouter(tags=["learning"])
 
@@ -506,6 +509,7 @@ async def record_puzzle_attempt(
         db,
         user_id=user.id,
         puzzle_base=state.puzzle_base,
+        base_difficulty=_base_difficulty_for_user(user),
     )
 
     attempt = PuzzleAttempt(
@@ -557,6 +561,7 @@ async def learning_difficulty(
         db,
         user_id=user.id,
         puzzle_base=state.puzzle_base,
+        base_difficulty=_base_difficulty_for_user(user),
     )
     return {
         "topics": public_difficulty_profile(profile, difficulties),
@@ -599,10 +604,29 @@ async def get_adaptive_puzzles(
         db,
         user_id=user.id,
         puzzle_base=state.puzzle_base,
+        base_difficulty=_base_difficulty_for_user(user),
     )
     valid_puzzles = [
         p for p in state.puzzle_base.get("puzzles", []) if _is_puzzle_valid(p)
     ]
+    # Жёсткий потолок: не предлагаем задачи сложнее рейтинга игрока более чем
+    # на 200 — ни в слабых, ни в сильных темах. Плюс ограничиваем выборку
+    # ТОЛЬКО текущей рейтинговой корзиной игрока (как и в обычной практике).
+    rating, _ = rating_for_selection(user.elo, user.rating_estimate, user.prior_band)
+    max_puzzle_rating = max_puzzle_rating_for_user(rating)
+    if rating is not None:
+        own_group = int(rating_group_for(rating)["id"])
+        own_pool = [p for p in valid_puzzles if puzzle_rating_group(p) == own_group]
+        pool = own_pool
+        if max_puzzle_rating is not None:
+            capped = [p for p in own_pool if _puzzle_rating(p) <= max_puzzle_rating]
+            # Потолок не должен обнулять корзину: если в пределах +200 задач
+            # нет, остаёмся в своей корзине без потолка.
+            if capped:
+                pool = capped
+        if pool:
+            valid_puzzles = pool
+
     picked, allocation = select_adaptive_puzzles(
         valid_puzzles,
         weak_topics=profile["weak_topics"],
@@ -635,6 +659,7 @@ async def get_adaptive_puzzles(
         "difficulty_profile": public_difficulty_profile(profile, topic_difficulties),
         "allocation": allocation,
         "selection_rule": profile["selection_rule"],
+        "max_puzzle_rating": max_puzzle_rating,
     }
 
 
@@ -664,13 +689,69 @@ def puzzle_check(req: PuzzleAnswerRequest):
     }
 
 
+def _base_difficulty_for_user(user: User | None) -> int:
+    """Стартовая B2-сложность тем из рейтинга пользователя (тест > анкета)."""
+    if user is None:
+        return difficulty_for_rating(None)
+    rating, _ = rating_for_selection(user.elo, user.rating_estimate, user.prior_band)
+    return difficulty_for_rating(rating)
+
+
+def _puzzle_rating(puzzle: dict) -> int:
+    try:
+        return int(puzzle.get("rating") or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _sample_puzzles_by_buckets(puzzles: list[dict], count: int) -> list[dict]:
+    """Режим без рейтинга: равномерно по всем рейтинговым корзинам."""
+    picked: list[dict] = []
+    selected_ids: set[str] = set()
+    per_bucket = max(1, count // len(LEVEL_BUCKETS)) if count > 0 else 0
+
+    for bucket in LEVEL_BUCKETS:
+        lo, hi = bucket["min_puzzle_rating"], bucket["max_puzzle_rating"]
+        pool = [p for p in puzzles if lo <= p.get("rating", 0) < hi]
+        random.shuffle(pool)
+        for puzzle in pool[:per_bucket]:
+            picked.append(puzzle)
+            selected_ids.add(str(puzzle.get("id", "")))
+
+    if len(picked) < count:
+        remaining = [p for p in puzzles if str(p.get("id", "")) not in selected_ids]
+        random.shuffle(remaining)
+        picked.extend(remaining[: max(0, count - len(picked))])
+    return picked
+
+
+def _shuffled_sample(puzzles: list[dict], count: int) -> list[dict]:
+    """Случайная выборка до ``count`` задач из переданного пула."""
+    pool = list(puzzles)
+    random.shuffle(pool)
+    return pool[: max(0, count)]
+
+
 @router.get("/api/learning/puzzles")
-def get_puzzles(count: int = 20, topic: str | None = None):
+def get_puzzles(
+    count: int = 20,
+    topic: str | None = None,
+    user: User | None = Depends(get_optional_current_user),
+):
     """Возвращает набор задач с полными решениями для тренировочной страницы.
 
     ``topic`` — slug модуля учебного курса. Если он передан, выдаются только
     связанные с этим модулем Lichess-темы. Так TrainingPage может отправить
-    пользователя сразу на релевантную практику.
+    пользователя сразу на релевантную практику. Практика по теме НЕ привязана
+    к рейтингу: показываются все пазлы темы (иначе для редких тем и высоких
+    корзин задач почти не остаётся).
+
+    Иначе (без темы) для авторизованного пользователя подбор привязан к его
+    рейтингу (elo после входного теста > assessment из анкеты): берутся задачи
+    ТОЛЬКО его текущей рейтинговой корзины (свой диапазон), а не соседних
+    диапазонов и не равномерно по всем рейтингам. Потолок «рейтинг + 200»
+    остаётся жёстким максимумом сложности. Гость получает прежнюю равномерную
+    выборку.
 
     Отличие от level-test/start: включает поле moves (ходы решения).
     Задачи, где после решения игрок оказывается матован, исключаются.
@@ -690,27 +771,36 @@ def get_puzzles(count: int = 20, topic: str | None = None):
             p for p in valid_puzzles if _puzzle_matches_course_topic(p, normalized_topic)
         ]
 
-    picked: list[dict] = []
-    selected_ids: set[str] = set()
-    per_bucket = max(1, count // len(LEVEL_BUCKETS)) if count > 0 else 0
+    rating, rating_source = rating_for_selection(
+        user.elo if user else None,
+        user.rating_estimate if user else None,
+        user.prior_band if user else None,
+    )
+    personalization: dict[str, Any] = {
+        "source": rating_source if normalized_topic is None else None,
+        "group": None,
+        "max_rating": None,
+    }
 
-    for bucket in LEVEL_BUCKETS:
-        lo, hi = bucket["min_puzzle_rating"], bucket["max_puzzle_rating"]
-        pool = [p for p in valid_puzzles if lo <= p.get("rating", 0) < hi]
-        random.shuffle(pool)
-        for puzzle in pool[:per_bucket]:
-            picked.append(puzzle)
-            selected_ids.add(str(puzzle.get("id", "")))
-
-    # Тематическая выборка может быть неравномерной по Elo. Добираем оставшиеся
-    # задачи из той же темы, чтобы ссылка «проверить на пазлах» по возможности
-    # всё равно давала полноценный набор из count позиций.
-    if len(picked) < count:
-        remaining = [
-            p for p in valid_puzzles if str(p.get("id", "")) not in selected_ids
-        ]
-        random.shuffle(remaining)
-        picked.extend(remaining[: max(0, count - len(picked))])
+    if rating is not None and normalized_topic is None:
+        # Только текущая корзина пользователя. Потолок «рейтинг + 200» —
+        # жёсткий максимум: более сложные задачи в практике не предлагаются.
+        ceiling = max_puzzle_rating_for_user(rating)
+        own_group = int(rating_group_for(rating)["id"])
+        own_pool = [p for p in valid_puzzles if puzzle_rating_group(p) == own_group]
+        pool = [p for p in own_pool if _puzzle_rating(p) <= ceiling]
+        # Потолок не должен обнулять корзину: если в пределах +200 задач нет
+        # (например, у самого низа диапазона), остаёмся в своей корзине.
+        if not pool:
+            pool = own_pool
+        picked = _shuffled_sample(pool, count)
+        personalization = {
+            "source": rating_source,
+            "group": own_group,
+            "max_rating": ceiling,
+        }
+    else:
+        picked = _sample_puzzles_by_buckets(valid_puzzles, count)
 
     random.shuffle(picked)
 
@@ -728,6 +818,7 @@ def get_puzzles(count: int = 20, topic: str | None = None):
         "puzzles": result,
         "total": len(result),
         "topic": normalized_topic,
+        "personalization": personalization,
     }
 
 

@@ -66,7 +66,7 @@ function uciFromMove(move) {
   return `${move.from}${move.to}${move.promotion || ""}`;
 }
 
-export default function LevelTestPage({ onCompleted = null }) {
+export default function LevelTestPage({ onCompleted = null, autoStart = false, onAutoStartHandled = null }) {
   const navigate = useNavigate();
   const [phase, setPhase] = useState("intro");
   const [questions, setQuestions] = useState([]);
@@ -88,6 +88,7 @@ export default function LevelTestPage({ onCompleted = null }) {
 
   const gameRef = useRef(makeGame(START_FEN));
   const questionStartedAtRef = useRef(Date.now());
+  const autoStartedRef = useRef(false);
 
   const currentQuestion = questions[currentIndex] || null;
   const progress = questions.length
@@ -161,6 +162,17 @@ export default function LevelTestPage({ onCompleted = null }) {
       setPhase("intro");
     }
   };
+
+  // Автозапуск сразу после онбординга (App передаёт autoStart=true).
+  useEffect(() => {
+    if (autoStart && !autoStartedRef.current && phase === "intro") {
+      autoStartedRef.current = true;
+      onAutoStartHandled?.();
+      beginTest();
+    }
+    // beginTest пересоздаётся на каждый рендер — защищаемся ref'ом от повтора.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoStart, phase]);
 
   const finishTest = async (finalAnswers, explicitTestId = null) => {
     const id = explicitTestId || testId;

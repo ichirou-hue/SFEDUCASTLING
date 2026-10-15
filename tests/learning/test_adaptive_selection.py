@@ -42,20 +42,33 @@ def test_rank_uses_bottom_three_and_top_three():
     ]
 
 
-def test_unseen_topic_has_neutral_rank_but_is_not_strong():
+def test_unseen_topics_are_neither_weak_nor_strong():
     topics = [
         _topic("pawn", 10),
         _topic("knight", None, attempts=0),
-        _topic("bishop", 90),
-        _topic("rook", None, attempts=0),
+        _topic("bishop", 30),
+        _topic("rook", 60),
+        _topic("queen", 80),
+        _topic("king", None, attempts=0),
     ]
     weak, strong = rank_topic_profile(topics)
-    assert weak[0]["slug"] == "pawn"
-    unseen = next(x for x in weak if x["slug"] == "knight")
-    assert unseen["rank_accuracy"] == 50.0
-    assert unseen["observed"] is False
-    assert [x["slug"] for x in strong] == ["bishop"]
-    assert all(x["observed"] is True for x in strong)
+    # В слабые попадают только пройденные темы (низкие 3 из observed).
+    assert [x["slug"] for x in weak] == ["pawn", "bishop", "rook"]
+    assert all(x["observed"] is True for x in weak)
+    assert [x["slug"] for x in strong] == ["queen"]
+    involved = {x["slug"] for x in weak + strong}
+    assert "knight" not in involved and "king" not in involved
+
+
+def test_zero_attempts_has_no_weak_or_strong_topics():
+    topics = [
+        _topic("pawn", None, attempts=0),
+        _topic("knight", None, attempts=0),
+        _topic("bishop", None, attempts=0),
+    ]
+    weak, strong = rank_topic_profile(topics)
+    assert weak == []
+    assert strong == []
 
 
 def test_unseen_topic_never_enters_strong_topics():

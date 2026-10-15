@@ -1,5 +1,7 @@
 from backend.services.adaptive_logic import select_adaptive_puzzles
 from backend.services.difficulty_logic import (
+    DEFAULT_DIFFICULTY,
+    difficulty_for_rating,
     next_difficulty,
     puzzle_matches_difficulty,
     rating_band_for_difficulty,
@@ -11,6 +13,16 @@ def test_thresholds_are_strict():
     assert next_difficulty(2, 80.0) == 2
     assert next_difficulty(2, 50.0) == 2
     assert next_difficulty(2, 49.9) == 1
+
+
+def test_difficulty_for_rating_maps_to_bands():
+    assert difficulty_for_rating(None) == DEFAULT_DIFFICULTY
+    assert difficulty_for_rating(500) == 1
+    assert difficulty_for_rating(1100) == 1
+    assert difficulty_for_rating(1200) == 2
+    assert difficulty_for_rating(1700) == 2
+    assert difficulty_for_rating(2050) == 3
+    assert difficulty_for_rating(3500) == 3
 
 
 def test_difficulty_is_bounded():

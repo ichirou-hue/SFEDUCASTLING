@@ -11,7 +11,9 @@ from sqlalchemy import delete, select
 from backend.app import app
 from backend.db.session import async_session_factory
 from backend.models.level_test import LevelTest
+from backend.models.puzzle_attempt import PuzzleAttempt
 from backend.models.user import User
+from backend.models.user_chess_account import UserChessAccount
 
 client = TestClient(app)
 
@@ -37,6 +39,37 @@ NEW_PUZZLES = {
 MATCH_ANCHOR = "backend.api_gateway.state.puzzle_base"
 
 PASSWORD = "Sup3rSecret!"
+
+# Валидная позиция и решение для проверки отбора по рейтингу.
+RATING_FEN = "k7/8/8/8/8/8/8/1R4K1 w - - 0 1"
+RATING_MOVES = "b1b8 a8a7 b8b7 a7a8 b7b1"
+RATING_PUZZLES = {
+    "puzzles": [
+        # группа 1 (0-1000)
+        {"id": "low1", "fen": RATING_FEN, "moves": RATING_MOVES, "rating": 500, "themes": ["fork"]},
+        {"id": "low2", "fen": RATING_FEN, "moves": RATING_MOVES, "rating": 900, "themes": ["fork"]},
+        # группа 2 (1001-1500) — своя для рейтинга 1200
+        {"id": "mid1", "fen": RATING_FEN, "moves": RATING_MOVES, "rating": 1200, "themes": ["pin"]},
+        {"id": "mid2", "fen": RATING_FEN, "moves": RATING_MOVES, "rating": 1350, "themes": ["pin"]},
+        {"id": "mid3", "fen": RATING_FEN, "moves": RATING_MOVES, "rating": 1400, "themes": ["fork"]},
+        # группа 3 (1501-1900) — соседняя, но выше потолка 1200+200=1400
+        {"id": "high1", "fen": RATING_FEN, "moves": RATING_MOVES, "rating": 1600, "themes": ["sacrifice"]},
+        {"id": "high2", "fen": RATING_FEN, "moves": RATING_MOVES, "rating": 1800, "themes": ["sacrifice"]},
+        # группа 4 (1901+) — отсекается и диапазоном, и потолком
+        {"id": "top1", "fen": RATING_FEN, "moves": RATING_MOVES, "rating": 2100, "themes": ["sacrifice"]},
+    ]
+}
+
+# Пазлы темы «Ладья»: тема rookEndgame + ладья делает ход в решении, поэтому
+# они проходят и проверку темы, и проверку профильной фигуры модуля.
+TOPIC_PUZZLES = {
+    "puzzles": [
+        {"id": "rook_low", "fen": RATING_FEN, "moves": RATING_MOVES, "rating": 500, "themes": ["rookEndgame"]},
+        {"id": "rook_mid", "fen": RATING_FEN, "moves": RATING_MOVES, "rating": 1200, "themes": ["rookEndgame"]},
+        {"id": "rook_high", "fen": RATING_FEN, "moves": RATING_MOVES, "rating": 1600, "themes": ["rookEndgame"]},
+        {"id": "rook_top", "fen": RATING_FEN, "moves": RATING_MOVES, "rating": 2100, "themes": ["rookEndgame"]},
+    ]
+}
 
 # Минимальная валидная анкета Q1-Q8: без неё /level-test/start отвечает 409.
 ONBOARDING = {
@@ -78,6 +111,11 @@ def cleanup():
                 await db.execute(
                     delete(LevelTest).where(LevelTest.user_id.in_(user_ids))
                 )
+                await db.execute(
+                    delete(UserChessAccount).where(
+                        UserChessAccount.user_id.in_(user_ids)
+                    )
+                )
             await db.execute(delete(User).where(User.login.in_(logins)))
             await db.commit()
 
@@ -92,6 +130,44 @@ def _authed_user(cleanup) -> str:
     )
     assert r.status_code == 201, r.text
     token = r.json()["access_token"]
+    r = client.post(
+        "/api/auth/onboarding", json=ONBOARDING, headers=_headers(token)
+    )
+    assert r.status_code == 200, r.text
+    return token
+
+
+def _authed_user_with_rating(cleanup, rating: int) -> str:
+    """Пользователь с привязанным внешним рейтингом.
+
+    Только привязка (rating_usable=True) снимает ограничение самооценки 800,
+    поэтому стартовая оценка берётся из внешнего рейтинга.
+    """
+    login = cleanup(f"lvlrated_{uuid.uuid4().hex[:8]}")
+    r = client.post(
+        "/api/auth/register", json={"login": login, "password": PASSWORD}
+    )
+    assert r.status_code == 201, r.text
+    token = r.json()["access_token"]
+    user_id = r.json()["user"]["id"]
+
+    async def _link():
+        async with async_session_factory() as db:
+            db.add(
+                UserChessAccount(
+                    user_id=user_id,
+                    platform="lichess",
+                    username="rated",
+                    rating_type="blitz",
+                    rating=rating,
+                    rating_scale="lichess_blitz",
+                    games=200,
+                    rating_usable=True,
+                )
+            )
+            await db.commit()
+
+    asyncio.run(_link())
     r = client.post(
         "/api/auth/onboarding", json=ONBOARDING, headers=_headers(token)
     )
@@ -239,3 +315,165 @@ class TestPuzzleCheck:
             )
         assert resp.status_code == 200
         assert resp.json()["correct"] is True
+
+
+class TestPuzzleSelectionByRating:
+    def test_guest_gets_uniform_buckets(self):
+        with patch(MATCH_ANCHOR, RATING_PUZZLES):
+            resp = client.get("/api/learning/puzzles", params={"count": 8})
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data["total"] == 8
+        assert data["personalization"] == {
+            "source": "none",
+            "group": None,
+            "max_rating": None,
+        }
+
+    def test_rated_user_gets_only_own_group(self, cleanup):
+        token = _authed_user_with_rating(cleanup, 1200)
+        with patch(MATCH_ANCHOR, RATING_PUZZLES):
+            resp = client.get(
+                "/api/learning/puzzles",
+                params={"count": 5},
+                headers=_headers(token),
+            )
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        # Привязанный рейтинг 1200 -> группа 2, потолок 1400.
+        # Только своя корзина: соседняя (low) и выше потолка (high) не выдаются.
+        assert data["personalization"] == {
+            "source": "onboarding",
+            "group": 2,
+            "max_rating": 1400,
+        }
+        ids = {p["id"] for p in data["puzzles"]}
+        assert ids == {"mid1", "mid2", "mid3"}
+        assert "low1" not in ids and "low2" not in ids
+        assert data["total"] == len(ids) == 3
+
+    def test_puzzles_above_rating_plus_200_are_never_offered(self, cleanup):
+        token = _authed_user_with_rating(cleanup, 1200)
+        # Просим заведомо больше, чем есть: потолок должен держать список.
+        with patch(MATCH_ANCHOR, RATING_PUZZLES):
+            resp = client.get(
+                "/api/learning/puzzles",
+                params={"count": 50},
+                headers=_headers(token),
+            )
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data["personalization"]["max_rating"] == 1400
+        assert all(p["rating"] <= 1400 for p in data["puzzles"])
+        ids = {p["id"] for p in data["puzzles"]}
+        # Ни выше потолка, ни из чужой (нижней) корзины.
+        assert "high1" not in ids and "high2" not in ids and "top1" not in ids
+        assert "low1" not in ids and "low2" not in ids
+
+    def test_topic_practice_ignores_rating(self, cleanup):
+        # Практика по теме модуля не привязана к рейтингу: доступны все пазлы
+        # темы, включая сильно ниже и выше корзины пользователя.
+        token = _authed_user_with_rating(cleanup, 1200)
+        with patch(MATCH_ANCHOR, TOPIC_PUZZLES):
+            resp = client.get(
+                "/api/learning/puzzles",
+                params={"count": 20, "topic": "rook"},
+                headers=_headers(token),
+            )
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data["personalization"] == {
+            "source": None,
+            "group": None,
+            "max_rating": None,
+        }
+        ids = {p["id"] for p in data["puzzles"]}
+        assert ids == {"rook_low", "rook_mid", "rook_high", "rook_top"}
+
+
+class TestAdaptivePuzzleSelectionByRating:
+    def test_adaptive_caps_to_own_group(self, cleanup):
+        # Персональная тренировка тоже ограничена текущей корзиной (+200).
+        token = _authed_user_with_rating(cleanup, 1200)
+        with patch(MATCH_ANCHOR, RATING_PUZZLES):
+            resp = client.get(
+                "/api/learning/puzzles/adaptive",
+                params={"count": 20},
+                headers=_headers(token),
+            )
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data["max_puzzle_rating"] == 1400
+        assert data["total"] > 0
+        for p in data["puzzles"]:
+            assert 1001 <= p["rating"] <= 1400
+        ids = {p["id"] for p in data["puzzles"]}
+        assert "low1" not in ids and "low2" not in ids
+        assert "high1" not in ids and "top1" not in ids
+
+
+class TestLearningProgressAccuracy:
+    """`accuracy` — solve rate (решённые/взятые по уникальным puzzle_id)."""
+
+    def _register(self) -> tuple[str, int]:
+        login = f"lvlacc_{uuid.uuid4().hex[:8]}"
+        r = client.post(
+            "/api/auth/register", json={"login": login, "password": PASSWORD}
+        )
+        assert r.status_code == 201, r.text
+        body = r.json()
+        return body["access_token"], body["user"]["id"]
+
+    def _cleanup(self, user_id: int) -> None:
+        async def _clean():
+            async with async_session_factory() as db:
+                await db.execute(
+                    delete(PuzzleAttempt).where(PuzzleAttempt.user_id == user_id)
+                )
+                await db.execute(delete(User).where(User.id == user_id))
+                await db.commit()
+
+        asyncio.run(_clean())
+
+    def test_accuracy_is_solve_rate_not_move_ratio(self):
+        token, user_id = self._register()
+
+        async def _seed():
+            async with async_session_factory() as db:
+                db.add_all(
+                    [
+                        # p1: два неверных хода, затем решение.
+                        PuzzleAttempt(user_id=user_id, puzzle_id="p1", correct=False),
+                        PuzzleAttempt(user_id=user_id, puzzle_id="p1", correct=False),
+                        PuzzleAttempt(user_id=user_id, puzzle_id="p1", correct=True),
+                        # p2 решён с первого хода.
+                        PuzzleAttempt(user_id=user_id, puzzle_id="p2", correct=True),
+                    ]
+                )
+                await db.commit()
+
+        try:
+            asyncio.run(_seed())
+            resp = client.get("/api/learning/progress", headers=_headers(token))
+            assert resp.status_code == 200, resp.text
+            data = resp.json()
+            assert data["attempted"] == 2
+            assert data["solved"] == 2
+            assert data["attempts"] == 4
+            assert data["correct_attempts"] == 2
+            # Обе задачи решены -> 100%, а не 2/4 по ходам.
+            assert data["accuracy"] == 100.0
+        finally:
+            self._cleanup(user_id)
+
+    def test_accuracy_is_none_without_attempts(self):
+        token, user_id = self._register()
+        try:
+            resp = client.get("/api/learning/progress", headers=_headers(token))
+            assert resp.status_code == 200, resp.text
+            data = resp.json()
+            assert data["attempted"] == 0
+            assert data["solved"] == 0
+            assert data["accuracy"] is None
+        finally:
+            self._cleanup(user_id)

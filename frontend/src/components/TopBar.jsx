@@ -1,13 +1,7 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { logout as apiLogout } from "../api.js";
 import MiniProfilePopover from "./MiniProfilePopover.jsx";
-import OnboardingModal from "./OnboardingModal.jsx";
 
-export default function TopBar({ user, onUserChange, onRegister, onMenuClick }) {
-  const [showOnboarding, setShowOnboarding] = useState(false);
-  const navigate = useNavigate();
-
+export default function TopBar({ user, onUserChange, onRegister, onMenuClick, onOpenOnboarding }) {
   const handleLogout = async () => {
     try {
       await apiLogout();
@@ -16,8 +10,8 @@ export default function TopBar({ user, onUserChange, onRegister, onMenuClick }) 
     }
   };
 
-  // Плашка видна, пока анкета не заполнена (user.onboarding === null).
-  const needsOnboarding = Boolean(user) && !user?.onboarding;
+  // Плашка видна, пока анкета не заполнена.
+  const needsOnboarding = Boolean(user) && !user?.onboarding_completed;
 
   return (
     <div className="top-bar">
@@ -38,7 +32,7 @@ export default function TopBar({ user, onUserChange, onRegister, onMenuClick }) 
           {needsOnboarding && (
             <button
               className="onb-badge"
-              onClick={() => setShowOnboarding(true)}
+              onClick={() => onOpenOnboarding?.()}
               title="Пройти онбординг-анкету"
             >
               Заполните анкету
@@ -52,20 +46,6 @@ export default function TopBar({ user, onUserChange, onRegister, onMenuClick }) 
       ) : (
         <button className="reg-btn" onClick={onRegister}>Регистрация</button>
       )}
-
-      <OnboardingModal
-        isOpen={showOnboarding}
-        onClose={() => setShowOnboarding(false)}
-        onDone={(freshUser) => {
-          // Обновляем user в app.jsx — плашка исчезает без перезагрузки.
-          onUserChange?.(freshUser);
-          // Сразу ведём на персональный тест уровня — это шаг 2 онбординга.
-          // Админам стартовая оценка не требуется (бэкенд отвечает 403).
-          if (freshUser?.role !== "admin") {
-            navigate("/level-test");
-          }
-        }}
-      />
     </div>
   );
 }

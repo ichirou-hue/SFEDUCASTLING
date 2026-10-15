@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import re
 from datetime import UTC, datetime
-from typing import Literal
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -34,6 +34,8 @@ from backend.api_gateway.security import (
 )
 from backend.db.session import get_db
 from backend.models.user import ROLE_ADMIN, ROLE_LEARNER, RefreshToken, User
+from backend.models.user_chess_account import UserChessAccount
+from backend.services.assessment import onboarding_rating
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -47,8 +49,13 @@ class RegisterRequest(BaseModel):
     @field_validator("login")
     @classmethod
     def login_charset(cls, v: str) -> str:
-        if not re.fullmatch(r"[A-Za-z0-9_-]+", v):
-            raise ValueError("Логин: только латинские буквы, цифры, _ и -")
+        # Обычный для авторизации безопасный набор: латиница, цифры и
+        # спецсимволы _ - . ! @ # $ % ^ & * + = ~ . Пробелы, кавычки (", '),
+        # национальная пунктуация и кириллица не принимаются.
+        if not re.fullmatch(r"[A-Za-z0-9_.\-!@#$%^&*+=~]+", v):
+            raise ValueError(
+                "Логин: только латинские буквы, цифры и специальные символы"
+            )
         return v
 
     @field_validator("password")
@@ -84,17 +91,9 @@ Q6_CHOICES = {"always", "stuck", "never"}
 Q7_CHOICES = {"u10", "age10_16", "age17plus"}
 Q8_CHOICES = {"coach", "friends", "internet", "school"}
 
-# prior_band по Q1, когда внешнего рейтинга нет (методика, раздел 1).
-Q1_TO_BAND = {
-    "never": 1,
-    "know_moves": 1,
-    "sometimes": 2,
-    "regular": 3,
-    "tournaments": 4,
-}
-
-# Таблица «внешний рейтинг -> prior_band».
-RATING_TO_BAND = [(1800, 4), (1400, 3), (1000, 2), (0, 1)]
+# prior_band и «сырая» оценка теперь считаются в services.assessment
+# (onboarding_rating): там же учтена привязка внешнего рейтинга и ограничение
+# самооценки без привязки.
 
 # TODO(BACKEND): методика, раздел 1 — сверка и доработка по мере развития.
 #
@@ -213,20 +212,6 @@ class OnboardingRequest(BaseModel):
         return self
 
 
-def compute_prior_band(answers: OnboardingRequest) -> int:
-    """prior_band = рейтинг Q2, если он есть, иначе Q1 (методика, раздел 1).
-
-    TODO(BACKEND): когда заработает проверка рейтинга через /api/chess-profile,
-    брать rating_estimate оттуда, а не из поля, присланного фронтом.
-    Значение должно записываться в users.prior_band (см. блок TODO выше).
-    """
-    if answers.q2 and answers.q2.rating is not None:
-        for threshold, band in RATING_TO_BAND:
-            if answers.q2.rating >= threshold:
-                return band
-    return Q1_TO_BAND[answers.q1]
-
-
 class RoleUpdateRequest(BaseModel):
     role: Literal["learner", "admin"]
 
@@ -339,6 +324,32 @@ async def me(user: User = Depends(get_current_user)):
     return {"user": user.public()}
 
 
+async def _linked_rating(db: AsyncSession, user_id: int) -> dict[str, Any] | None:
+    """Последний привязанный внешний рейтинг, пригодный для стартовой оценки.
+
+    Возвращает ``{"rating", "scale", "usable"}`` или None. Привязка — единственный
+    способ получить стартовую оценку выше ограничения самооценки.
+    """
+    account = await db.scalar(
+        select(UserChessAccount)
+        .where(
+            UserChessAccount.user_id == user_id,
+            UserChessAccount.rating_usable.is_(True),
+        )
+        .order_by(UserChessAccount.updated_at.desc(), UserChessAccount.id.desc())
+    )
+    if account is None or account.rating is None:
+        return None
+    return {
+        "rating": int(account.rating),
+        "scale": account.rating_scale,
+        "usable": True,
+        "platform": account.platform,
+        "username": account.username,
+        "rating_type": account.rating_type,
+    }
+
+
 @router.post("/onboarding")
 async def save_onboarding(
     req: OnboardingRequest,
@@ -358,11 +369,20 @@ async def save_onboarding(
     в отдельный флаг (см. блок TODO в начале файла).
     """
     payload = req.model_dump(mode="json")
+    # Стартовая оценка: внешний привязанный рейтинг (если есть) или самооценка
+    # Q1 с ограничением SELF_REPORT_CAP. Пишем и в JSON, и в отдельные колонки —
+    # подбор пазлов и стартовая сложность опираются на колонки.
+    linked = await _linked_rating(db, user.id)
+    rating_estimate, rating_scale, prior_band = onboarding_rating(payload, linked=linked)
     user.onboarding = {
         "answers": payload,
-        "prior_band": compute_prior_band(req),
+        "prior_band": prior_band,
+        "linked_rating": linked,
         "submitted_at": datetime.now(UTC).isoformat(),
     }
+    user.prior_band = prior_band
+    user.rating_estimate = rating_estimate
+    user.rating_scale = rating_scale
     await db.commit()
     return {"message": "Анкета сохранена", "user": user.public()}
 

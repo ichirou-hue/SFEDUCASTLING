@@ -421,16 +421,16 @@ export default function AdminPage({ user, onUserChange }) {
                   <section className="admin-card">
                     <h3>Тактические паззлы</h3>
                     <div className="admin-stats">
-                      <Stat label="Попыток" value={learning?.attempts ?? 0} />
-                      <Stat label="Верных" value={learning?.correct_attempts ?? 0} />
+                      <Stat label="Паззлов взято" value={learning?.attempted ?? 0} />
+                      <Stat label="Паззлов решено" value={learning?.solved ?? 0} />
                       <Stat
                         label="Точность"
                         value={
                           learning?.accuracy != null ? `${learning.accuracy}%` : "0%"
                         }
                       />
-                      <Stat label="Паззлов решено" value={learning?.solved ?? 0} />
-                      <Stat label="Паззлов взято" value={learning?.attempted ?? 0} />
+                      <Stat label="Попыток" value={learning?.attempts ?? 0} />
+                      <Stat label="Верных" value={learning?.correct_attempts ?? 0} />
                     </div>
                   </section>
                 </div>

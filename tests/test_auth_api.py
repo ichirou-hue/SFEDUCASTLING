@@ -20,6 +20,17 @@ client = TestClient(app)
 
 PASSWORD = "Sup3rSecret!"
 
+# Минимальная валидная анкета Q1-Q8 (q2 опционален).
+ONBOARDING = {
+    "q1": "sometimes",
+    "q3": ["family", "online_rating"],
+    "q4": "lt1",
+    "q5": ["puzzles", "games", "lessons"],
+    "q6": "stuck",
+    "q7": "age10_16",
+    "q8": "internet",
+}
+
 
 def _unique(base: str) -> str:
     return f"{base}_{uuid.uuid4().hex[:8]}"
@@ -95,6 +106,23 @@ class TestRegister:
         )
         assert r.status_code == 422
         assert "латинск" in r.json()["detail"][0]["msg"]
+
+    def test_register_special_symbols_login_allowed(self, cleanup):
+        """Спецсимволы из безопасного набора принимаются."""
+        login = cleanup(f"u.{uuid.uuid4().hex[:8]}@!")
+        r = client.post(
+            "/api/auth/register", json={"login": login, "password": PASSWORD}
+        )
+        assert r.status_code == 201, r.text
+        assert r.json()["user"]["login"] == login
+
+    def test_register_unsafe_login_chars_rejected(self):
+        """Пробелы, кавычки и национальная пунктуация не принимаются."""
+        for bad in ['bad"login', "bad'login", "bad login", "bad«login"]:
+            r = client.post(
+                "/api/auth/register", json={"login": bad, "password": PASSWORD}
+            )
+            assert r.status_code == 422, f"{bad!r} -> {r.status_code}"
 
     def test_register_password_letters_only_rejected(self, cleanup):
         """Пароль без цифр не проходит."""
@@ -245,6 +273,27 @@ class TestMeAndTokens:
             client.post("/api/auth/refresh", json={"refresh_token": "x" * 64}).status_code
             == 401
         )
+
+
+class TestOnboarding:
+    def test_persists_rating_columns(self, cleanup):
+        login = cleanup(_unique("onb"))
+        token = client.post(
+            "/api/auth/register", json={"login": login, "password": PASSWORD}
+        ).json()["access_token"]
+        r = client.post(
+            "/api/auth/onboarding",
+            json=ONBOARDING,
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert r.status_code == 200, r.text
+        user = r.json()["user"]
+        # q1="sometimes" без привязки -> самооценка ограничена 800 (группа 1),
+        # шкала самооценки, prior_band сохраняет заявленный уровень (2).
+        assert user["rating_estimate"] == 800
+        assert user["rating_scale"] == "self_report"
+        assert user["prior_band"] == 2
+        assert user["onboarding_completed"] is True
 
 
 class TestAdmin:
