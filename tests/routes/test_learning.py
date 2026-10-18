@@ -2,11 +2,12 @@
 
 import asyncio
 import uuid
+from datetime import timedelta
 
 import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import patch
-from sqlalchemy import delete, select
+from sqlalchemy import DateTime, cast, delete, func, select
 
 from backend.app import app
 from backend.db.session import async_session_factory
@@ -71,6 +72,19 @@ TOPIC_PUZZLES = {
     ]
 }
 
+# Пробный режим до анкеты: пять задач с рейтингом до 700 и две выше границы.
+PREVIEW_PUZZLES = {
+    "puzzles": [
+        {"id": "p1", "fen": RATING_FEN, "moves": RATING_MOVES, "rating": 400, "themes": ["fork"]},
+        {"id": "p2", "fen": RATING_FEN, "moves": RATING_MOVES, "rating": 500, "themes": ["fork"]},
+        {"id": "p3", "fen": RATING_FEN, "moves": RATING_MOVES, "rating": 600, "themes": ["fork"]},
+        {"id": "p4", "fen": RATING_FEN, "moves": RATING_MOVES, "rating": 650, "themes": ["fork"]},
+        {"id": "p5", "fen": RATING_FEN, "moves": RATING_MOVES, "rating": 700, "themes": ["fork"]},
+        {"id": "p_high1", "fen": RATING_FEN, "moves": RATING_MOVES, "rating": 1200, "themes": ["fork"]},
+        {"id": "p_high2", "fen": RATING_FEN, "moves": RATING_MOVES, "rating": 1500, "themes": ["fork"]},
+    ]
+}
+
 # Минимальная валидная анкета Q1-Q8: без неё /level-test/start отвечает 409.
 ONBOARDING = {
     "q1": "sometimes",
@@ -110,6 +124,11 @@ def cleanup():
             if user_ids:
                 await db.execute(
                     delete(LevelTest).where(LevelTest.user_id.in_(user_ids))
+                )
+                await db.execute(
+                    delete(PuzzleAttempt).where(
+                        PuzzleAttempt.user_id.in_(user_ids)
+                    )
                 )
                 await db.execute(
                     delete(UserChessAccount).where(
@@ -173,6 +192,37 @@ def _authed_user_with_rating(cleanup, rating: int) -> str:
     )
     assert r.status_code == 200, r.text
     return token
+
+
+def _registered_user(cleanup) -> tuple[str, int]:
+    """Регистрирует пользователя, но НЕ проходит анкету (пробный режим)."""
+    login = cleanup(f"lvlnonboard_{uuid.uuid4().hex[:8]}")
+    r = client.post(
+        "/api/auth/register", json={"login": login, "password": PASSWORD}
+    )
+    assert r.status_code == 201, r.text
+    body = r.json()
+    return body["access_token"], body["user"]["id"]
+
+
+def _add_puzzle_attempts(
+    user_id: int, puzzle_ids: list[str], *, days_ago: int = 0
+) -> None:
+    async def _run() -> None:
+        async with async_session_factory() as db:
+            created_at = None
+            if days_ago:
+                # naive-«сейчас» в поясе БД (created_at — timestamp без tz).
+                base = await db.scalar(select(cast(func.now(), DateTime)))
+                created_at = base - timedelta(days=days_ago)
+            for pid in puzzle_ids:
+                values: dict = {"user_id": user_id, "puzzle_id": pid, "correct": True}
+                if created_at is not None:
+                    values["created_at"] = created_at
+                db.add(PuzzleAttempt(**values))
+            await db.commit()
+
+    asyncio.run(_run())
 
 
 def _start_test(token: str) -> tuple[int, list[str]]:
@@ -410,6 +460,167 @@ class TestAdaptivePuzzleSelectionByRating:
         ids = {p["id"] for p in data["puzzles"]}
         assert "low1" not in ids and "low2" not in ids
         assert "high1" not in ids and "top1" not in ids
+
+
+class TestPuzzlePreviewBeforeOnboarding:
+    def test_preview_limits_to_three_low_puzzles(self, cleanup):
+        # Зарегистрирован, но анкету не прошёл: не больше 3 задач до 700.
+        token, _uid = _registered_user(cleanup)
+        with patch(MATCH_ANCHOR, PREVIEW_PUZZLES):
+            resp = client.get(
+                "/api/learning/puzzles",
+                params={"count": 20},
+                headers=_headers(token),
+            )
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data["preview"] is True
+        assert data["preview_limit"] == 3
+        assert data["preview_remaining"] == 3
+        assert data["preview_locked"] is False
+        assert data["total"] == 3
+        assert len(data["puzzles"]) == 3
+        assert all(p["rating"] <= 700 for p in data["puzzles"])
+
+    def test_preview_locks_after_three_distinct_attempts(self, cleanup):
+        token, user_id = _registered_user(cleanup)
+        with patch(MATCH_ANCHOR, PREVIEW_PUZZLES):
+            first = client.get(
+                "/api/learning/puzzles",
+                params={"count": 20},
+                headers=_headers(token),
+            )
+        ids = [p["id"] for p in first.json()["puzzles"]]
+        assert len(ids) == 3
+        _add_puzzle_attempts(user_id, ids)
+
+        with patch(MATCH_ANCHOR, PREVIEW_PUZZLES):
+            resp = client.get(
+                "/api/learning/puzzles",
+                params={"count": 20},
+                headers=_headers(token),
+            )
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data["preview"] is True
+        assert data["preview_remaining"] == 0
+        assert data["preview_locked"] is True
+        assert data["puzzles"] == []
+        assert data["total"] == 0
+
+    def test_preview_resets_next_day(self, cleanup):
+        # Лимит — на сутки: вчерашние попытки не тратят сегодняшний запас.
+        token, user_id = _registered_user(cleanup)
+        _add_puzzle_attempts(user_id, ["old1", "old2", "old3"], days_ago=1)
+        _add_puzzle_attempts(user_id, ["old4"], days_ago=2)
+        with patch(MATCH_ANCHOR, PREVIEW_PUZZLES):
+            resp = client.get(
+                "/api/learning/puzzles",
+                params={"count": 20},
+                headers=_headers(token),
+            )
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data["preview"] is True
+        assert data["preview_remaining"] == 3
+        assert data["preview_locked"] is False
+        assert data["total"] == 3
+
+    def test_preview_partial_day_usage(self, cleanup):
+        # Одна задача сегодня → остаётся две.
+        token, user_id = _registered_user(cleanup)
+        _add_puzzle_attempts(user_id, ["today1"])
+        with patch(MATCH_ANCHOR, PREVIEW_PUZZLES):
+            resp = client.get(
+                "/api/learning/puzzles",
+                params={"count": 20},
+                headers=_headers(token),
+            )
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data["preview_remaining"] == 2
+        assert data["preview_locked"] is False
+        assert data["total"] == 2
+
+    def test_preview_assignment_is_stable_across_reloads(self, cleanup):
+        # Повторное открытие вкладки «Шахматные задачи» не меняет набор.
+        token, _uid = _registered_user(cleanup)
+        with patch(MATCH_ANCHOR, PREVIEW_PUZZLES):
+            first = client.get(
+                "/api/learning/puzzles",
+                params={"count": 20},
+                headers=_headers(token),
+            ).json()
+            second = client.get(
+                "/api/learning/puzzles",
+                params={"count": 20},
+                headers=_headers(token),
+            ).json()
+        assert len(first["puzzles"]) == 3
+        assert [p["id"] for p in first["puzzles"]] == [
+            p["id"] for p in second["puzzles"]
+        ]
+
+    def test_preview_last_puzzle_stays_fixed(self, cleanup):
+        # Решив две задачи, при перезапуске вкладки получаем ту же третью задачу.
+        token, user_id = _registered_user(cleanup)
+        with patch(MATCH_ANCHOR, PREVIEW_PUZZLES):
+            batch = client.get(
+                "/api/learning/puzzles",
+                params={"count": 20},
+                headers=_headers(token),
+            ).json()
+        ids = [p["id"] for p in batch["puzzles"]]
+        assert len(ids) == 3
+        _add_puzzle_attempts(user_id, ids[:2])
+
+        with patch(MATCH_ANCHOR, PREVIEW_PUZZLES):
+            after = client.get(
+                "/api/learning/puzzles",
+                params={"count": 20},
+                headers=_headers(token),
+            ).json()
+        assert after["preview_remaining"] == 1
+        assert after["total"] == 1
+        assert after["puzzles"][0]["id"] == ids[2]
+
+        # И ещё один перезапуск отдаёт ровно ту же (последнюю) задачу.
+        with patch(MATCH_ANCHOR, PREVIEW_PUZZLES):
+            again = client.get(
+                "/api/learning/puzzles",
+                params={"count": 20},
+                headers=_headers(token),
+            ).json()
+        assert [p["id"] for p in again["puzzles"]] == [ids[2]]
+
+    def test_preview_adaptive_caps_to_three(self, cleanup):
+        token, _uid = _registered_user(cleanup)
+        with patch(MATCH_ANCHOR, PREVIEW_PUZZLES):
+            resp = client.get(
+                "/api/learning/puzzles/adaptive",
+                params={"count": 20},
+                headers=_headers(token),
+            )
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data["preview"] is True
+        assert data["preview_limit"] == 3
+        assert data["total"] <= 3
+        assert all(p["rating"] <= 700 for p in data["puzzles"])
+
+    def test_onboarded_user_is_not_preview(self, cleanup):
+        # Прошедший анкету получает обычную персональную выборку.
+        token = _authed_user_with_rating(cleanup, 1200)
+        with patch(MATCH_ANCHOR, PREVIEW_PUZZLES):
+            resp = client.get(
+                "/api/learning/puzzles",
+                params={"count": 20},
+                headers=_headers(token),
+            )
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data.get("preview") is None
+        assert data["personalization"]["group"] == 2
 
 
 class TestLearningProgressAccuracy:

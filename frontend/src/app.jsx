@@ -145,6 +145,7 @@ export default function App() {
           element={
             <PuzzlesPage
               user={user}
+              onOpenOnboarding={() => setShowOnboarding(true)}
               onRegister={() => {
                 setAuthMode("register");
                 setAuthNotice("");
