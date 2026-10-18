@@ -12,11 +12,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from backend.api_gateway import state
 from backend.api_gateway.dependecies import get_current_user
 from backend.api_gateway.models import PuzzleAnswerRequest
 from backend.db.session import get_db
+from backend.models.game import Game
 from backend.models.level_test import LevelTest
 from backend.models.puzzle_attempt import PuzzleAttempt
 from backend.models.user import ROLE_ADMIN, User
@@ -48,6 +50,8 @@ from backend.services.dynamic_difficulty import (
     public_difficulty_profile,
     update_theme_difficulty_after_attempt,
 )
+from backend.services.phase_accuracy import build_phase_accuracy
+from backend.services.user_records import build_user_records
 
 router = APIRouter(tags=["learning"])
 
@@ -573,6 +577,40 @@ async def learning_progress(
 ):
     """Прогресс текущего пользователя по обычным тактическим пазлам."""
     return await compute_learning_progress(db, user_id=user.id)
+
+
+@router.get("/api/learning/records")
+async def learning_user_records(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Возвращает личные рекорды и активность за последние 14 дней."""
+    games = await db.scalars(
+        select(Game)
+        .where(Game.user_id == user.id)
+        .order_by(Game.created_at, Game.id)
+    )
+    puzzle_attempts = await db.scalars(
+        select(PuzzleAttempt)
+        .where(PuzzleAttempt.user_id == user.id)
+        .order_by(PuzzleAttempt.created_at, PuzzleAttempt.id)
+    )
+    return build_user_records(games.all(), puzzle_attempts.all())
+
+
+@router.get("/api/learning/phase-accuracy")
+async def learning_phase_accuracy(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Возвращает точность ходов пользователя по этапам завершённых партий."""
+    games = await db.scalars(
+        select(Game)
+        .options(selectinload(Game.moves))
+        .where(Game.user_id == user.id, Game.result.in_(("1-0", "0-1", "1/2-1/2")))
+        .order_by(Game.created_at, Game.id)
+    )
+    return build_phase_accuracy(games.all())
 
 
 @router.get("/api/learning/level-progress")

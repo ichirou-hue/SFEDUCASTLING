@@ -9,6 +9,8 @@ import {
 } from "../api.js";
 import ProgressWidget from "./ProgressWidget.jsx";
 import RatingBandProgress from "./RatingBandProgress.jsx";
+import UserRecordsWidget from "./UserRecordsWidget.jsx";
+import PhaseAccuracyWidget from "./PhaseAccuracyWidget.jsx";
 import "./UserProfilePage.css";
 
 function formatDate(value) {
@@ -276,6 +278,9 @@ export default function UserProfilePage({ user, onUserChange }) {
           {error && <div className="user-profile-warning">{error}</div>}
         </div>
       </section>
+
+      <UserRecordsWidget />
+      <PhaseAccuracyWidget />
 
       <section className="user-profile-rating-section">
         <div className="user-profile-section-heading">

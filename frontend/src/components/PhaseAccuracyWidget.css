@@ -1,0 +1,350 @@
+.phase-accuracy {
+  --phase-ink: #21372d;
+  --phase-muted: #748279;
+  margin-top: 18px;
+  padding: 22px 24px 17px;
+  overflow: hidden;
+  border: 1px solid rgba(42, 101, 81, 0.15);
+  border-radius: 22px;
+  color: var(--phase-ink);
+  background:
+    radial-gradient(ellipse at 88% 8%, rgba(196, 224, 212, 0.28), transparent 35%),
+    linear-gradient(145deg, #fff 0%, #fbfdfb 65%, #f5f9f6 100%);
+  box-shadow: 0 12px 34px rgba(25, 52, 43, 0.065);
+}
+
+.phase-accuracy--loading,
+.phase-accuracy--message {
+  min-height: 82px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--phase-muted);
+  font-size: 14px;
+}
+
+.phase-accuracy--loading {
+  background: linear-gradient(100deg, #f7faf7 30%, #edf4ef 50%, #f7faf7 70%);
+  background-size: 220% 100%;
+  animation: phase-shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes phase-shimmer {
+  to { background-position-x: -220%; }
+}
+
+.phase-accuracy--message button {
+  padding: 8px 13px;
+  border: 1px solid rgba(63, 119, 96, 0.22);
+  border-radius: 10px;
+  color: #386a52;
+  background: #f1f7f2;
+  font: inherit;
+  cursor: pointer;
+}
+
+.phase-accuracy__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.phase-accuracy__header h2 {
+  margin: 3px 0 0;
+  font-size: 23px;
+  letter-spacing: -0.025em;
+}
+
+.phase-accuracy__header p {
+  margin: 6px 0 0;
+  color: var(--phase-muted);
+  font-size: 13px;
+}
+
+.phase-accuracy__games {
+  padding: 7px 11px;
+  border: 1px solid rgba(71, 112, 85, 0.13);
+  border-radius: 999px;
+  color: #62736a;
+  background: rgba(244, 248, 244, 0.9);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.phase-accuracy__insight {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin-top: 17px;
+  padding: 10px 12px;
+  border: 1px solid rgba(83, 143, 117, 0.13);
+  border-radius: 12px;
+  color: #4e695b;
+  background: linear-gradient(90deg, rgba(239, 247, 241, 0.88), rgba(247, 250, 247, 0.65));
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.phase-accuracy__insight-icon {
+  color: #59a27a;
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.phase-accuracy__chart-wrap {
+  width: 100%;
+  margin-top: 2px;
+}
+
+.phase-accuracy__chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.phase-accuracy__grid-row line {
+  stroke: rgba(47, 81, 65, 0.09);
+  stroke-dasharray: 3 6;
+}
+
+.phase-accuracy__grid-row:first-child line,
+.phase-accuracy__grid-row:last-child line {
+  stroke-dasharray: none;
+  stroke: rgba(47, 81, 65, 0.14);
+}
+
+.phase-accuracy__grid-row text {
+  fill: #96a29a;
+  font-size: 10px;
+  font-family: inherit;
+}
+
+.phase-accuracy__area {
+  fill: url(#phaseAccuracyFill);
+  pointer-events: none;
+}
+
+.phase-accuracy__curve {
+  fill: none;
+  stroke: url(#phaseAccuracyLine);
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 3px 4px rgba(69, 133, 104, 0.2));
+  animation: phase-curve-in 650ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes phase-curve-in {
+  from { stroke-dasharray: 900; stroke-dashoffset: 900; opacity: 0.4; }
+  to { stroke-dasharray: 900; stroke-dashoffset: 0; opacity: 1; }
+}
+
+.phase-accuracy__point {
+  cursor: pointer;
+  outline: none;
+}
+
+.phase-accuracy__point-halo {
+  fill: #69a98a;
+  opacity: 0.14;
+  transition: r 180ms ease, opacity 180ms ease;
+}
+
+.phase-accuracy__point-core {
+  fill: #fff;
+  stroke: #559773;
+  stroke-width: 4;
+  transition: r 180ms ease, stroke-width 180ms ease;
+}
+
+.phase-accuracy__point-value {
+  fill: #365e4b;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.phase-accuracy__point:hover .phase-accuracy__point-halo,
+.phase-accuracy__point.is-selected .phase-accuracy__point-halo,
+.phase-accuracy__point:focus-visible .phase-accuracy__point-halo {
+  r: 19px;
+  opacity: 0.22;
+}
+
+.phase-accuracy__point.is-selected .phase-accuracy__point-core,
+.phase-accuracy__point:focus-visible .phase-accuracy__point-core {
+  r: 8px;
+  stroke-width: 5;
+}
+
+.phase-accuracy__point-empty {
+  fill: #fff;
+  stroke: #c5d1c9;
+  stroke-width: 2;
+}
+
+.phase-accuracy__point.is-empty .phase-accuracy__axis-label {
+  fill: #9aa69e;
+}
+
+.phase-accuracy__axis-label {
+  fill: #68796f;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  transition: fill 150ms ease;
+}
+
+.phase-accuracy__point.is-selected .phase-accuracy__axis-label,
+.phase-accuracy__point:hover .phase-accuracy__axis-label,
+.phase-accuracy__point:focus-visible .phase-accuracy__axis-label {
+  fill: #315e47;
+}
+
+.phase-accuracy__summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 2px;
+}
+
+.phase-accuracy__summary-item {
+  min-width: 0;
+  padding: 11px 13px;
+  border: 1px solid rgba(60, 104, 82, 0.11);
+  border-radius: 13px;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.75);
+  cursor: pointer;
+  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.phase-accuracy__summary-item:hover,
+.phase-accuracy__summary-item.is-selected {
+  transform: translateY(-1px);
+  border-color: rgba(73, 142, 105, 0.35);
+  box-shadow: 0 5px 15px rgba(45, 96, 67, 0.08);
+}
+
+.phase-accuracy__summary-item span,
+.phase-accuracy__summary-item strong,
+.phase-accuracy__summary-item small {
+  display: block;
+}
+
+.phase-accuracy__summary-item span {
+  color: #6b7a71;
+  font-size: 11px;
+}
+
+.phase-accuracy__summary-item strong {
+  margin-top: 4px;
+  color: #2e5541;
+  font-size: 21px;
+  font-variant-numeric: tabular-nums;
+}
+
+.phase-accuracy__summary-item small {
+  margin-top: 2px;
+  color: #8b978f;
+  font-size: 10px;
+}
+
+.phase-accuracy__details {
+  margin-top: 11px;
+  padding: 11px 13px;
+  border-radius: 13px;
+  background: rgba(239, 245, 240, 0.72);
+  animation: phase-detail-in 180ms ease-out both;
+}
+
+@keyframes phase-detail-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.phase-accuracy__details-heading,
+.phase-accuracy__errors {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.phase-accuracy__details-heading strong {
+  color: #385b48;
+  font-size: 12px;
+}
+
+.phase-accuracy__details-heading span {
+  color: #829087;
+  font-size: 10px;
+}
+
+.phase-accuracy__errors {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  margin-top: 9px;
+}
+
+.phase-accuracy__error {
+  padding: 5px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+}
+
+.phase-accuracy__error strong {
+  margin-right: 2px;
+  font-variant-numeric: tabular-nums;
+}
+
+.phase-accuracy__error--soft { color: #8b7139; background: #f7f0dd; }
+.phase-accuracy__error--medium { color: #a85f3a; background: #fbede4; }
+.phase-accuracy__error--strong { color: #a44f4a; background: #f8e9e8; }
+
+.phase-accuracy__footnote {
+  margin-top: 11px;
+  color: #919d95;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+@media (max-width: 760px) {
+  .phase-accuracy { padding: 17px 14px 14px; }
+  .phase-accuracy__header h2 { font-size: 20px; }
+  .phase-accuracy__header p { max-width: 270px; font-size: 12px; }
+  .phase-accuracy__games { padding: 6px 8px; font-size: 10px; }
+  .phase-accuracy__summary { gap: 6px; }
+  .phase-accuracy__summary-item { padding: 9px 8px; }
+  .phase-accuracy__summary-item span { font-size: 10px; }
+  .phase-accuracy__summary-item strong { font-size: 18px; }
+  .phase-accuracy__summary-item small { font-size: 9px; }
+}
+
+@media (max-width: 430px) {
+  .phase-accuracy__header { flex-direction: column; gap: 9px; }
+  .phase-accuracy__games { align-self: flex-start; }
+  .phase-accuracy__errors { gap: 6px; }
+}
+
+@media (max-width: 560px) {
+  .phase-accuracy__grid-row text,
+  .phase-accuracy__point-value,
+  .phase-accuracy__axis-label {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .phase-accuracy *,
+  .phase-accuracy *::before,
+  .phase-accuracy *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

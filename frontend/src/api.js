@@ -295,10 +295,9 @@ export async function saveMoveToDataset(fen, move, userId, gameId) {
   return data;
 }
 
-export async function finishGame({ moves, userId, elo, engine, result, status }) {
+export async function finishGame({ moves, elo, engine, result, status }) {
   const { data } = await api.post("/api/game/finish", {
     moves,
-    user_id: userId ?? null,
     elo: elo ?? null,
     engine: engine || "maia3",
     result: result || "*",
@@ -379,6 +378,16 @@ export async function recordPuzzleAttempt(puzzleId, correct) {
 
 export async function fetchLearningProgress() {
   const { data } = await api.get("/api/learning/progress");
+  return data;
+}
+
+export async function fetchLearningRecords() {
+  const { data } = await api.get("/api/learning/records");
+  return data;
+}
+
+export async function fetchPhaseAccuracy() {
+  const { data } = await api.get("/api/learning/phase-accuracy");
   return data;
 }
 

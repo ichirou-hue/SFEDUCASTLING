@@ -227,11 +227,8 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
       result = "1/2-1/2";
     }
 
-    const uid = getCurrentUserId();
-
     finishGame({
       moves: uciMoves,
-      userId: uid,
       elo,
       engine: "maia3",
       result,
