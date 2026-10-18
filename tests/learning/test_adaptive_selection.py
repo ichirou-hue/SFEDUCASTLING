@@ -208,3 +208,21 @@ def test_every_adaptive_non_fallback_topic_matches_primary_topic():
         if item["adaptive_group"] == "fallback":
             continue
         assert item["adaptive_topic"] == primary_course_topic_for_puzzle(item)
+
+
+def test_easy_puzzles_from_other_topics_precede_hard_weak_topic_puzzles():
+    puzzles = [
+        {"id": "hard-knight", "themes": ["fork"], "rating": 2200},
+        {"id": "easy-pawn", "themes": ["advancedPawn"], "rating": 700},
+        {"id": "easy-rook", "themes": ["rookEndgame"], "rating": 900},
+    ]
+    picked, meta = select_adaptive_puzzles(
+        puzzles,
+        weak_topics=[{"slug": "knight"}],
+        strong_topics=[],
+        count=3,
+        topic_difficulties={"knight": 1, "pawn": 1, "rook": 1},
+    )
+    assert [p["id"] for p in picked[:2]] in (["easy-pawn", "easy-rook"], ["easy-rook", "easy-pawn"])
+    assert picked[2]["id"] == "hard-knight"
+    assert meta["difficulty_matched"] == 2

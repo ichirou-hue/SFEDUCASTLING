@@ -162,12 +162,19 @@ export default function PuzzlesPage({ user, onRegister }) {
   const [searchParams] = useSearchParams();
   const requestedTopicSlug = searchParams.get("topic");
   const requestedTopic = getCourseTopicMeta(requestedTopicSlug);
-  const adaptiveMode = searchParams.get("adaptive") === "1";
+  const explicitAdaptiveMode = searchParams.get("adaptive") === "1";
+  const allPuzzlesMode = searchParams.get("mode") === "all";
   const ratingMinParam = searchParams.get("rating_min");
   const ratingMin =
     ratingMinParam != null && /^\d+$/.test(ratingMinParam)
       ? Number(ratingMinParam)
       : null;
+  const adaptiveMode =
+    explicitAdaptiveMode ||
+    (Boolean(user && getAccessToken()) &&
+      !allPuzzlesMode &&
+      !requestedTopicSlug &&
+      ratingMin === null);
 
   const [puzzles, setPuzzles] = useState([]);
   const [adaptiveMeta, setAdaptiveMeta] = useState(null);
@@ -270,6 +277,7 @@ export default function PuzzlesPage({ user, onRegister }) {
   );
 
   useEffect(() => {
+    let cancelled = false;
     setLoading(true);
     setError(null);
     setSolvedCount(0);
@@ -281,6 +289,7 @@ export default function PuzzlesPage({ user, onRegister }) {
 
     request
       .then((data) => {
+        if (cancelled) return;
         const qs = data.puzzles || [];
         if (qs.length === 0) {
           puzzlesRef.current = [];
@@ -301,6 +310,7 @@ export default function PuzzlesPage({ user, onRegister }) {
             weakTopics: data.weak_topics || [],
             strongTopics: data.strong_topics || [],
             allocation: data.allocation || null,
+            playerLevel: data.player_level || null,
           });
         }
         puzzlesRef.current = qs;
@@ -308,9 +318,15 @@ export default function PuzzlesPage({ user, onRegister }) {
         setCurrentIndex(0);
       })
       .catch((e) => {
+        if (cancelled) return;
         setError("Ошибка загрузки задач: " + (e.response?.data?.detail || e.message));
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [adaptiveMode, ratingMin, requestedTopic?.slug, requestedTopic?.title]);
 
   useEffect(() => {
@@ -669,13 +685,24 @@ export default function PuzzlesPage({ user, onRegister }) {
         {adaptiveMode && (
           <div className="learning-topic-filter learning-topic-filter--adaptive">
             Персональная тренировка
-            <strong>70% слабые темы · 30% закрепление сильных</strong>
+            {adaptiveMeta?.playerLevel && (
+              <strong>
+                {adaptiveMeta.playerLevel.provisional ? "Предварительный уровень" : "Уровень"}: {adaptiveMeta.playerLevel.title}
+              </strong>
+            )}
+            {currentPuzzle?.adaptive_difficulty != null && (
+              <span className="adaptive-topic-list">
+                Целевая сложность: {currentPuzzle.adaptive_difficulty} из 3
+                {currentPuzzle.difficulty_match === false && " · задача вне целевого диапазона"}
+              </span>
+            )}
+            <strong>Подбор по уровню и темам</strong>
             {adaptiveMeta?.weakTopics?.length > 0 && (
               <div className="adaptive-topic-list">
                 Слабые: {adaptiveMeta.weakTopics.map((topic) => topic.title).join(", ")}
               </div>
             )}
-            <button type="button" onClick={() => navigate("/puzzles")}>
+            <button type="button" onClick={() => navigate("/puzzles?mode=all")}>
               Обычный режим
             </button>
           </div>
@@ -687,7 +714,7 @@ export default function PuzzlesPage({ user, onRegister }) {
             <strong>
               {requestedTopic.icon} {requestedTopic.title}
             </strong>
-            <button type="button" onClick={() => navigate("/puzzles")}>
+            <button type="button" onClick={() => navigate("/puzzles?mode=all")}>
               Показать все пазлы
             </button>
           </div>
@@ -697,7 +724,7 @@ export default function PuzzlesPage({ user, onRegister }) {
           <div className="learning-topic-filter">
             Подбор по рейтингу
             <strong>От {ratingMin}</strong>
-            <button type="button" onClick={() => navigate("/puzzles")}>
+            <button type="button" onClick={() => navigate("/puzzles?mode=all")}>
               Показать все пазлы
             </button>
           </div>

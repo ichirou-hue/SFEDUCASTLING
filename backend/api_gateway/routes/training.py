@@ -21,6 +21,7 @@ from backend.services.training_reviews import (
     update_training_review_after_attempt,
 )
 from backend.services.dynamic_difficulty import (
+    effective_player_rating,
     get_user_theme_difficulties,
     training_task_topic_slug,
     update_theme_difficulty_after_attempt,
@@ -190,6 +191,7 @@ async def check_task(
         db,
         user_id=user.id,
         puzzle_base=state.puzzle_base,
+        player_rating=effective_player_rating(user),
     )
 
     attempt = await save_attempt(
@@ -207,6 +209,7 @@ async def check_task(
         user_id=user.id,
         theme_slug=topic_slug,
         puzzle_base=state.puzzle_base,
+        player_rating=effective_player_rating(user),
     )
 
     review_update = await update_training_review_after_attempt(

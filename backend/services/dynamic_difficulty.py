@@ -6,7 +6,7 @@
 - 50% <= accuracy <= 80% -> без изменения
 
 Шкала 1..3 совпадает с difficulty учебных заданий TrainingTask.
-Нейтральный стартовый уровень — 2, чтобы правило могло работать в обе стороны.
+Старт зависит от уровня игрока; без оценки он начинается с 1.
 """
 
 from __future__ import annotations
@@ -20,11 +20,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.models.training_lesson import TrainingLesson
 from backend.models.training_module import TrainingModule
 from backend.models.training_task import TrainingTask
+from backend.models.user import User
 from backend.models.user_theme_difficulty import UserThemeDifficulty
 from backend.services.adaptive_training import build_weakness_profile
 from backend.services.course_topics import COURSE_TOPIC_META
 from backend.services.difficulty_logic import (
     DEFAULT_DIFFICULTY,
+    initial_difficulty_for_rating,
     next_difficulty,
     rating_band_for_difficulty,
 )
@@ -38,16 +40,27 @@ def _accuracy_by_slug(profile: dict) -> dict[str, float | None]:
     }
 
 
+def effective_player_rating(user: User) -> int | None:
+    """После теста верим итоговому Elo, до него — предварительной оценке."""
+    if user.assessment_completed_at is not None and user.elo is not None:
+        return int(user.elo)
+    if user.rating_estimate is not None:
+        return int(user.rating_estimate)
+    return int(user.elo) if user.elo is not None else None
+
+
 async def ensure_user_theme_difficulties(
     db: AsyncSession,
     *,
     user_id: int,
     profile: dict,
+    player_rating: int | None = None,
 ) -> dict[str, int]:
     """Создаёт отсутствующие строки difficulty один раз.
 
-    Для уже накопленной до B2 истории стартуем с нейтрального уровня 2 и
-    однократно применяем текущее accuracy. Повторные GET не меняют difficulty.
+    Для уже накопленной истории стартуем с уровня игрока и однократно
+    применяем текущее accuracy. Повторные GET не меняют difficulty после
+    первой инициализации, пока не появится новый результат теста уровня.
     PostgreSQL ON CONFLICT защищает ленивую инициализацию от гонки.
     """
     existing = (
@@ -57,12 +70,26 @@ async def ensure_user_theme_difficulties(
     ).all()
     existing_slugs = {row.theme_slug for row in existing}
     accuracy_by_slug = _accuracy_by_slug(profile)
+    attempts_by_slug = {
+        str(topic.get("slug")): int(topic.get("attempts") or 0)
+        for topic in profile.get("topics", []) if topic.get("slug")
+    }
+    starting_difficulty = initial_difficulty_for_rating(player_rating)
+
+    # Старые записи могли быть созданы с нейтральным уровнем 2 ещё до теста.
+    # Без попыток в теме это не результат обучения: синхронизируем старт с
+    # текущим рейтингом. С накопленными попытками сохраняем достигнутый уровень.
+    updated = False
+    for row in existing:
+        if attempts_by_slug.get(row.theme_slug, 0) == 0 and row.current_difficulty != starting_difficulty:
+            row.current_difficulty = starting_difficulty
+            updated = True
 
     inserted = False
     for slug in COURSE_TOPIC_META:
         if slug in existing_slugs:
             continue
-        initial = next_difficulty(DEFAULT_DIFFICULTY, accuracy_by_slug.get(slug))
+        initial = next_difficulty(starting_difficulty, accuracy_by_slug.get(slug))
         stmt = (
             pg_insert(UserThemeDifficulty)
             .values(
@@ -75,7 +102,7 @@ async def ensure_user_theme_difficulties(
         await db.execute(stmt)
         inserted = True
 
-    if inserted:
+    if inserted or updated:
         await db.commit()
 
     rows = (
@@ -91,6 +118,7 @@ async def get_user_theme_difficulties(
     *,
     user_id: int,
     puzzle_base: dict | None,
+    player_rating: int | None = None,
 ) -> tuple[dict, dict[str, int]]:
     profile = await build_weakness_profile(
         db,
@@ -101,6 +129,7 @@ async def get_user_theme_difficulties(
         db,
         user_id=user_id,
         profile=profile,
+        player_rating=player_rating,
     )
     return profile, difficulties
 
@@ -121,6 +150,7 @@ async def update_theme_difficulty_after_attempt(
     user_id: int,
     theme_slug: str | None,
     puzzle_base: dict | None,
+    player_rating: int | None = None,
 ) -> dict | None:
     """После новой попытки двигает difficulty темы максимум на один шаг.
 
@@ -137,7 +167,7 @@ async def update_theme_difficulty_after_attempt(
         .values(
             user_id=user_id,
             theme_slug=theme_slug,
-            current_difficulty=DEFAULT_DIFFICULTY,
+            current_difficulty=initial_difficulty_for_rating(player_rating),
         )
         .on_conflict_do_nothing(constraint="uq_user_theme_difficulty")
     )

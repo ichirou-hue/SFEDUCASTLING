@@ -75,6 +75,7 @@ def _take_round_robin(
     count: int,
     selected_ids: set[str],
     group: str,
+    matching_difficulty: bool,
     topic_difficulties: dict[str, int] | None = None,
 ) -> list[dict]:
     pools: dict[str, list[dict]] = {}
@@ -89,12 +90,9 @@ def _take_round_robin(
             if primary_course_topic_for_puzzle(p) == slug
         ]
         difficulty = int((topic_difficulties or {}).get(slug, DEFAULT_DIFFICULTY))
-        preferred = [p for p in pool if puzzle_matches_difficulty(p, difficulty)]
-        secondary = [p for p in pool if not puzzle_matches_difficulty(p, difficulty)]
-        random.shuffle(preferred)
-        random.shuffle(secondary)
-        # pop() берёт с конца: сначала выдаём preferred, затем same-topic fallback.
-        pools[slug] = secondary + preferred
+        candidates = [p for p in pool if puzzle_matches_difficulty(p, difficulty) == matching_difficulty]
+        random.shuffle(candidates)
+        pools[slug] = candidates
 
     result: list[dict] = []
     while len(result) < count:
@@ -150,6 +148,7 @@ def select_adaptive_puzzles(
         count=weak_quota,
         selected_ids=selected_ids,
         group="weak",
+        matching_difficulty=True,
         topic_difficulties=topic_difficulties,
     )
     strong = _take_round_robin(
@@ -158,11 +157,68 @@ def select_adaptive_puzzles(
         count=strong_quota,
         selected_ids=selected_ids,
         group="strong",
+        matching_difficulty=True,
         topic_difficulties=topic_difficulties,
     )
 
+    # Если целевые темы бедны, добираем подходящую сложность из всей базы.
+    # Для новичка это важнее строгого соблюдения квоты по темам.
     picked = weak + strong
     fallback_count = 0
+    if len(picked) < count:
+        preferred = []
+        for puzzle in puzzles:
+            puzzle_id = str(puzzle.get("id", ""))
+            if not puzzle_id or puzzle_id in selected_ids:
+                continue
+            slug = primary_course_topic_for_puzzle(puzzle)
+            difficulty = int((topic_difficulties or {}).get(slug, DEFAULT_DIFFICULTY))
+            if puzzle_matches_difficulty(puzzle, difficulty):
+                preferred.append(puzzle)
+        random.shuffle(preferred)
+        for puzzle in preferred[: count - len(picked)]:
+            puzzle_id = str(puzzle["id"])
+            selected_ids.add(puzzle_id)
+            slug = primary_course_topic_for_puzzle(puzzle)
+            difficulty = int((topic_difficulties or {}).get(slug, DEFAULT_DIFFICULTY))
+            picked.append(
+                {
+                    **puzzle,
+                    "adaptive_group": "fallback",
+                    "adaptive_topic": slug,
+                    "adaptive_difficulty": difficulty,
+                    "difficulty_match": True,
+                }
+            )
+            fallback_count += 1
+
+    # Лишь после исчерпания подходящих по сложности задач берём соседние
+    # диапазоны в целевых темах, а затем из всей базы.
+    if len(weak) < weak_quota:
+        extra = _take_round_robin(
+            puzzles,
+            topic_slugs=weak_slugs,
+            count=min(weak_quota - len(weak), count - len(picked)),
+            selected_ids=selected_ids,
+            group="weak",
+            matching_difficulty=False,
+            topic_difficulties=topic_difficulties,
+        )
+        weak += extra
+        picked += extra
+    if len(strong) < strong_quota:
+        extra = _take_round_robin(
+            puzzles,
+            topic_slugs=strong_slugs,
+            count=min(strong_quota - len(strong), count - len(picked)),
+            selected_ids=selected_ids,
+            group="strong",
+            matching_difficulty=False,
+            topic_difficulties=topic_difficulties,
+        )
+        strong += extra
+        picked += extra
+
     if len(picked) < count:
         remaining = [p for p in puzzles if str(p.get("id", "")) not in selected_ids]
         random.shuffle(remaining)
@@ -185,6 +241,9 @@ def select_adaptive_puzzles(
             fallback_count += 1
 
     random.shuffle(picked)
+    # В начале набора всегда показываем задачи подходящей сложности. Это
+    # особенно важно для новичка, у которого пока нет истории решений.
+    picked.sort(key=lambda puzzle: puzzle.get("difficulty_match") is not True)
     final = picked[:count]
     difficulty_matched = sum(1 for p in final if p.get("difficulty_match") is True)
     return final, {

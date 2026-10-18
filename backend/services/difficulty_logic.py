@@ -4,13 +4,24 @@ from __future__ import annotations
 
 MIN_DIFFICULTY = 1
 MAX_DIFFICULTY = 3
-DEFAULT_DIFFICULTY = 2
+DEFAULT_DIFFICULTY = 1
 
 PUZZLE_RATING_BANDS: dict[int, tuple[int, int]] = {
     1: (0, 1100),
     2: (1101, 1700),
     3: (1701, 9999),
 }
+
+
+def initial_difficulty_for_rating(rating: int | None) -> int:
+    """Начальная сложность по известному рейтингу; без оценки начинаем с 1."""
+    if rating is None:
+        return DEFAULT_DIFFICULTY
+    value = max(0, int(rating))
+    for difficulty, (_, maximum) in PUZZLE_RATING_BANDS.items():
+        if value <= maximum:
+            return difficulty
+    return MAX_DIFFICULTY
 
 
 def next_difficulty(current: int, accuracy: float | None) -> int:
@@ -35,4 +46,4 @@ def puzzle_matches_difficulty(puzzle: dict, difficulty: int) -> bool:
         rating = int(puzzle.get("rating") or 0)
     except (TypeError, ValueError):
         return False
-    return min_rating <= rating <= max_rating
+    return rating > 0 and min_rating <= rating <= max_rating

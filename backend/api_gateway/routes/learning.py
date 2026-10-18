@@ -42,6 +42,7 @@ from backend.services.course_topics import (
     puzzle_matches_course_topic as _puzzle_matches_course_topic,
 )
 from backend.services.dynamic_difficulty import (
+    effective_player_rating,
     get_user_theme_difficulties,
     public_difficulty_profile,
     update_theme_difficulty_after_attempt,
@@ -533,6 +534,7 @@ async def record_puzzle_attempt(
         db,
         user_id=user.id,
         puzzle_base=state.puzzle_base,
+        player_rating=effective_player_rating(user),
     )
 
     attempt = PuzzleAttempt(
@@ -550,6 +552,7 @@ async def record_puzzle_attempt(
         user_id=user.id,
         theme_slug=topic_slug,
         puzzle_base=state.puzzle_base,
+        player_rating=effective_player_rating(user),
     )
 
     return {
@@ -584,13 +587,14 @@ async def learning_difficulty(
         db,
         user_id=user.id,
         puzzle_base=state.puzzle_base,
+        player_rating=effective_player_rating(user),
     )
     return {
         "topics": public_difficulty_profile(profile, difficulties),
         "rule": {
             "min_difficulty": 1,
             "max_difficulty": 3,
-            "default_difficulty": 2,
+            "default_difficulty": 1,
             "increase_if_accuracy_gt": 80,
             "decrease_if_accuracy_lt": 50,
         },
@@ -626,6 +630,7 @@ async def get_adaptive_puzzles(
         db,
         user_id=user.id,
         puzzle_base=state.puzzle_base,
+        player_rating=effective_player_rating(user),
     )
     valid_puzzles = [
         p for p in state.puzzle_base.get("puzzles", []) if _is_puzzle_valid(p)
@@ -653,10 +658,18 @@ async def get_adaptive_puzzles(
         for p in picked
     ]
 
+    player_rating = effective_player_rating(user)
+    rating_group = rating_group_for(player_rating) if player_rating is not None else None
+
     return {
         "puzzles": result,
         "total": len(result),
         "mode": "adaptive",
+        "player_level": {
+            "title": rating_group["title"] if rating_group else "Стартовый",
+            "rating_group": rating_group["key"] if rating_group else None,
+            "provisional": user.assessment_completed_at is None,
+        },
         "weak_topics": profile["weak_topics"],
         "strong_topics": profile["strong_topics"],
         "difficulty_profile": public_difficulty_profile(profile, topic_difficulties),
