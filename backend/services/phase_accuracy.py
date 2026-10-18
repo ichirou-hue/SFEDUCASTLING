@@ -5,6 +5,11 @@ from __future__ import annotations
 from typing import Iterable
 
 import chess
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
+from backend.models.game import Game
 
 
 PHASES = (
@@ -111,3 +116,14 @@ def build_phase_accuracy(games: Iterable) -> dict:
             "endgame": "После 10-го хода, если ферзи сняты или осталось не более 13 очков фигур (без пешек и королей).",
         },
     }
+
+
+async def load_user_phase_accuracy(db: AsyncSession, *, user_id: int) -> dict:
+    """Load completed games with moves and aggregate their phase accuracy."""
+    games = await db.scalars(
+        select(Game)
+        .options(selectinload(Game.moves))
+        .where(Game.user_id == user_id, Game.result.in_(VALID_RESULTS))
+        .order_by(Game.created_at, Game.id)
+    )
+    return build_phase_accuracy(games.all())

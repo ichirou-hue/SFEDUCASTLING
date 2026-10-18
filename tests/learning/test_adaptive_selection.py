@@ -226,3 +226,76 @@ def test_easy_puzzles_from_other_topics_precede_hard_weak_topic_puzzles():
     assert [p["id"] for p in picked[:2]] in (["easy-pawn", "easy-rook"], ["easy-rook", "easy-pawn"])
     assert picked[2]["id"] == "hard-knight"
     assert meta["difficulty_matched"] == 2
+
+
+def test_weak_game_phase_gets_more_phase_tagged_tasks():
+    puzzles = [
+        {"id": f"{phase}-{i}", "themes": ["fork", phase], "rating": 800}
+        for phase in ("opening", "middlegame", "endgame")
+        for i in range(12)
+    ]
+    phases = [
+        {"key": "opening", "accuracy_percent": 95, "moves_evaluated": 10},
+        {"key": "middlegame", "accuracy_percent": 75, "moves_evaluated": 15},
+        {"key": "endgame", "accuracy_percent": 40, "moves_evaluated": 20},
+    ]
+
+    picked, meta = select_adaptive_puzzles(
+        puzzles,
+        weak_topics=[{"slug": "knight"}],
+        strong_topics=[],
+        count=20,
+        phase_stats=phases,
+    )
+
+    phase_picks = [p for p in picked if p["adaptive_group"] == "phase_focus"]
+    by_phase = {phase: sum(p["adaptive_phase"] == phase for p in phase_picks)
+                for phase in ("opening", "middlegame", "endgame")}
+    assert len(picked) == 20
+    assert len({p["id"] for p in picked}) == 20
+    assert len(phase_picks) == 4
+    assert by_phase["endgame"] > by_phase["middlegame"] > by_phase["opening"]
+    assert meta["phase_adjustment"]["focus_phase"] == "endgame"
+    assert meta["phase_adjustment"]["selected"] == 4
+
+
+def test_phase_bias_waits_for_enough_evaluated_moves():
+    puzzles = [
+        {"id": f"p{i}", "themes": ["fork", "endgame"], "rating": 800}
+        for i in range(10)
+    ]
+
+    picked, meta = select_adaptive_puzzles(
+        puzzles,
+        weak_topics=[{"slug": "knight"}],
+        strong_topics=[],
+        count=5,
+        phase_stats=[{"key": "endgame", "accuracy_percent": 0, "moves_evaluated": 4}],
+    )
+
+    assert len(picked) == 5
+    assert all(p["adaptive_group"] != "phase_focus" for p in picked)
+    assert meta["phase_adjustment"]["reason"] == "insufficient_history"
+
+
+def test_sparse_phase_pool_falls_back_without_duplicates_or_missing_tasks():
+    puzzles = [
+        {"id": "only-endgame", "themes": ["fork", "endgame"], "rating": 800},
+        *[
+            {"id": f"middle-{i}", "themes": ["fork", "middlegame"], "rating": 800}
+            for i in range(25)
+        ],
+    ]
+
+    picked, meta = select_adaptive_puzzles(
+        puzzles,
+        weak_topics=[{"slug": "knight"}],
+        strong_topics=[],
+        count=20,
+        phase_stats=[{"key": "endgame", "accuracy_percent": 20, "moves_evaluated": 8}],
+    )
+
+    assert len(picked) == 20
+    assert len({p["id"] for p in picked}) == 20
+    assert sum(p["adaptive_group"] == "phase_focus" for p in picked) == 1
+    assert meta["phase_adjustment"]["selected"] == 1

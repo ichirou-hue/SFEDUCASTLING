@@ -12,7 +12,6 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from backend.api_gateway import state
 from backend.api_gateway.dependecies import get_current_user
@@ -50,7 +49,7 @@ from backend.services.dynamic_difficulty import (
     public_difficulty_profile,
     update_theme_difficulty_after_attempt,
 )
-from backend.services.phase_accuracy import build_phase_accuracy
+from backend.services.phase_accuracy import load_user_phase_accuracy
 from backend.services.user_records import build_user_records
 
 router = APIRouter(tags=["learning"])
@@ -604,13 +603,7 @@ async def learning_phase_accuracy(
     db: AsyncSession = Depends(get_db),
 ):
     """Возвращает точность ходов пользователя по этапам завершённых партий."""
-    games = await db.scalars(
-        select(Game)
-        .options(selectinload(Game.moves))
-        .where(Game.user_id == user.id, Game.result.in_(("1-0", "0-1", "1/2-1/2")))
-        .order_by(Game.created_at, Game.id)
-    )
-    return build_phase_accuracy(games.all())
+    return await load_user_phase_accuracy(db, user_id=user.id)
 
 
 @router.get("/api/learning/level-progress")
@@ -683,12 +676,14 @@ async def get_adaptive_puzzles(
     valid_puzzles = [
         p for p in state.puzzle_base.get("puzzles", []) if _is_puzzle_valid(p)
     ]
+    phase_profile = await load_user_phase_accuracy(db, user_id=user.id)
     picked, allocation = select_adaptive_puzzles(
         valid_puzzles,
         weak_topics=profile["weak_topics"],
         strong_topics=profile["strong_topics"],
         count=count,
         topic_difficulties=topic_difficulties,
+        phase_stats=phase_profile["phases"],
     )
 
     result = [
@@ -700,6 +695,7 @@ async def get_adaptive_puzzles(
             "rating": p.get("rating", 0),
             "adaptive_group": p.get("adaptive_group"),
             "adaptive_topic": p.get("adaptive_topic"),
+            "adaptive_phase": p.get("adaptive_phase"),
             "adaptive_difficulty": p.get("adaptive_difficulty"),
             "difficulty_match": p.get("difficulty_match"),
         }
@@ -722,6 +718,7 @@ async def get_adaptive_puzzles(
         "strong_topics": profile["strong_topics"],
         "difficulty_profile": public_difficulty_profile(profile, topic_difficulties),
         "allocation": allocation,
+        "phase_adjustment": allocation["phase_adjustment"],
         "selection_rule": profile["selection_rule"],
     }
 
