@@ -201,7 +201,7 @@ def build_onboarding_feedback(
 ) -> list[str]:
     group = rating_group_for(rating)
     feedback = [
-        f"Предварительная оценка: около {rating} пунктов — диапазон «{group['key']}» ({group['title']}).",
+        f"Предварительная оценка: около {rating} пунктов - диапазон «{group['key']}» ({group['title']}).",
         "Основная часть входного теста будет подобрана под этот диапазон, а часть задач будет проще и сложнее для проверки границ.",
     ]
 
@@ -450,7 +450,7 @@ def build_test_feedback(
     )[:2]
 
     feedback = [
-        f"Итоговая оценка: около {final_rating} — диапазон «{group['key']}» ({group['title']}).",
+        f"Итоговая оценка: около {final_rating} - диапазон «{group['key']}» ({group['title']}).",
         f"Точность в тесте: {correct} из {total} ({accuracy}%).",
     ]
     if weak:

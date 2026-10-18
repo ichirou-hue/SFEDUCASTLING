@@ -372,6 +372,17 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
     puzzles.length > 0 &&
     currentIndex === puzzles.length - 1;
 
+  // «Позже» в пробном гейте: если задача на доске есть — просто закрываем
+  // напоминание, доска остаётся на последнем ходу без сделанного хода.
+  // Если задач нет (дневной лимит выбран на загрузке) — уходим на главную.
+  const handlePreviewLater = useCallback(() => {
+    if (puzzlesRef.current.length > 0) {
+      setPreviewGate(false);
+      return;
+    }
+    navigate("/");
+  }, [navigate]);
+
   const savePuzzleProgress = useCallback(
     (correct) => {
       if (!currentPuzzle?.id || !getAccessToken()) return;
@@ -692,7 +703,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
       <div className="puzzles-page">
         <PuzzlePreviewGate
           onOpenOnboarding={onOpenOnboarding}
-          onLater={() => navigate("/")}
+          onLater={handlePreviewLater}
         />
         <SiteFooter />
       </div>
@@ -750,7 +761,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
 
         {/* Прямой заход на ?adaptive=1 без настоящего профиля (нет истории
             или есть только слабые/только сильные): персонализации нет,
-            поэтому заголовок и «слабые» не показываем — только выход. */}
+            поэтому заголовок и «слабые» не показываем - только выход. */}
         {adaptiveMode && !hasRealProfile && (
           <div className="learning-topic-filter learning-topic-filter--adaptive">
             <button type="button" onClick={() => navigate("/puzzles")}>
@@ -956,7 +967,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
       {previewLocked && puzzles.length > 0 && (
         <PuzzlePreviewGate
           onOpenOnboarding={onOpenOnboarding}
-          onLater={() => navigate("/")}
+          onLater={handlePreviewLater}
         />
       )}
       <SiteFooter />

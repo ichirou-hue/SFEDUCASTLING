@@ -1,28 +1,17 @@
 import { Chess } from "chess.js";
 
 export const COURSE_TOPIC_META = {
-  pawn: { title: "Пешка", icon: "♙" },
-  knight: { title: "Конь", icon: "♘" },
-  bishop: { title: "Слон", icon: "♗" },
-  rook: { title: "Ладья", icon: "♖" },
-  queen: { title: "Ферзь", icon: "♕" },
-  king: { title: "Король", icon: "♔" },
-  "special-rules": { title: "Специальные правила", icon: "♙" },
-  "check-mate-stalemate": { title: "Шах, мат и пат", icon: "♚" },
+  pieces: { title: "Фигуры: ходы и взятия", icon: "♟" },
+  "king-safety": { title: "Шах, мат и безопасность короля", icon: "♚" },
   endgames: { title: "Эндшпиль", icon: "♔" },
+  tactics: { title: "Тактические приёмы", icon: "♞" },
+  openings: { title: "Дебюты", icon: "♜" },
 };
 
-// Модули курса названы по фигурам: пазл относится к такому модулю, только
-// если фигура реально участвует в решении (делает хотя бы один ход). Тактики
-// (pin, skewer, fork...) выполняет любая фигура, а не обязательно «своя».
-const PIECE_BY_MODULE = {
-  pawn: "p",
-  knight: "n",
-  bishop: "b",
-  rook: "r",
-  queen: "q",
-  king: "k",
-};
+// Раньше модули назывались по фигурам и пазл относился к модулю, только
+// если фигура реально ходила в решении. После слияния модулей (10 -> 5)
+// профильных фигур у тем нет — словарь пуст, modulePieceOk всегда true.
+const PIECE_BY_MODULE = {};
 
 function fenHasPiece(fen, symbol) {
   if (!fen) return true;
@@ -68,35 +57,38 @@ function modulePieceOk(puzzle, slug) {
 }
 
 const THEME_TO_COURSE_TOPIC = [
-  ["enPassant", "special-rules"],
-  ["promotion", "special-rules"],
-  ["underPromotion", "special-rules"],
+  ["enPassant", "endgames"],
+  ["promotion", "endgames"],
+  ["underPromotion", "endgames"],
 
-  ["pawnEndgame", "pawn"],
-  ["advancedPawn", "pawn"],
-  ["knightEndgame", "knight"],
-  ["bishopEndgame", "bishop"],
-  ["rookEndgame", "rook"],
-  ["queenEndgame", "queen"],
+  ["pawnEndgame", "pieces"],
+  ["advancedPawn", "pieces"],
+  ["knightEndgame", "pieces"],
+  ["bishopEndgame", "pieces"],
+  ["rookEndgame", "pieces"],
+  ["queenEndgame", "pieces"],
 
-  ["mateIn1", "check-mate-stalemate"],
-  ["mateIn2", "check-mate-stalemate"],
-  ["mateIn3", "check-mate-stalemate"],
-  ["mateIn4", "check-mate-stalemate"],
-  ["mateIn5", "check-mate-stalemate"],
-  ["mate", "check-mate-stalemate"],
-  ["smotheredMate", "check-mate-stalemate"],
-  ["backRankMate", "check-mate-stalemate"],
-  ["doubleCheck", "check-mate-stalemate"],
+  ["mateIn1", "king-safety"],
+  ["mateIn2", "king-safety"],
+  ["mateIn3", "king-safety"],
+  ["mateIn4", "king-safety"],
+  ["mateIn5", "king-safety"],
+  ["mate", "king-safety"],
+  ["smotheredMate", "king-safety"],
+  ["backRankMate", "king-safety"],
 
-  ["fork", "knight"],
-  ["pin", "bishop"],
-  ["skewer", "bishop"],
-  ["attraction", "queen"],
-  ["sacrifice", "queen"],
-  ["exposedKing", "king"],
-  ["kingsideAttack", "king"],
-  ["defensiveMove", "king"],
+  ["fork", "tactics"],
+  ["pin", "tactics"],
+  ["skewer", "tactics"],
+  ["attraction", "tactics"],
+  ["sacrifice", "tactics"],
+  ["doubleCheck", "tactics"],
+
+  ["opening", "openings"],
+
+  ["exposedKing", "king-safety"],
+  ["kingsideAttack", "king-safety"],
+  ["defensiveMove", "king-safety"],
 
   ["opposition", "endgames"],
   ["passedPawn", "endgames"],

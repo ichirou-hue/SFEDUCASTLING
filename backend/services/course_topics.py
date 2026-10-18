@@ -8,36 +8,19 @@ import chess
 
 
 COURSE_TOPIC_META: dict[str, dict[str, Any]] = {
-    "pawn": {
-        "title": "Пешка",
-        "themes": {"advancedPawn", "pawnEndgame"},
+    "pieces": {
+        "title": "Фигуры: ходы и взятия",
+        "themes": {
+            "advancedPawn",
+            "pawnEndgame",
+            "knightEndgame",
+            "bishopEndgame",
+            "rookEndgame",
+            "queenEndgame",
+        },
     },
-    "knight": {
-        "title": "Конь",
-        "themes": {"knightEndgame", "fork"},
-    },
-    "bishop": {
-        "title": "Слон",
-        "themes": {"bishopEndgame", "pin", "skewer"},
-    },
-    "rook": {
-        "title": "Ладья",
-        "themes": {"rookEndgame", "backRankMate"},
-    },
-    "queen": {
-        "title": "Ферзь",
-        "themes": {"queenEndgame", "attraction", "sacrifice"},
-    },
-    "king": {
-        "title": "Король",
-        "themes": {"exposedKing", "kingsideAttack", "defensiveMove"},
-    },
-    "special-rules": {
-        "title": "Специальные правила",
-        "themes": {"enPassant", "promotion", "underPromotion"},
-    },
-    "check-mate-stalemate": {
-        "title": "Шах, мат и пат",
+    "king-safety": {
+        "title": "Шах, мат и безопасность короля",
         "themes": {
             "mate",
             "mateIn1",
@@ -47,12 +30,36 @@ COURSE_TOPIC_META: dict[str, dict[str, Any]] = {
             "mateIn5",
             "smotheredMate",
             "backRankMate",
-            "doubleCheck",
+            "exposedKing",
+            "kingsideAttack",
+            "defensiveMove",
         },
     },
     "endgames": {
         "title": "Эндшпиль",
-        "themes": {"endgame", "opposition", "passedPawn"},
+        "themes": {
+            "endgame",
+            "opposition",
+            "passedPawn",
+            "enPassant",
+            "promotion",
+            "underPromotion",
+        },
+    },
+    "tactics": {
+        "title": "Тактические приёмы",
+        "themes": {
+            "fork",
+            "pin",
+            "skewer",
+            "attraction",
+            "sacrifice",
+            "doubleCheck",
+        },
+    },
+    "openings": {
+        "title": "Дебюты",
+        "themes": {"opening"},
     },
 }
 
@@ -60,18 +67,12 @@ COURSE_TOPIC_PUZZLE_THEMES: dict[str, set[str]] = {
     slug: set(meta["themes"]) for slug, meta in COURSE_TOPIC_META.items()
 }
 
-# Модули курса названы по фигурам, поэтому пазл относится к такому модулю,
-# только если эта фигура реально участвует в решении: делает хотя бы один ход.
-# Одного присутствия на доске мало — тактические темы (pin, skewer, fork,
-# attraction, sacrifice) выполняет любая фигура, а не обязательно «своя».
-PIECE_BY_MODULE: dict[str, str] = {
-    "pawn": "P",
-    "knight": "N",
-    "bishop": "B",
-    "rook": "R",
-    "queen": "Q",
-    "king": "K",
-}
+# Раньше модули назывались по фигурам, и пазл относился к такому модулю,
+# только если эта фигура реально ходила в решении. После слияния модулей
+# (10 -> 5) профильных фигур у тем больше нет: тактики выделены в tactics,
+# пешечные окончания — в pieces/endgames. Словарь оставлен пустым намеренно:
+# _module_piece_ok возвращает True, когда символа нет.
+PIECE_BY_MODULE: dict[str, str] = {}
 
 _PIECE_TYPE_BY_SYMBOL = {
     "P": chess.PAWN,
@@ -142,33 +143,35 @@ def _module_piece_ok(puzzle: dict, topic: str) -> bool:
 
 # Один пазл может затрагивать несколько модулей. Для статистики B1 одна
 # puzzle_attempt относится к одной основной теме, чтобы не удваивать попытки.
+# Порядок важен: побеждает первая совпавшая тема.
 THEME_TO_PRIMARY_TOPIC: list[tuple[str, str]] = [
-    ("enPassant", "special-rules"),
-    ("promotion", "special-rules"),
-    ("underPromotion", "special-rules"),
-    ("pawnEndgame", "pawn"),
-    ("advancedPawn", "pawn"),
-    ("knightEndgame", "knight"),
-    ("bishopEndgame", "bishop"),
-    ("rookEndgame", "rook"),
-    ("queenEndgame", "queen"),
-    ("mateIn1", "check-mate-stalemate"),
-    ("mateIn2", "check-mate-stalemate"),
-    ("mateIn3", "check-mate-stalemate"),
-    ("mateIn4", "check-mate-stalemate"),
-    ("mateIn5", "check-mate-stalemate"),
-    ("mate", "check-mate-stalemate"),
-    ("smotheredMate", "check-mate-stalemate"),
-    ("backRankMate", "check-mate-stalemate"),
-    ("doubleCheck", "check-mate-stalemate"),
-    ("fork", "knight"),
-    ("pin", "bishop"),
-    ("skewer", "bishop"),
-    ("attraction", "queen"),
-    ("sacrifice", "queen"),
-    ("exposedKing", "king"),
-    ("kingsideAttack", "king"),
-    ("defensiveMove", "king"),
+    ("enPassant", "endgames"),
+    ("promotion", "endgames"),
+    ("underPromotion", "endgames"),
+    ("pawnEndgame", "pieces"),
+    ("advancedPawn", "pieces"),
+    ("knightEndgame", "pieces"),
+    ("bishopEndgame", "pieces"),
+    ("rookEndgame", "pieces"),
+    ("queenEndgame", "pieces"),
+    ("mateIn1", "king-safety"),
+    ("mateIn2", "king-safety"),
+    ("mateIn3", "king-safety"),
+    ("mateIn4", "king-safety"),
+    ("mateIn5", "king-safety"),
+    ("mate", "king-safety"),
+    ("smotheredMate", "king-safety"),
+    ("backRankMate", "king-safety"),
+    ("fork", "tactics"),
+    ("pin", "tactics"),
+    ("skewer", "tactics"),
+    ("attraction", "tactics"),
+    ("sacrifice", "tactics"),
+    ("doubleCheck", "tactics"),
+    ("opening", "openings"),
+    ("exposedKing", "king-safety"),
+    ("kingsideAttack", "king-safety"),
+    ("defensiveMove", "king-safety"),
     ("endgame", "endgames"),
     ("opposition", "endgames"),
     ("passedPawn", "endgames"),

@@ -70,6 +70,9 @@
   padding: 26px;
   /* Без собственного фона — как у остальных страниц: виден общий мрамор body. */
   box-sizing: border-box;
+  /* Колонка ради футера (см. .training-page). */
+  display: flex;
+  flex-direction: column;
 }
 
 .level-test-page--centered {

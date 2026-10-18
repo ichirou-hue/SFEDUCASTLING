@@ -75,6 +75,7 @@ async def list_module_lessons(db: AsyncSession, module_id: int) -> list[dict]:
                 "id": lesson.id,
                 "slug": lesson.slug,
                 "title": lesson.title,
+                "section_title": lesson.section_title,
                 "sort_order": lesson.sort_order,
                 "task_count": int(task_count or 0),
             }

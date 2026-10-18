@@ -61,8 +61,8 @@ RATING_PUZZLES = {
     ]
 }
 
-# Пазлы темы «Ладья»: тема rookEndgame + ладья делает ход в решении, поэтому
-# они проходят и проверку темы, и проверку профильной фигуры модуля.
+# Пазлы модуля «Фигуры» (pieces): тема rookEndgame входит в этот модуль,
+# поэтому они проходят проверку темы курса.
 TOPIC_PUZZLES = {
     "puzzles": [
         {"id": "rook_low", "fen": RATING_FEN, "moves": RATING_MOVES, "rating": 500, "themes": ["rookEndgame"]},
@@ -427,7 +427,7 @@ class TestPuzzleSelectionByRating:
         with patch(MATCH_ANCHOR, TOPIC_PUZZLES):
             resp = client.get(
                 "/api/learning/puzzles",
-                params={"count": 20, "topic": "rook"},
+                params={"count": 20, "topic": "pieces"},
                 headers=_headers(token),
             )
         assert resp.status_code == 200, resp.text
