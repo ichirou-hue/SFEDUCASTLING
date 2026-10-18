@@ -8,6 +8,7 @@ import {
   unlinkChessAccount,
 } from "../api.js";
 import ProgressWidget from "./ProgressWidget.jsx";
+import RatingBandProgress from "./RatingBandProgress.jsx";
 import "./UserProfilePage.css";
 
 function formatDate(value) {
@@ -274,6 +275,17 @@ export default function UserProfilePage({ user, onUserChange }) {
 
           {error && <div className="user-profile-warning">{error}</div>}
         </div>
+      </section>
+
+      <section className="user-profile-rating-section">
+        <div className="user-profile-section-heading">
+          <div>
+            <div className="user-profile-kicker">Ваш результат</div>
+            <h2>Прогресс уровня</h2>
+          </div>
+          <p>Путь от текущего уровня к следующему по рейтингу.</p>
+        </div>
+        <RatingBandProgress userId={profile?.id ?? user?.id} />
       </section>
 
       <LinkedAccountsSection />

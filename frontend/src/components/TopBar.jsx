@@ -1,11 +1,13 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { logout as apiLogout } from "../api.js";
 import MiniProfilePopover from "./MiniProfilePopover.jsx";
 import OnboardingModal from "./OnboardingModal.jsx";
+import RatingBandProgress from "./RatingBandProgress.jsx";
 
 export default function TopBar({ user, onUserChange, onRegister, onMenuClick }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const [showOnboarding, setShowOnboarding] = useState(false);
 
   const handleLogout = async () => {
@@ -33,6 +35,11 @@ export default function TopBar({ user, onUserChange, onRegister, onMenuClick }) 
           <img src="/gigachess-logo.svg" alt="GIGACHESS" className="gigachess-logo" />
         </div>
       </div>
+      {location.pathname === "/puzzles" && user && (
+        <div className="top-bar-rating-progress">
+          <RatingBandProgress compact userId={user.id} />
+        </div>
+      )}
       {user ? (
         <div className="user-box">
           {needsOnboarding && (

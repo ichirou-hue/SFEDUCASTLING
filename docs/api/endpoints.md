@@ -459,11 +459,30 @@ Refresh-токен одноразовый: предыдущий отзывает
 | POST | `/api/learning/level-test/submit` | авторизованный | Зафиксировать итог теста в профиле |
 | POST | `/api/learning/puzzle/attempt` | авторизованный | Сохранить попытку пазла |
 | GET  | `/api/learning/progress` | авторизованный | Прогресс по пазлам |
+| GET  | `/api/learning/level-progress` | авторизованный | Прогресс внутри рейтингового уровня |
 | GET  | `/api/learning/difficulty` | авторизованный | B-сложность по темам |
 | GET  | `/api/learning/weaknesses` | авторизованный | Профиль сильных/слабых тем |
 | GET  | `/api/learning/puzzles/adaptive` | авторизованный | Персональный набор (70/30) |
 | POST | `/api/learning/puzzle/check` | гостевой | Проверка отдельного пазла |
 | GET  | `/api/learning/puzzles` | гостевой | Набор пазлов с решениями |
+
+### GET `/api/learning/level-progress`
+
+Возвращает текущую рейтинговую группу, рейтинг пользователя и расстояние до следующей группы. До прохождения теста используется предварительная оценка; если её нет, показывается начальный уровень без рейтинга. Для группы «Продвинутый» следующей группы нет.
+
+```json
+{
+  "rating": 1320,
+  "rating_available": true,
+  "current_band": { "id": 2, "key": "1001-1500", "title": "Любительский", "min": 1001, "max": 1500 },
+  "next_band": { "id": 3, "key": "1501-1900", "title": "Клубный", "min": 1501, "max": 1900 },
+  "next_threshold": 1501,
+  "points_to_next": 181,
+  "progress_percent": 63.8,
+  "is_max_band": false,
+  "provisional": true
+}
+```
 
 Тестовый набор формируется по Elo-корзинам (константа `LEVEL_BUCKETS`). Уровень определяет диапазон рейтинга задач:
 

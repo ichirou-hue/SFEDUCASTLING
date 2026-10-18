@@ -88,6 +88,39 @@ def rating_group_for(rating: int | float | None) -> dict[str, Any]:
     return RATING_GROUPS[-1]
 
 
+def rating_band_progress(rating: int | float | None) -> dict[str, Any]:
+    """Возвращает текущую рейтинговую группу и путь до следующей."""
+    has_rating = rating is not None
+    value = max(0, int(rating or 0))
+    current_group = rating_group_for(value)
+    group_index = next(
+        index for index, group in enumerate(RATING_GROUPS) if group["id"] == current_group["id"]
+    )
+    current = RATING_GROUPS[group_index]
+    next_group = RATING_GROUPS[group_index + 1] if group_index + 1 < len(RATING_GROUPS) else None
+
+    if next_group is None:
+        progress = 100.0
+        points_to_next = None
+        threshold = None
+    else:
+        threshold = int(next_group["min"])
+        points_to_next = max(0, threshold - value) if has_rating else None
+        span = threshold - int(current["min"])
+        progress = min(100.0, max(0.0, (value - int(current["min"])) * 100.0 / span)) if has_rating else 0.0
+
+    return {
+        "rating": value if has_rating else None,
+        "rating_available": has_rating,
+        "current_band": dict(current),
+        "next_band": dict(next_group) if next_group else None,
+        "next_threshold": threshold,
+        "points_to_next": points_to_next,
+        "progress_percent": round(progress, 1),
+        "is_max_band": next_group is None,
+    }
+
+
 def onboarding_rating(answers: dict[str, Any]) -> tuple[int, str, int]:
     """Возвращает (rating_estimate, rating_scale, prior_band)."""
     q2 = answers.get("q2") or {}

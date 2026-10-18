@@ -10,6 +10,7 @@ import {
   fetchTrainingModules,
   fetchTrainingProgress,
 } from "../api.js";
+import RatingBandProgress from "./RatingBandProgress.jsx";
 import "./LearningCrossLinks.css";
 
 const PIECE_IMAGES = {
@@ -583,6 +584,7 @@ export default function TrainingPage({ user, onRegister }) {
       <div className="training-page training-page--centered">
         <section className="training-register-wall">
           <div className="training-kicker">Продвинутый уровень</div>
+          <RatingBandProgress userId={userId} />
           <h1>Практика для вашего уровня</h1>
           <p>
             Базовый курс объясняет правила и ходы фигур. Для рейтинга от 2000
@@ -619,6 +621,7 @@ export default function TrainingPage({ user, onRegister }) {
             Изучайте особенности каждой фигуры последовательно: сначала теория,
             затем интерактивные задания на шахматной доске.
           </p>
+          <RatingBandProgress userId={userId} />
 
           {course && course.total > 0 && (
             <div className="training-course-progress">

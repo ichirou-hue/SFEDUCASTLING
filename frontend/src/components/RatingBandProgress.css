@@ -1,0 +1,81 @@
+.rating-band-progress {
+  width: min(100%, 440px);
+  padding: 14px 16px;
+  border: 1px solid rgba(34, 90, 115, 0.16);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.82);
+  color: #20332d;
+  text-align: left;
+}
+
+.rating-band-progress__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.rating-band-progress__title,
+.rating-band-progress__rating {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rating-band-progress__title > span {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.65;
+}
+
+.rating-band-progress__title > strong {
+  font-size: 16px;
+}
+
+.rating-band-progress__rating {
+  align-items: flex-end;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.rating-band-progress__rating small {
+  font-size: 10px;
+  font-weight: 400;
+  opacity: 0.65;
+}
+
+.rating-band-progress__track {
+  height: 8px;
+  margin: 10px 0 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(54, 89, 66, 0.13);
+}
+
+.rating-band-progress__track > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #4f935c, #8db56f);
+  transition: width 240ms ease;
+}
+
+.rating-band-progress__caption {
+  font-size: 12px;
+  line-height: 1.35;
+  opacity: 0.76;
+}
+
+.rating-band-progress--compact {
+  width: 100%;
+  padding: 10px 12px;
+}
+
+.rating-band-progress--compact .rating-band-progress__title > strong {
+  font-size: 14px;
+}
+
+.rating-band-progress--compact .rating-band-progress__rating {
+  font-size: 16px;
+}

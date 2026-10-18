@@ -32,6 +32,7 @@ from backend.services.assessment import (
     calculate_performance_rating,
     personalized_level_test_puzzles,
     puzzle_rating_group,
+    rating_band_progress,
     rating_group_for,
 )
 from backend.services.course_topics import (
@@ -572,6 +573,15 @@ async def learning_progress(
 ):
     """Прогресс текущего пользователя по обычным тактическим пазлам."""
     return await compute_learning_progress(db, user_id=user.id)
+
+
+@router.get("/api/learning/level-progress")
+async def learning_level_progress(user: User = Depends(get_current_user)):
+    """Положение пользователя внутри текущей рейтинговой группы."""
+    return {
+        **rating_band_progress(effective_player_rating(user)),
+        "provisional": user.assessment_completed_at is None,
+    }
 
 
 @router.get("/api/learning/difficulty")

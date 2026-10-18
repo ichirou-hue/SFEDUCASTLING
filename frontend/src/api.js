@@ -382,6 +382,11 @@ export async function fetchLearningProgress() {
   return data;
 }
 
+export async function fetchRatingBandProgress() {
+  const { data } = await api.get("/api/learning/level-progress");
+  return data;
+}
+
 export async function fetchWeaknessProfile() {
   const { data } = await api.get("/api/learning/weaknesses");
   return data;

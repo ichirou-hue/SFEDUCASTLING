@@ -8,6 +8,7 @@
 }
 
 .user-profile-card,
+.user-profile-rating-section,
 .user-profile-progress-section,
 .user-profile-empty {
   border: 1px solid rgba(34, 90, 115, 0.16);
@@ -120,6 +121,19 @@
 .user-profile-progress-section {
   margin-top: 18px;
   padding: 22px;
+}
+
+.user-profile-rating-section {
+  margin-top: 18px;
+  padding: 22px;
+  border: 1px solid rgba(34, 90, 115, 0.16);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 10px 32px rgba(25, 52, 43, 0.07);
+}
+
+.user-profile-rating-section .rating-band-progress {
+  width: min(100%, 620px);
 }
 
 .user-profile-section-heading {

@@ -649,7 +649,8 @@ export default function PuzzlesPage({ user, onRegister }) {
   }
 
   return (
-    <div className="puzzles-layout">
+    <div className="puzzles-page-shell">
+      <div className="puzzles-layout">
       <div className="puzzle-info-panel">
         <div className="puzzle-theme-label">Тема задачи:</div>
         <div className="puzzle-theme-name">{themeInfo.label}</div>
@@ -912,6 +913,7 @@ export default function PuzzlesPage({ user, onRegister }) {
       </div>
 
       <PuzzleRegisterGate open={showRegGate} onRegister={onRegister} />
+      </div>
     </div>
   );
 }
