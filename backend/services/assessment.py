@@ -60,6 +60,11 @@ Q1_BAND = {
 # «играю регулярно/в турнирах» без подтверждения сильно завышает рейтинг.
 SELF_REPORT_CAP = 800
 
+# Потолок стартовой оценки для внешнего аккаунта (Lichess / Chess.com) без
+# единой сыгранной партии. Такой аккаунт не подтверждает уровень, поэтому даже
+# при «usable» рейтинг не выше этого порога.
+NO_GAMES_RATING_CAP = 800
+
 Q1_LABELS = {
     "never": "Никогда",
     "know_moves": "Знаю ходы",
@@ -119,6 +124,8 @@ def onboarding_rating(
     Правила:
     * надёжный внешний рейтинг (привязка Lichess/Chess.com) — стартовая оценка
       берётся из него без ограничения;
+    * внешний аккаунт без сыгранных партий (``games == 0``) — оценка не выше
+      ``NO_GAMES_RATING_CAP`` (уровень не подтверждён);
     * без привязки — стартовая оценка НЕ превышает ``SELF_REPORT_CAP``
       (самооценка ограничена), даже если пользователь заявил высокий уровень;
     * prior_band отражает заявленный уровень (внешний/самооценка) и служит
@@ -135,10 +142,19 @@ def onboarding_rating(
     else:
         prior_band = Q1_BAND.get(q1, 1)
 
-    if linked and linked.get("usable") and linked.get("rating") is not None:
-        rating = max(0, min(3500, int(linked["rating"])))
-        scale = str(linked.get("scale") or "external")
-        return rating, scale, prior_band
+    if linked and linked.get("rating") is not None:
+        games = linked.get("games")
+        has_games = games is None or int(games) > 0
+        if linked.get("usable") and has_games:
+            rating = max(0, min(3500, int(linked["rating"])))
+            scale = str(linked.get("scale") or "external")
+            return rating, scale, prior_band
+        if linked.get("usable") and not has_games:
+            # Привязка есть, но 0 партий: уровень не подтверждён, ограничиваем
+            # стартовую оценку NO_GAMES_RATING_CAP.
+            rating = max(0, min(NO_GAMES_RATING_CAP, int(linked["rating"])))
+            scale = str(linked.get("scale") or "external")
+            return rating, scale, prior_band
 
     rating = max(0, min(SELF_REPORT_CAP, Q1_ESTIMATES.get(q1, SELF_REPORT_CAP)))
     return rating, "self_report", prior_band

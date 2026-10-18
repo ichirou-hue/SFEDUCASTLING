@@ -3,9 +3,17 @@
 import random
 
 import chess
-from fastapi import APIRouter, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, HTTPException
 
-from backend.api_gateway.models import CompareMovesRequest, FenRequest, FenSquare, FinishGameRequest, MoveRequest
+from backend.api_gateway.models import (
+    CapturedMaterialRequest,
+    CompareMovesRequest,
+    FenRequest,
+    FenSquare,
+    FinishGameRequest,
+    MoveRequest,
+    NewGameRequest,
+)
 from backend.api_gateway.state import (
     elo_to_temperature,
     ensure_stockfish,
@@ -29,6 +37,25 @@ LEVELS = [
     {"level": 7, "name": "Гроссмейстер", "elo": 2600, "engine": "maia3"},
     {"level": 8, "name": "Максимум (Stockfish)", "elo": 3600, "engine": "stockfish"},
 ]
+
+# Ценность фигур (в пешках) для подсчёта съеденного материала.
+PIECE_VALUES = {
+    chess.PAWN: 1,
+    chess.KNIGHT: 3,
+    chess.BISHOP: 3,
+    chess.ROOK: 5,
+    chess.QUEEN: 9,
+}
+
+# Буквы фигур в нижнем регистре (как в FEN) для ответа API.
+PIECE_LETTERS = {
+    chess.PAWN: "p",
+    chess.KNIGHT: "n",
+    chess.BISHOP: "b",
+    chess.ROOK: "r",
+    chess.QUEEN: "q",
+    chess.KING: "k",
+}
 
 
 @router.get("/api/levels")
@@ -425,6 +452,12 @@ def finish_game(req: FinishGameRequest, background_tasks: BackgroundTasks):
     Классификация каждого хода через Stockfish (1с на ход) выполняется
     в фоне, чтобы не блокировать ответ фронтенду.
     """
+    # Игрок может играть и за чёрных: тогда AI — белые, а игрок — чёрные.
+    if req.player_color == "b":
+        white, black = "AI", "player"
+    else:
+        white, black = "player", "AI"
+
     background_tasks.add_task(
         record_game,
         moves=req.moves,
@@ -433,5 +466,111 @@ def finish_game(req: FinishGameRequest, background_tasks: BackgroundTasks):
         engine=req.engine,
         result=req.result,
         status=req.status,
+        white=white,
+        black=black,
     )
     return {"ok": True, "status": "scheduled"}
+
+
+@router.post("/api/game/new")
+def new_game(req: NewGameRequest):
+    """Стартовая позиция новой партии за выбранную сторону игрока.
+
+    Возвращает FEN, сторону игрока и сторону AI, а также ``ai_to_move``:
+    если игрок играет чёрными, первый ход делает AI.
+    """
+    board = chess.Board()
+    ai_color = "b" if req.player_color == "w" else "w"
+    return {
+        "fen": board.fen(),
+        "player_color": req.player_color,
+        "ai_color": ai_color,
+        "turn": "w" if board.turn == chess.WHITE else "b",
+        "ai_to_move": ai_color == "w",
+    }
+
+
+@router.post("/api/game/captured-material")
+def captured_material(req: CapturedMaterialRequest):
+    """Съеденный материал по истории ходов партии (stateless).
+
+    Реплеит партию от ``req.fen`` (по умолчанию — начальная позиция) и
+    собирает взятые фигуры по сторонам, включая взятие на проходе.
+    """
+    board = chess.Board(req.fen) if req.fen else chess.Board()
+
+    # captured[turn] — фигуры, взятые стороной turn (взятые чужие фигуры).
+    captured: dict[bool, list[int]] = {chess.WHITE: [], chess.BLACK: []}
+
+    for index, token in enumerate(req.moves, start=1):
+        try:
+            move = chess.Move.from_uci(token)
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Недопустимый ход на позиции {index}: {token}",
+            )
+        if move not in board.legal_moves:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Недопустимый ход на позиции {index}: {token}",
+            )
+
+        if board.is_en_passant(move):
+            captured_square = chess.square(
+                chess.square_file(move.to_square),
+                chess.square_rank(move.from_square),
+            )
+            victim = board.piece_at(captured_square)
+        else:
+            victim = board.piece_at(move.to_square)
+
+        if victim is not None:
+            captured[board.turn].append(victim.piece_type)
+
+        board.push(move)
+
+    def letters(piece_types: list[int]) -> list[str]:
+        return [PIECE_LETTERS[piece_type] for piece_type in piece_types]
+
+    def counts(piece_types: list[int]) -> dict[str, int]:
+        result = {"p": 0, "n": 0, "b": 0, "r": 0, "q": 0}
+        for piece_type in piece_types:
+            letter = PIECE_LETTERS[piece_type]
+            if letter in result:
+                result[letter] += 1
+        return result
+
+    def value(piece_types: list[int]) -> int:
+        return sum(PIECE_VALUES.get(piece_type, 0) for piece_type in piece_types)
+
+    white_value = value(captured[chess.WHITE])
+    black_value = value(captured[chess.BLACK])
+    diff = white_value - black_value
+    if diff > 0:
+        advantage = "white"
+    elif diff < 0:
+        advantage = "black"
+    else:
+        advantage = "equal"
+
+    response = {
+        "fen": board.fen(),
+        "captured_by_white": letters(captured[chess.WHITE]),
+        "captured_by_black": letters(captured[chess.BLACK]),
+        "counts": {
+            "white": counts(captured[chess.WHITE]),
+            "black": counts(captured[chess.BLACK]),
+        },
+        "material": {
+            "white": white_value,
+            "black": black_value,
+            "diff": diff,
+            "advantage": advantage,
+        },
+    }
+
+    if req.player_color is not None:
+        response["player_advantage"] = diff if req.player_color == "w" else -diff
+
+    return response

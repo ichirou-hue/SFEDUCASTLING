@@ -347,6 +347,7 @@ async def _linked_rating(db: AsyncSession, user_id: int) -> dict[str, Any] | Non
         "platform": account.platform,
         "username": account.username,
         "rating_type": account.rating_type,
+        "games": int(account.games or 0),
     }
 
 

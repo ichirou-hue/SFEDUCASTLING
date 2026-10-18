@@ -59,6 +59,22 @@ def test_unusable_linked_rating_falls_back_to_capped_self_report():
     assert band == 4
 
 
+def test_zero_game_linked_account_is_capped():
+    rating, scale, band = onboarding_rating(
+        {"q1": "tournaments", "q2": None},
+        linked={
+            "rating": 2100,
+            "scale": "chesscom_blitz",
+            "usable": True,
+            "games": 0,
+        },
+    )
+    # 0 партий у привязанного аккаунта -> не выше NO_GAMES_RATING_CAP.
+    assert rating == 800
+    assert scale == "chesscom_blitz"
+    assert band == 4
+
+
 def test_q1_regular_matches_frontend_code():
     # Фронт отправляет код "regular" (OnboardingModal), а не "regularly".
     rating, scale, band = onboarding_rating(

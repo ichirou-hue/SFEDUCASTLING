@@ -112,3 +112,126 @@ class TestAiMove:
     def test_invalid_fen(self):
         resp = client.post("/api/stockfish-move", json={"fen": "bad", "elo": 1500})
         assert resp.status_code == 422
+
+
+# --- /api/game/new ---
+
+class TestNewGame:
+    def test_default_is_white(self):
+        resp = client.post("/api/game/new", json={})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["fen"] == START_FEN
+        assert data["player_color"] == "w"
+        assert data["ai_color"] == "b"
+        assert data["turn"] == "w"
+        assert data["ai_to_move"] is False
+
+    def test_playing_black_ai_moves_first(self):
+        resp = client.post("/api/game/new", json={"player_color": "b"})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["player_color"] == "b"
+        assert data["ai_color"] == "w"
+        assert data["ai_to_move"] is True
+
+    def test_accepts_human_readable_color(self):
+        resp = client.post("/api/game/new", json={"player_color": "черные"})
+        assert resp.status_code == 200
+        assert resp.json()["player_color"] == "b"
+
+    def test_invalid_color(self):
+        resp = client.post("/api/game/new", json={"player_color": "green"})
+        assert resp.status_code == 422
+
+
+# --- /api/game/captured-material ---
+
+class TestCapturedMaterial:
+    def test_empty_history(self):
+        resp = client.post("/api/game/captured-material", json={"moves": []})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["fen"] == START_FEN
+        assert data["captured_by_white"] == []
+        assert data["captured_by_black"] == []
+        assert data["material"]["diff"] == 0
+        assert data["material"]["advantage"] == "equal"
+
+    def test_normal_capture(self):
+        resp = client.post(
+            "/api/game/captured-material",
+            json={"moves": ["e2e4", "d7d5", "e4d5"], "player_color": "w"},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["captured_by_white"] == ["p"]
+        assert data["captured_by_black"] == []
+        assert data["counts"]["white"]["p"] == 1
+        assert data["material"]["diff"] == 1
+        assert data["material"]["advantage"] == "white"
+        assert data["player_advantage"] == 1
+
+    def test_player_advantage_for_black(self):
+        resp = client.post(
+            "/api/game/captured-material",
+            json={"moves": ["e2e4", "d7d5", "e4d5"], "player_color": "b"},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["player_advantage"] == -1
+
+    def test_en_passant_capture(self):
+        resp = client.post(
+            "/api/game/captured-material",
+            json={"moves": ["e2e4", "a7a6", "e4e5", "d7d5", "e5d6"]},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["captured_by_white"] == ["p"]
+        assert data["counts"]["white"]["p"] == 1
+
+    def test_promotion_capture_is_not_a_capture_of_own_piece(self):
+        # 1.d4 h5 2.c4 h4 3.Qd3 h3 4.Qxh3 — ферзь берёт пешку.
+        resp = client.post(
+            "/api/game/captured-material",
+            json={"moves": ["d2d4", "h7h5", "c2c4", "h5h4", "d1d3", "h4h3", "d3h3"]},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["captured_by_white"] == ["p"]
+        assert data["material"]["white"] == 1
+
+    def test_illegal_move_returns_400(self):
+        resp = client.post(
+            "/api/game/captured-material",
+            json={"moves": ["e2e5"]},
+        )
+        assert resp.status_code == 400
+
+    def test_invalid_fen(self):
+        resp = client.post(
+            "/api/game/captured-material",
+            json={"moves": [], "fen": "bad"},
+        )
+        assert resp.status_code == 422
+
+
+# --- /api/game/finish ---
+
+class TestFinishGame:
+    def test_accepts_player_color(self):
+        # Пустой список ходов: фоновый record_game выходит без обращения к БД.
+        resp = client.post(
+            "/api/game/finish",
+            json={"moves": [], "player_color": "b"},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["ok"] is True
+
+    def test_invalid_player_color(self):
+        resp = client.post(
+            "/api/game/finish",
+            json={"moves": [], "player_color": "green"},
+        )
+        assert resp.status_code == 422
+

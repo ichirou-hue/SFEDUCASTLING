@@ -832,6 +832,50 @@ PIECES_LESSONS = [
             },
         ],
     },
+    {
+        "slug": "king-review",
+        "title": "Закрепление: король",
+        "section_title": "Король",
+        "theory": (
+            "Король ходит на одну клетку в любом направлении, но не может встать под шах. "
+            "В центре доски у него до восьми полей, у края - меньше. Король не может также "
+            "приблизиться вплотную к вражескому королю: между ними всегда должно оставаться "
+            "хотя бы одно поле."
+        ),
+        "sort_order": 25,
+        "tasks": [
+            {
+                "task_type": "select_squares",
+                "title": "Пять полей короля",
+                "instruction": "Отметьте все клетки, на которые может пойти белый король с e1.",
+                "fen": "4k3/8/8/8/8/8/8/4K3 w - - 0 1",
+                "source_square": "e1",
+                "difficulty": 1,
+                "payload": {"piece": "K", "mode": "all_legal_moves"},
+                "explanation": "С e1 король может пойти на d1, f1, d2, e2 и f2 - всего пять полей.",
+                "sort_order": 1,
+            },
+            {
+                "task_type": "choose_option",
+                "title": "Атакованное поле",
+                "instruction": "Чёрная ладья стоит на f8. На какое из перечисленных полей белому королю с e1 идти нельзя?",
+                "fen": "5r1k/8/8/8/8/8/8/4K3 w - - 0 1",
+                "source_square": "e1",
+                "difficulty": 2,
+                "payload": {
+                    "options": _options(
+                        ("d1", "d1"),
+                        ("f1", "f1"),
+                        ("e2", "e2"),
+                        ("d2", "d2"),
+                    ),
+                    "correct_option": "f1",
+                },
+                "explanation": "Ладья f8 простреливает вертикаль f, поэтому на f1 король оказался бы под шахом.",
+                "sort_order": 2,
+            },
+        ],
+    },
 ]
 
 
@@ -1077,6 +1121,136 @@ KING_SAFETY_LESSONS = [
                     "correct_option": "no",
                 },
                 "explanation": "Нет. Из-под шаха рокироваться нельзя.",
+                "sort_order": 2,
+            },
+        ],
+    },
+    {
+        "slug": "back-rank-mate",
+        "title": "Мат по последней горизонтали",
+        "section_title": "Мат и пат",
+        "theory": (
+            "Даже защищённый король может попасть в мат, если его собственные пешки перекрывают "
+            "поля отступления. Ладья или ферзь, врываясь на последнюю горизонталь, нередко ставят "
+            "мат такому «запертому» королю. Опасность последней горизонтали - одна из самых частых "
+            "причин поражения в партиях."
+        ),
+        "sort_order": 8,
+        "tasks": [
+            {
+                "task_type": "make_move",
+                "title": "Мат ладьёй",
+                "instruction": "Чёрный король заперт за своими пешками. Поставьте мат ладьёй по последней горизонтали.",
+                "fen": "6k1/5ppp/8/8/8/8/8/4R1K1 w - - 0 1",
+                "source_square": "e1",
+                "difficulty": 2,
+                "payload": {"piece": "R", "mode": "accepted_moves", "accepted_moves": ["e1e8"]},
+                "explanation": "После Re8 ладья бьёт короля по горизонтали, а поля отступления перекрыты пешками f7, g7, h7.",
+                "sort_order": 1,
+            },
+            {
+                "task_type": "choose_option",
+                "title": "Почему это мат",
+                "instruction": "Почему ход ладьёй на e8 заканчивает партию матом?",
+                "fen": "6k1/5ppp/8/8/8/8/8/4R1K1 w - - 0 1",
+                "source_square": "e1",
+                "difficulty": 2,
+                "payload": {
+                    "options": _options(
+                        ("trapped", "Король заперт своими пешками, а ладья бьёт по всей последней горизонтали"),
+                        ("defended", "Ладья защищена королём"),
+                        ("stalemate", "Это не мат, а пат"),
+                        ("only_check", "Это шах без продолжения"),
+                    ),
+                    "correct_option": "trapped",
+                },
+                "explanation": "Свои пешки перекрывают королю поля g7, h7 и f7, а ладья держит всю восьмую горизонталь.",
+                "sort_order": 2,
+            },
+        ],
+    },
+    {
+        "slug": "smothered-mate",
+        "title": "Спёртый мат",
+        "section_title": "Мат и пат",
+        "theory": (
+            "Спёртый мат - это мат конём королю, который зажат своими же фигурами. Конь ставит шах "
+            "с поля, недоступного для фигур атакуемого короля, и тому некуда уйти. Это один из самых "
+            "красивых матовых приёмов."
+        ),
+        "sort_order": 9,
+        "tasks": [
+            {
+                "task_type": "make_move",
+                "title": "Мат конём",
+                "instruction": "Король h8 окружён своими фигурами. Поставьте спёртый мат конём.",
+                "fen": "6rk/6pp/8/4N3/8/8/8/K7 w - - 0 1",
+                "source_square": "e5",
+                "difficulty": 3,
+                "payload": {"piece": "N", "mode": "accepted_moves", "accepted_moves": ["e5f7"]},
+                "explanation": "Nf7 даёт шах. Король не может ни уйти (свои ладья g8 и пешки g7, h7), ни взять коня - это мат.",
+                "sort_order": 1,
+            },
+            {
+                "task_type": "choose_option",
+                "title": "Что такое спёртый мат",
+                "instruction": "В чём особенность спёртого мата?",
+                "fen": "6rk/6pp/8/4N3/8/8/8/K7 w - - 0 1",
+                "source_square": "e5",
+                "difficulty": 3,
+                "payload": {
+                    "options": _options(
+                        ("knight_trapped", "Мат конём королю, зажатому собственными фигурами"),
+                        ("queen_mate", "Мат ферзём по последней горизонтали"),
+                        ("double_rook", "Мат двумя ладьями"),
+                        ("pawn_mate", "Мат пешкой на последней горизонтали"),
+                    ),
+                    "correct_option": "knight_trapped",
+                },
+                "explanation": "Ключ к спёртому мату - король не может двинуться, потому что все соседние поля заняты его же фигурами.",
+                "sort_order": 2,
+            },
+        ],
+    },
+    {
+        "slug": "double-check",
+        "title": "Двойной шах",
+        "section_title": "Шах и защита",
+        "theory": (
+            "Двойной шах - это шах сразу от двух фигур. От него нельзя защититься, закрыв линию или "
+            "взяв атакующую фигуру: король обязан отступить. Чаще всего двойной шах возникает, когда "
+            "фигура уходит с линии и открывает шах своей же дальней фигуре, продолжая бить сама."
+        ),
+        "sort_order": 10,
+        "tasks": [
+            {
+                "task_type": "make_move",
+                "title": "Откройте двойной шах",
+                "instruction": "Сделайте ход конём, который одновременно открывает шах слону и бьёт сам.",
+                "fen": "6k1/7p/8/3N4/2B5/8/8/1K6 w - - 0 1",
+                "source_square": "d5",
+                "difficulty": 3,
+                "payload": {"piece": "N", "mode": "accepted_moves", "accepted_moves": ["d5f6"]},
+                "explanation": "Конь уходит с d5 и с поля f6 бьёт короля сам, открывая диагональ слону c4 - это двойной шах.",
+                "sort_order": 1,
+            },
+            {
+                "task_type": "choose_option",
+                "title": "Чем опасен двойной шах",
+                "instruction": "Почему двойной шах особенно опасен?",
+                "fen": "6k1/7p/8/3N4/2B5/8/8/1K6 w - - 0 1",
+                "source_square": "d5",
+                "difficulty": 3,
+                "payload": {
+                    "options": _options(
+                        ("king_must_move", "От него нельзя закрыться или взять одну фигуру - король обязан уйти"),
+                        ("extra_tempo", "Он даёт лишний темп на рокировку"),
+                        ("draw", "Он всегда приводит к ничьей"),
+                        ("blocked", "Его можно закрыть, как обычный шах"),
+                    ),
+                    "correct_option": "king_must_move",
+                },
+                "explanation": "Даже если убрать одну атакующую фигуру, шах остаётся от другой - поэтому спасает только ход королём.",
                 "sort_order": 2,
             },
         ],
@@ -1362,6 +1536,191 @@ OPENINGS_LESSONS = [
                 "payload": {"piece": "N", "mode": "accepted_moves", "accepted_moves": ["b1c3"]},
                 "explanation": "2.Nc3 развивает коня и давит на пешку e5, не давая чёрным развиваться по стандартной схеме.",
                 "sort_order": 2,
+            },
+        ],
+    },
+    {
+        "slug": "scotch",
+        "title": "Шотландская партия",
+        "section_title": "Открытые дебюты",
+        "theory": (
+            "Шотландская партия начинается ходами 1.e4 e5 2.Nf3 Nc6 3.d4. Белые сразу вскрывают "
+            "центр, а не развиваются спокойно, как в итальянской или испанской партии. После "
+            "3...exd4 4.Nxd4 конь занимает центральное поле d4, откуда контролирует важные поля. "
+            "Шотландская партия даёт белым быструю и удобную игру."
+        ),
+        "sort_order": 7,
+        "tasks": [
+            {
+                "task_type": "make_move",
+                "title": "Начните шотландскую",
+                "instruction": "Чёрные ответили 2...Nc6. Вскройте центр ходом 3.d4.",
+                "fen": "r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3",
+                "source_square": "d2",
+                "difficulty": 2,
+                "payload": {"piece": "P", "mode": "accepted_moves", "accepted_moves": ["d2d4"]},
+                "explanation": "3.d4 атакует пешку e5 и открывает линии для белых фигур.",
+                "sort_order": 1,
+            },
+            {
+                "task_type": "make_move",
+                "title": "Возьмите на d4",
+                "instruction": "Чёрные сыграли 3...exd4. Верните пешку ходом коня f3.",
+                "fen": "r1bqkbnr/pppp1ppp/2n5/8/3pP3/5N2/PPP2PPP/RNBQKB1R w KQkq - 0 4",
+                "source_square": "f3",
+                "difficulty": 2,
+                "payload": {"piece": "N", "mode": "accepted_moves", "accepted_moves": ["f3d4"]},
+                "explanation": "4.Nxd4 ставит коня в центр на d4 и возвращает пешку.",
+                "sort_order": 2,
+            },
+            {
+                "task_type": "choose_option",
+                "title": "Идея шотландской",
+                "instruction": "В чём главная идея хода 3.d4 в шотландской партии?",
+                "fen": "r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3",
+                "source_square": "d2",
+                "difficulty": 2,
+                "payload": {
+                    "options": _options(
+                        ("center", "Сразу вскрыть центр и получить фигурам простор"),
+                        ("castle", "Подготовить рокировку"),
+                        ("trap", "Поймать слона в ловушку"),
+                        ("trade_queens", "Разменять ферзей"),
+                    ),
+                    "correct_option": "center",
+                },
+                "explanation": "Белые стремятся к открытой игре с быстрым развитием и давлением в центре.",
+                "sort_order": 3,
+            },
+        ],
+    },
+    {
+        "slug": "caro-kann",
+        "title": "Защита Каро-Канн",
+        "section_title": "Полуоткрытые дебюты",
+        "theory": (
+            "Защита Каро-Канн начинается ходами 1.e4 c6. Чёрные готовят 2...d5 и поддерживают пешку "
+            "d5 ходом c6. В отличие от французской защиты, слон c8 остаётся на свободе. Чёрные "
+            "получают прочную, но несколько пассивную позицию и часто играют на равную борьбу."
+        ),
+        "sort_order": 7,
+        "tasks": [
+            {
+                "task_type": "make_move",
+                "title": "Первый ход белых",
+                "instruction": "Сделайте ход 1.e4.",
+                "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+                "source_square": "e2",
+                "difficulty": 1,
+                "payload": {"piece": "P", "mode": "accepted_moves", "accepted_moves": ["e2e4"]},
+                "explanation": "1.e4 занимает центр и открывает выход слону f1 и ферзю d1.",
+                "sort_order": 1,
+            },
+            {
+                "task_type": "make_move",
+                "title": "Занимаем центр",
+                "instruction": "Чёрные ответили 1...c6, готовя d5. Заняните центр ходом 2.d4.",
+                "fen": "rnbqkbnr/pp1ppppp/2p5/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+                "source_square": "d2",
+                "difficulty": 2,
+                "payload": {"piece": "P", "mode": "accepted_moves", "accepted_moves": ["d2d4"]},
+                "explanation": "2.d4 создаёт сильный пешечный центр и не даёт чёрным легко играть d5.",
+                "sort_order": 2,
+            },
+            {
+                "task_type": "make_move",
+                "title": "Развитие коня",
+                "instruction": "Чёрные сыграли 2...d5. Развейте коня b1 на c3.",
+                "fen": "rnbqkbnr/pp2pppp/2p5/3p4/3PP3/8/PPP2PPP/RNBQKBNR w KQkq - 0 3",
+                "source_square": "b1",
+                "difficulty": 2,
+                "payload": {"piece": "N", "mode": "accepted_moves", "accepted_moves": ["b1c3"]},
+                "explanation": "3.Nc3 защищает пешку e4 и развивает коня к центру.",
+                "sort_order": 3,
+            },
+            {
+                "task_type": "choose_option",
+                "title": "Идея Каро-Канна",
+                "instruction": "Зачем чёрные в защите Каро-Канн играют c7-c6?",
+                "fen": "rnbqkbnr/pp1ppppp/2p5/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
+                "source_square": "d2",
+                "difficulty": 2,
+                "payload": {
+                    "options": _options(
+                        ("support_d5", "Чтобы поддержать пешкой ход d7-d5"),
+                        ("attack_e4", "Чтобы сразу атаковать пешку e4"),
+                        ("fianchetto", "Чтобы вывести слона на g7"),
+                        ("castle_early", "Чтобы быстрее рокироваться"),
+                    ),
+                    "correct_option": "support_d5",
+                },
+                "explanation": "Пешка c6 поддерживает продвижение d7-d5, оставляя слону c8 открытую дорогу.",
+                "sort_order": 4,
+            },
+        ],
+    },
+    {
+        "slug": "nimzo-indian",
+        "title": "Защита Нимцовича",
+        "section_title": "Закрытые дебюты",
+        "theory": (
+            "Защита Нимцовича возникает после 1.d4 Nf6 2.c4 e6 3.Nc3 Bb4. Чёрные развивают слона на b4 "
+            "и связывают коня c3, борясь за контроль над полем e4. Это один из самых надёжных ответов "
+            "на 1.d4: чёрные получают гибкую позицию и часто отдают слона за коня на c3."
+        ),
+        "sort_order": 7,
+        "tasks": [
+            {
+                "task_type": "make_move",
+                "title": "Начните с d4",
+                "instruction": "Сделайте ход 1.d4.",
+                "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+                "source_square": "d2",
+                "difficulty": 1,
+                "payload": {"piece": "P", "mode": "accepted_moves", "accepted_moves": ["d2d4"]},
+                "explanation": "1.d4 занимает центр и открывает диагональ слону c1.",
+                "sort_order": 1,
+            },
+            {
+                "task_type": "make_move",
+                "title": "Подкрепите центр",
+                "instruction": "Чёрные ответили 1...Nf6. Сыграйте 2.c4.",
+                "fen": "rnbqkb1r/pppppppp/5n2/8/3P4/8/PPP1PPPP/RNBQKBNR w KQkq - 1 2",
+                "source_square": "c2",
+                "difficulty": 2,
+                "payload": {"piece": "P", "mode": "accepted_moves", "accepted_moves": ["c2c4"]},
+                "explanation": "2.c4 поддерживает пешку d4 и захватывает ещё больше пространства в центре.",
+                "sort_order": 2,
+            },
+            {
+                "task_type": "make_move",
+                "title": "Развитие коня",
+                "instruction": "Чёрные сыграли 2...e6. Развейте коня b1 на c3.",
+                "fen": "rnbqkb1r/pppp1ppp/4pn2/8/2PP4/8/PP2PPPP/RNBQKBNR w KQkq - 0 3",
+                "source_square": "b1",
+                "difficulty": 2,
+                "payload": {"piece": "N", "mode": "accepted_moves", "accepted_moves": ["b1c3"]},
+                "explanation": "3.Nc3 защищает пешку d4 и готовит развитие остальных фигур.",
+                "sort_order": 3,
+            },
+            {
+                "task_type": "choose_option",
+                "title": "Идея защиты Нимцовича",
+                "instruction": "Почему в защите Нимцовича чёрные часто играют Bxc3?",
+                "fen": "rnbqkb1r/pppp1ppp/4pn2/8/2PP4/8/PP2PPPP/RNBQKBNR w KQkq - 0 3",
+                "source_square": "b1",
+                "difficulty": 3,
+                "payload": {
+                    "options": _options(
+                        ("pawns", "Чтобы испортить белым пешечную структуру"),
+                        ("mate", "Чтобы сразу поставить мат"),
+                        ("rook", "Чтобы выиграть ладью"),
+                        ("castle", "Чтобы получить право рокировки"),
+                    ),
+                    "correct_option": "pawns",
+                },
+                "explanation": "Размен Bxc3 портит белым пешки, и чёрные получают долговременные шансы против центра.",
+                "sort_order": 4,
             },
         ],
     },
@@ -1782,6 +2141,50 @@ ENDGAMES_LESSONS = [
                 "difficulty": 3,
                 "payload": {"piece": "P", "mode": "accepted_moves", "accepted_moves": ["d4d5"]},
                 "explanation": "Пешка идёт на d5 с шахом: чёрный король обязан отступить, а пешка продолжает путь, защищённая королём e4.",
+                "sort_order": 2,
+            },
+        ],
+    },
+    {
+        "slug": "queen-mate-avoid-stalemate",
+        "title": "Ферзь и король: осторожно с патом",
+        "section_title": "Мат тяжёлыми фигурами",
+        "theory": (
+            "Ферзь и король легко ставят мат одинокому королю, но здесь легко по ошибке сделать пат: "
+            "ферзь отнимает у короля сразу много полей. Приём простой - сначала оттеснить короля "
+            "краем доски, оставляя ему хотя бы одно поле, и лишь затем объявить мат. Пат при большом "
+            "перевесе - обидная ничья."
+        ),
+        "sort_order": 10,
+        "tasks": [
+            {
+                "task_type": "make_move",
+                "title": "Поставьте мат ферзём",
+                "instruction": "Чёрный король на h8. Поставьте мат ходом ферзя на d8, не допустив пата.",
+                "fen": "7k/8/6K1/8/8/8/3Q4/8 w - - 0 1",
+                "source_square": "d2",
+                "difficulty": 3,
+                "payload": {"piece": "Q", "mode": "accepted_moves", "accepted_moves": ["d2d8"]},
+                "explanation": "Qd8 бьёт короля по последней горизонтали, а собственный король g6 держит поля g7 и h7 - это мат.",
+                "sort_order": 1,
+            },
+            {
+                "task_type": "choose_option",
+                "title": "Не сделайте пат",
+                "instruction": "О чём нужно помнить, ставя мат одним ферзём?",
+                "fen": "7k/8/6K1/8/8/8/3Q4/8 w - - 0 1",
+                "source_square": "d2",
+                "difficulty": 3,
+                "payload": {
+                    "options": _options(
+                        ("stalemate", "Остерегаться пата: не отнимать у короля последнее поле, пока нет мата"),
+                        ("check_always", "Каждым ходом объявлять шах"),
+                        ("pawn", "Продвигать пешку"),
+                        ("repeat", "Повторять позицию до ничьей"),
+                    ),
+                    "correct_option": "stalemate",
+                },
+                "explanation": "Ферзь отнимает много полей сразу, поэтому легко ошибиться и поставить не мат, а пат.",
                 "sort_order": 2,
             },
         ],

@@ -41,6 +41,9 @@ RATING_PRIORITY = ("blitz", "rapid", "bullet")
 MIN_GAMES_FOR_ASSESSMENT = 30
 MAX_LICHESS_RD = 110
 MAX_ACTIVITY_AGE_DAYS = 365
+# Аккаунт без единой партии не подтверждает уровень: его рейтинг для стартовой
+# оценки ограничивается этим порогом (правило онбординга/регистрации).
+NO_GAMES_RATING_CAP = 800
 
 
 def _normalize_platform(value: str) -> str:
@@ -139,7 +142,9 @@ def _chesscom_profile(username: str):
         rec = block.get("record", {}) or {}
         games = int(rec.get("win") or 0) + int(rec.get("loss") or 0) + int(rec.get("draw") or 0)
         ratings[key] = {
-            "rating": last.get("rating"),
+            # Chess.com отдаёт last.rating даже без партий — скрываем рейтинг,
+            # пока не сыграна хотя бы одна партия (как в Lichess-профиле).
+            "rating": last.get("rating") if games else None,
             "games": games,
             "rd": None,
             "provisional": False,
@@ -194,10 +199,16 @@ def select_profile_rating(profile: dict[str, Any]) -> dict[str, Any]:
             continue
 
         games = int(perf.get("games") or 0)
+        if games == 0 and rating is not None:
+            # Аккаунт без партий: даже при наличии поля rating не завышаем
+            # стартовую оценку выше NO_GAMES_RATING_CAP.
+            rating = min(int(rating), NO_GAMES_RATING_CAP)
         rd = perf.get("rd")
         provisional = bool(perf.get("provisional", False))
         reasons: list[str] = []
-        if games < MIN_GAMES_FOR_ASSESSMENT:
+        if games == 0:
+            reasons.append("0 партий на аккаунте")
+        elif games < MIN_GAMES_FOR_ASSESSMENT:
             reasons.append(f"меньше {MIN_GAMES_FOR_ASSESSMENT} партий")
         if platform == "lichess" and rd is not None and float(rd) >= MAX_LICHESS_RD:
             reasons.append(f"RD {rd} ≥ {MAX_LICHESS_RD}")

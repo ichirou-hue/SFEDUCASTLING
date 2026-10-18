@@ -6,6 +6,10 @@ from typing import Any
 
 import chess
 
+from backend.services.puzzle_validation import (
+    PIECE_THEMES,
+    pieces_used_in_solution,
+)
 
 COURSE_TOPIC_META: dict[str, dict[str, Any]] = {
     "pieces": {
@@ -141,6 +145,22 @@ def _module_piece_ok(puzzle: dict, topic: str) -> bool:
         return _PIECE_TYPE_BY_SYMBOL[symbol] in used
     return _fen_has_piece(puzzle.get("fen"), symbol)
 
+
+def _theme_piece_ok(puzzle: dict, themes: set[str]) -> bool:
+    """Участвуют ли названные темами фигуры в решении пазла.
+
+    Темы вида pawnEndgame/knightEndgame/rookEndgame/promotion называют
+    конкретную фигуру. Если такая тема есть, а фигура в решении не ходит,
+    пазл помечен некорректно и в подбор по этой теме не попадает.
+    """
+    wanted = {PIECE_THEMES[theme] for theme in themes if theme in PIECE_THEMES}
+    if not wanted:
+        return True
+    used = pieces_used_in_solution(puzzle.get("fen"), puzzle.get("moves"))
+    if used is not None:
+        return all(_PIECE_TYPE_BY_SYMBOL[symbol] in used for symbol in wanted)
+    return all(_fen_has_piece(puzzle.get("fen"), symbol) for symbol in wanted)
+
 # Один пазл может затрагивать несколько модулей. Для статистики B1 одна
 # puzzle_attempt относится к одной основной теме, чтобы не удваивать попытки.
 # Порядок важен: побеждает первая совпавшая тема.
@@ -182,7 +202,10 @@ def puzzle_matches_course_topic(puzzle: dict, topic: str) -> bool:
     wanted = COURSE_TOPIC_PUZZLE_THEMES.get(topic)
     if not wanted:
         return False
-    if not set(puzzle.get("themes") or []) & wanted:
+    matched = set(puzzle.get("themes") or []) & wanted
+    if not matched:
+        return False
+    if not _theme_piece_ok(puzzle, matched):
         return False
     return _module_piece_ok(puzzle, topic)
 
@@ -193,6 +216,9 @@ def primary_course_topic_for_puzzle(puzzle: dict | None) -> str | None:
     themes = set(puzzle.get("themes") or [])
     for theme, slug in THEME_TO_PRIMARY_TOPIC:
         if theme not in themes:
+            continue
+        if not _theme_piece_ok(puzzle, {theme}):
+            # Тема называет фигуру, которой в решении нет — пропускаем её.
             continue
         if not _module_piece_ok(puzzle, slug):
             # Тема совпала, но профильная фигура модуля не участвует в
