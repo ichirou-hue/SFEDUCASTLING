@@ -20,6 +20,9 @@
   width: min(1120px, calc(100% - 40px));
   margin-left: auto;
   margin-right: auto;
+  /* Страница сама прокручивается; её карточки должны сохранять высоту,
+     иначе flex сжимает секцию разбора партий до одной строки. */
+  flex-shrink: 0;
 }
 
 .user-profile-page::-webkit-scrollbar {
