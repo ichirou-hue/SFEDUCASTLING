@@ -35,9 +35,7 @@ function MainPage() {
   });
 
   return (
-    // Своя скролл-колонка: футер в потоке контента (внизу при проскролле),
-    // а не зафиксированной полосой поверх страницы.
-    <div className="main-page-scroll">
+    <>
       <div className="main-area">
         <MoveHistory
           moveHistory={boardState.moveHistory}
@@ -60,7 +58,7 @@ function MainPage() {
         />
       </div>
       <SiteFooter />
-    </div>
+    </>
   );
 }
 
