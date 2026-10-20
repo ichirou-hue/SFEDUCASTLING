@@ -24,6 +24,19 @@
   font-size: 14px;
 }
 
+.phase-accuracy--loading > div,
+.phase-accuracy--message > div {
+  display: grid;
+  gap: 5px;
+}
+
+.phase-accuracy--loading h2,
+.phase-accuracy--message h2 {
+  margin: 0;
+  color: var(--phase-ink);
+  font-size: 20px;
+}
+
 .phase-accuracy--loading {
   background: linear-gradient(100deg, #f7faf7 30%, #edf4ef 50%, #f7faf7 70%);
   background-size: 220% 100%;

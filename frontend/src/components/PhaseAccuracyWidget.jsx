@@ -278,9 +278,28 @@ export default function PhaseAccuracyWidget() {
     [phases, selectedKey],
   );
 
-  if (!getAccessToken()) return null;
+  const hasAccessToken = Boolean(getAccessToken());
+  if (!hasAccessToken) {
+    return (
+      <section className="phase-accuracy phase-accuracy--message" aria-labelledby="phase-accuracy-title">
+        <div>
+          <div className="user-profile-kicker">Разбор партий</div>
+          <h2 id="phase-accuracy-title">Точность по этапам</h2>
+          <span>Войдите в аккаунт, чтобы загрузить анализ ваших партий.</span>
+        </div>
+      </section>
+    );
+  }
   if (loading) {
-    return <section className="phase-accuracy phase-accuracy--loading">Строим карту точности…</section>;
+    return (
+      <section className="phase-accuracy phase-accuracy--loading" aria-labelledby="phase-accuracy-title">
+        <div>
+          <div className="user-profile-kicker">Разбор партий</div>
+          <h2 id="phase-accuracy-title">Точность по этапам</h2>
+          <span>Загружаем оценки ходов…</span>
+        </div>
+      </section>
+    );
   }
   if (error) {
     const errorMessage = errorStatus === 404
@@ -292,12 +311,27 @@ export default function PhaseAccuracyWidget() {
           : "Сервер статистики недоступен. Проверьте, что run.bat запущен.";
     return (
       <section className="phase-accuracy phase-accuracy--message">
-        <span>{errorMessage}</span>
+        <div>
+          <div className="user-profile-kicker">Разбор партий</div>
+          <h2 id="phase-accuracy-title">Точность по этапам</h2>
+          <span>{errorMessage}</span>
+        </div>
         <button type="button" onClick={load}>Повторить</button>
       </section>
     );
   }
-  if (!data || !phases.length) return null;
+  if (!data || !phases.length) {
+    return (
+      <section className="phase-accuracy phase-accuracy--message" aria-labelledby="phase-accuracy-title">
+        <div>
+          <div className="user-profile-kicker">Разбор партий</div>
+          <h2 id="phase-accuracy-title">Точность по этапам</h2>
+          <span>Пока нет данных для графика. Завершите партию — после её сохранения появятся оценки ходов.</span>
+        </div>
+        <button type="button" onClick={load}>Обновить</button>
+      </section>
+    );
+  }
 
   const insight = insightFor(phases, data.games_analyzed);
   const selectedErrors = selected?.errors || {};
