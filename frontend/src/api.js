@@ -303,6 +303,17 @@ export async function finishGame({ moves, elo, engine, result, status }) {
     result: result || "*",
     status: status || "playing",
   });
+  if (getAccessToken() && typeof window !== "undefined") {
+    const previousCount = localStorage.getItem("sfedu-phase-accuracy-game-count");
+    localStorage.setItem(
+      "sfedu-phase-accuracy-pending",
+      JSON.stringify({
+        requestedAt: Date.now(),
+        baseline: previousCount == null ? null : Number(previousCount),
+      }),
+    );
+    window.dispatchEvent(new Event("sfedu-game-finished"));
+  }
   return data;
 }
 

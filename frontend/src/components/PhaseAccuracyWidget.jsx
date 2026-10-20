@@ -4,6 +4,9 @@ import "./PhaseAccuracyWidget.css";
 
 const CHART = { width: 740, height: 270, left: 76, right: 700, top: 28, bottom: 184 };
 const MIN_MOVES_FOR_INSIGHT = 5;
+const PENDING_KEY = "sfedu-phase-accuracy-pending";
+const GAME_COUNT_KEY = "sfedu-phase-accuracy-game-count";
+const ANALYSIS_WAIT_MS = 180_000;
 
 function pointFor(phase, index) {
   const x = CHART.left + (index * (CHART.right - CHART.left)) / 2;
@@ -159,33 +162,80 @@ export default function PhaseAccuracyWidget() {
   const [errorStatus, setErrorStatus] = useState(null);
   const [selectedKey, setSelectedKey] = useState(null);
 
-  const load = async () => {
+  const load = async (silent = false) => {
     if (!getAccessToken()) {
       setLoading(false);
-      return;
+      return null;
     }
-    setLoading(true);
-    setError(false);
-    setErrorStatus(null);
+    if (!silent) setLoading(true);
+    if (!silent) {
+      setError(false);
+      setErrorStatus(null);
+    }
     try {
-      setData(await fetchPhaseAccuracy());
+      const result = await fetchPhaseAccuracy();
+      setData(result);
+      localStorage.setItem(GAME_COUNT_KEY, String(result.games_analyzed || 0));
+      return result;
     } catch (err) {
-      setError(true);
-      setErrorStatus(err?.response?.status || null);
+      if (!silent) {
+        setError(true);
+        setErrorStatus(err?.response?.status || null);
+      }
+      return null;
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
   useEffect(() => {
     let cancelled = false;
+    let pollTimer = null;
+    let pollDeadline = null;
+    let baseline = null;
+    try {
+      const pending = JSON.parse(localStorage.getItem(PENDING_KEY) || "null");
+      if (pending && Date.now() - pending.requestedAt < ANALYSIS_WAIT_MS) {
+        baseline = Number.isFinite(pending.baseline) ? pending.baseline : null;
+      } else {
+        localStorage.removeItem(PENDING_KEY);
+      }
+    } catch {
+      localStorage.removeItem(PENDING_KEY);
+    }
+
+    const stopPolling = (clearPending = false) => {
+      if (pollTimer) window.clearInterval(pollTimer);
+      if (pollDeadline) window.clearTimeout(pollDeadline);
+      pollTimer = null;
+      pollDeadline = null;
+      if (clearPending) localStorage.removeItem(PENDING_KEY);
+    };
+
+    const startPolling = (startingCount = null) => {
+      if (pollTimer || cancelled) return;
+      if (baseline == null) baseline = startingCount;
+      const poll = async () => {
+        const result = await load(true);
+        if (result && baseline != null && result.games_analyzed > baseline) {
+          stopPolling(true);
+        }
+      };
+      pollTimer = window.setInterval(poll, 5000);
+      pollDeadline = window.setTimeout(() => stopPolling(true), ANALYSIS_WAIT_MS);
+    };
+
     if (!getAccessToken()) {
       setLoading(false);
       return undefined;
     }
     fetchPhaseAccuracy()
       .then((result) => {
-        if (!cancelled) setData(result);
+        if (!cancelled) {
+          setData(result);
+          localStorage.setItem(GAME_COUNT_KEY, String(result.games_analyzed || 0));
+          if (localStorage.getItem(PENDING_KEY)) startPolling(result.games_analyzed || 0);
+        }
       })
       .catch((err) => {
         if (!cancelled) {
@@ -196,7 +246,27 @@ export default function PhaseAccuracyWidget() {
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
-    return () => { cancelled = true; };
+    const handleGameFinished = () => {
+      try {
+        const pending = JSON.parse(localStorage.getItem(PENDING_KEY) || "null");
+        baseline = Number.isFinite(pending?.baseline) ? pending.baseline : null;
+      } catch {
+        baseline = null;
+      }
+      if (baseline == null) {
+        load(true).then((result) => {
+          if (!cancelled) startPolling(result?.games_analyzed || 0);
+        });
+      } else {
+        startPolling();
+      }
+    };
+    window.addEventListener("sfedu-game-finished", handleGameFinished);
+    return () => {
+      cancelled = true;
+      stopPolling();
+      window.removeEventListener("sfedu-game-finished", handleGameFinished);
+    };
   }, []);
 
   const phases = data?.phases || [];
