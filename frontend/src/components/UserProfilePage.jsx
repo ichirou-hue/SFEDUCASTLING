@@ -11,12 +11,13 @@ import ProgressWidget from "./ProgressWidget.jsx";
 import RatingBandProgress from "./RatingBandProgress.jsx";
 import UserRecordsWidget from "./UserRecordsWidget.jsx";
 import PhaseAccuracyWidget from "./PhaseAccuracyWidget.jsx";
+import SiteFooter from "./SiteFooter.jsx";
 import "./UserProfilePage.css";
 
 function formatDate(value) {
-  if (!value) return "—";
+  if (!value) return "0";
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "—";
+  if (Number.isNaN(date.getTime())) return "0";
   return new Intl.DateTimeFormat("ru-RU", {
     day: "2-digit",
     month: "long",
@@ -114,10 +115,7 @@ function LinkedAccountsSection() {
           <div className="user-profile-kicker">Шахматный профиль</div>
           <h2>Привязанные аккаунты</h2>
         </div>
-        <p>
-          Привяжите публичный профиль Lichess или Chess.com — учтём ваш реальный
-          рейтинг в подборе задач.
-        </p>
+        <p>Привяжите публичный профиль Lichess или Chess.com.</p>
       </div>
 
       {notice && (
@@ -266,13 +264,25 @@ export default function UserProfilePage({ user, onUserChange }) {
           </div>
 
           <div className="user-profile-actions">
-            <button
-              type="button"
-              className="user-profile-level-test-btn"
-              onClick={() => navigate("/level-test")}
-            >
-              Пройти проверку уровня
-            </button>
+            {/* Кнопка нужна только ученикам, которые ещё не проходили
+                проверку уровня: после submit бэкенд ставит
+                assessment_completed_at, и public() отдаёт
+                assessment_completed: true - кнопка прячется. Администраторам
+                стартовая оценка не требуется (бэкенд отвечает 403), поэтому
+                им кнопку не показываем вообще. Во время загрузки свежих
+                данных кнопку тоже не показываем, чтобы она не мигала тем,
+                кто тест уже прошёл (начальный profile из кэша). */}
+            {!loading &&
+              !profile?.assessment_completed &&
+              profile?.role !== "admin" && (
+              <button
+                type="button"
+                className="user-profile-level-test-btn"
+                onClick={() => navigate("/level-test")}
+              >
+                Пройти проверку уровня
+              </button>
+            )}
           </div>
 
           {error && <div className="user-profile-warning">{error}</div>}
@@ -308,6 +318,7 @@ export default function UserProfilePage({ user, onUserChange }) {
 
         <ProgressWidget />
       </section>
+      <SiteFooter />
     </main>
   );
 }

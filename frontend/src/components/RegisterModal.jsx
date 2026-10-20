@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react";
-import { fetchPlayerProfile, login as apiLogin, register as apiRegister } from "../api.js";
+import {
+  fetchPlayerProfile,
+  linkChessAccount,
+  login as apiLogin,
+  register as apiRegister,
+} from "../api.js";
 
 const PLATFORM_LABELS = {
   lichess: "Lichess",
@@ -59,6 +64,19 @@ export default function AuthModal({ isOpen, onClose, onSuccess, initialMode = "r
       const user = isRegister
         ? await apiRegister(nick, password)
         : await apiLogin(nick, password);
+      // Импортированный профиль сразу привязываем: только привязка внешнего
+      // аккаунта даёт стартовую оценку выше ограничения самооценки.
+      const importedNick = username.trim();
+      if (isRegister && importedNick) {
+        try {
+          await linkChessAccount(
+            importedNick,
+            platform === "chess.com" ? "chesscom" : "lichess",
+          );
+        } catch {
+          // Привязка необязательна: при ошибке стартуем по самооценке.
+        }
+      }
       onSuccess?.(user);
       onClose();
     } catch (e) {
@@ -208,9 +226,9 @@ export default function AuthModal({ isOpen, onClose, onSuccess, initialMode = "r
                     ))}
                   </div>
                   <div className="auth-profile-stats">
-                    Партий: <b>{profile.counts?.all ?? "—"}</b>
+                    Партий: <b>{profile.counts?.all ?? 0}</b>
                     <span className="auth-stat-sep" />
-                    Побед: <b>{profile.counts?.wins ?? "—"}</b>
+                    Побед: <b>{profile.counts?.wins ?? 0}</b>
                   </div>
                 </div>
               )}

@@ -248,9 +248,6 @@
   outline: none;
   border-color: #c9a96e;
 }
-.onb-input--short {
-  flex: 0 0 140px;
-}
 
 /* Ранжирование Q5 */
 .onb-rank {
@@ -339,6 +336,81 @@
   border-radius: 10px;
   font-size: 13px;
   color: #b33636;
+}
+
+/* Q2: мягкая привязка внешнего аккаунта */
+.onb-link-btn {
+  margin-top: 10px;
+  padding: 8px 20px;
+  border-radius: 18px;
+  border: 1px solid #5e9463;
+  background: rgba(131, 183, 135, 0.16);
+  color: #2f5c36;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.onb-link-btn:hover:not(:disabled) {
+  background: rgba(131, 183, 135, 0.3);
+}
+.onb-link-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.onb-link-error {
+  margin-top: 8px;
+  font-size: 13px;
+  color: #b33636;
+}
+
+.onb-linked {
+  margin-top: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.onb-linked--ok {
+  background: rgba(131, 183, 135, 0.16);
+  border: 1px solid rgba(94, 148, 99, 0.55);
+  color: #2f5c36;
+}
+.onb-linked--warn {
+  background: rgba(201, 169, 110, 0.16);
+  border: 1px solid rgba(180, 135, 44, 0.55);
+  color: #6b5320;
+}
+
+.onb-linked-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.onb-linked-badge {
+  flex-shrink: 0;
+  padding: 3px 12px;
+  border-radius: 14px;
+  background: #83b787;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.onb-linked-rating {
+  margin: 0 0 4px;
+}
+
+.onb-linked-note {
+  margin: 4px 0 0;
+}
+.onb-linked-note--dim {
+  opacity: 0.7;
+  font-size: 12px;
 }
 
 .onb-footer {

@@ -11,6 +11,8 @@ import {
 } from "../api.js";
 import MiniBoard from "./MiniBoard.jsx";
 import PuzzleRegisterGate from "./PuzzleRegisterGate.jsx";
+import PuzzlePreviewGate from "./PuzzlePreviewGate.jsx";
+import SiteFooter from "./SiteFooter.jsx";
 import { getCourseTopicForPuzzle, getCourseTopicMeta } from "../learningLinks.js";
 import "./LearningCrossLinks.css";
 
@@ -46,7 +48,7 @@ const THEME_LABELS = {
   mateIn4: "Мат в 4 хода",
   fork: "Вилка",
   pin: "Связка",
-  skewer: "Кол",
+  skewer: "Сквозной удар",
   discoveredAttack: "Открытая атака",
   discoveredCheck: "Шах с открывания",
   deflection: "Отвлечение",
@@ -157,7 +159,7 @@ function formatMarkdown(text) {
   return s;
 }
 
-export default function PuzzlesPage({ user, onRegister }) {
+export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const requestedTopicSlug = searchParams.get("topic");
@@ -178,6 +180,8 @@ export default function PuzzlesPage({ user, onRegister }) {
 
   const [puzzles, setPuzzles] = useState([]);
   const [adaptiveMeta, setAdaptiveMeta] = useState(null);
+  // Пробный режим до анкеты: сколько задач доступно и не исчерпан ли лимит.
+  const [previewInfo, setPreviewInfo] = useState(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -197,6 +201,8 @@ export default function PuzzlesPage({ user, onRegister }) {
   const [boardOrientation, setBoardOrientation] = useState("white");
   const [puzzleSolved, setPuzzleSolved] = useState(false);
   const [regGate, setRegGate] = useState(false);
+  // Гейт анкеты на последнем ходу последней пробной задачи.
+  const [previewGate, setPreviewGate] = useState(false);
 
   // Гейт показывается на предпоследнем ходу только незарегистрированным.
   const showRegGate = regGate && !user;
@@ -264,6 +270,7 @@ export default function PuzzlesPage({ user, onRegister }) {
       setBoardArrows([]);
       setPuzzleSolved(false);
       setRegGate(false);
+      setPreviewGate(false);
 
       const turn = puzzle.fen.split(" ")[1];
       setBoardOrientation(turn === "b" ? "black" : "white");
@@ -282,6 +289,7 @@ export default function PuzzlesPage({ user, onRegister }) {
     setError(null);
     setSolvedCount(0);
     setAdaptiveMeta(null);
+    setPreviewInfo(null);
 
     const request = adaptiveMode
       ? fetchAdaptivePuzzles(20)
@@ -291,18 +299,30 @@ export default function PuzzlesPage({ user, onRegister }) {
       .then((data) => {
         if (cancelled) return;
         const qs = data.puzzles || [];
+        const preview = data.preview === true;
+        setPreviewInfo(
+          preview
+            ? {
+                locked: Boolean(data.preview_locked),
+                remaining: Number(data.preview_remaining ?? 0),
+                limit: Number(data.preview_limit ?? 3),
+              }
+            : null,
+        );
         if (qs.length === 0) {
           puzzlesRef.current = [];
           setPuzzles([]);
-          setError(
-            adaptiveMode
-              ? "Пока не удалось подобрать персональную тренировку."
-              : requestedTopic
-                ? `Для темы «${requestedTopic.title}» пока нет доступных пазлов.`
-                : ratingMin != null
-                  ? `Пока нет доступных пазлов с рейтингом от ${ratingMin}.`
-                : "Нет доступных задач",
-          );
+          if (!(preview && data.preview_locked)) {
+            setError(
+              adaptiveMode
+                ? "Пока не удалось подобрать персональную тренировку."
+                : requestedTopic
+                  ? `Для темы «${requestedTopic.title}» пока нет доступных пазлов.`
+                  : ratingMin != null
+                    ? `Пока нет доступных пазлов с рейтингом от ${ratingMin}.`
+                    : "Нет доступных задач",
+            );
+          }
           return;
         }
         if (adaptiveMode) {
@@ -339,10 +359,51 @@ export default function PuzzlesPage({ user, onRegister }) {
   const themeInfo = currentPuzzle
     ? getThemeInfo(currentPuzzle)
     : { key: null, label: "Тактика", icon: "♟" };
+  // Сторона, за которую нужно найти ходы, — это очередь хода из FEN
+  // (в lichess-паззлах игрок всегда ходит первым). boardOrientation
+  // выставляется по тому же признаку в loadPuzzle.
+  const sideToMove = currentPuzzle?.fen?.split(" ")?.[1] === "b" ? "b" : "w";
+
+  // Показываем персонализацию, только когда профиль настоящий с обеих
+  // сторон: есть подтверждённые попытками слабые И сильные темы.
+  // Без истории бэкенд присылает фабрикат (см. rank_topic_profile).
+  const observedWeakTopics = (adaptiveMeta?.weakTopics || []).filter(
+    (topic) => topic.observed || (topic.attempts || 0) > 0,
+  );
+  const observedStrongTopics = (adaptiveMeta?.strongTopics || []).filter(
+    (topic) => topic.observed || (topic.attempts || 0) > 0,
+  );
+  const hasRealProfile =
+    observedWeakTopics.length > 0 && observedStrongTopics.length > 0;
   const relatedCourseTopic =
     getCourseTopicMeta(currentPuzzle?.adaptive_topic) ||
     requestedTopic ||
     getCourseTopicForPuzzle(currentPuzzle);
+
+  // Пробный доступ исчерпан: либо бэкенд уже вернул пусто (лимит на сегодня
+  // выбран), либо на последней пробной задаче открыт гейт анкеты.
+  const previewLocked =
+    Boolean(previewInfo) && (previewInfo.locked || previewGate);
+
+  // Последняя задача пробного набора: её нельзя дорешить без анкеты. Доску
+  // показываем полностью, но завершающий (решающий) ход не пропускаем —
+  // вместо него выскакивает окно с предложением пройти анкету.
+  const isLastPreviewPuzzle =
+    Boolean(previewInfo) &&
+    !previewInfo.locked &&
+    puzzles.length > 0 &&
+    currentIndex === puzzles.length - 1;
+
+  // «Позже» в пробном гейте: если задача на доске есть — просто закрываем
+  // напоминание, доска остаётся на последнем ходу без сделанного хода.
+  // Если задач нет (дневной лимит выбран на загрузке) — уходим на главную.
+  const handlePreviewLater = useCallback(() => {
+    if (puzzlesRef.current.length > 0) {
+      setPreviewGate(false);
+      return;
+    }
+    navigate("/");
+  }, [navigate]);
 
   const savePuzzleProgress = useCallback(
     (correct) => {
@@ -360,7 +421,7 @@ export default function PuzzlesPage({ user, onRegister }) {
 
   const handleMove = useCallback(
     (sourceSquare, targetSquare) => {
-      if (waitingForOpponent || showSolution || showRegGate) return false;
+      if (waitingForOpponent || showSolution || showRegGate || previewGate) return false;
 
       const expectedMove = solutionMovesRef.current[solutionIndexRef.current];
       if (!expectedMove) return false;
@@ -369,6 +430,16 @@ export default function PuzzlesPage({ user, onRegister }) {
       const moveCore = sourceSquare + targetSquare;
 
       if (moveCore === expectedCore) {
+        // Последняя пробная задача: не даём дорешить без анкеты. Вместо
+        // завершающего (решающего) хода показываем окно с анкетой.
+        if (
+          isLastPreviewPuzzle &&
+          solutionIndexRef.current === solutionMovesRef.current.length - 1
+        ) {
+          setPreviewGate(true);
+          return true;
+        }
+
         const game = gameRef.current;
         const promo = expectedMove.length > 4 ? expectedMove[4] : "q";
         const move = game.move({
@@ -444,12 +515,12 @@ export default function PuzzlesPage({ user, onRegister }) {
       savePuzzleProgress(false);
       return false;
     },
-    [waitingForOpponent, showSolution, showRegGate, user, savePuzzleProgress],
+    [waitingForOpponent, showSolution, showRegGate, previewGate, isLastPreviewPuzzle, user, savePuzzleProgress],
   );
 
   const onSquareClick = useCallback(
     (square) => {
-      if (waitingForOpponent || showSolution || showRegGate) return;
+      if (waitingForOpponent || showSolution || showRegGate || previewGate) return;
 
       const game = gameRef.current;
       const piece = game.get(square);
@@ -481,7 +552,7 @@ export default function PuzzlesPage({ user, onRegister }) {
         setLegalMovesForSelected(moves.map((m) => m.to));
       }
     },
-    [selectedSquare, waitingForOpponent, showSolution, showRegGate, handleMove],
+    [selectedSquare, waitingForOpponent, showSolution, showRegGate, previewGate, handleMove],
   );
 
   const handleShowSolution = () => {
@@ -648,6 +719,19 @@ export default function PuzzlesPage({ user, onRegister }) {
     );
   }
 
+  // Пробные задачи кончились ещё на загрузке: отдельная страница без доски.
+  if (previewLocked && puzzles.length === 0) {
+    return (
+      <div className="puzzles-page">
+        <PuzzlePreviewGate
+          onOpenOnboarding={onOpenOnboarding}
+          onLater={handlePreviewLater}
+        />
+        <SiteFooter />
+      </div>
+    );
+  }
+
   return (
     <div className="puzzles-page-shell">
       <div className="puzzles-layout">
@@ -669,6 +753,10 @@ export default function PuzzlesPage({ user, onRegister }) {
             Ход {currentPuzzle.fen.split(" ")[1] === "b" ? "чёрных" : "белых"}
           </div>
         )}
+        <div className="puzzle-side">
+          <span className={`puzzle-side-dot puzzle-side-dot--${sideToMove}`} aria-hidden="true" />
+          Играете за {sideToMove === "b" ? "чёрных" : "белых"}
+        </div>
 
         <div className="puzzle-moves-left-label">
           Осталось
@@ -683,7 +771,7 @@ export default function PuzzlesPage({ user, onRegister }) {
           </div>
         )}
 
-        {adaptiveMode && (
+        {adaptiveMode && hasRealProfile && (
           <div className="learning-topic-filter learning-topic-filter--adaptive">
             Персональная тренировка
             {adaptiveMeta?.playerLevel && (
@@ -704,6 +792,14 @@ export default function PuzzlesPage({ user, onRegister }) {
               </div>
             )}
             <button type="button" onClick={() => navigate("/puzzles?mode=all")}>
+              Обычный режим
+            </button>
+          </div>
+        )}
+
+        {adaptiveMode && !hasRealProfile && (
+          <div className="learning-topic-filter learning-topic-filter--adaptive">
+            <button type="button" onClick={() => navigate("/puzzles")}>
               Обычный режим
             </button>
           </div>
@@ -914,6 +1010,13 @@ export default function PuzzlesPage({ user, onRegister }) {
 
       <PuzzleRegisterGate open={showRegGate} onRegister={onRegister} />
       </div>
+      {previewLocked && puzzles.length > 0 && (
+        <PuzzlePreviewGate
+          onOpenOnboarding={onOpenOnboarding}
+          onLater={handlePreviewLater}
+        />
+      )}
+      <SiteFooter />
     </div>
   );
 }

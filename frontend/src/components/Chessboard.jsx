@@ -73,6 +73,14 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
   const [moveHistory, setMoveHistory] = useState([]);
   const [turn, setTurn] = useState("w");
 
+  /*
+   * Итог партии для оверлея «Победа / Поражение / Ничья»:
+   * null — партия идёт, иначе { outcome: "win"|"loss"|"draw", reason }.
+   * Игрок всегда играет белыми (ходы пускаем только за "w"), поэтому
+   * мат при ходе чёрных — победа игрока, мат при ходе белых — поражение.
+   */
+  const [gameResult, setGameResult] = useState(null);
+
   const [boardFlipped, setBoardFlipped] = useState(false);
   const [elo, setElo] = useState(1500);
 
@@ -226,6 +234,30 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
       status = "draw";
       result = "1/2-1/2";
     }
+
+    /*
+     * Оверлей итога партии. Игрок — белые:
+     * мат при ходе чёрных = победа, мат при ходе белых = поражение.
+     */
+    if (g.isCheckmate()) {
+      setGameResult(
+        g.turn() === "w"
+          ? { outcome: "loss", reason: "Мат - победили чёрные" }
+          : { outcome: "win", reason: "Мат! Вы победили" },
+      );
+    } else if (g.isStalemate()) {
+      setGameResult({ outcome: "draw", reason: "Пат - ничья" });
+    } else if (g.isThreefoldRepetition()) {
+      setGameResult({ outcome: "draw", reason: "Троекратное повторение - ничья" });
+    } else if (g.isInsufficientMaterial()) {
+      setGameResult({ outcome: "draw", reason: "Недостаточно материала - ничья" });
+    } else if (g.isDrawByFiftyMoves()) {
+      setGameResult({ outcome: "draw", reason: "Правило 50 ходов - ничья" });
+    } else {
+      setGameResult({ outcome: "draw", reason: "Ничья" });
+    }
+
+    const uid = getCurrentUserId();
 
     finishGame({
       moves: uciMoves,
@@ -405,6 +437,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
 
     setFen(startFen);
     setMoveHistory([]);
+    setGameResult(null);
     setPositionSnapshots([startFen]);
 
     setViewIndex(-1);
@@ -455,6 +488,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
 
         setFen(validFen);
         setMoveHistory([]);
+        setGameResult(null);
         setPositionSnapshots([validFen]);
 
         setViewIndex(-1);
@@ -1890,6 +1924,41 @@ const fetchBestMove = useCallback(
                 : materialAdv.diff
             }
           />
+
+          {/*
+           * Итог партии в духе chess.com: затемнение доски + карточка
+           * со счётом, причиной и кнопкой новой игры. Клик по фону
+           * прячет карточку, чтобы рассмотреть финальную позицию.
+           */}
+          {gameResult && (
+            <div
+              className="gameover-overlay"
+              onClick={() => setGameResult(null)}
+            >
+              <div
+                className={`gameover-card gameover-card--${gameResult.outcome}`}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="gameover-title">
+                  {gameResult.outcome === "win"
+                    ? "Победа!"
+                    : gameResult.outcome === "loss"
+                      ? "Поражение"
+                      : "Ничья"}
+                </div>
+                <div className="gameover-reason">
+                  {gameResult.reason}
+                </div>
+                <button
+                  type="button"
+                  className="gameover-btn"
+                  onClick={handleNewGame}
+                >
+                  Новая игра
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* =====================================================
@@ -1981,7 +2050,7 @@ const fetchBestMove = useCallback(
                 Stockfish:
               </strong>{" "}
               {compareData.stockfish?.san ||
-                "—"}
+                "0"}
             </div>
 
             <div>
@@ -2003,7 +2072,7 @@ const fetchBestMove = useCallback(
                 Maia3:
               </strong>{" "}
               {compareData.maia3?.san ||
-                "—"}{" "}
+                "0"}{" "}
               ({elo} ELO)
             </div>
 
@@ -2017,7 +2086,7 @@ const fetchBestMove = useCallback(
               >
                 {compareData.same_move
                   ? "Maia3 выбрала оптимальный ход Stockfish."
-                  : "Maia3 выбрала другой ход — это и есть различие между оптимальной и человекоподобной игрой."}
+                  : "Maia3 выбрала другой ход - это и есть различие между оптимальной и человекоподобной игрой."}
               </div>
             )}
           </div>

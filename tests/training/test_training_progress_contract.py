@@ -33,15 +33,17 @@ class _FakeDB:
     db.scalars(select(TrainingModule)) -> список модулей.
     db.execute(...)                    -> по порядку: задания модулей
     (task_id, lesson_id, module_id), уроки модулей (lesson_id, module_id),
-    затем попытки пользователя.
+    попытки пользователя, затем даты попыток паззлов ((created_at,) — для серии).
     """
 
-    def __init__(self, modules, task_rows=(), lesson_rows=(), attempt_rows=()):
+    def __init__(self, modules, task_rows=(), lesson_rows=(), attempt_rows=(),
+                 puzzle_date_rows=()):
         self._modules = modules
         self._exec_results = [
             list(task_rows),
             list(lesson_rows),
             list(attempt_rows),
+            list(puzzle_date_rows),
         ]
 
     async def scalars(self, stmt):
@@ -93,3 +95,27 @@ def test_module_completed_only_when_all_tasks_correct():
     assert result["modules"]["completed"] == 1
     assert result["modules"]["percent"] == 50.0
     assert result["modules"]["total"] == 2
+
+
+def test_streak_counts_puzzle_attempt_dates():
+    # Попыток курса нет вообще, но паззлы решались вчера и сегодня —
+    # серия должна быть 2, а не 0.
+    from datetime import datetime, timedelta
+
+    now = datetime.now()
+    db = _FakeDB(
+        modules=[_Module(1, "pawn", "Пешка"), _Module(2, "rook", "Ладья")],
+        task_rows=[(100, 10, 1), (101, 20, 2)],
+        lesson_rows=[(10, 1), (20, 2)],
+        attempt_rows=[],
+        puzzle_date_rows=[
+            (now - timedelta(days=1),),
+            (now,),
+        ],
+    )
+    result = _run(get_training_progress(db, user_id=1))
+
+    assert result["streak"] == 2
+    # Счётчики курса при этом не меняются — паззлы влияют только на серию.
+    assert result["attempts"]["total"] == 0
+    assert result["modules"]["completed"] == 0

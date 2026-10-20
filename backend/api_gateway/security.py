@@ -26,7 +26,9 @@ def verify_password(password: str, password_hash: str) -> bool:
         return False
 
 
-def create_access_token(user_id: int, login: str, role: str = ROLE_LEARNER) -> str:
+def create_access_token(
+    user_id: int, login: str, role: str = ROLE_LEARNER, token_version: int = 0
+) -> str:
     now = datetime.now(UTC)
     normalized_role = ROLE_ADMIN if role == ROLE_ADMIN else ROLE_LEARNER
     payload = {
@@ -35,6 +37,9 @@ def create_access_token(user_id: int, login: str, role: str = ROLE_LEARNER) -> s
         "role": normalized_role,
         # Старый claim оставляем, чтобы старый код не сломался мгновенно.
         "admin": normalized_role == ROLE_ADMIN,
+        # Версия сессии пользователя: при logout инкрементируется, и все
+        # прежние access-токены перестают приниматься (см. dependecies.py).
+        "tv": token_version,
         "type": "access",
         "iat": now,
         "exp": now + timedelta(minutes=settings.auth.access_token_ttl_min),

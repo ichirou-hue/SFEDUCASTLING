@@ -2,6 +2,8 @@ from types import SimpleNamespace
 
 from backend.services.adaptive_logic import select_adaptive_puzzles
 from backend.services.difficulty_logic import (
+    DEFAULT_DIFFICULTY,
+    difficulty_for_rating,
     initial_difficulty_for_rating,
     next_difficulty,
     puzzle_matches_difficulty,
@@ -15,6 +17,16 @@ def test_thresholds_are_strict():
     assert next_difficulty(2, 80.0) == 2
     assert next_difficulty(2, 50.0) == 2
     assert next_difficulty(2, 49.9) == 1
+
+
+def test_difficulty_for_rating_maps_to_bands():
+    assert difficulty_for_rating(None) == DEFAULT_DIFFICULTY
+    assert difficulty_for_rating(500) == 1
+    assert difficulty_for_rating(1100) == 1
+    assert difficulty_for_rating(1200) == 2
+    assert difficulty_for_rating(1700) == 2
+    assert difficulty_for_rating(2050) == 3
+    assert difficulty_for_rating(3500) == 3
 
 
 def test_difficulty_is_bounded():
@@ -64,10 +76,10 @@ def test_adaptive_selection_prefers_current_topic_difficulty():
     ]
     picked, allocation = select_adaptive_puzzles(
         puzzles,
-        weak_topics=[{"slug": "knight"}],
+        weak_topics=[{"slug": "tactics"}],
         strong_topics=[],
         count=1,
-        topic_difficulties={"knight": 1},
+        topic_difficulties={"tactics": 1},
     )
     assert picked[0]["id"] == "easy-knight"
     assert picked[0]["adaptive_difficulty"] == 1
@@ -86,12 +98,12 @@ def test_same_topic_fallback_preserves_topic_when_rating_band_is_empty():
     ]
     picked, allocation = select_adaptive_puzzles(
         puzzles,
-        weak_topics=[{"slug": "knight"}],
+        weak_topics=[{"slug": "tactics"}],
         strong_topics=[],
         count=1,
-        topic_difficulties={"knight": 1},
+        topic_difficulties={"tactics": 1},
     )
-    assert picked[0]["adaptive_topic"] == "knight"
+    assert picked[0]["adaptive_topic"] == "tactics"
     assert picked[0]["adaptive_difficulty"] == 1
     assert picked[0]["difficulty_match"] is False
     assert allocation["difficulty_matched"] == 0

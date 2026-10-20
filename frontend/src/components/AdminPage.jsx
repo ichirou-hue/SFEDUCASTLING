@@ -5,12 +5,13 @@ import {
   fetchAdminUsers,
   updateUserRole,
 } from "../api.js";
+import SiteFooter from "./SiteFooter.jsx";
 import "./AdminPage.css";
 
 function formatDate(value) {
-  if (!value) return "—";
+  if (!value) return "0";
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "—";
+  if (Number.isNaN(date.getTime())) return "0";
   return new Intl.DateTimeFormat("ru-RU", {
     day: "2-digit",
     month: "long",
@@ -51,7 +52,7 @@ function Stat({ label, value }) {
   return (
     <div className="admin-stat">
       <span>{label}</span>
-      <strong>{value ?? "—"}</strong>
+      <strong>{value ?? 0}</strong>
     </div>
   );
 }
@@ -213,7 +214,6 @@ export default function AdminPage({ user, onUserChange }) {
           <div className="admin-kicker">Администрирование</div>
           <h1>Пользователи и прогресс обучения</h1>
         </div>
-        <p>Дашборд, управление ролями и статистика каждого ученика.</p>
       </section>
 
       <section className="admin-summary" aria-label="Сводка по пользователям">
@@ -224,7 +224,7 @@ export default function AdminPage({ user, onUserChange }) {
         <Stat label="Новых за 30 дней" value={dashboard.new30} />
         <Stat
           label="Средний Elo"
-          value={dashboard.avgElo != null ? dashboard.avgElo : "—"}
+          value={dashboard.avgElo != null ? dashboard.avgElo : 0}
         />
       </section>
 
@@ -284,7 +284,7 @@ export default function AdminPage({ user, onUserChange }) {
 
             {visibleUsers.length === 0 ? (
               <p className="admin-muted admin-panel-hint">
-                Ничего не найдено — измените поиск или фильтр.
+                Ничего не найдено - измените поиск или фильтр.
               </p>
             ) : (
               visibleUsers.map((u) => (
@@ -307,6 +307,7 @@ export default function AdminPage({ user, onUserChange }) {
                     <span title={compactRatings(u.chess_accounts) || "Нет привязанных рейтингов"}>
                       {compactRatings(u.chess_accounts) || "нет рейтинга"}
                     </span>
+                    <span title="Elo на платформе"> · {u.elo ?? 0}</span>
                   </span>
                 </button>
               ))
@@ -433,7 +434,7 @@ export default function AdminPage({ user, onUserChange }) {
                         value={
                           training?.attempts?.accuracy != null
                             ? `${training.attempts.accuracy}%`
-                            : "—"
+                            : "0%"
                         }
                       />
                       <Stat label="Попыток" value={training?.attempts?.total ?? 0} />
@@ -445,16 +446,16 @@ export default function AdminPage({ user, onUserChange }) {
                   <section className="admin-card">
                     <h3>Тактические паззлы</h3>
                     <div className="admin-stats">
-                      <Stat label="Попыток" value={learning?.attempts ?? 0} />
-                      <Stat label="Верных" value={learning?.correct_attempts ?? 0} />
+                      <Stat label="Паззлов взято" value={learning?.attempted ?? 0} />
+                      <Stat label="Паззлов решено" value={learning?.solved ?? 0} />
                       <Stat
                         label="Точность"
                         value={
-                          learning?.accuracy != null ? `${learning.accuracy}%` : "—"
+                          learning?.accuracy != null ? `${learning.accuracy}%` : "0%"
                         }
                       />
-                      <Stat label="Паззлов решено" value={learning?.solved ?? 0} />
-                      <Stat label="Паззлов взято" value={learning?.attempted ?? 0} />
+                      <Stat label="Попыток" value={learning?.attempts ?? 0} />
+                      <Stat label="Верных" value={learning?.correct_attempts ?? 0} />
                     </div>
                   </section>
                 </div>
@@ -462,39 +463,54 @@ export default function AdminPage({ user, onUserChange }) {
                 {weaknesses && (
                   <section className="admin-card">
                     <h3>Сильные и слабые темы</h3>
-                    {weaknesses.weak_topics?.length || weaknesses.strong_topics?.length ? (
-                      <div className="admin-topics">
-                        <div className="admin-topics-group">
-                          <span className="admin-topics-title admin-topics-title--weak">
-                            Слабые
-                          </span>
-                          <div className="admin-topic-chips">
-                            {(weaknesses.weak_topics || []).map((t) => (
-                              <span
-                                key={t.slug}
-                                className="admin-topic-chip admin-topic-chip--weak"
-                              >
-                                {t.title}
+                    {(() => {
+                      // Показываем только настоящие темы — подтверждённые
+                      // попытками. Без истории бэкенд присылает фабрикат
+                      // (см. rank_topic_profile), его прячем.
+                      const observed = (t) => t.observed || (t.attempts || 0) > 0;
+                      const weak = (weaknesses.weak_topics || []).filter(observed);
+                      const strong = (weaknesses.strong_topics || []).filter(observed);
+                      if (!weak.length && !strong.length) {
+                        return (
+                          <p className="admin-muted">
+                            Пока недостаточно попыток для оценки тем.
+                          </p>
+                        );
+                      }
+                      return (
+                        <div className="admin-topics">
+                          {weak.length > 0 && (
+                            <div className="admin-topics-group">
+                              <span className="admin-topics-title admin-topics-title--weak">
+                                Слабые
                               </span>
-                            ))}
-                          </div>
+                              <div className="admin-topic-chips">
+                                {weak.map((t) => (
+                                  <span
+                                    key={t.slug}
+                                    className="admin-topic-chip admin-topic-chip--weak"
+                                  >
+                                    {t.title}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {strong.length > 0 && (
+                            <div className="admin-topics-group">
+                              <span className="admin-topics-title">Сильные</span>
+                              <div className="admin-topic-chips">
+                                {strong.map((t) => (
+                                  <span key={t.slug} className="admin-topic-chip">
+                                    {t.title}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
-                        <div className="admin-topics-group">
-                          <span className="admin-topics-title">Сильные</span>
-                          <div className="admin-topic-chips">
-                            {(weaknesses.strong_topics || []).map((t) => (
-                              <span key={t.slug} className="admin-topic-chip">
-                                {t.title}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <p className="admin-muted">
-                        Пока недостаточно попыток для оценки тем.
-                      </p>
-                    )}
+                      );
+                    })()}
                   </section>
                 )}
               </>
@@ -502,6 +518,7 @@ export default function AdminPage({ user, onUserChange }) {
           </div>
         </div>
       )}
+      <SiteFooter />
     </main>
   );
 }

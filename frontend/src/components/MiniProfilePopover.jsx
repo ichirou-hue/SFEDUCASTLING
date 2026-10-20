@@ -146,7 +146,7 @@ export default function MiniProfilePopover({ user, onUserChange }) {
           </div>
           <div className="mini-profile__identity">
             <strong>{profile?.login || user?.login || "Пользователь"}</strong>
-            <span>Elo {profile?.elo ?? "—"}</span>
+            <span>Elo {profile?.elo ?? 0}</span>
           </div>
         </div>
 

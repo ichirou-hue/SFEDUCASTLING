@@ -40,6 +40,27 @@ def rating_band_for_difficulty(difficulty: int) -> tuple[int, int]:
     return PUZZLE_RATING_BANDS[difficulty]
 
 
+def difficulty_for_rating(rating: int | float | None) -> int:
+    """Стартовая сложность по рейтингу — обратная к rating_band_for_difficulty.
+
+    Используется, чтобы задать стартовую B2-сложность тем из рейтинга,
+    полученного после анкеты/входного теста (вместо нейтральной 2).
+    Без рейтинга возвращает нейтральный уровень по умолчанию.
+    """
+    if rating is None:
+        return DEFAULT_DIFFICULTY
+    try:
+        value = int(rating)
+    except (TypeError, ValueError):
+        return DEFAULT_DIFFICULTY
+
+    for difficulty in range(MIN_DIFFICULTY, MAX_DIFFICULTY + 1):
+        min_rating, max_rating = PUZZLE_RATING_BANDS[difficulty]
+        if min_rating <= value <= max_rating:
+            return difficulty
+    return MIN_DIFFICULTY if value < PUZZLE_RATING_BANDS[MIN_DIFFICULTY][0] else MAX_DIFFICULTY
+
+
 def puzzle_matches_difficulty(puzzle: dict, difficulty: int) -> bool:
     min_rating, max_rating = rating_band_for_difficulty(difficulty)
     try:

@@ -10,11 +10,11 @@ from typing import Any
 import chess
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import distinct, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api_gateway import state
-from backend.api_gateway.dependecies import get_current_user
+from backend.api_gateway.dependecies import get_current_user, get_optional_current_user
 from backend.api_gateway.models import PuzzleAnswerRequest
 from backend.db.session import get_db
 from backend.models.game import Game
@@ -31,10 +31,12 @@ from backend.services.assessment import (
     RATING_GROUPS,
     build_test_feedback,
     calculate_performance_rating,
+    max_puzzle_rating_for_user,
     personalized_level_test_puzzles,
     puzzle_rating_group,
     rating_band_progress,
     rating_group_for,
+    rating_for_selection,
 )
 from backend.services.course_topics import (
     COURSE_TOPIC_PUZZLE_THEMES,
@@ -49,6 +51,7 @@ from backend.services.dynamic_difficulty import (
     public_difficulty_profile,
     update_theme_difficulty_after_attempt,
 )
+from backend.services.difficulty_logic import difficulty_for_rating
 from backend.services.phase_accuracy import load_user_phase_accuracy
 from backend.services.user_records import build_user_records
 
@@ -63,6 +66,13 @@ LEVEL_BUCKETS = [
     {"min_puzzle_rating": 1501, "max_puzzle_rating": 1901},
     {"min_puzzle_rating": 1901, "max_puzzle_rating": 10000},
 ]
+
+# Пробный доступ до анкеты. Зарегистрированный, но ещё не прошедший анкету
+# пользователь может пройти не больше трёх лёгких задач (рейтинг до 700),
+# после чего его просят заполнить анкету. Гостей это не касается — у них
+# свой гейт на предпоследнем ходу.
+PREVIEW_MAX_RATING = 700
+PREVIEW_PUZZLE_LIMIT = 3
 
 
 class LevelTestCheckRequest(BaseModel):
@@ -667,6 +677,27 @@ async def get_adaptive_puzzles(
     if not state.puzzle_base:
         raise HTTPException(status_code=503, detail="База паззлов не загружена")
 
+    valid_puzzles = [
+        p for p in state.puzzle_base.get("puzzles", []) if _is_puzzle_valid(p)
+    ]
+    # Пробный доступ до анкеты: не больше 3 лёгких задач без персонализации.
+    if _is_preview_user(user):
+        today, attempted = await _preview_today_attempted(db, user.id)
+        remaining = max(0, PREVIEW_PUZZLE_LIMIT - len(attempted))
+        payload = _preview_payload(
+            valid_puzzles,
+            count,
+            remaining,
+            user_id=user.id,
+            today=today,
+            attempted=attempted,
+        )
+        payload["mode"] = "adaptive"
+        payload["weak_topics"] = []
+        payload["strong_topics"] = []
+        payload["allocation"] = None
+        return payload
+
     profile, topic_difficulties = await get_user_theme_difficulties(
         db,
         user_id=user.id,
@@ -676,6 +707,17 @@ async def get_adaptive_puzzles(
     valid_puzzles = [
         p for p in state.puzzle_base.get("puzzles", []) if _is_puzzle_valid(p)
     ]
+    player_rating = effective_player_rating(user)
+    max_puzzle_rating = max_puzzle_rating_for_user(player_rating)
+    if player_rating is not None:
+        own_group = int(rating_group_for(player_rating)["id"])
+        own_pool = [p for p in valid_puzzles if puzzle_rating_group(p) == own_group]
+        capped_pool = [p for p in own_pool if _puzzle_rating(p) <= max_puzzle_rating]
+        # Keep the current rating group available if the ceiling would empty it.
+        if capped_pool:
+            valid_puzzles = capped_pool
+        elif own_pool:
+            valid_puzzles = own_pool
     phase_profile = await load_user_phase_accuracy(db, user_id=user.id)
     picked, allocation = select_adaptive_puzzles(
         valid_puzzles,
@@ -720,6 +762,7 @@ async def get_adaptive_puzzles(
         "allocation": allocation,
         "phase_adjustment": allocation["phase_adjustment"],
         "selection_rule": profile["selection_rule"],
+        "max_puzzle_rating": max_puzzle_rating,
     }
 
 
@@ -749,17 +792,166 @@ def puzzle_check(req: PuzzleAnswerRequest):
     }
 
 
+def _base_difficulty_for_user(user: User | None) -> int:
+    """Стартовая B2-сложность тем из рейтинга пользователя (тест > анкета)."""
+    if user is None:
+        return difficulty_for_rating(None)
+    rating, _ = rating_for_selection(user.elo, user.rating_estimate, user.prior_band)
+    return difficulty_for_rating(rating)
+
+
+def _puzzle_rating(puzzle: dict) -> int:
+    try:
+        return int(puzzle.get("rating") or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _sample_puzzles_by_buckets(puzzles: list[dict], count: int) -> list[dict]:
+    """Режим без рейтинга: равномерно по всем рейтинговым корзинам."""
+    picked: list[dict] = []
+    selected_ids: set[str] = set()
+    per_bucket = max(1, count // len(LEVEL_BUCKETS)) if count > 0 else 0
+
+    for bucket in LEVEL_BUCKETS:
+        lo, hi = bucket["min_puzzle_rating"], bucket["max_puzzle_rating"]
+        pool = [p for p in puzzles if lo <= p.get("rating", 0) < hi]
+        random.shuffle(pool)
+        for puzzle in pool[:per_bucket]:
+            picked.append(puzzle)
+            selected_ids.add(str(puzzle.get("id", "")))
+
+    if len(picked) < count:
+        remaining = [p for p in puzzles if str(p.get("id", "")) not in selected_ids]
+        random.shuffle(remaining)
+        picked.extend(remaining[: max(0, count - len(picked))])
+    return picked
+
+
+def _shuffled_sample(puzzles: list[dict], count: int) -> list[dict]:
+    """Случайная выборка до ``count`` задач из переданного пула."""
+    pool = list(puzzles)
+    random.shuffle(pool)
+    return pool[: max(0, count)]
+
+
+def _public_puzzle(puzzle: dict) -> dict:
+    return {
+        "id": puzzle.get("id", ""),
+        "fen": puzzle.get("fen", ""),
+        "moves": puzzle.get("moves", ""),
+        "themes": puzzle.get("themes", []),
+        "rating": puzzle.get("rating", 0),
+    }
+
+
+def _onboarding_completed(user: User) -> bool:
+    onboarding = user.onboarding
+    return isinstance(onboarding, dict) and bool(onboarding.get("submitted_at"))
+
+
+def _is_preview_user(user: User | None) -> bool:
+    """Зарегистрирован, но ещё не прошёл анкету (и не админ)."""
+    if user is None or user.effective_role == ROLE_ADMIN:
+        return False
+    return not _onboarding_completed(user)
+
+
+async def _preview_today_attempted(
+    db: AsyncSession, user_id: int
+) -> tuple[Any, set[str]]:
+    """Дата на стороне БД и множество задач, решённых пользователем СЕГОДНЯ.
+
+    День считаем так же, как и лимит — ``date(created_at) = current_date()``,
+    чтобы сброс совпадал с часовым поясом, в котором пишется ``created_at``.
+    """
+    today = await db.scalar(select(func.current_date()))
+    rows = (
+        await db.scalars(
+            select(distinct(PuzzleAttempt.puzzle_id)).where(
+                PuzzleAttempt.user_id == user_id,
+                func.date(PuzzleAttempt.created_at) == func.current_date(),
+            )
+        )
+    ).all()
+    attempted = {str(pid) for pid in rows if pid is not None}
+    return today, attempted
+
+
+def _preview_daily_assignment(
+    valid_puzzles: list[dict],
+    user_id: int,
+    today: Any,
+    topic: str | None,
+) -> list[dict]:
+    """Фиксированный на день набор пробных задач (не больше лимита).
+
+    Порядок детерминирован (seed из id пользователя, даты и темы), поэтому при
+    повторном открытии вкладки «Шахматные задачи» выдаются те же задания:
+    последняя (третья) пробная задача остаётся закреплённой и не пересобирается.
+    """
+    pool = [p for p in valid_puzzles if _puzzle_rating(p) <= PREVIEW_MAX_RATING]
+    rng = random.Random(f"{user_id}:{today}:{topic or ''}")
+    rng.shuffle(pool)
+    return pool[:PREVIEW_PUZZLE_LIMIT]
+
+
+def _preview_payload(
+    valid_puzzles: list[dict],
+    count: int,
+    remaining: int,
+    *,
+    user_id: int,
+    today: Any,
+    attempted: set[str],
+    topic: str | None = None,
+) -> dict:
+    """Пробный набор: не больше ``remaining`` задач в день с рейтингом до 700.
+
+    Набор на день фиксирован, а уже решённые сегодня задачи из него исключаются,
+    поэтому нерешённые (в том числе последняя) остаются неизменными между
+    заходами, пока сохраняется их дневной запас.
+    """
+    assigned = _preview_daily_assignment(valid_puzzles, user_id, today, topic)
+    available = [p for p in assigned if str(p.get("id")) not in attempted]
+    picked = available[: max(0, min(count, remaining))]
+    return {
+        "puzzles": [_public_puzzle(p) for p in picked],
+        "total": len(picked),
+        "topic": topic,
+        "personalization": {
+            "source": None,
+            "group": None,
+            "max_rating": PREVIEW_MAX_RATING,
+        },
+        "preview": True,
+        "preview_limit": PREVIEW_PUZZLE_LIMIT,
+        "preview_remaining": remaining,
+        "preview_locked": remaining <= 0,
+    }
+
+
 @router.get("/api/learning/puzzles")
-def get_puzzles(
+async def get_puzzles(
     count: int = Query(default=20, ge=1, le=100),
     topic: str | None = None,
     rating_min: int | None = Query(default=None, ge=0, le=10000),
+    user: User | None = Depends(get_optional_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
     """Возвращает набор задач с полными решениями для тренировочной страницы.
 
     ``topic`` — slug модуля учебного курса. Если он передан, выдаются только
     связанные с этим модулем Lichess-темы. Так TrainingPage может отправить
-    пользователя сразу на релевантную практику.
+    пользователя сразу на релевантную практику. Практика по теме НЕ привязана
+    к рейтингу: показываются все пазлы темы (иначе для редких тем и высоких
+    корзин задач почти не остаётся).
+
+    Пока пользователь не прошёл анкету, ему доступен только пробный набор:
+    не больше трёх задач в день с рейтингом до 700 (см. ``_preview_payload``).
+    Гость и прошедший анкету получают обычную выборку: гость — равномерно по
+    корзинам, авторизованный — ТОЛЬКО свою текущую корзину с потолком
+    «рейтинг + 200».
 
     Отличие от level-test/start: включает поле moves (ходы решения).
     Задачи, где после решения игрок оказывается матован, исключаются.
@@ -783,44 +975,60 @@ def get_puzzles(
             p for p in valid_puzzles if int(p.get("rating") or 0) >= rating_min
         ]
 
-    picked: list[dict] = []
-    selected_ids: set[str] = set()
-    per_bucket = max(1, count // len(LEVEL_BUCKETS)) if count > 0 else 0
+    # Пробный доступ до анкеты: не больше 3 лёгких задач в день.
+    if _is_preview_user(user):
+        today, attempted = await _preview_today_attempted(db, user.id)
+        remaining = max(0, PREVIEW_PUZZLE_LIMIT - len(attempted))
+        return _preview_payload(
+            valid_puzzles,
+            count,
+            remaining,
+            user_id=user.id,
+            today=today,
+            attempted=attempted,
+            topic=normalized_topic,
+        )
 
-    for bucket in LEVEL_BUCKETS:
-        lo, hi = bucket["min_puzzle_rating"], bucket["max_puzzle_rating"]
-        pool = [p for p in valid_puzzles if lo <= p.get("rating", 0) < hi]
-        random.shuffle(pool)
-        for puzzle in pool[:per_bucket]:
-            picked.append(puzzle)
-            selected_ids.add(str(puzzle.get("id", "")))
+    rating, rating_source = rating_for_selection(
+        user.elo if user else None,
+        user.rating_estimate if user else None,
+        user.prior_band if user else None,
+    )
+    personalization: dict[str, Any] = {
+        "source": rating_source if normalized_topic is None else None,
+        "group": None,
+        "max_rating": None,
+    }
 
-    # Тематическая выборка может быть неравномерной по Elo. Добираем оставшиеся
-    # задачи из той же темы, чтобы ссылка «проверить на пазлах» по возможности
-    # всё равно давала полноценный набор из count позиций.
-    if len(picked) < count:
-        remaining = [
-            p for p in valid_puzzles if str(p.get("id", "")) not in selected_ids
-        ]
-        random.shuffle(remaining)
-        picked.extend(remaining[: max(0, count - len(picked))])
+    if rating is not None and normalized_topic is None:
+        # Только текущая корзина пользователя. Потолок «рейтинг + 200» —
+        # жёсткий максимум: более сложные задачи в практике не предлагаются.
+        ceiling = max_puzzle_rating_for_user(rating)
+        own_group = int(rating_group_for(rating)["id"])
+        own_pool = [p for p in valid_puzzles if puzzle_rating_group(p) == own_group]
+        pool = [p for p in own_pool if _puzzle_rating(p) <= ceiling]
+        # Потолок не должен обнулять корзину: если в пределах +200 задач нет
+        # (например, у самого низа диапазона), остаёмся в своей корзине.
+        if not pool:
+            pool = own_pool
+        picked = _shuffled_sample(pool, count)
+        personalization = {
+            "source": rating_source,
+            "group": own_group,
+            "max_rating": ceiling,
+        }
+    else:
+        picked = _sample_puzzles_by_buckets(valid_puzzles, count)
 
     random.shuffle(picked)
 
-    result = []
-    for p in picked[:count]:
-        result.append({
-            "id": p.get("id", ""),
-            "fen": p.get("fen", ""),
-            "moves": p.get("moves", ""),
-            "themes": p.get("themes", []),
-            "rating": p.get("rating", 0),
-        })
+    result = [_public_puzzle(p) for p in picked[:count]]
 
     return {
         "puzzles": result,
         "total": len(result),
         "topic": normalized_topic,
+        "personalization": personalization,
     }
 
 

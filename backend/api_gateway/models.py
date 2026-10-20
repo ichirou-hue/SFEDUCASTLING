@@ -27,6 +27,16 @@ def validate_fen(fen: str) -> str:
     return fen
 
 
+def normalize_player_color(value: str) -> str:
+    """Приводит сторону игрока к каноническому виду 'w' или 'b'."""
+    v = (value or "w").strip().lower()
+    if v in ("w", "white", "белые"):
+        return "w"
+    if v in ("b", "black", "чёрные", "черные"):
+        return "b"
+    raise ValueError(f"Сторона игрока должна быть 'w' или 'b', получено {value}")
+
+
 class FenSquare(BaseModel):
     """Запрос: легальные ходы для фигуры на заданном поле.
 
@@ -177,6 +187,8 @@ class FinishGameRequest(BaseModel):
         engine: Движок AI ("maia3" или "stockfish").
         result: Результат партии ("1-0", "0-1", "1/2-1/2", "*").
         status: Статус окончания ("checkmate", "stalemate", "draw", ...).
+        player_color: Сторона игрока ("w" или "b"). Нужна, чтобы сохранить
+            партию с корректными именами белых/чёрных (игрок vs AI).
     """
 
     moves: list[str] = []
@@ -185,6 +197,7 @@ class FinishGameRequest(BaseModel):
     engine: str = "maia3"
     result: str = "*"
     status: str = "playing"
+    player_color: str = "w"
 
     @field_validator("engine")
     @classmethod
@@ -192,6 +205,62 @@ class FinishGameRequest(BaseModel):
         if v not in ("maia3", "stockfish"):
             raise ValueError(f"Движок должен быть 'maia3' или 'stockfish', получено {v}")
         return v
+
+    @field_validator("player_color")
+    @classmethod
+    def player_color_must_be_valid(cls, v: str) -> str:
+        return normalize_player_color(v)
+
+
+class NewGameRequest(BaseModel):
+    """Запрос: начать новую партию за выбранную сторону.
+
+    Attributes:
+        player_color: Сторона игрока ("w" или "b"). Противник (AI) играет
+            за другую сторону.
+    """
+
+    player_color: str = "w"
+
+    @field_validator("player_color")
+    @classmethod
+    def player_color_must_be_valid(cls, v: str) -> str:
+        return normalize_player_color(v)
+
+
+class CapturedMaterialRequest(BaseModel):
+    """Запрос: съеденный материал по истории партии.
+
+    Attributes:
+        moves: Ходы партии в нотации UCI от начальной позиции (например
+            ["e2e4", "d7d5", "e4d5"]). Пустой список — начальная позиция.
+        fen: Начальная позиция. По умолчанию стандартная.
+        player_color: Сторона игрока (опционально). Если задана, в ответе
+            появляется player_advantage — баланс материала для игрока.
+    """
+
+    moves: list[str] = []
+    fen: str | None = None
+    player_color: str | None = None
+
+    @field_validator("fen")
+    @classmethod
+    def fen_must_be_valid(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        return validate_fen(v)
+
+    @field_validator("moves")
+    @classmethod
+    def moves_must_not_be_empty(cls, v: list[str]) -> list[str]:
+        return [move.strip() for move in v if move.strip()]
+
+    @field_validator("player_color")
+    @classmethod
+    def player_color_must_be_valid(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        return normalize_player_color(v)
 
 
 class SimilarityRequest(BaseModel):

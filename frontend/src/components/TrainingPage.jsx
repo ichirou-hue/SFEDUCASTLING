@@ -10,6 +10,7 @@ import {
   fetchTrainingModules,
   fetchTrainingProgress,
 } from "../api.js";
+import SiteFooter from "./SiteFooter.jsx";
 import RatingBandProgress from "./RatingBandProgress.jsx";
 import "./LearningCrossLinks.css";
 
@@ -48,8 +49,12 @@ const MODULE_ICONS = {
   king: "♔",
   "special-rules": "⚙",
   "check-mate-stalemate": "♚",
+  pieces: "♟",
+  "king-safety": "♚",
+  "endgames": "♔",
+  "tactics": "♞",
+  "opening-principles": "♜",
   openings: "♘",
-  endgames: "♔",
 };
 
 const TASK_TYPE_LABELS = {
@@ -145,6 +150,24 @@ export default function TrainingPage({ user, onRegister }) {
   const [hintVisible, setHintVisible] = useState(false);
   const taskStartedAtRef = useRef(Date.now());
   const openingModuleRef = useRef(null);
+  // Слаг модуля, который реально открыт сейчас. Нужен против гонки в
+  // backToModules: navigate("/training") + setSelectedModule(null) могут
+  // отрендериться раньше, чем обновится searchParams, и эффект автооткрытия
+  // видит stale-slug при пустом selectedModule — и тут же открывает модуль
+  // заново (первый клик «съедается», срабатывает только второй).
+  // С этим ref stale-рендер пропускается: слаг равен отображаемому.
+  const displayedSlugRef = useRef(null);
+
+  // Память скролла: три ветки рендера (grid/lessons/lesson) — три разных
+  // DOM-узла, при переходе контейнер перемонтируется и scrollTop слетает
+  // в 0. Запоминаем позицию перед уходом, восстанавливаем при монтировании.
+  const pageRef = useRef(null);
+  const branchScrollRef = useRef({ grid: 0, lessons: 0, lesson: 0 });
+
+  const saveBranchScroll = (branch) => {
+    const el = pageRef.current;
+    if (el) branchScrollRef.current[branch] = el.scrollTop;
+  };
 
   const currentTask = tasks[taskIndex] || null;
   // Следим за конкретным пользователем, а не за объектом целиком:
@@ -160,6 +183,73 @@ export default function TrainingPage({ user, onRegister }) {
     return map;
   }, [progress]);
 
+  // Конь-маршрутчик на тропинке модулей: сидит над первым непройденным
+  // модулем (изначально — над первым). Когда модуль закрывается, конь
+  // перепрыгивает на следующий. Всё пройдено — отдыхает над последним.
+  const currentModuleIndex = useMemo(() => {
+    if (modules.length === 0) return -1;
+    const index = modules.findIndex((module) => {
+      if (!module.enabled) return false;
+      const moduleProgress = moduleProgressBySlug.get(module.slug);
+      if (!moduleProgress || !moduleProgress.tasks_total) return true;
+      return moduleProgress.tasks_solved < moduleProgress.tasks_total;
+    });
+    return index === -1 ? modules.length - 1 : index;
+  }, [modules, moduleProgressBySlug]);
+
+  const modulesPathRef = useRef(null);
+  const moduleNodeRefs = useRef(new Map());
+  const [knightPos, setKnightPos] = useState(null);
+  const [knightHops, setKnightHops] = useState(0);
+  const [knightInstant, setKnightInstant] = useState(false);
+  const prevKnightIndexRef = useRef(null);
+  // Над каким модулем конь остался, когда ушли с сетки (открыли урок).
+  // Нужно, чтобы по возвращении проиграть пропущенный прыжок.
+  const gridLeaveIndexRef = useRef(null);
+  const currentModuleIndexRef = useRef(currentModuleIndex);
+
+  useEffect(() => {
+    currentModuleIndexRef.current = currentModuleIndex;
+  });
+
+  const measureKnightNode = useCallback(
+    (index) => {
+      const module = modules[index];
+      const node = module ? moduleNodeRefs.current.get(module.id) : null;
+      if (!node) return null;
+      const size = 88;
+      return {
+        top: node.offsetTop - size - 10,
+        left: node.offsetLeft + node.offsetWidth / 2 - size / 2,
+      };
+    },
+    [modules],
+  );
+
+  const placeKnight = useCallback(() => {
+    setKnightPos(measureKnightNode(currentModuleIndex));
+  }, [measureKnightNode, currentModuleIndex]);
+
+  useEffect(() => {
+    if (
+      prevKnightIndexRef.current !== null &&
+      prevKnightIndexRef.current !== currentModuleIndex
+    ) {
+      // Индекс сменился — конь прыгает (перезапуск анимации через key).
+      setKnightHops((hops) => hops + 1);
+    }
+    prevKnightIndexRef.current = currentModuleIndex;
+    placeKnight();
+    // Шрифты могут чуть сдвинуть раскладку после замера — перемерить.
+    const timer = setTimeout(placeKnight, 500);
+    return () => clearTimeout(timer);
+  }, [currentModuleIndex, placeKnight]);
+
+  useEffect(() => {
+    window.addEventListener("resize", placeKnight);
+    return () => window.removeEventListener("resize", placeKnight);
+  }, [placeKnight]);
+
   const lessonProgressById = useMemo(() => {
     const map = new Map();
     for (const item of progress?.modules?.items || []) {
@@ -169,6 +259,49 @@ export default function TrainingPage({ user, onRegister }) {
     }
     return map;
   }, [progress]);
+
+  // Дуолинго-раскладка: уроки группируются в разделы (section_title),
+  // внутри — узлы тропинки со сквозной нумерацией. Состояние узла:
+  // done — все задания решены, current — первый нерешённый, todo — остальные.
+  // Запирания нет: все узлы открыты, цвет лишь подсказывает порядок.
+  const lessonSections = useMemo(() => {
+    let foundCurrent = false;
+    let globalIndex = 0;
+    const sections = [];
+    for (const item of lessons) {
+      const title = item.section_title || null;
+      let section = sections[sections.length - 1];
+      if (!section || section.title !== title) {
+        section = {
+          key: `${title ?? "plain"}-${sections.length}`,
+          title,
+          lessons: [],
+          done: 0,
+        };
+        sections.push(section);
+      }
+      const lessonProgress = lessonProgressById.get(item.id);
+      const done =
+        !!lessonProgress &&
+        lessonProgress.tasks_total > 0 &&
+        lessonProgress.tasks_solved >= lessonProgress.tasks_total;
+      let state = "todo";
+      if (done) {
+        state = "done";
+        section.done += 1;
+      } else if (!foundCurrent) {
+        state = "current";
+        foundCurrent = true;
+      }
+      section.lessons.push({
+        item,
+        state,
+        progress: lessonProgress,
+        globalIndex: globalIndex++,
+      });
+    }
+    return sections;
+  }, [lessons, lessonProgressById]);
 
   // Сколько заданий текущего урока решено. Пересекаемся с tasks:
   // solvedTaskIds заполняется по конкретному уроку, но защищаемся,
@@ -297,6 +430,12 @@ export default function TrainingPage({ user, onRegister }) {
   const openModule = useCallback(async (module) => {
     if (!module.enabled) return;
 
+    // Единая воронка открытия (эффект по URL, openDueItem): фиксируем,
+    // что показываем именно этот модуль, до асинхронной загрузки.
+    displayedSlugRef.current = module.slug;
+    // Уходим с сетки — запоминаем её скролл для возврата.
+    saveBranchScroll("grid");
+
     try {
       setLoading(true);
       setError(null);
@@ -316,6 +455,7 @@ export default function TrainingPage({ user, onRegister }) {
   useEffect(() => {
     if (!requestedModuleSlug || modules.length === 0) return;
     if (selectedModule?.slug === requestedModuleSlug) return;
+    if (requestedModuleSlug === displayedSlugRef.current) return;
     if (openingModuleRef.current === requestedModuleSlug) return;
 
     const module = modules.find(
@@ -329,7 +469,29 @@ export default function TrainingPage({ user, onRegister }) {
     });
   }, [modules, openModule, requestedModuleSlug, selectedModule?.slug]);
 
-  const openLesson = useCallback(async (lessonId) => {
+  // Стрелка браузера назад: URL вернулся на /training без ?module=,
+  // а состояние ещё держит открытый модуль — сбрасываем как backToModules.
+  // Заодно сбрасываем displayedSlugRef: раз слага нет в адресе, повторный
+  // заход на тот же модуль (вперёд/карточка) должен открывать его заново.
+  useEffect(() => {
+    if (requestedModuleSlug) return;
+    displayedSlugRef.current = null;
+    if (!selectedModule) return;
+    setSelectedModule(null);
+    setLessons([]);
+    setLesson(null);
+    setTasks([]);
+    setTaskIndex(0);
+    setError(null);
+  }, [requestedModuleSlug, selectedModule]);
+
+  const openLesson = useCallback(async (lessonId, opts = {}) => {
+    // По умолчанию уходим со списка уроков: запоминаем его скролл.
+    // openDueItem идёт с сетки (контейнер ещё старый) — ему сохранять
+    // "lessons" нельзя, иначе туда запишется чужая позиция.
+    if (opts.save !== false) saveBranchScroll("lessons");
+    // Новый урок всегда открывается сверху.
+    branchScrollRef.current.lesson = 0;
     try {
       setLoading(true);
       setError(null);
@@ -363,13 +525,17 @@ export default function TrainingPage({ user, onRegister }) {
       const module = modules.find((m) => m.slug === item.module?.slug && m.enabled);
       if (!module) return;
       await openModule(module);
-      await openLesson(item.lesson.id);
+      await openLesson(item.lesson.id, { save: false });
     },
     [modules, openModule, openLesson],
   );
 
   const backToModules = () => {
-    navigate("/training");
+    // replace: это действие «назад», а не новый шаг — иначе в истории
+    // останется дубль ?module=x, и стрелка браузера будет открывать
+    // модуль заново вместо возврата к списку.
+    navigate("/training", { replace: true });
+    saveBranchScroll("lessons");
     setSelectedModule(null);
     setLessons([]);
     setLesson(null);
@@ -379,6 +545,7 @@ export default function TrainingPage({ user, onRegister }) {
   };
 
   const backToLessons = () => {
+    saveBranchScroll("lesson");
     setLesson(null);
     setTasks([]);
     setTaskIndex(0);
@@ -390,6 +557,63 @@ export default function TrainingPage({ user, onRegister }) {
     const target = lessons[currentLessonIndex + delta];
     if (target) openLesson(target.id);
   };
+
+  // Какая ветка смонтирована: сетка модулей, тропинка уроков или урок.
+  // Зависимости loading/lessons/tasks — контент подтягивается асинхронно:
+  // восстанавливаем позицию, когда всё уже на месте. Обновления прогресса
+  // эти зависимости не трогают, поэтому скролл посреди урока не дёргается.
+  const branch = !selectedModule ? "grid" : !lesson ? "lessons" : "lesson";
+
+  useEffect(() => {
+    if (loading) return;
+    const el = pageRef.current;
+    if (el) el.scrollTop = branchScrollRef.current[branch] || 0;
+  }, [branch, loading, lessons.length, tasks.length]);
+
+  // Возврат на сетку модулей: если конь «ушёл» с одного модуля, а вернулся
+  // уже при другом текущем (модуль закрыли в уроке, сетка была размонтирована
+  // и прыжок увидеть было негде) — проигрываем пропущенное: мгновенно
+  // встаём на старый узел, затем планирование + прыг на новый.
+  useEffect(() => {
+    if (branch !== "grid") return;
+    const from = gridLeaveIndexRef.current;
+    const to = currentModuleIndexRef.current;
+    if (from === null || from === to || from < 0 || to < 0) {
+      setKnightInstant(false);
+      placeKnight();
+      return;
+    }
+    gridLeaveIndexRef.current = to;
+    const startPos = measureKnightNode(from);
+    if (!startPos) {
+      setKnightInstant(false);
+      placeKnight();
+      return;
+    }
+    setKnightInstant(true);
+    setKnightPos(startPos);
+    const frame = requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        setKnightInstant(false);
+        const endPos = measureKnightNode(to);
+        if (endPos) setKnightPos(endPos);
+        setKnightHops((hops) => hops + 1);
+      }),
+    );
+    return () => cancelAnimationFrame(frame);
+    // measure/place намеренно вне зависимостей: повторный прогон только
+    // при смене ветки/состава модулей, иначе задвоится с живым эффектом.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [branch, modules.length]);
+
+  // Уход с сетки: запоминаем индекс для будущего replay (см. выше).
+  // Читаем живой ref в cleanup — там всегда актуальное значение.
+  useEffect(() => {
+    if (branch !== "grid") return;
+    return () => {
+      gridLeaveIndexRef.current = currentModuleIndexRef.current;
+    };
+  }, [branch]);
 
   const submitAnswer = useCallback(
     async (answer, moveToApply = null) => {
@@ -546,7 +770,7 @@ export default function TrainingPage({ user, onRegister }) {
 
   if (loading && modules.length === 0 && user) {
     return (
-      <div className="training-page training-page--centered">
+      <div className="training-page training-page--centered" ref={pageRef}>
         <div className="training-loading">Загрузка учебного курса...</div>
       </div>
     );
@@ -554,22 +778,25 @@ export default function TrainingPage({ user, onRegister }) {
 
   if (!user) {
     return (
-      <div className="training-page training-page--centered">
-        <div className="training-register-wall">
-          <div className="training-kicker">Учебный режим</div>
-          <h1>Обучение доступно после регистрации</h1>
-          <p>
-            Зарегистрируйтесь, чтобы проходить учебные модули по шахматам
-            и сохранять свой прогресс.
-          </p>
-          <button
-            type="button"
-            className="training-primary-btn"
-            onClick={onRegister}
-          >
-            Зарегистрироваться
-          </button>
+      <div className="training-page training-page--centered" ref={pageRef}>
+        <div className="training-center-wrap">
+          <div className="training-register-wall">
+            <div className="training-kicker">Учебный режим</div>
+            <h1>Обучение доступно после регистрации</h1>
+            <p>
+              Зарегистрируйтесь, чтобы проходить учебные модули по шахматам
+              и сохранять свой прогресс.
+            </p>
+            <button
+              type="button"
+              className="training-primary-btn"
+              onClick={onRegister}
+            >
+              Зарегистрироваться
+            </button>
+          </div>
         </div>
+        <SiteFooter />
       </div>
     );
   }
@@ -613,7 +840,7 @@ export default function TrainingPage({ user, onRegister }) {
     const course = progress?.modules;
 
     return (
-      <div className="training-page">
+      <div className="training-page" ref={pageRef}>
         <section className="training-hero">
           <div className="training-kicker">Учебный режим</div>
           <h1>Обучение шахматам</h1>
@@ -651,7 +878,7 @@ export default function TrainingPage({ user, onRegister }) {
                   {dueItems.length === 1 ? "задание" : "задания"}
                 </strong>
                 <span>
-                  Интервальное повторение закрепляет материал — пройдите
+                  Интервальное повторение закрепляет материал - пройдите
                   просроченные задания.
                 </span>
               </div>
@@ -680,62 +907,82 @@ export default function TrainingPage({ user, onRegister }) {
           </section>
         )}
 
-        <div className="training-modules-grid">
-          {modules.map((module) => {
+        <div className="training-modules-path" ref={modulesPathRef}>
+          {modules.map((module, index) => {
             const moduleProgress = moduleProgressBySlug.get(module.slug);
 
             return (
               <button
                 type="button"
                 key={module.id}
-                className={`training-module-card ${
-                  module.enabled ? "" : "training-module-card--disabled"
-                }`}
+                ref={(el) => {
+                  if (el) moduleNodeRefs.current.set(module.id, el);
+                  else moduleNodeRefs.current.delete(module.id);
+                }}
+                className={`training-module-node training-module-node--${
+                  index % 2 === 0 ? "left" : "right"
+                } ${module.enabled ? "" : "training-module-node--disabled"}`}
                 onClick={() =>
                   navigate(`/training?module=${encodeURIComponent(module.slug)}`)
                 }
                 disabled={!module.enabled}
               >
-                <span className="training-module-icon">
+                <span className="training-module-node-icon" aria-hidden="true">
                   {MODULE_ICONS[module.slug] || "♟"}
                 </span>
-                <span className="training-module-title">{module.title}</span>
-                <span className="training-module-description">
-                  {module.description}
-                </span>
-
-                {module.enabled && moduleProgress && (
-                  <span className="training-module-progress">
-                    <span className="training-module-progress__head">
-                      <span>
-                        {moduleProgress.tasks_solved} из{" "}
-                        {moduleProgress.tasks_total} заданий
-                      </span>
-                      <strong>{Math.round(moduleProgress.percent)}%</strong>
-                    </span>
-                    <ProgressBar
-                      value={moduleProgress.percent}
-                      label={`${module.title}: ${Math.round(moduleProgress.percent)}%`}
-                    />
+                <span className="training-module-node-main">
+                  <span className="training-module-node-title">{module.title}</span>
+                  <span className="training-module-node-description">
+                    {module.description}
                   </span>
-                )}
 
-                <span className="training-module-meta">
-                  {module.enabled
-                    ? `${module.lesson_count} уроков · ${module.task_count} заданий`
-                    : "Скоро"}
+                  {module.enabled && moduleProgress && (
+                    <span className="training-module-progress">
+                      <span className="training-module-progress__head">
+                        <span>
+                          {moduleProgress.tasks_solved} из{" "}
+                          {moduleProgress.tasks_total} заданий
+                        </span>
+                        <strong>{Math.round(moduleProgress.percent)}%</strong>
+                      </span>
+                      <ProgressBar
+                        value={moduleProgress.percent}
+                        label={`${module.title}: ${Math.round(moduleProgress.percent)}%`}
+                      />
+                    </span>
+                  )}
+
+                  <span className="training-module-meta">
+                    {module.enabled
+                      ? `${module.lesson_count} уроков · ${module.task_count} заданий`
+                      : "Скоро"}
+                  </span>
                 </span>
               </button>
             );
           })}
+          {knightPos && (
+            <div
+              className={`training-knight-rider${
+                knightInstant ? " training-knight-rider--instant" : ""
+              }`}
+              style={{ top: knightPos.top, left: knightPos.left }}
+              aria-hidden="true"
+            >
+              <span className="training-knight-hop" key={knightHops}>
+                <span className="training-knight-glyph">♘</span>
+              </span>
+            </div>
+          )}
         </div>
+        <SiteFooter />
       </div>
     );
   }
 
   if (!lesson) {
     return (
-      <div className="training-page">
+      <div className="training-page training-page--lessons" ref={pageRef}>
         <div className="training-toolbar">
           <button type="button" className="training-back-btn" onClick={backToModules}>
             ← Все модули
@@ -762,67 +1009,65 @@ export default function TrainingPage({ user, onRegister }) {
 
         {error && <div className="training-global-error">{error}</div>}
 
-        <div className="training-lessons-list">
-          {lessons.map((item, index) => {
-            const lessonProgress = lessonProgressById.get(item.id);
-
-            return (
-              <button
-                type="button"
-                className="training-lesson-card"
-                key={item.id}
-                onClick={() => openLesson(item.id)}
-              >
-                <span className="training-lesson-number">{index + 1}</span>
-                <span className="training-lesson-content">
-                  <span className="training-lesson-title">{item.title}</span>
-                  <span className="training-lesson-meta">
-                    {item.task_count}{" "}
-                    {item.task_count === 1 ? "задание" : "задания"}
+        <div className="training-path">
+          {lessonSections.map((section) => (
+            <div className="training-path-section" key={section.key}>
+              {section.title && (
+                <div className="training-path-banner">
+                  <strong>{section.title}</strong>
+                  <span>
+                    {section.done} из {section.lessons.length} уроков
                   </span>
-
-                  {lessonProgress && (
-                    <span className="training-lesson-progress-bar">
-                      <ProgressBar
-                        value={lessonProgress.percent}
-                        label={`${item.title}: ${lessonProgress.tasks_solved} из ${lessonProgress.tasks_total}`}
-                      />
+                </div>
+              )}
+              <div className="training-path-nodes">
+                {section.lessons.map(({ item, state, progress, globalIndex }) => (
+                  <button
+                    type="button"
+                    className={`training-path-node training-path-node--${state} ${
+                      globalIndex % 2 === 0 ? "training-path-node--left" : "training-path-node--right"
+                    }`}
+                    key={item.id}
+                    onClick={() => openLesson(item.id)}
+                    title={`${item.title}${
+                      state === "done" ? " - пройден" : state === "current" ? " - текущий" : ""
+                    }`}
+                  >
+                    <span className="training-path-circle" aria-hidden="true">
+                      {state === "done" ? "✓" : globalIndex + 1}
                     </span>
-                  )}
-                </span>
-                <span className="training-lesson-arrow">→</span>
-              </button>
-            );
-          })}
+                    <span className="training-path-label">
+                      <span className="training-path-title">{item.title}</span>
+                      <span className="training-path-meta">
+                        {item.task_count}{" "}
+                        {item.task_count === 1 ? "задание" : "задания"}
+                      </span>
+                      {progress && (
+                        <span className="training-path-progress-bar">
+                          <ProgressBar
+                            value={progress.percent}
+                            label={`${item.title}: ${progress.tasks_solved} из ${progress.tasks_total}`}
+                          />
+                        </span>
+                      )}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
+        <SiteFooter />
       </div>
     );
   }
 
   return (
-    <div className="training-page training-page--lesson">
-      <div className="training-toolbar">
+    <div className="training-page training-page--lesson" ref={pageRef}>
+      <div className="training-toolbar training-toolbar--spread">
         <button type="button" className="training-back-btn" onClick={backToLessons}>
           ← Уроки модуля
         </button>
-        <button
-          type="button"
-          className="learning-crosslink"
-          onClick={openPuzzlesForCurrentTopic}
-        >
-          Проверить на пазлах этой темы →
-        </button>
-        <div className="training-task-counter">
-          <span>
-            Задание {Math.min(taskIndex + 1, tasks.length)} из {tasks.length}
-          </span>
-          {tasks.length > 0 && (
-            <ProgressBar
-              value={(solvedCount * 100) / tasks.length}
-              label={`Решено ${solvedCount} из ${tasks.length} заданий урока`}
-            />
-          )}
-        </div>
       </div>
 
       {error && <div className="training-global-error">{error}</div>}
@@ -870,6 +1115,13 @@ export default function TrainingPage({ user, onRegister }) {
             </button>
             {tasks.map((task, index) => {
               const solved = solvedTaskIds.has(task.id);
+              // Последовательное прохождение: точка открыта, если задание
+              // уже решено, оно первое, или решено предыдущее. Прыгнуть
+              // с 1 сразу на 3, не решив 2, нельзя.
+              const unlocked =
+                index === 0 ||
+                solved ||
+                solvedTaskIds.has(tasks[index - 1].id);
 
               return (
                 <button
@@ -879,12 +1131,18 @@ export default function TrainingPage({ user, onRegister }) {
                     "training-progress-dot",
                     index === taskIndex ? "training-progress-dot--active" : "",
                     solved ? "training-progress-dot--solved" : "",
+                    unlocked ? "" : "training-progress-dot--locked",
                   ]
                     .filter(Boolean)
                     .join(" ")}
                   onClick={() => setTaskIndex(index)}
+                  disabled={!unlocked}
                   title={`Задание ${index + 1}: ${task.title}${
-                    solved ? " — решено" : ""
+                    solved
+                      ? " - решено"
+                      : unlocked
+                        ? ""
+                        : " - сначала решите предыдущее"
                   }`}
                 >
                   {index + 1}
@@ -905,6 +1163,13 @@ export default function TrainingPage({ user, onRegister }) {
         </aside>
 
         <main className="training-board-column">
+          <button
+            type="button"
+            className="learning-crosslink learning-crosslink--over-board"
+            onClick={openPuzzlesForCurrentTopic}
+          >
+            Проверить на пазлах этой темы →
+          </button>
           {currentTask ? (
             <div className="training-board-wrapper">
               <ReactChessboard
@@ -954,6 +1219,17 @@ export default function TrainingPage({ user, onRegister }) {
         </main>
 
         <aside className="training-task-panel">
+          <div className="training-task-counter">
+            <span>
+              Задание {Math.min(taskIndex + 1, tasks.length)} из {tasks.length}
+            </span>
+            {tasks.length > 0 && (
+              <ProgressBar
+                value={(solvedCount * 100) / tasks.length}
+                label={`Решено ${solvedCount} из ${tasks.length} заданий урока`}
+              />
+            )}
+          </div>
           {currentTask && (
             <>
               <div className="training-task-type">
@@ -1109,6 +1385,7 @@ export default function TrainingPage({ user, onRegister }) {
           )}
         </aside>
       </div>
+      <SiteFooter />
     </div>
   );
 }

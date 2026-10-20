@@ -41,17 +41,41 @@ Q1_ESTIMATES = {
     "never": 500,
     "know_moves": 800,
     "sometimes": 1200,
-    "regularly": 1650,
+    "regular": 1650,
     "tournaments": 2050,
 }
+
+# prior_band по самооценке Q1 (методика, раздел 1). Влияет только на флаг
+# расхождения «заявлено vs показано» и НЕ участвует в подборе задач.
+Q1_BAND = {
+    "never": 1,
+    "know_moves": 1,
+    "sometimes": 2,
+    "regular": 3,
+    "tournaments": 4,
+}
+
+# Без привязки внешнего аккаунта (Lichess / Chess.com) или иного проверенного
+# рейтинга самооценка не даёт стартовую оценку выше этого порога. Самооценка
+# «играю регулярно/в турнирах» без подтверждения сильно завышает рейтинг.
+SELF_REPORT_CAP = 800
+
+# Потолок стартовой оценки для внешнего аккаунта (Lichess / Chess.com) без
+# единой сыгранной партии. Такой аккаунт не подтверждает уровень, поэтому даже
+# при «usable» рейтинг не выше этого порога.
+NO_GAMES_RATING_CAP = 800
 
 Q1_LABELS = {
     "never": "Никогда",
     "know_moves": "Знаю ходы",
     "sometimes": "Играю иногда",
-    "regularly": "Играю регулярно",
+    "regular": "Играю регулярно",
     "tournaments": "Играю в турнирах",
 }
+
+# Представительный рейтинг для prior_band (1..4). Нужен, когда у пользователя
+# нет ни elo после входного теста, ни rating_estimate, но есть prior_band.
+BAND_REPRESENTATIVE_RATING = {1: 500, 2: 1250, 3: 1700, 4: 2400}
 
 GOAL_LABELS = {
     "friends_family": "игра с друзьями и семьёй",
@@ -62,9 +86,9 @@ GOAL_LABELS = {
 
 WEEKLY_LABELS = {
     "lt1": "до 1 часа в неделю",
-    "1_3": "1–3 часа в неделю",
-    "3_5": "3–5 часов в неделю",
-    "5plus": "5+ часов в неделю",
+    "h1_3": "1–3 часа в неделю",
+    "h3_5": "3–5 часов в неделю",
+    "h5plus": "5+ часов в неделю",
 }
 
 FORMAT_LABELS = {
@@ -74,9 +98,9 @@ FORMAT_LABELS = {
 }
 
 HINT_LABELS = {
-    "yes": "подсказки включены",
+    "always": "подсказки включены",
     "stuck": "подсказки только при затруднении",
-    "no": "без подсказок",
+    "never": "без подсказок",
 }
 
 
@@ -98,17 +122,13 @@ def rating_band_progress(rating: int | float | None) -> dict[str, Any]:
     )
     current = RATING_GROUPS[group_index]
     next_group = RATING_GROUPS[group_index + 1] if group_index + 1 < len(RATING_GROUPS) else None
-
     if next_group is None:
-        progress = 100.0
-        points_to_next = None
-        threshold = None
+        progress, points_to_next, threshold = 100.0, None, None
     else:
         threshold = int(next_group["min"])
         points_to_next = max(0, threshold - value) if has_rating else None
         span = threshold - int(current["min"])
         progress = min(100.0, max(0.0, (value - int(current["min"])) * 100.0 / span)) if has_rating else 0.0
-
     return {
         "rating": value if has_rating else None,
         "rating_available": has_rating,
@@ -121,28 +141,112 @@ def rating_band_progress(rating: int | float | None) -> dict[str, Any]:
     }
 
 
-def onboarding_rating(answers: dict[str, Any]) -> tuple[int, str, int]:
-    """Возвращает (rating_estimate, rating_scale, prior_band)."""
+def onboarding_rating(
+    answers: dict[str, Any],
+    linked: dict[str, Any] | None = None,
+) -> tuple[int, str, int]:
+    """Возвращает (rating_estimate, rating_scale, prior_band).
+
+    ``linked`` — данные привязанного внешнего аккаунта (никак не меньше, чем
+    ``select_profile_rating``), ключи: ``rating``, ``scale``, ``usable``.
+
+    Правила:
+    * надёжный внешний рейтинг (привязка Lichess/Chess.com) — стартовая оценка
+      берётся из него без ограничения;
+    * внешний аккаунт без сыгранных партий (``games == 0``) — оценка не выше
+      ``NO_GAMES_RATING_CAP`` (уровень не подтверждён);
+    * без привязки — стартовая оценка НЕ превышает ``SELF_REPORT_CAP``
+      (самооценка ограничена), даже если пользователь заявил высокий уровень;
+    * prior_band отражает заявленный уровень (внешний/самооценка) и служит
+      только для флага расхождения с результатом входного теста.
+    """
+    q1 = str(answers.get("q1") or "")
     q2 = answers.get("q2") or {}
-    external_rating = q2.get("rating")
-    rating_usable = q2.get("rating_usable", True)
-    if q2.get("has_rating") and rating_usable and external_rating is not None:
-        rating = max(0, min(3500, int(external_rating)))
-        platform = str(q2.get("platform") or "external")
-        rating_type = str(q2.get("rating_type") or "unknown")
-        scale = str(q2.get("rating_scale") or f"{platform}_{rating_type}")
+    claimed = q2.get("rating")
+
+    if linked and linked.get("rating") is not None:
+        prior_band = int(rating_group_for(linked["rating"])["id"])
+    elif claimed is not None:
+        prior_band = int(rating_group_for(claimed)["id"])
     else:
-        rating = Q1_ESTIMATES.get(str(answers.get("q1")), 800)
-        scale = "self_report"
+        prior_band = Q1_BAND.get(q1, 1)
 
-    group = rating_group_for(rating)
-    return rating, scale, int(group["id"])
+    if linked and linked.get("rating") is not None:
+        games = linked.get("games")
+        has_games = games is None or int(games) > 0
+        if linked.get("usable") and has_games:
+            rating = max(0, min(3500, int(linked["rating"])))
+            scale = str(linked.get("scale") or "external")
+            return rating, scale, prior_band
+        if linked.get("usable") and not has_games:
+            # Привязка есть, но 0 партий: уровень не подтверждён, ограничиваем
+            # стартовую оценку NO_GAMES_RATING_CAP.
+            rating = max(0, min(NO_GAMES_RATING_CAP, int(linked["rating"])))
+            scale = str(linked.get("scale") or "external")
+            return rating, scale, prior_band
+
+    rating = max(0, min(SELF_REPORT_CAP, Q1_ESTIMATES.get(q1, SELF_REPORT_CAP)))
+    return rating, "self_report", prior_band
 
 
-def build_onboarding_feedback(answers: dict[str, Any], rating: int) -> list[str]:
+def rating_for_selection(
+    elo: int | None,
+    rating_estimate: int | None,
+    prior_band: int | None,
+) -> tuple[int | None, str]:
+    """Рейтинг для подбора пазлов и стартовой сложности.
+
+    Приоритет источников: elo после входного теста > rating_estimate из
+    анкеты > prior_band (представительный рейтинг диапазона). Если данных
+    нет — (None, "none"), и вызывающий код использует нейтральное поведение.
+    """
+    if elo is not None:
+        return int(elo), "level_test"
+    if rating_estimate is not None:
+        return int(rating_estimate), "onboarding"
+    if prior_band is not None:
+        try:
+            band = int(prior_band)
+        except (TypeError, ValueError):
+            return None, "none"
+        if band in BAND_REPRESENTATIVE_RATING:
+            return BAND_REPRESENTATIVE_RATING[band], "prior_band"
+    return None, "none"
+
+
+def allowed_rating_groups(group_id: int, spread: int = 1) -> set[int]:
+    """Диапазон групп рейтинга «свой ± соседний» с границами 1..4."""
+    group_id = max(1, min(len(RATING_GROUPS), int(group_id)))
+    offset = max(0, int(spread))
+    low = max(1, group_id - offset)
+    high = min(len(RATING_GROUPS), group_id + offset)
+    return set(range(low, high + 1))
+
+
+# Максимальное превышение рейтинга пазла над рейтингом игрока. В практике
+# (обычные и адаптивные пазлы) задача сложнее этого порога не предлагается.
+MAX_PUZZLE_OVER_RATING = 200
+
+
+def max_puzzle_rating_for_user(
+    rating: int | None,
+    *,
+    margin: int = MAX_PUZZLE_OVER_RATING,
+) -> int | None:
+    """Потолок рейтинга пазлов: rating + margin. None — потолок не задан."""
+    if rating is None:
+        return None
+    return max(0, int(rating) + int(margin))
+
+
+def build_onboarding_feedback(
+    answers: dict[str, Any],
+    rating: int,
+    linked: dict[str, Any] | None = None,
+) -> list[str]:
     group = rating_group_for(rating)
     feedback = [
-        f"Предварительная оценка: около {rating} пунктов — диапазон «{group['key']}» ({group['title']}).",
+        f"Предварительная оценка: около {rating} пунктов - диапазон «{group['key']}» ({group['title']}).",
         "Основная часть входного теста будет подобрана под этот диапазон, а часть задач будет проще и сложнее для проверки границ.",
     ]
 
@@ -151,19 +255,20 @@ def build_onboarding_feedback(answers: dict[str, Any], rating: int) -> list[str]
         feedback.append(f"Самооценка опыта: «{q1}». Она используется как резервная оценка, если нет внешнего рейтинга.")
 
     q2 = answers.get("q2") or {}
-    if q2.get("linked_account") and q2.get("rating_usable") and q2.get("rating") is not None:
+    if q2.get("login"):
+        if linked and linked.get("usable") and linked.get("rating") is not None:
+            feedback.append(
+                f"Для старта учтён рейтинг связанного аккаунта {q2.get('login')}: "
+                f"{linked['rating']} ({q2.get('platform')}, {q2.get('time_control')})."
+            )
+        else:
+            feedback.append(
+                f"Аккаунт {q2.get('login')} указан, но его рейтинг не подтверждён; "
+                f"стартовая оценка ограничена {SELF_REPORT_CAP}."
+            )
+    elif rating <= SELF_REPORT_CAP:
         feedback.append(
-            f"Для старта учтён рейтинг связанного аккаунта {q2.get('username')}: "
-            f"{q2.get('rating')} ({q2.get('platform')}, {q2.get('rating_type')})."
-        )
-    elif q2.get("linked_account"):
-        feedback.append(
-            f"Аккаунт {q2.get('username')} привязан, но его рейтинг не прошёл критерии надёжности; "
-            "для стартовой оценки использована самооценка Q1."
-        )
-    elif q2.get("has_rating"):
-        feedback.append(
-            f"Для старта учтён внешний рейтинг {q2.get('rating')} ({q2.get('platform')}, {q2.get('rating_type')})."
+            f"Без привязки Lichess/Chess.com стартовая оценка ограничена {SELF_REPORT_CAP}."
         )
 
     goals = [GOAL_LABELS.get(x, x) for x in (answers.get("q3") or [])]
@@ -184,11 +289,11 @@ def build_onboarding_feedback(answers: dict[str, Any], rating: int) -> list[str]
         feedback.append(f"Режим помощи: {hints}.")
 
     age = str(answers.get("q7") or "")
-    if age == "under10":
+    if age == "u10":
         feedback.append("Для младшей возрастной группы рекомендуется короткий темп занятий и упрощённая подача.")
-    elif age == "10_16":
+    elif age == "age10_16":
         feedback.append("Для возрастной группы 10–16 лет рекомендации будут формулироваться короче и практичнее.")
-    elif age == "17plus":
+    elif age == "age17plus":
         feedback.append("Для группы 17+ используется стандартный режим объяснений и рекомендаций.")
 
     if answers.get("q8"):
@@ -390,7 +495,7 @@ def build_test_feedback(
     )[:2]
 
     feedback = [
-        f"Итоговая оценка: около {final_rating} — диапазон «{group['key']}» ({group['title']}).",
+        f"Итоговая оценка: около {final_rating} - диапазон «{group['key']}» ({group['title']}).",
         f"Точность в тесте: {correct} из {total} ({accuracy}%).",
     ]
     if weak:

@@ -20,6 +20,9 @@ class TrainingLesson(Base):
     slug: Mapped[str] = mapped_column(String(64))
     title: Mapped[str] = mapped_column(String(128))
     theory: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Раздел внутри модуля для дуолинго-тропинки (nullable: старые уроки
+    # и уроки без группировки показываются без баннера раздела).
+    section_title: Mapped[str | None] = mapped_column(String(128), nullable=True)
     sort_order: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
 

@@ -2,9 +2,41 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  width: min(1120px, calc(100% - 40px));
-  margin: 28px auto 48px;
+  /* На всю ширину экрана: скроллбар у правого края окна,
+     а не у края центрированной колонки. Центрирование — на детях ниже. */
+  width: 100%;
+  margin: 0;
+  padding: 28px 0 48px;
   color: #20332d;
+  /* Колонка ради футера (см. .training-page). */
+  display: flex;
+  flex-direction: column;
+  /* Тонкий скроллбар в стиле сайта (как в админке, чате, списке ходов) */
+  scrollbar-width: thin;
+  scrollbar-color: #79b180 transparent;
+}
+
+.user-profile-page > * {
+  width: min(1120px, calc(100% - 40px));
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.user-profile-page::-webkit-scrollbar {
+  width: 8px;
+}
+
+.user-profile-page::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.user-profile-page::-webkit-scrollbar-thumb {
+  background: #79b180;
+  border-radius: 10px;
+}
+
+.user-profile-page::-webkit-scrollbar-thumb:hover {
+  background: #5d9364;
 }
 
 .user-profile-card,

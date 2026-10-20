@@ -9,18 +9,15 @@ import {
 import "./ProgressWidget.css";
 
 const TOPIC_ICONS = {
-  pawn: "♙",
-  knight: "♘",
-  bishop: "♗",
-  rook: "♖",
-  queen: "♕",
-  king: "♔",
-  "special-rules": "♙",
-  "check-mate-stalemate": "♚",
+  pieces: "♟",
+  "king-safety": "♚",
+  endgames: "♔",
+  tactics: "♞",
+  openings: "♜",
 };
 
 function percent(value) {
-  if (value === null || value === undefined) return "—";
+  if (value === null || value === undefined) return "0%";
   return `${Math.round(value)}%`;
 }
 
@@ -81,6 +78,18 @@ export default function ProgressWidget() {
     [weakness],
   );
 
+  // Блок «Персональная тренировка» показываем, только когда профиль
+  // настоящий с обеих сторон: есть подтверждённые попытками слабые темы
+  // И сильные («70% слабые · 30% сильные» иначе не из чего собирать).
+  // Без истории бэкенд присылает фабрикат: нижние 3 темы с нейтральными
+  // 50% и attempts=0 (см. rank_topic_profile).
+  const hasRealProfile = useMemo(() => {
+    const observed = (topic) => topic.observed || (topic.attempts || 0) > 0;
+    const hasWeak = (weakness?.weak_topics || []).some(observed);
+    const hasStrong = (weakness?.strong_topics || []).some(observed);
+    return hasWeak && hasStrong;
+  }, [weakness]);
+
   const selectionRule = weakness?.selection_rule;
   const weakShare = Number(selectionRule?.weak_share ?? 0) * 100;
   const strongShare = Number(selectionRule?.strong_share ?? 0) * 100;
@@ -118,7 +127,7 @@ export default function ProgressWidget() {
         <div className="progress-widget__streak" title="Серия учебных дней">
           <span className="progress-widget__streak-icon">🔥</span>
           <span>
-            <strong>{training?.streak ?? "—"}</strong>
+            <strong>{training?.streak ?? 0}</strong>
             <small>дн. подряд</small>
           </span>
         </div>
@@ -131,7 +140,7 @@ export default function ProgressWidget() {
             <strong>Курс</strong>
           </div>
           <div className="progress-track-card__value">
-            {modules ? `${modules.completed} / ${modules.total}` : "—"}
+            {modules ? `${modules.completed} / ${modules.total}` : "0 / 0"}
           </div>
           <div className="progress-track-card__caption">модулей пройдено</div>
           {modules?.percent != null && (
@@ -151,10 +160,10 @@ export default function ProgressWidget() {
             <strong>Пазлы</strong>
           </div>
           <div className="progress-track-card__value">
-            {learning?.solved ?? "—"}
+            {learning?.solved ?? 0}
           </div>
           <div className="progress-track-card__caption">
-            решено · {learning?.attempted ?? "—"} попробовано
+            решено · {learning?.attempted ?? 0} попробовано
           </div>
           {learning?.accuracy != null && (
             <div className="progress-meter" aria-hidden="true">
@@ -168,7 +177,7 @@ export default function ProgressWidget() {
         </article>
       </div>
 
-      {hasLearningAttempts && (
+      {hasRealProfile && (
         <div className="progress-widget__adaptive">
           <div>
             <strong>Персональная тренировка</strong>
@@ -176,7 +185,7 @@ export default function ProgressWidget() {
               {Number.isFinite(weakShare) && Number.isFinite(strongShare)
                 ? `${Math.round(weakShare)}% задач по слабым темам, ${Math.round(
                     strongShare,
-                  )}% — закрепление сильных.`
+                  )}% - закрепление сильных.`
                 : "Тренируем слабые темы, закрепляем сильные."}
             </span>
           </div>
@@ -186,7 +195,7 @@ export default function ProgressWidget() {
         </div>
       )}
 
-      {activeTopics.length > 0 && (
+      {activeTopics.length > 0 ? (
         <div className="progress-widget__topics">
           <div className="progress-widget__topics-title">Точность по темам курса</div>
           <div className="progress-topic-list">
@@ -206,7 +215,11 @@ export default function ProgressWidget() {
             ))}
           </div>
         </div>
-      )}
+      ) : (
+          <div className="progress-widget__empty">
+            Выполните первое задание курса - здесь появится точность по темам.
+          </div>
+        )}
     </section>
   );
 }

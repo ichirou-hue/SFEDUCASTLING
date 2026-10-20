@@ -16,6 +16,8 @@ from backend.db.session import get_db
 from backend.models.training_task import TrainingTask
 from backend.models.user import User
 from backend.services.training_checker import TrainingCheckError, check_training_task
+from backend.services.assessment import rating_for_selection
+from backend.services.difficulty_logic import difficulty_for_rating
 from backend.services.training_reviews import (
     get_due_training_reviews,
     update_training_review_after_attempt,
@@ -38,6 +40,12 @@ from backend.services.training_service import (
 )
 
 router = APIRouter(prefix="/api/training", tags=["training"])
+
+
+def _base_difficulty_for_user(user: User) -> int:
+    """Стартовая сложность тем из рейтинга пользователя (тест > анкета)."""
+    rating, _ = rating_for_selection(user.elo, user.rating_estimate, user.prior_band)
+    return difficulty_for_rating(rating)
 
 
 class TrainingAnswerRequest(BaseModel):

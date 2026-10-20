@@ -139,6 +139,12 @@ async def compute_learning_progress(
 
     Единый источник для /api/learning/progress и для админ-просмотра
     (GET /api/admin/users/{user_id}/stats).
+
+    ``accuracy`` — это доля РЕШЁННЫХ задач от ВЗЯТЫХ (solve rate по уникальным
+    ``puzzle_id``), а не доля верных строк-ходов. Так «Точность попыток» на
+    витрине совпадает с показанными рядом «решено · N попробовано».
+    Строки-попытки (``attempts``/``correct_attempts``) остаются отдельными
+    счётчиками активности и включают неверные ходы.
     """
     total_attempts = int(
         await db.scalar(
@@ -173,9 +179,7 @@ async def compute_learning_progress(
         or 0
     )
 
-    accuracy = (
-        round(correct_attempts * 100 / total_attempts, 1) if total_attempts else None
-    )
+    accuracy = round(solved * 100 / attempted, 1) if attempted else None
     return {
         "attempted": attempted,
         "solved": solved,

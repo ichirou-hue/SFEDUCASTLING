@@ -13,6 +13,7 @@
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 import threading
@@ -38,17 +39,52 @@ class ModelManager:
 
     @staticmethod
     def _stockfish_path() -> str:
-        """Возвращает абсолютный путь к Stockfish."""
+        """Возвращает абсолютный путь к Stockfish.
 
-        return os.path.abspath(
-            os.path.join(
-                os.path.dirname(__file__),
-                "..",
-                "..",
-                "stockfish_engine",
-                "stockfish.exe",
-            )
+        Приоритет:
+        1. STOCKFISH_PATH (settings.models.stockfish_path);
+        2. бинарник из PATH (shutil.which("stockfish"));
+        3. stockfish_engine/stockfish рядом с проектом (Linux);
+        4. legacy stockfish_engine/stockfish.exe (Windows).
+
+        Возвращает первый существующий путь, иначе — кандидат №3,
+        чтобы лог указывал на актуальное место, а не на legacy .exe.
+        """
+
+        candidates = []
+
+        try:
+            from backend.config.settings import settings
+
+            configured = settings.models.stockfish_path
+            if configured:
+                candidates.append(
+                    os.path.abspath(
+                        os.path.expanduser(str(configured))
+                    )
+                )
+        except Exception:
+            pass
+
+        which_path = shutil.which("stockfish")
+        if which_path:
+            candidates.append(os.path.abspath(which_path))
+
+        repo_root = os.path.abspath(
+            os.path.join(os.path.dirname(__file__), "..", "..")
         )
+        candidates.append(
+            os.path.join(repo_root, "stockfish_engine", "stockfish")
+        )
+        candidates.append(
+            os.path.join(repo_root, "stockfish_engine", "stockfish.exe")
+        )
+
+        for path in candidates:
+            if path and os.path.exists(path):
+                return path
+
+        return candidates[-2]
 
     @staticmethod
     def _process_alive(engine) -> bool:

@@ -54,14 +54,17 @@ async def ensure_user_theme_difficulties(
     *,
     user_id: int,
     profile: dict,
+    base_difficulty: int = DEFAULT_DIFFICULTY,
     player_rating: int | None = None,
 ) -> dict[str, int]:
     """Создаёт отсутствующие строки difficulty один раз.
 
-    Для уже накопленной истории стартуем с уровня игрока и однократно
-    применяем текущее accuracy. Повторные GET не меняют difficulty после
-    первой инициализации, пока не появится новый результат теста уровня.
-    PostgreSQL ON CONFLICT защищает ленивую инициализацию от гонки.
+    Для уже накопленной до B2 истории стартуем с ``base_difficulty`` и
+    однократно применяем текущее accuracy. ``base_difficulty`` приходит из
+    рейтинга пользователя (анкета/входной тест), поэтому новичок не получает
+    задачи сложности выше своей, а опытный — не начинает с нейтральной 2.
+    Повторные GET не меняют difficulty. PostgreSQL ON CONFLICT защищает
+    ленивую инициализацию от гонки.
     """
     existing = (
         await db.scalars(
@@ -74,7 +77,11 @@ async def ensure_user_theme_difficulties(
         str(topic.get("slug")): int(topic.get("attempts") or 0)
         for topic in profile.get("topics", []) if topic.get("slug")
     }
-    starting_difficulty = initial_difficulty_for_rating(player_rating)
+    starting_difficulty = (
+        initial_difficulty_for_rating(player_rating)
+        if player_rating is not None
+        else int(base_difficulty)
+    )
 
     # Старые записи могли быть созданы с нейтральным уровнем 2 ещё до теста.
     # Без попыток в теме это не результат обучения: синхронизируем старт с
@@ -118,6 +125,7 @@ async def get_user_theme_difficulties(
     *,
     user_id: int,
     puzzle_base: dict | None,
+    base_difficulty: int = DEFAULT_DIFFICULTY,
     player_rating: int | None = None,
 ) -> tuple[dict, dict[str, int]]:
     profile = await build_weakness_profile(
@@ -129,6 +137,7 @@ async def get_user_theme_difficulties(
         db,
         user_id=user_id,
         profile=profile,
+        base_difficulty=base_difficulty,
         player_rating=player_rating,
     )
     return profile, difficulties

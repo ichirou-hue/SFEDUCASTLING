@@ -3,6 +3,7 @@
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.models.puzzle_attempt import PuzzleAttempt
 from backend.models.training_attempt import TrainingAttempt
 from backend.models.training_lesson import TrainingLesson
 from backend.models.training_module import TrainingModule
@@ -74,6 +75,7 @@ async def list_module_lessons(db: AsyncSession, module_id: int) -> list[dict]:
                 "id": lesson.id,
                 "slug": lesson.slug,
                 "title": lesson.title,
+                "section_title": lesson.section_title,
                 "sort_order": lesson.sort_order,
                 "task_count": int(task_count or 0),
             }
@@ -260,6 +262,19 @@ async def get_training_progress(db: AsyncSession, user_id: int) -> dict:
             total_correct += 1
             correct_task_ids.add(task_id)
 
+        if created_at is not None:
+            activity_dates.add(created_at.date())
+
+    # Серия — по обоим трекам: в неё идут и задания курса, и паззлы.
+    # У паззлов нет флага enabled — берём все попытки пользователя.
+    puzzle_date_rows = (
+        await db.execute(
+            select(PuzzleAttempt.created_at).where(
+                PuzzleAttempt.user_id == user_id,
+            )
+        )
+    ).all()
+    for (created_at,) in puzzle_date_rows:
         if created_at is not None:
             activity_dates.add(created_at.date())
 
