@@ -11,6 +11,7 @@ import {
   fetchTrainingProgress,
 } from "../api.js";
 import SiteFooter from "./SiteFooter.jsx";
+import RatingBandProgress from "./RatingBandProgress.jsx";
 import "./LearningCrossLinks.css";
 
 const PIECE_IMAGES = {
@@ -40,10 +41,20 @@ const customPieces = Object.fromEntries(
 const AUTO_ADVANCE_DELAY_MS = 2500;
 
 const MODULE_ICONS = {
+  pawn: "♙",
+  knight: "♘",
+  bishop: "♗",
+  rook: "♖",
+  queen: "♕",
+  king: "♔",
+  "special-rules": "⚙",
+  "check-mate-stalemate": "♚",
   pieces: "♟",
   "king-safety": "♚",
-  openings: "♜",
-  endgames: "♔",
+  "endgames": "♔",
+  "tactics": "♞",
+  "opening-principles": "♜",
+  openings: "♘",
 };
 
 const TASK_TYPE_LABELS = {
@@ -109,6 +120,7 @@ export default function TrainingPage({ user, onRegister }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const requestedModuleSlug = searchParams.get("module");
+  const showBasicCourse = searchParams.get("basics") === "1";
 
   const [modules, setModules] = useState([]);
   const [dueItems, setDueItems] = useState([]);
@@ -540,6 +552,12 @@ export default function TrainingPage({ user, onRegister }) {
     setError(null);
   };
 
+  const currentLessonIndex = lessons.findIndex((item) => item.id === lesson?.id);
+  const navigateLesson = (delta) => {
+    const target = lessons[currentLessonIndex + delta];
+    if (target) openLesson(target.id);
+  };
+
   // Какая ветка смонтирована: сетка модулей, тропинка уроков или урок.
   // Зависимости loading/lessons/tasks — контент подтягивается асинхронно:
   // восстанавливаем позицию, когда всё уже на месте. Обновления прогресса
@@ -783,6 +801,41 @@ export default function TrainingPage({ user, onRegister }) {
     );
   }
 
+  if (
+    !selectedModule &&
+    !requestedModuleSlug &&
+    !showBasicCourse &&
+    Number(user.elo) >= 2000
+  ) {
+    return (
+      <div className="training-page training-page--centered">
+        <section className="training-register-wall">
+          <div className="training-kicker">Продвинутый уровень</div>
+          <RatingBandProgress userId={userId} />
+          <h1>Практика для вашего уровня</h1>
+          <p>
+            Базовый курс объясняет правила и ходы фигур. Для рейтинга от 2000
+            начните с тактических задач своего уровня.
+          </p>
+          <button
+            type="button"
+            className="training-primary-btn"
+            onClick={() => navigate("/puzzles?rating_min=2000")}
+          >
+            Решать задачи от 2000 →
+          </button>
+          <button
+            type="button"
+            className="training-secondary-btn"
+            onClick={() => navigate("/training?basics=1")}
+          >
+            Открыть базовый курс
+          </button>
+        </section>
+      </div>
+    );
+  }
+
   if (!selectedModule) {
     const course = progress?.modules;
 
@@ -795,6 +848,7 @@ export default function TrainingPage({ user, onRegister }) {
             Изучайте особенности каждой фигуры последовательно: сначала теория,
             затем интерактивные задания на шахматной доске.
           </p>
+          <RatingBandProgress userId={userId} />
 
           {course && course.total > 0 && (
             <div className="training-course-progress">
@@ -1024,7 +1078,41 @@ export default function TrainingPage({ user, onRegister }) {
           <h2>{lesson.title}</h2>
           <p>{lesson.theory}</p>
 
+          <div className="training-theory-navigation">
+            <button
+              type="button"
+              className="training-progress-nav"
+              onClick={() => navigateLesson(-1)}
+              disabled={currentLessonIndex <= 0}
+              aria-label="Предыдущий урок"
+              title="Предыдущий урок"
+            >
+              ←
+            </button>
+            <span>{currentLessonIndex + 1} / {lessons.length}</span>
+            <button
+              type="button"
+              className="training-progress-nav"
+              onClick={() => navigateLesson(1)}
+              disabled={currentLessonIndex < 0 || currentLessonIndex >= lessons.length - 1}
+              aria-label="Следующий урок"
+              title="Следующий урок"
+            >
+              →
+            </button>
+          </div>
+
           <div className="training-lesson-progress">
+            <button
+              type="button"
+              className="training-progress-nav"
+              onClick={() => setTaskIndex((index) => Math.max(0, index - 1))}
+              disabled={taskIndex <= 0}
+              aria-label="Предыдущее задание"
+              title="Предыдущее задание"
+            >
+              ←
+            </button>
             {tasks.map((task, index) => {
               const solved = solvedTaskIds.has(task.id);
               // Последовательное прохождение: точка открыта, если задание
@@ -1061,6 +1149,16 @@ export default function TrainingPage({ user, onRegister }) {
                 </button>
               );
             })}
+            <button
+              type="button"
+              className="training-progress-nav"
+              onClick={() => setTaskIndex((index) => Math.min(tasks.length - 1, index + 1))}
+              disabled={taskIndex >= tasks.length - 1}
+              aria-label="Следующее задание"
+              title="Следующее задание"
+            >
+              →
+            </button>
           </div>
         </aside>
 

@@ -14,6 +14,7 @@ from backend.api_gateway import state
 from backend.api_gateway.dependecies import require_roles
 from backend.db.session import get_db
 from backend.models.user import User
+from backend.models.user_chess_account import UserChessAccount
 from backend.services.adaptive_training import (
     build_weakness_profile,
     compute_learning_progress,
@@ -46,7 +47,51 @@ async def admin_users(
     """
     rows = await db.scalars(select(User).order_by(User.id))
     public = rows.all()
-    return {"users": [{k: u.public()[k] for k in _USER_FIELDS} for u in public]}
+    user_ids = [u.id for u in public]
+    accounts = []
+    if user_ids:
+        accounts = (
+            await db.scalars(
+                select(UserChessAccount)
+                .where(UserChessAccount.user_id.in_(user_ids))
+                .order_by(UserChessAccount.user_id, UserChessAccount.platform)
+            )
+        ).all()
+    ratings_by_user: dict[int, list[dict]] = {}
+    for account in accounts:
+        ratings_by_user.setdefault(account.user_id, []).append(_public_rating(account))
+
+    return {
+        "users": [
+            {
+                **{k: u.public()[k] for k in _USER_FIELDS},
+                "chess_accounts": ratings_by_user.get(u.id, []),
+            }
+            for u in public
+        ]
+    }
+
+
+def _public_rating(account: UserChessAccount) -> dict:
+    return {
+        "platform": account.platform,
+        "username": account.username,
+        "rating": account.rating,
+        "rating_type": account.rating_type,
+        "rating_usable": account.rating_usable,
+    }
+
+
+async def _user_with_ratings(db: AsyncSession, target: User) -> dict:
+    accounts = await db.scalars(
+        select(UserChessAccount)
+        .where(UserChessAccount.user_id == target.id)
+        .order_by(UserChessAccount.platform)
+    )
+    return {
+        **target.public(),
+        "chess_accounts": [_public_rating(account) for account in accounts],
+    }
 
 
 async def _get_target_or_404(db: AsyncSession, user_id: int) -> User:
@@ -65,7 +110,7 @@ async def admin_user_profile(
 ):
     """Полный профиль пользователя для администратора (без пароля/токенов)."""
     target = await _get_target_or_404(db, user_id)
-    return {"user": target.public()}
+    return {"user": await _user_with_ratings(db, target)}
 
 
 @router.get("/users/{user_id}/stats")
@@ -86,7 +131,7 @@ async def admin_user_stats(
         )
 
     return {
-        "user": target.public(),
+        "user": await _user_with_ratings(db, target),
         "training": await get_training_progress(db, target.id),
         "learning": await compute_learning_progress(db, user_id=target.id),
         "weaknesses": weaknesses,

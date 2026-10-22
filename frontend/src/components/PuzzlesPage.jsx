@@ -104,7 +104,7 @@ const THEME_ICONS = {
   fork: "♞", pin: "♝", skewer: "♝",
   discoveredAttack: "♜", discoveredCheck: "♜",
   deflection: "♟", attraction: "♛", sacrifice: "♛",
-  endgame: "♟", middlegame: "♝", opening: "♞",
+  endgame: "♔", middlegame: "♝", opening: "♘",
   promotion: "♟", backRankMate: "♜",
   hangingPiece: "♞", capturingDefender: "♝",
   advantage: "♟", crushing: "♛", exposedKing: "♚",
@@ -164,7 +164,19 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
   const [searchParams] = useSearchParams();
   const requestedTopicSlug = searchParams.get("topic");
   const requestedTopic = getCourseTopicMeta(requestedTopicSlug);
-  const adaptiveMode = searchParams.get("adaptive") === "1";
+  const explicitAdaptiveMode = searchParams.get("adaptive") === "1";
+  const allPuzzlesMode = searchParams.get("mode") === "all";
+  const ratingMinParam = searchParams.get("rating_min");
+  const ratingMin =
+    ratingMinParam != null && /^\d+$/.test(ratingMinParam)
+      ? Number(ratingMinParam)
+      : null;
+  const adaptiveMode =
+    explicitAdaptiveMode ||
+    (Boolean(user && getAccessToken()) &&
+      !allPuzzlesMode &&
+      !requestedTopicSlug &&
+      ratingMin === null);
 
   const [puzzles, setPuzzles] = useState([]);
   const [adaptiveMeta, setAdaptiveMeta] = useState(null);
@@ -272,6 +284,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
   );
 
   useEffect(() => {
+    let cancelled = false;
     setLoading(true);
     setError(null);
     setSolvedCount(0);
@@ -280,10 +293,11 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
 
     const request = adaptiveMode
       ? fetchAdaptivePuzzles(20)
-      : fetchPuzzles(20, requestedTopic?.slug || null);
+      : fetchPuzzles(20, requestedTopic?.slug || null, ratingMin);
 
     request
       .then((data) => {
+        if (cancelled) return;
         const qs = data.puzzles || [];
         const preview = data.preview === true;
         setPreviewInfo(
@@ -298,14 +312,15 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
         if (qs.length === 0) {
           puzzlesRef.current = [];
           setPuzzles([]);
-          // Пробный доступ исчерпан — показываем гейт анкеты, а не ошибку.
           if (!(preview && data.preview_locked)) {
             setError(
               adaptiveMode
                 ? "Пока не удалось подобрать персональную тренировку."
                 : requestedTopic
                   ? `Для темы «${requestedTopic.title}» пока нет доступных пазлов.`
-                  : "Нет доступных задач",
+                  : ratingMin != null
+                    ? `Пока нет доступных пазлов с рейтингом от ${ratingMin}.`
+                    : "Нет доступных задач",
             );
           }
           return;
@@ -315,6 +330,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
             weakTopics: data.weak_topics || [],
             strongTopics: data.strong_topics || [],
             allocation: data.allocation || null,
+            playerLevel: data.player_level || null,
           });
         }
         puzzlesRef.current = qs;
@@ -322,10 +338,16 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
         setCurrentIndex(0);
       })
       .catch((e) => {
+        if (cancelled) return;
         setError("Ошибка загрузки задач: " + (e.response?.data?.detail || e.message));
       })
-      .finally(() => setLoading(false));
-  }, [adaptiveMode, requestedTopic?.slug, requestedTopic?.title]);
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [adaptiveMode, ratingMin, requestedTopic?.slug, requestedTopic?.title]);
 
   useEffect(() => {
     if (puzzles.length > 0 && puzzles[currentIndex]) {
@@ -711,7 +733,8 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
   }
 
   return (
-    <div className="puzzles-layout">
+    <div className="puzzles-page-shell">
+      <div className="puzzles-layout">
       <div className="puzzle-info-panel">
         <div className="puzzle-theme-label">Тема задачи:</div>
         <div className="puzzle-theme-name">{themeInfo.label}</div>
@@ -725,11 +748,13 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
           позиции
         </div>
 
+        {currentPuzzle && (
+          <div className="puzzle-turn-indicator">
+            Ход {currentPuzzle.fen.split(" ")[1] === "b" ? "чёрных" : "белых"}
+          </div>
+        )}
         <div className="puzzle-side">
-          <span
-            className={`puzzle-side-dot puzzle-side-dot--${sideToMove}`}
-            aria-hidden="true"
-          />
+          <span className={`puzzle-side-dot puzzle-side-dot--${sideToMove}`} aria-hidden="true" />
           Играете за {sideToMove === "b" ? "чёрных" : "белых"}
         </div>
 
@@ -749,19 +774,29 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
         {adaptiveMode && hasRealProfile && (
           <div className="learning-topic-filter learning-topic-filter--adaptive">
             Персональная тренировка
-            <strong>70% слабые темы · 30% закрепление сильных</strong>
-            <div className="adaptive-topic-list">
-              Слабые: {observedWeakTopics.map((topic) => topic.title).join(", ")}
-            </div>
-            <button type="button" onClick={() => navigate("/puzzles")}>
+            {adaptiveMeta?.playerLevel && (
+              <strong>
+                {adaptiveMeta.playerLevel.provisional ? "Предварительный уровень" : "Уровень"}: {adaptiveMeta.playerLevel.title}
+              </strong>
+            )}
+            {currentPuzzle?.adaptive_difficulty != null && (
+              <span className="adaptive-topic-list">
+                Целевая сложность: {currentPuzzle.adaptive_difficulty} из 3
+                {currentPuzzle.difficulty_match === false && " · задача вне целевого диапазона"}
+              </span>
+            )}
+            <strong>Подбор по уровню и темам</strong>
+            {adaptiveMeta?.weakTopics?.length > 0 && (
+              <div className="adaptive-topic-list">
+                Слабые: {adaptiveMeta.weakTopics.map((topic) => topic.title).join(", ")}
+              </div>
+            )}
+            <button type="button" onClick={() => navigate("/puzzles?mode=all")}>
               Обычный режим
             </button>
           </div>
         )}
 
-        {/* Прямой заход на ?adaptive=1 без настоящего профиля (нет истории
-            или есть только слабые/только сильные): персонализации нет,
-            поэтому заголовок и «слабые» не показываем - только выход. */}
         {adaptiveMode && !hasRealProfile && (
           <div className="learning-topic-filter learning-topic-filter--adaptive">
             <button type="button" onClick={() => navigate("/puzzles")}>
@@ -776,7 +811,17 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
             <strong>
               {requestedTopic.icon} {requestedTopic.title}
             </strong>
-            <button type="button" onClick={() => navigate("/puzzles")}>
+            <button type="button" onClick={() => navigate("/puzzles?mode=all")}>
+              Показать все пазлы
+            </button>
+          </div>
+        )}
+
+        {!adaptiveMode && ratingMin != null && (
+          <div className="learning-topic-filter">
+            Подбор по рейтингу
+            <strong>От {ratingMin}</strong>
+            <button type="button" onClick={() => navigate("/puzzles?mode=all")}>
               Показать все пазлы
             </button>
           </div>
@@ -964,6 +1009,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
       </div>
 
       <PuzzleRegisterGate open={showRegGate} onRegister={onRegister} />
+      </div>
       {previewLocked && puzzles.length > 0 && (
         <PuzzlePreviewGate
           onOpenOnboarding={onOpenOnboarding}

@@ -23,6 +23,24 @@ function roleLabel(role) {
   return role === "admin" ? "Администратор" : "Ученик";
 }
 
+const SKILL_LEVEL_LABELS = {
+  1: "Начальный",
+  2: "Любительский",
+  3: "Клубный",
+  4: "Продвинутый",
+};
+
+function platformLabel(platform) {
+  return platform === "chesscom" ? "Chess.com" : "Lichess";
+}
+
+function compactRatings(accounts = []) {
+  return accounts
+    .filter((account) => account.rating != null)
+    .map((account) => `${account.platform === "chesscom" ? "C" : "L"} ${account.rating}`)
+    .join(" · ");
+}
+
 function isRecent(value, days) {
   if (!value) return false;
   const ts = new Date(value).getTime();
@@ -248,7 +266,7 @@ export default function AdminPage({ user, onUserChange }) {
                 <option value="id">По ID</option>
                 <option value="login">По логину</option>
                 <option value="created_desc">Сначала новые</option>
-                <option value="elo_desc">По Elo</option>
+                <option value="elo_desc">По рейтингу теста</option>
               </select>
               <button
                 type="button"
@@ -285,8 +303,11 @@ export default function AdminPage({ user, onUserChange }) {
                     <strong>{u.login}</strong>
                     <span className="admin-user__sub">{roleLabel(u.role)}</span>
                   </span>
-                  <span className="admin-user__meta" title="Elo на платформе">
-                    {u.elo ?? 0}
+                  <span className="admin-user__meta">
+                    <span title={compactRatings(u.chess_accounts) || "Нет привязанных рейтингов"}>
+                      {compactRatings(u.chess_accounts) || "нет рейтинга"}
+                    </span>
+                    <span title="Elo на платформе"> · {u.elo ?? 0}</span>
                   </span>
                 </button>
               ))
@@ -322,15 +343,19 @@ export default function AdminPage({ user, onUserChange }) {
                       </div>
                       <div className="admin-stats">
                         <Stat label="Роль" value={roleLabel(detailUser.role)} />
-                        <Stat label="Шахматный уровень" value={detailUser.elo} />
-                        <Stat label="Группа навыка" value={detailUser.skill_band} />
-                        <Stat label="До онбординга" value={detailUser.prior_band} />
-                        <Stat label="Оценка рейтинга" value={detailUser.rating_estimate} />
+                        <Stat
+                          label="Текущий уровень навыка"
+                          value={SKILL_LEVEL_LABELS[detailUser.skill_band] || "Не определён"}
+                        />
                         <Stat label="Email" value={detailUser.email} />
                         <Stat label="В системе с" value={formatDate(detailUser.created_at)} />
-                        {detailUser.rating_scale && (
-                          <Stat label="Шкала рейтинга" value={detailUser.rating_scale} />
-                        )}
+                        {(detailUser.chess_accounts || []).map((account) => (
+                          <Stat
+                            key={account.platform}
+                            label={`${platformLabel(account.platform)}${account.rating_type ? ` · ${account.rating_type}` : ""}`}
+                            value={account.rating ?? "Нет данных"}
+                          />
+                        ))}
                       </div>
                     </div>
                   </div>

@@ -3,8 +3,9 @@
 import random
 
 import chess
-from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends
 
+from backend.api_gateway.dependecies import get_optional_current_user
 from backend.api_gateway.models import (
     CapturedMaterialRequest,
     CompareMovesRequest,
@@ -23,6 +24,7 @@ from backend.api_gateway.state import (
     stockfish_lock,
 )
 from backend.services.game_recorder import record_game
+from backend.models.user import User
 
 router = APIRouter(tags=["game"])
 
@@ -446,7 +448,11 @@ def compare_moves(req: CompareMovesRequest):
 
 
 @router.post("/api/game/finish")
-def finish_game(req: FinishGameRequest, background_tasks: BackgroundTasks):
+def finish_game(
+    req: FinishGameRequest,
+    background_tasks: BackgroundTasks,
+    user: User | None = Depends(get_optional_current_user),
+):
     """Сохраняет завершённую партию в БД с классификацией ходов.
 
     Классификация каждого хода через Stockfish (1с на ход) выполняется
@@ -461,7 +467,8 @@ def finish_game(req: FinishGameRequest, background_tasks: BackgroundTasks):
     background_tasks.add_task(
         record_game,
         moves=req.moves,
-        user_id=req.user_id,
+        # The authenticated identity is authoritative; ignore client-supplied user_id.
+        user_id=user.id if user else None,
         elo=req.elo,
         engine=req.engine,
         result=req.result,

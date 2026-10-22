@@ -261,7 +261,6 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
 
     finishGame({
       moves: uciMoves,
-      userId: uid,
       elo,
       engine: "maia3",
       result,

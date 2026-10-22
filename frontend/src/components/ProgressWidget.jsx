@@ -114,6 +114,8 @@ export default function ProgressWidget() {
 
   const modules = training?.modules;
   const trainingAttempts = training?.attempts;
+  const hasLearningAttempts =
+    Number(trainingAttempts?.total || 0) > 0 || Number(learning?.attempts || 0) > 0;
 
   return (
     <section className="progress-widget" aria-label="Общий прогресс обучения">
@@ -193,9 +195,9 @@ export default function ProgressWidget() {
         </div>
       )}
 
-      <div className="progress-widget__topics">
-        <div className="progress-widget__topics-title">Точность по темам курса</div>
-        {activeTopics.length > 0 ? (
+      {activeTopics.length > 0 ? (
+        <div className="progress-widget__topics">
+          <div className="progress-widget__topics-title">Точность по темам курса</div>
           <div className="progress-topic-list">
             {activeTopics.map((topic) => (
               <div className="progress-topic" key={topic.slug}>
@@ -212,12 +214,12 @@ export default function ProgressWidget() {
               </div>
             ))}
           </div>
-        ) : (
+        </div>
+      ) : (
           <div className="progress-widget__empty">
             Выполните первое задание курса - здесь появится точность по темам.
           </div>
         )}
-      </div>
     </section>
   );
 }

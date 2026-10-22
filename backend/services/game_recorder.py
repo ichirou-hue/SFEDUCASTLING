@@ -28,7 +28,11 @@ def _classify_game(moves: list[str]) -> list[dict]:
         ev_best, ev_played, best_uci, diff_cp.
     """
     board = chess.Board()
-    sf = ensure_stockfish()
+    try:
+        sf = ensure_stockfish()
+    except Exception as exc:
+        print(f"[Game analysis] Stockfish unavailable; saving moves without scores: {exc}")
+        sf = None
     records: list[dict] = []
 
     for uci in moves:
@@ -48,26 +52,34 @@ def _classify_game(moves: list[str]) -> list[dict]:
         best_uci = None
 
         if sf is not None:
-            with stockfish_lock:
-                sf.set_fen_position(fen_before)
-                best_uci = sf.get_best_move_time(1000)
-                if best_uci:
-                    try:
-                        best_move = chess.Move.from_uci(best_uci)
-                        if best_move in board.legal_moves:
-                            best_board = board.copy()
-                            best_board.push(best_move)
-                            sf.set_fen_position(best_board.fen())
-                            ev_best = sf.get_evaluation(searchtime=1000)
-                    except ValueError:
-                        ev_best = None
+            try:
+                with stockfish_lock:
+                    sf.set_fen_position(fen_before)
+                    best_uci = sf.get_best_move_time(1000)
+                    if best_uci:
+                        try:
+                            best_move = chess.Move.from_uci(best_uci)
+                            if best_move in board.legal_moves:
+                                best_board = board.copy()
+                                best_board.push(best_move)
+                                sf.set_fen_position(best_board.fen())
+                                ev_best = sf.get_evaluation(searchtime=1000)
+                        except ValueError:
+                            ev_best = None
+            except Exception as exc:
+                print(f"[Game analysis] Stockfish failed; saving remaining moves without scores: {exc}")
+                sf = None
 
         board.push(move)
 
         if sf is not None:
-            with stockfish_lock:
-                sf.set_fen_position(board.fen())
-                ev_played = sf.get_evaluation(searchtime=1000)
+            try:
+                with stockfish_lock:
+                    sf.set_fen_position(board.fen())
+                    ev_played = sf.get_evaluation(searchtime=1000)
+            except Exception as exc:
+                print(f"[Game analysis] Stockfish failed; saving remaining moves without scores: {exc}")
+                sf = None
 
         # Потеря = насколько ход игрока хуже лучшего хода (обе оценки
         # приводятся к точке зрения стороны, делавшей ход).

@@ -35,9 +35,7 @@ function MainPage() {
   });
 
   return (
-    // Своя скролл-колонка: футер в потоке контента (внизу при проскролле),
-    // а не зафиксированной полосой поверх страницы.
-    <div className="main-page-scroll">
+    <>
       <div className="main-area">
         <MoveHistory
           moveHistory={boardState.moveHistory}
@@ -60,7 +58,7 @@ function MainPage() {
         />
       </div>
       <SiteFooter />
-    </div>
+    </>
   );
 }
 
@@ -105,9 +103,20 @@ export default function App() {
       setAuthNotice("Сессия истекла. Войдите в аккаунт снова.");
       setShowRegister(true);
     };
+    const refreshAfterAssessment = () => {
+      fetchCurrentUser()
+        .then((fresh) => {
+          if (fresh) setUser(fresh);
+        })
+        .catch(() => {});
+    };
 
     window.addEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired);
-    return () => window.removeEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired);
+    window.addEventListener("sfedu-assessment-updated", refreshAfterAssessment);
+    return () => {
+      window.removeEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired);
+      window.removeEventListener("sfedu-assessment-updated", refreshAfterAssessment);
+    };
   }, []);
 
   const handleAuthSuccess = (u) => {

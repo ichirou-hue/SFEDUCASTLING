@@ -209,6 +209,9 @@ export default function OnboardingModal({ isOpen, onClose, onDone }) {
             ? { granted: true, contact: a.consentContact.trim() || null }
             : null,
       };
+      if (a.useQ2) {
+        await linkChessAccount(a.q2.login.trim(), a.q2.platform);
+      }
       const user = await saveOnboarding(payload);
       onDone?.(user);
       onClose();

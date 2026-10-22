@@ -295,15 +295,25 @@ export async function saveMoveToDataset(fen, move, userId, gameId) {
   return data;
 }
 
-export async function finishGame({ moves, userId, elo, engine, result, status }) {
+export async function finishGame({ moves, elo, engine, result, status }) {
   const { data } = await api.post("/api/game/finish", {
     moves,
-    user_id: userId ?? null,
     elo: elo ?? null,
     engine: engine || "maia3",
     result: result || "*",
     status: status || "playing",
   });
+  if (getAccessToken() && typeof window !== "undefined") {
+    const previousCount = localStorage.getItem("sfedu-phase-accuracy-game-count");
+    localStorage.setItem(
+      "sfedu-phase-accuracy-pending",
+      JSON.stringify({
+        requestedAt: Date.now(),
+        baseline: previousCount == null ? null : Number(previousCount),
+      }),
+    );
+    window.dispatchEvent(new Event("sfedu-game-finished"));
+  }
   return data;
 }
 
@@ -353,9 +363,10 @@ export async function fetchExplainMove(
   return data;
 }
 
-export async function fetchPuzzles(count = 20, topic = null) {
+export async function fetchPuzzles(count = 20, topic = null, ratingMin = null) {
   const params = { count };
   if (topic) params.topic = topic;
+  if (ratingMin != null) params.rating_min = ratingMin;
   const { data } = await api.get("/api/learning/puzzles", { params });
   return data;
 }
@@ -378,6 +389,21 @@ export async function recordPuzzleAttempt(puzzleId, correct) {
 
 export async function fetchLearningProgress() {
   const { data } = await api.get("/api/learning/progress");
+  return data;
+}
+
+export async function fetchLearningRecords() {
+  const { data } = await api.get("/api/learning/records");
+  return data;
+}
+
+export async function fetchPhaseAccuracy() {
+  const { data } = await api.get("/api/learning/phase-accuracy");
+  return data;
+}
+
+export async function fetchRatingBandProgress() {
+  const { data } = await api.get("/api/learning/level-progress");
   return data;
 }
 

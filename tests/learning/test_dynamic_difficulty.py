@@ -1,11 +1,15 @@
+from types import SimpleNamespace
+
 from backend.services.adaptive_logic import select_adaptive_puzzles
 from backend.services.difficulty_logic import (
     DEFAULT_DIFFICULTY,
     difficulty_for_rating,
+    initial_difficulty_for_rating,
     next_difficulty,
     puzzle_matches_difficulty,
     rating_band_for_difficulty,
 )
+from backend.services.dynamic_difficulty import effective_player_rating
 
 
 def test_thresholds_are_strict():
@@ -38,6 +42,23 @@ def test_rating_bands():
     assert puzzle_matches_difficulty({"rating": 900}, 1)
     assert puzzle_matches_difficulty({"rating": 1500}, 2)
     assert puzzle_matches_difficulty({"rating": 2100}, 3)
+
+
+def test_starting_difficulty_follows_player_rating():
+    assert initial_difficulty_for_rating(None) == 1
+    assert initial_difficulty_for_rating(1100) == 1
+    assert initial_difficulty_for_rating(1101) == 2
+    assert initial_difficulty_for_rating(1700) == 2
+    assert initial_difficulty_for_rating(1701) == 3
+    assert not puzzle_matches_difficulty({"rating": None}, 1)
+
+
+def test_confirmed_rating_takes_precedence_over_onboarding_estimate():
+    user = SimpleNamespace(assessment_completed_at=None, elo=None, rating_estimate=1800)
+    assert effective_player_rating(user) == 1800
+    user.elo = 850
+    user.assessment_completed_at = "completed"
+    assert effective_player_rating(user) == 850
 
 
 def test_adaptive_selection_prefers_current_topic_difficulty():
