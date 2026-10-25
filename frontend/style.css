@@ -34,6 +34,8 @@ body {
   gap: 24px;
   width: auto;
   margin: 10px 0 0 24px;
+  /* Воздух между контентом и футером (футер прибит к низу). */
+  padding-bottom: 12px;
   flex: 1;
   min-height: 0;
   box-sizing: border-box;
@@ -47,40 +49,54 @@ body {
 }
 
 .top-bar {
-  min-height: 72px;
-  padding: 5px 22px;
+  /* Снизу отступ заметно больше сверху: корона в SVG выше букв
+     (~на 12px при высоте логотипа 58px), а буквы упираются в нижнюю
+     границу картинки. Так просвет от букв (без короны) до верха шапки
+     и от низа букв до низа шапки получается одинаковым. */
+  padding: 4px 15px 18px;
   flex-shrink: 0;
   position: relative;
-  display: flex;
+  /* Три колонки: левая группа (гамбургер), логотип строго по центру,
+     правая группа (анкета/профиль/выход). Логотип центрируется
+     независимо от ширины боковых групп. */
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  justify-content: space-between;
   z-index: 10;
-  border-bottom: 1px solid rgba(34, 90, 115, 0.16);
-  background: linear-gradient(
-    110deg,
-    rgba(255, 255, 255, 0.9),
-    rgba(249, 250, 245, 0.82)
-  );
-  box-shadow: 0 5px 18px rgba(32, 51, 45, 0.07);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
 }
 
-.top-bar::after {
-  content: "";
-  position: absolute;
-  left: 24px;
-  bottom: -1px;
-  width: 86px;
-  height: 2px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, #c9a96e, #83b787);
-  pointer-events: none;
+.top-bar .logo-wrapper {
+  justify-self: center;
+  /* Сдвиг к центру доски: значение считает TopBar и кладёт в --logo-shift.
+     На страницах без доски переменная равна 0px. */
+  transform: translateX(var(--logo-shift, 0px));
+}
+
+.top-bar > .user-box,
+.top-bar > .reg-btn {
+  justify-self: end;
 }
 
 .logo-wrapper {
   position: relative;
   display: inline-block;
+}
+
+/* Логотип в шапке - ссылка на главную страницу. */
+.top-bar a.logo-wrapper {
+  cursor: pointer;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: opacity 0.15s ease;
+}
+
+.top-bar a.logo-wrapper:hover {
+  opacity: 0.82;
+}
+
+.top-bar a.logo-wrapper:focus-visible {
+  outline: 2px solid #C9A96E;
+  outline-offset: 4px;
 }
 
 /* Главная страница: своя скролл-колонка, чтобы футер был в потоке
@@ -93,9 +109,9 @@ body {
   flex-direction: column;
 }
 
-/* Футер в строке пазлов (flex-wrap): на всю ширину следующей строкой. */
+/* Футер в гриде пазлов: отдельной строкой на всю ширину. */
 .puzzles-layout > .site-footer {
-  flex: 1 1 100%;
+  grid-column: 1 / -1;
 }
 .site-footer {
   flex-shrink: 0;
@@ -134,7 +150,7 @@ body {
    Контейнеры страниц имеют нижний padding — компенсируем его отрицательным
    margin-bottom (значения связаны с padding-bottom каждого контейнера). */
 .training-page > .site-footer {
-  margin-bottom: -36px; /* training-page: padding 18px 28px 36px */
+  margin-bottom: -36px; /* training-page: padding 40px 28px 36px */
 }
 
 .admin-page > .site-footer,
@@ -151,7 +167,7 @@ body {
 }
 
 .gigachess-logo {
-  height: 54px;
+  height: 58px;
   width: auto;
   display: block;
 }
@@ -177,6 +193,36 @@ body {
   align-items: center;
   gap: 12px;
 }
+
+/* Кнопка «Выйти» в шапке нужна только там, где меню профиля скрыто
+   (см. MiniProfilePopover.css, до 640px). На широких экранах выход
+   живёт внутри меню профиля. */
+.top-bar-logout-compact {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .top-bar-logout-compact {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  /* На узких экранах логотип крупнее шапки: уменьшаем, иначе он
+     наезжает на гамбургер и выдавливает группу пользователя. */
+  .gigachess-logo {
+    height: 40px;
+  }
+
+  /* Длинный логин не должен выдавливать кнопку выхода за край экрана. */
+  .top-bar .user-name {
+    display: inline-block;
+    max-width: 34vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: middle;
+  }
+}
 .user-name {
   font-family: "Calypso", serif;
   font-size: 16px;
@@ -196,7 +242,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 10px;
+  padding: 0 14px;
   order: 2;
 }
 
@@ -278,6 +324,59 @@ body {
   background: #b89a5e;
 }
 
+/* Выбор стороны при входе на главную: та же карточка, что и итог
+   партии, только вместо одной кнопки — две «медали» сторон. */
+.gameover-card--side {
+  min-width: 330px;
+}
+
+.side-picker {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.side-pick {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 132px;
+  padding: 14px 10px 12px;
+  border: 2px solid rgba(180, 135, 44, 0.5);
+  border-radius: 14px;
+  background: linear-gradient(180deg, #fffdf8 0%, #f4ecdc 100%);
+  cursor: pointer;
+  transition:
+    transform 0.15s ease,
+    border-color 0.2s ease,
+    background 0.2s ease;
+}
+
+.side-pick:hover {
+  transform: translateY(-2px);
+  border-color: rgba(180, 135, 44, 0.95);
+  background: linear-gradient(180deg, #fffefb 0%, #efe5cf 100%);
+}
+
+.side-pick-piece {
+  width: 46px;
+  height: 46px;
+}
+
+.side-pick-name {
+  font-family: "Calypso", serif;
+  font-size: 18px;
+  color: #333;
+}
+
+.side-pick-note {
+  font-family: "Inter", sans-serif;
+  font-size: 11px;
+  color: #837053;
+}
+
 @keyframes gameoverFadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -288,23 +387,30 @@ body {
   100% { transform: scale(1); opacity: 1; }
 }
 
+/* Перевес материала: цифра + иконки фигур, из которых он состоит.
+   Раньше это была абсолютная плашка поверх доски: она вылезала на панель
+   противника и на кнопки, а из-под модальных окон просвечивала. Теперь
+   это обычный элемент строки игрока, прижатый к её правому краю. */
 .material-display {
-  position: absolute;
-  right: -4px;
   display: flex;
-  justify-content: flex-end;
-  padding: 1px 6px;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  padding: 2px 8px 2px 6px;
   background: #cda970;
-  border-radius: 4px;
-  z-index: 10;
+  border-radius: 999px;
 }
 
-.material-display:first-child {
-  top: -20px;
+.material-pieces {
+  display: flex;
+  align-items: center;
+  gap: 1px;
 }
 
-.material-display:last-child {
-  bottom: -20px;
+.material-piece {
+  display: block;
+  width: 16px;
+  height: 16px;
 }
 
 .material-diff {
@@ -313,40 +419,100 @@ body {
   color: #000;
 }
 
+/* Шкала оценки позиции: капсула в палитре страницы - золотая рамка,
+   глубокий зелёный с мраморной текстурой (верхняя сторона) и тёплая
+   бумага (нижняя сторона). Когда доска развёрнута, цвета меняются
+   местами: внизу всегда цвет той стороны, что стоит внизу доски.
+   Золотая риска показывает текущую границу оценки. */
 .eval-bar {
-  width: 46px;
-  border-radius: 8px;
+  width: 38px;
+  border-radius: 999px;
   overflow: hidden;
   position: relative;
-  background: #126b5b;
+  background:
+    linear-gradient(180deg, rgba(38, 74, 46, 0.94) 0%, rgba(23, 46, 29, 0.96) 100%),
+    url(/textures/green-marble.png);
+  background-size: cover;
   flex-shrink: 0;
-  border: 1px solid rgba(18, 107, 91, 0.4);
-  margin: 0 8px;
+  /* Тот же золотой кант, что у панелей страницы. */
+  border: 2px solid rgba(180, 135, 44, 0.85);
+  /* 38 + 12·2 = 62px - тот же след, что учитывает расчёт доски
+     (evalW в Chessboard.jsx). */
+  margin: 0 12px;
   order: 1;
   align-self: center;
+  /* Сдвиг к середине просвета между историей и доской (замеряет
+     EvalBar.jsx). transform, а не margin: раскладка строки не меняется. */
+  transform: translateX(var(--eval-shift, 0px));
+  box-shadow:
+    0 3px 10px rgba(74, 50, 32, 0.2),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.12);
 }
 
-.eval-bar-white {
+/* Доска развёрнута (играем чёрными): верхняя сторона - белые, поэтому
+   фон капсулы становится бумажным, а мрамор уходит в заливку снизу. */
+.eval-bar--bottom-black {
   background: linear-gradient(
-    to top,
-    #f7f8f5 0%,
-    #f7f8f5 97%,
-    rgba(247, 248, 245, 0) 100%
+    180deg,
+    #fffdf8 0%,
+    #f6f0e3 70%,
+    #e9dfc9 100%
   );
-  transition: height 0.4s ease;
-  position: absolute;
-  top: 0;
-  width: 100%;
+  box-shadow:
+    0 3px 10px rgba(74, 50, 32, 0.2),
+    inset 0 0 0 1px rgba(74, 50, 32, 0.08);
 }
 
+.eval-bar-fill {
+  background: linear-gradient(
+    180deg,
+    #fffdf8 0%,
+    #f6f0e3 70%,
+    #e9dfc9 100%
+  );
+  transition: height 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+  position: absolute;
+  width: 100%;
+  bottom: 0;
+  /* Даже при подавляющем перевесе соперника своя часть не схлопывается
+     в ноль: иначе плашка с цифрой вылезает за скругление капсулы. */
+  min-height: 30px;
+  /* Риска на границе заливки: где сейчас оценка, плюс мягкая тень -
+     нижняя часть читается как "над" верхней. */
+  border-top: 2px solid rgba(180, 135, 44, 0.9);
+  box-shadow: 0 -2px 6px rgba(23, 46, 29, 0.25);
+  box-sizing: border-box;
+}
+
+/* Развёрнутая доска: снизу мрамор, сверху бумага. */
+.eval-bar--bottom-black .eval-bar-fill {
+  background:
+    linear-gradient(180deg, rgba(38, 74, 46, 0.94) 0%, rgba(23, 46, 29, 0.96) 100%),
+    url(/textures/green-marble.png);
+  background-size: cover;
+  /* Тень мягкая и тёплая: она ложится на светлую бумагу сверху. */
+  box-shadow: 0 -2px 6px rgba(74, 50, 32, 0.18);
+}
+
+/* Цифра перевеса - отдельная плашка по центру заливки: читается
+   и на белой, и на тёмной части. */
 .eval-bar-label {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  color: #126b5b;
-  font-size: 13px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: rgba(255, 253, 247, 0.92);
+  border: 1px solid rgba(180, 135, 44, 0.7);
+  color: #2f5c36;
+  font-family: "Inter", sans-serif;
+  font-size: 11px;
   font-weight: 700;
+  line-height: 15px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(74, 50, 32, 0.22);
 }
 
 .player-bar {
@@ -507,8 +673,8 @@ body {
 .move-pair {
   display: flex;
   align-items: center;
-  padding: 12px 0; /* РћС‚СЃС‚СѓРїС‹ СЃРІРµСЂС…Сѓ Рё СЃРЅРёР·Сѓ РґРµР»Р°СЋС‚ СЃС‚СЂРѕРєСѓ РґРѕСЃС‚Р°С‚РѕС‡РЅРѕ РІС‹СЃРѕРєРѕР№ (~7 СЃС‚СЂРѕРє РЅР° СЌРєСЂР°РЅ) */
-  border-bottom: 1px solid #a3c7a7; /* РўР° СЃР°РјР°СЏ Р·РµР»РµРЅР°СЏ РїРѕР»РѕСЃРѕС‡РєР°-СЂР°Р·РґРµР»РёС‚РµР»СЊ РёР· РјР°РєРµС‚Р° */
+  padding: 12px 0;
+  border-bottom: none;
 
   font-family: "Calypso", serif;
   font-size: clamp(
@@ -519,10 +685,8 @@ body {
   color: #333;
 }
 
-/* РЈР±РёСЂР°РµРј РЅРёР¶РЅСЋСЋ РїРѕР»РѕСЃРєСѓ Сѓ СЃР°РјРѕРіРѕ РїРѕСЃР»РµРґРЅРµРіРѕ С…РѕРґР° РІ СЃРїРёСЃРєРµ */
-.move-pair:last-child {
-  border-bottom: none;
-}
+/* Полоску между ходами рисует .move-pair::after (см. ниже) — здесь
+   только снимаем старую зелёную рамку у последнего хода. */
 
 .move-pair .num {
   color: #333;
@@ -560,54 +724,185 @@ body {
 }
 
 /* ========================================= */
-/*               Р§РђРў (РџР РђР’РђРЇ РџРђРќР•Р›Р¬)         */
+/*               ЧАТ (ПРАВАЯ ПАНЕЛЬ)         */
 /* ========================================= */
+/* Прозрачная панель чата: сквозь неё виден мрамор страницы, форма задана
+   только золотой рамкой и скруглением 30px, отступ от края окна такой же,
+   как у панели истории. Кант тоньше, чем у бумажных карточек, чтобы панель
+   не выглядела тяжёлой. */
 .chat-section {
-  flex: 1 1 640px;
+  flex: 1 1 520px;
   min-width: 320px;
   max-width: 760px;
 
   height: auto;
   align-self: stretch;
 
-  margin-top: 0;
-  margin-right: 0;
+  /* Симметрично левой панели - такой же отступ от края окна. */
+  margin: 0 24px 0 0;
 
-  border-radius: 0; /* РЎС‚СЂРѕРіРёРµ РїСЂСЏРјС‹Рµ СѓРіР»С‹ */
+  border-radius: 30px;
+  border: 2px solid rgba(180, 135, 44, 0.7);
+  /* Панель прозрачная с лёгкой белой вуалью: мрамор страницы виден,
+     но панель не растворяется на нём. Без зелёного оттенка и размытия. */
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.18);
   z-index: 1;
-
-  /* Р­С„С„РµРєС‚ СЃС‚РµРєР»Р° */
-  background: rgba(255, 255, 255, 0.01);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-
-  /* РћР±РІРѕРґРєР° Рё С‚РµРЅСЊ С‚РµРїРµСЂСЊ С‚РѕР»СЊРєРѕ РЎР›Р•Р’Рђ, С‚Р°Рє РєР°Рє СЃРїСЂР°РІР° СЃСЂРµР· СЌРєСЂР°РЅР° */
-  border-left: 1px solid rgba(255, 255, 255, 0.4);
-  border-top: none;
-  border-right: none;
-  border-bottom: none;
-  box-shadow: -8px 0 32px 0 rgba(0, 0, 0, 0.1);
 
   display: flex;
   flex-direction: column;
   order: 3;
+
+  /* Скруглённые углы: содержимое не должно вылезать за рамку. */
+  overflow: hidden;
 }
 
-/* --- РҐРµРґРµСЂ С‡Р°С‚Р° --- */
+/* --- Свёрнутый чат --- */
+/* Вместо панели остаётся узкая стеклянная полоса: та же рамка и
+   скругление, но ширина 48px, и вся полоса - кнопка разворота.
+   Освободившуюся ширину забирает доска (см. updateBoardSize). */
+.chat-section--collapsed {
+  flex: 0 0 48px;
+  min-width: 48px;
+  max-width: 48px;
+}
+
+/* Пока панель едет по ширине (см. ChatPanel.jsx), содержимое скрыто:
+   иначе история сообщений переливается внутри узкой рамки. Когда
+   ширина доехала, новое содержимое мягко проявляется. */
+.chat-section--sliding > * {
+  opacity: 0;
+}
+
+.chat-section--reveal > * {
+  animation: chatContentIn 0.18s ease both;
+}
+
+/* Пока чат едет по ширине, доска подстраивает свой размер вместе с
+   колонкой: без этого на узких окнах она перескакивает на новый размер
+   сразу и на пару кадров наезжает на шкалу и на панель чата. */
+.main-area:has(.chat-section--sliding)
+  .board-wrapper
+  div[style*="perspective"]
+  > div {
+  transition:
+    width 340ms cubic-bezier(0.4, 0, 0.2, 1),
+    height 340ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes chatContentIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.chat-strip {
+  flex: 1 1 auto;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 0 16px;
+  border: 0;
+  background: transparent;
+  color: #3f6a46;
+  font: inherit;
+  cursor: pointer;
+  transition: background 0.16s ease;
+}
+
+.chat-strip:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.chat-strip:focus-visible {
+  outline: 2px solid rgba(47, 92, 54, 0.55);
+  outline-offset: -4px;
+  border-radius: 28px;
+}
+
+/* Аватар ассистента в маленьком золотом кольце. */
+.chat-strip-avatar {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  box-sizing: border-box;
+  padding: 3px;
+  border-radius: 50%;
+  background: rgba(255, 253, 248, 0.95);
+  border: 1px solid rgba(180, 135, 44, 0.5);
+  box-shadow: 0 1px 4px rgba(74, 50, 32, 0.12);
+}
+
+.chat-strip-avatar img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.chat-strip-chevron {
+  font-size: 18px;
+  line-height: 1;
+  color: #3f6a46;
+}
+
+/* Подпись читается снизу вверх - вертикальная, чтобы влезть в 48px. */
+.chat-strip-title {
+  margin: auto 0;
+  writing-mode: vertical-rl;
+  font-family: "Calypso", serif;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  color: #456b4b;
+  white-space: nowrap;
+}
+
+/* --- Шапка чата --- */
 .chat-header {
-  padding: 15px 40px 25px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  padding: 16px 24px 14px;
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 16px;
+  flex-shrink: 0;
+  position: relative;
 }
 
+/* Золотой волосок под шапкой - тот же металл, что у рамок панелей и
+   разделителей в истории ходов (вместо серой границы). */
+.chat-header::after {
+  content: "";
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    rgba(201, 169, 110, 0) 0%,
+    rgba(180, 135, 44, 0.42) 22%,
+    rgba(180, 135, 44, 0.6) 50%,
+    rgba(180, 135, 44, 0.42) 78%,
+    rgba(201, 169, 110, 0) 100%
+  );
+}
+
+/* Аватар ассистента в золотом кольце на бумажной подложке. */
 .chat-avatar img {
-  width: 55px;
-  height: 55px;
+  width: 52px;
+  height: 52px;
+  box-sizing: border-box;
+  padding: 6px;
   border-radius: 50%;
-  object-fit: cover;
+  object-fit: contain;
   flex-shrink: 0;
+  background: rgba(255, 253, 248, 0.95);
+  border: 2px solid rgba(180, 135, 44, 0.5);
+  box-shadow: 0 1px 4px rgba(74, 50, 32, 0.12);
 }
 
 .chat-title-block {
@@ -624,6 +919,16 @@ body {
   text-transform: uppercase;
 }
 
+/* Заголовок панели чата: раньше тут была строка «ЧАТ» с подписью,
+   теперь сразу название ассистента - в масштабе заголовков соседних
+   панелей (см. .history-title). */
+.chat-title-block h2.chat-panel-title {
+  font-size: clamp(20px, 1.8vw, 32px);
+  font-weight: normal;
+  line-height: 1.1;
+  text-transform: none;
+}
+
 .chat-subtitle {
   font-family: "Calypso", serif;
   font-size: 20px;
@@ -631,47 +936,58 @@ body {
   margin-top: 4px;
 }
 
-/* РЎС‚Р°С‚СѓСЃ Р±Р°СЂ (РµСЃР»Рё РѕРЅ С‚РµР±Рµ РЅСѓР¶РµРЅ РґР»СЏ РѕС‚РѕР±СЂР°Р¶РµРЅРёСЏ РѕРЅР»Р°Р№РЅР°/СЃС‚Р°С‚СѓСЃР°) */
-.status-bar {
+/* Кнопка сворачивания в шапке: неброская бумажная шайба с золотым
+   волоском, по hover становится плотнее. */
+.chat-collapse-btn {
+  margin-left: auto;
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 40px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-  font-size: 13px;
-  color: #555;
-  font-family: Arial, sans-serif;
-}
-
-.status-bar .dot {
-  width: 8px;
-  height: 8px;
+  justify-content: center;
+  padding: 0;
   border-radius: 50%;
-  background: #79b180; /* РњСЏС‚РЅС‹Р№ С†РІРµС‚ РёРЅРґРёРєР°С‚РѕСЂР° */
-  animation: pulse 2s infinite;
+  border: 1px solid rgba(180, 135, 44, 0.45);
+  background: rgba(255, 253, 248, 0.75);
+  color: #3f6a46;
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background 0.16s ease,
+    border-color 0.16s ease,
+    transform 0.12s ease;
 }
 
-@keyframes pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.4;
-  }
+.chat-collapse-btn:hover {
+  background: rgba(255, 253, 248, 0.95);
+  border-color: rgba(180, 135, 44, 0.75);
 }
 
-/* --- РћР±Р»Р°СЃС‚СЊ СЃРѕРѕР±С‰РµРЅРёР№ --- */
+.chat-collapse-btn:active {
+  transform: scale(0.93);
+}
+
+.chat-collapse-btn:focus-visible {
+  outline: 2px solid rgba(47, 92, 54, 0.55);
+  outline-offset: 2px;
+}
+
+/* --- Лента сообщений --- */
 .chat-messages {
   flex: 1;
+  /* Без этого flex-элемент не сжимается ниже содержимого и лента
+     выталкивает поле ввода за пределы панели. */
+  min-height: 0;
   overflow-y: auto;
-  padding: 20px 40px;
+  padding: 20px 24px;
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
-/* РњСЏС‚РЅС‹Р№ СЃРєСЂРѕР»Р»Р±Р°СЂ РєР°Рє РІ РёСЃС‚РѕСЂРёРё С…РѕРґРѕРІ */
+/* Мятный скроллбар как в истории ходов */
 .chat-messages::-webkit-scrollbar {
   width: 6px;
 }
@@ -686,14 +1002,38 @@ body {
   background: #5d9364;
 }
 
-/* --- РћС„РѕСЂРјР»РµРЅРёРµ СЃР°РјРёС… СЃРѕРѕР±С‰РµРЅРёР№ --- */
+/* --- Сообщения --- */
 .chat-msg {
   display: flex;
-  gap: 12px;
-  align-items: flex-end; /* РђРІР°С‚Р°СЂРєР° РїСЂРёР¶РёРјР°РµС‚СЃСЏ Рє РЅРёР·Сѓ СЃРѕРѕР±С‰РµРЅРёСЏ */
+  gap: 10px;
+  align-items: flex-end; /* аватарка прижимается к низу сообщения */
 }
 
-/* Текст и мини-доска в одном столбце — доска не делит сообщение пополам */
+/* Кружок с фигуркой вместо голого глифа: тот же золотой кант, что у
+   аватара в шапке. */
+.chat-msg .msg-avatar {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(255, 253, 248, 0.95);
+  border: 1px solid rgba(180, 135, 44, 0.45);
+  color: #2f5c36;
+  font-size: 16px;
+  line-height: 1;
+}
+
+/* Свои сообщения - на мятной подложке, как «своя» половина жетона
+   игрока в панели истории. */
+.chat-msg .msg-avatar:not(.msg-avatar--ai) {
+  background: rgba(131, 183, 135, 0.28);
+  border-color: rgba(47, 92, 54, 0.25);
+}
+
+/* Текст и мини-доска в одном столбце - доска не делит сообщение пополам */
 .chat-msg .msg-content {
   display: flex;
   flex-direction: column;
@@ -706,101 +1046,159 @@ body {
   max-width: 100%;
 }
 
-/* РџСѓР·С‹СЂСЊ СЃРѕРѕР±С‰РµРЅРёСЏ Р±РѕС‚Р° */
+/* Пузырь ассистента: тёплая бумага с золотым волоском - та же
+   карточка, что у заданий на странице обучения. */
 .chat-msg .msg-body {
-  background: rgba(255, 255, 255, 0.6); /* РџРѕР»СѓРїСЂРѕР·СЂР°С‡РЅС‹Р№ Р±РµР»С‹Р№ С„РѕРЅ */
-  padding: 14px 18px;
-  border-radius: 0; /* РћСЃС‚СЂС‹Р№ СѓРіРѕР» СЃР»РµРІР° РІРЅРёР·Сѓ */
-  font-family:
-    Arial, Helvetica, sans-serif; /* РџСЂРѕСЃС‚РѕР№ С€СЂРёС„С‚ РґР»СЏ С‡РёС‚Р°Р±РµР»СЊРЅРѕСЃС‚Рё */
-  font-size: 15px;
-  line-height: 1.5;
-  color: #333;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 253, 248, 0.94) 0%,
+    rgba(247, 241, 228, 0.86) 100%
+  );
+  border: 1px solid rgba(180, 135, 44, 0.32);
+  padding: 12px 16px;
+  border-radius: 16px 16px 16px 6px;
+  font-family: "Inter", Arial, Helvetica, sans-serif;
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: #3b3b33;
   max-width: 85%;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+  box-shadow: 0 1px 3px rgba(74, 50, 32, 0.08);
 }
 
 /* --- Мини-доска внутри сообщения (display_board_tool) --- */
 .chat-msg .chat-board {
   margin-top: 8px;
   border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(180, 135, 44, 0.32);
   max-width: 230px;
 }
 
-/* РњРѕРґРёС„РёРєР°С‚РѕСЂ РґР»СЏ СЃРѕРѕР±С‰РµРЅРёСЏ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ (РґРѕР±Р°РІСЊ РєР»Р°СЃСЃ "user" Рє div СЃ СЃРѕРѕР±С‰РµРЅРёРµРј СЋР·РµСЂР°) */
+/* Сообщение пользователя: аватар справа, «хвостик» пузыря - вправо. */
 .chat-msg.user {
-  flex-direction: row-reverse; /* РђРІР°С‚Р°СЂРєР° СЃРїСЂР°РІР° */
+  flex-direction: row-reverse;
 }
 
 .chat-msg.user .msg-body {
-  background: #dcecd9; /* РЎРІРµС‚Р»Рѕ-РјСЏС‚РЅС‹Р№ С„РѕРЅ РґР»СЏ С‚РІРѕРёС… СЃРѕРѕР±С‰РµРЅРёР№ */
-  border-radius: 16px 16px 0 16px; /* РћСЃС‚СЂС‹Р№ СѓРіРѕР» СЃРїСЂР°РІР° РІРЅРёР·Сѓ */
+  background: linear-gradient(
+    180deg,
+    rgba(131, 183, 135, 0.34) 0%,
+    rgba(131, 183, 135, 0.2) 100%
+  );
+  border-color: rgba(47, 92, 54, 0.25);
+  border-radius: 16px 16px 6px 16px;
+  color: #24432a;
 }
 
-/* --- РџРѕР»Рµ РІРІРѕРґР° --- */
+/* --- Поле ввода --- */
 .chat-input-area {
-  padding: 20px 40px 30px; /* РЎРЅРёР·Сѓ РѕС‚СЃС‚СѓРї С‡СѓС‚СЊ Р±РѕР»СЊС€Рµ РёР·-Р·Р° СЃРєСЂСѓРіР»РµРЅРёСЏ РїР°РЅРµР»Рё */
-  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  padding: 14px 24px 6px;
   display: flex;
-  gap: 12px;
+  gap: 10px;
+  align-items: center;
+  flex-shrink: 0;
+  position: relative;
+}
+
+/* Волосок над полем ввода отделяет «подвал» панели. */
+.chat-input-area::before {
+  content: "";
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  top: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    rgba(201, 169, 110, 0) 0%,
+    rgba(180, 135, 44, 0.32) 22%,
+    rgba(180, 135, 44, 0.48) 50%,
+    rgba(180, 135, 44, 0.32) 78%,
+    rgba(201, 169, 110, 0) 100%
+  );
 }
 
 .chat-input-area input {
   flex: 1;
-  background: rgba(255, 255, 255, 0.5); /* РЎС‚РµРєР»СЏРЅРЅС‹Р№ РёРЅРїСѓС‚ */
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  border-radius: 20px;
-  padding: 14px 20px;
+  min-width: 0;
+  background: rgba(255, 253, 248, 0.85);
+  border: 2px solid rgba(180, 135, 44, 0.3);
+  border-radius: 16px;
+  padding: 10px 16px;
   color: #333;
-  font-size: 15px;
-  font-family: Arial, sans-serif;
+  font-size: 14px;
+  font-family: "Inter", Arial, sans-serif;
   outline: none;
-  transition: all 0.2s;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
 }
 
 .chat-input-area input:focus {
-  border-color: #79b180;
-  background: rgba(255, 255, 255, 0.9);
+  border-color: #83b787;
+  background: #fffdf8;
+  box-shadow: 0 0 0 3px rgba(131, 183, 135, 0.16);
 }
 
 .chat-input-area input::placeholder {
-  color: #777;
+  color: #8b8a7d;
 }
 
+/* Кнопка «Отправить» в палитре «Импорт» / «Загрузить». */
 .chat-input-area button {
-  background: #83b787; /* РњСЏС‚РЅР°СЏ РєРЅРѕРїРєР° РєР°Рє "РРјРїРѕСЂС‚" */
+  flex-shrink: 0;
+  background: #83b787;
   border: none;
-  border-radius: 30px;
-  padding: 0 25px;
-  color: #fff;
-  font-size: 15px;
-  font-weight: 600;
+  border-radius: 16px;
+  padding: 10px 20px;
+  color: #2b3d2c;
+  font-family: "Calypso", serif;
+  font-size: 17px;
+  line-height: 1.35;
   cursor: pointer;
   transition: background 0.2s;
 }
 
-.chat-input-area button:hover {
+.chat-input-area button:hover:not(:disabled) {
   background: #76a87a;
 }
 
-/* --- Кнопка «Определить дебют» (база знаний) --- */
+.chat-input-area button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* --- Кнопки «Определить дебют» и «Подсказка» --- */
 .chat-opening-btn {
-  margin: 0 40px 22px;
-  padding: 9px 16px;
-  align-self: flex-start;
-  background: rgba(255, 255, 255, 0.55);
-  border: 1px solid rgba(0, 0, 0, 0.14);
+  margin: 0;
+  padding: 10px 14px;
+  align-self: stretch;
+  background: rgba(255, 253, 248, 0.85);
+  border: 1px solid rgba(180, 135, 44, 0.45);
   border-radius: 14px;
-  color: #4a6b4d;
-  font-size: 13px;
-  font-weight: 600;
+  color: #4a3220;
+  font-family: "Calypso", serif;
+  font-size: 15px;
   cursor: pointer;
-  transition: background 0.2s, border-color 0.2s;
+  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
 }
 
 .chat-opening-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.9);
-  border-color: #79b180;
+  background: #fffdf8;
+  border-color: rgba(180, 135, 44, 0.8);
+  box-shadow: 0 1px 4px rgba(74, 50, 32, 0.12);
+}
+
+/* Ряд нижних кнопок чата: дебют + подсказка. */
+.chat-bottom-actions {
+  display: flex;
+  gap: 10px;
+  margin: 6px 24px 16px;
+  align-self: stretch;
+  flex-shrink: 0;
+}
+
+.chat-bottom-actions .chat-opening-btn {
+  margin: 0;
+  flex: 1;
 }
 
 .chat-opening-btn:disabled {
@@ -871,31 +1269,69 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-radius: 41px;
-  background: linear-gradient(45deg, #79b180 28%, #e2ece2 51%);
-  padding: 8px 12px;
-  margin-bottom: 25px;
+  gap: 2px;
+  border-radius: 999px;
+  /* Чистая двухцветная заливка вместо размытого диагонального градиента:
+     своя половина с зелёным подтоном, половина соперника - тёплая бумага.
+     Стык приходится ровно под жетоном VS. */
+  background: linear-gradient(
+    90deg,
+    rgba(131, 183, 135, 0.42) 0%,
+    rgba(131, 183, 135, 0.16) 45%,
+    rgba(255, 253, 248, 0.94) 55%,
+    rgba(255, 253, 248, 0.94) 100%
+  );
+  border: 2px solid rgba(180, 135, 44, 0.5);
+  box-shadow:
+    0 1px 4px rgba(74, 50, 32, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  padding: 6px 8px;
+  /* Живёт под списком ходов: отступ сверху от списка, снизу - до навигации. */
+  margin: 14px 0 18px;
   width: 100%;
-  min-height: 56px; /* Р¤РёРєСЃРёСЂСѓРµРј РјРёРЅРёРјР°Р»СЊРЅСѓСЋ РІС‹СЃРѕС‚Сѓ */
-  flex-shrink: 0; /* Р—Р°РїСЂРµС‰Р°РµРј СЃРїР»СЋС‰РёРІР°РЅРёРµ СЌР»РµРјРµРЅС‚Р° */
+  min-height: 58px;
+  flex-shrink: 0;
   box-sizing: border-box;
 }
 /* Р—РґРµСЃСЊ РјРѕР¶РЅРѕ РґРѕР±Р°РІРёС‚СЊ СЃС‚РёР»Рё С€СЂРёС„С‚РѕРІ РґР»СЏ .player-names РїРѕ РґР°РЅРЅС‹Рј РёР· Dev Mode */
 
 /* --- РЎРїРёСЃРѕРє С…РѕРґРѕРІ (С‡РµСЂРµРґРѕРІР°РЅРёРµ С†РІРµС‚РѕРІ РєР°Рє РЅР° РјР°РєРµС‚Рµ) --- */
 .move-pair {
+  position: relative;
   display: flex;
   align-items: center;
   padding: 12px 6px;
-  border-bottom: 1px solid #a5d6a7;
   font-family: "Calypso", serif;
   font-size: 22px;
   color: #333;
 }
+
+/*
+ * Разделитель между ходами — та же золотая линия, что под заголовком
+ * «История ходов» и в рамке панели: тонкий волосок, растворяющийся
+ * к краям. Рисуем псевдоэлементом, чтобы не трогать высоту строки
+ * и не смещать текст.
+ */
+.move-pair:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    rgba(201, 169, 110, 0) 0%,
+    rgba(201, 169, 110, 0.4) 14%,
+    rgba(180, 135, 44, 0.62) 50%,
+    rgba(201, 169, 110, 0.4) 86%,
+    rgba(201, 169, 110, 0) 100%
+  );
+}
+
 .move-pair.active {
   background-color: #dcecd9; /* РЎРІРµС‚Р»Рѕ-Р·РµР»РµРЅС‹Р№ С„РѕРЅ Р·Р°Р»РёРІРєРё */
   border-radius: 10px;
-  border-bottom: 1px solid transparent;
 }
 .move-pair span {
   padding: 4px 10px;
@@ -1008,10 +1444,35 @@ body {
 
 /* --- РўРѕРЅРєР°СЏ Р»РёРЅРёСЏ РїРѕРґ Р·Р°РіРѕР»РѕРІРєРѕРј --- */
 .title-separator {
+  /* Тонкая золотая линейка: растворяется к краям, в центре - маленький
+     ромб. Тот же металл, что у рамок панелей, поэтому не спорит с ними. */
+  position: relative;
   width: 100%;
   height: 2px;
-  background-color: #69b87c;
-  margin-bottom: 20px;
+  border-radius: 2px;
+  margin-bottom: 22px;
+  background: linear-gradient(
+    90deg,
+    rgba(201, 169, 110, 0) 0%,
+    rgba(201, 169, 110, 0.35) 14%,
+    rgba(180, 135, 44, 0.72) 50%,
+    rgba(201, 169, 110, 0.35) 86%,
+    rgba(201, 169, 110, 0) 100%
+  );
+}
+
+.title-separator::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  transform: translate(-50%, -50%) rotate(45deg);
+  border-radius: 1px;
+  background: #c9a96e;
+  /* Светлая кайма «вырезает» ромб из линии. */
+  box-shadow: 0 0 0 3px rgba(255, 253, 248, 0.9);
 }
 /* РЎС‚РёР»РёР·Р°С†РёСЏ С‚РµРєСЃС‚Р° РІРЅСѓС‚СЂРё РїСЂРѕС„РёР»СЏ */
 .player-avatar,
@@ -1023,55 +1484,79 @@ body {
 .player-name,
 .bot-name {
   font-family: "Calypso", serif;
-  font-size: clamp(
-    14px,
-    1vw,
-    18px
-  ); /* РЎРґРµР»Р°Р»Рё С‡СѓС‚СЊ РјРµРЅСЊС€Рµ, С‡С‚РѕР±С‹ Maia 2 СѓРјРµС‰Р°Р»Р°СЃСЊ Р±РµР· РїРµСЂРµРЅРѕСЃРѕРІ */
-  line-height: 1.2;
+  font-size: clamp(13px, 0.9vw, 16px);
+  line-height: 1.15;
+  white-space: nowrap;
 }
 
 .bot-name {
   text-align: right;
 }
 .vs-text {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: rgba(255, 253, 248, 0.96);
+  border: 1px solid rgba(180, 135, 44, 0.6);
+  box-shadow: 0 1px 2px rgba(74, 50, 32, 0.16);
   font-family: "Calypso", serif;
-  font-size: clamp(
-    16px,
-    1.2vw,
-    20px
-  ); /* РќРµРјРЅРѕРіРѕ СѓРјРµРЅСЊС€РёР»Рё VS, С‡С‚РѕР±С‹ СЃРѕС…СЂР°РЅРёС‚СЊ РїСЂРѕРїРѕСЂС†РёРё */
-  color: #79b180;
-  margin: 0 10px;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  color: #8a6a26;
+  margin: 0 2px;
 }
 
 /* РЎС‚РёР»РёР·Р°С†РёСЏ Р°РІР°С‚Р°СЂРѕРє (РµСЃР»Рё С‚С‹ РЅРµ СЌРєСЃРїРѕСЂС‚РёСЂСѓРµС€СЊ РёС… СЃ С„РѕРЅРѕРј) */
 .player-avatar img,
 .bot-avatar img {
-  /* Гибкий размер для эллипсов (было 55px) */
-  width: clamp(28px, 2vw, 40px);
-  height: clamp(28px, 2vw, 40px);
+  /* Медальоны: иконка в цветном круге с золотым колечком.
+     user-icon.svg нарисован белым, bot-icon.svg - тёмным,
+     поэтому фон у них разный. */
+  width: clamp(26px, 1.7vw, 32px);
+  height: clamp(26px, 1.7vw, 32px);
   border-radius: 50%;
-  object-fit: cover;
-  flex-shrink: 0; /* РЎС‚СЂРѕРіРѕ Р·Р°РїСЂРµС‰Р°РµРј Р±СЂР°СѓР·РµСЂСѓ СЃРїР»СЋС‰РёРІР°С‚СЊ СЃР°РјСѓ РєР°СЂС‚РёРЅРєСѓ РІ РѕРІР°Р» */
+  object-fit: contain;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  padding: 6px;
+  border: 2px solid rgba(180, 135, 44, 0.55);
+}
+
+.player-avatar img {
+  /* Своя сторона: тёмно-зелёный диск, на нём белая иконка читается. */
+  background: linear-gradient(160deg, #5d9a67 0%, #2f5c36 100%);
+}
+
+.bot-avatar img {
+  background: #fffdf8;
 }
 .player-details {
   display: flex;
   flex-direction: column;
-  align-items: flex-start; /* РџСЂРёР¶РёРјР°РµРј С‚РµРєСЃС‚ Рє Р»РµРІРѕРјСѓ РєСЂР°СЋ (Рє Р°РІР°С‚Р°СЂРєРµ) */
+  align-items: flex-start;
+  /* Ширина по содержимому: рейтинг и имя не должны сжиматься. */
+  flex: 0 0 auto;
 }
 .bot-details {
   display: flex;
   flex-direction: column;
-  align-items: flex-end; /* РџСЂРёР¶РёРјР°РµРј С‚РµРєСЃС‚ Рє РїСЂР°РІРѕРјСѓ РєСЂР°СЋ (Рє Р°РІР°С‚Р°СЂРєРµ) */
+  align-items: flex-end;
+  flex: 0 0 auto;
 }
 .player-rating,
 .bot-rating {
-  font-family: "Calypso", serif;
-  font-size: clamp(12px, 1vw, 16px);
-  color: #555;
+  /* Рейтинг - вторичная строка: спокойнее и мельче имени. */
+  font-family: "Inter", sans-serif;
+  font-size: 10.5px;
+  letter-spacing: 0.03em;
+  color: #837053;
   line-height: 1;
-  margin-bottom: 2px; /* РќРµР±РѕР»СЊС€РѕР№ РѕС‚СЃС‚СѓРї РјРµР¶РґСѓ СЂРµР№С‚РёРЅРіРѕРј Рё РёРјРµРЅРµРј */
+  margin-bottom: 3px;
+  white-space: nowrap;
 }
 
 /* ========================================= */
@@ -1653,38 +2138,8 @@ body {
 .top-bar-left {
   display: flex;
   align-items: center;
-  gap: 12px;
-}
-
-@media (max-width: 600px) {
-  .top-bar {
-    min-height: 62px;
-    padding: 4px 12px;
-  }
-
-  .top-bar::after {
-    left: 14px;
-    width: 68px;
-  }
-
-  .top-bar-left {
-    gap: 4px;
-    min-width: 0;
-  }
-
-  .gigachess-logo {
-    height: 44px;
-    max-width: 42vw;
-  }
-
-  .user-box {
-    gap: 6px;
-  }
-
-  .reg-btn {
-    padding: 7px 13px;
-    font-size: 14px;
-  }
+  gap: 8px;
+  justify-self: start;
 }
 
 .hamburger-btn {
@@ -1849,11 +2304,12 @@ body {
 }
 
 .puzzles-layout {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-start;
-  align-items: stretch;
+  /* Жёсткие 3 колонки: инфо | доска | чат. Чат всегда справа и никогда
+     не переносится вниз — переполнение чинилось именно переносом. */
+  display: grid;
+  grid-template-columns: 230px minmax(0, 1fr) minmax(320px, 620px);
   gap: 16px;
+  align-items: stretch;
   width: 100%;
   max-width: 100%;
   margin: 0;
@@ -1862,6 +2318,24 @@ body {
   min-height: 0;
   overflow-y: auto;
   padding: 10px 0 16px 24px;
+}
+
+/* На средних экранах (ноутбук 1280) чат не должен забирать максимум:
+   иначе доске остаётся ~350px. Сужаем колонку чата, доска остаётся
+   играбельной. */
+@media (max-width: 1440px) {
+  .puzzles-layout {
+    grid-template-columns: 230px minmax(0, 1fr) minmax(300px, 420px);
+  }
+}
+
+@media (max-width: 1150px) {
+  .puzzles-layout {
+    grid-template-columns: 1fr;
+  }
+  .puzzle-info-panel {
+    width: 100%;
+  }
 }
 
 /* ========================================= */
@@ -1963,6 +2437,49 @@ body {
   margin-top: 8px;
 }
 
+/* Серия подряд правильно решённых задач: ошибка обнуляет серию
+   (конвенция chess.com), рекорд считается в рамках сессии. */
+.puzzle-streak {
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.puzzle-streak-label {
+  font-family: "Calypso", serif;
+  font-size: 16px;
+  color: #555;
+}
+
+.puzzle-streak-value {
+  font-family: "Calypso", serif;
+  font-size: 32px;
+  color: #225a73;
+  line-height: 1;
+}
+
+/* Активная серия - "горячий" цвет цифры. */
+.puzzle-streak-value--hot {
+  color: #b3541e;
+}
+
+.puzzle-streak-best {
+  font-family: "Inter", sans-serif;
+  font-size: 12px;
+  color: #888;
+}
+
+/* Строчка серии в оверлее "Задача решена!". */
+.puzzle-solved-streak {
+  margin-top: 6px;
+  font-family: "Calypso", serif;
+  font-size: 18px;
+  color: #2f5c36;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.6);
+}
+
 .puzzle-nav-buttons {
   display: flex;
   align-items: center;
@@ -2000,7 +2517,7 @@ body {
 /* ========================================= */
 .puzzle-board-section {
   flex: 1 1 auto;
-  min-width: 320px;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2140,26 +2657,33 @@ body {
 /* ========================================= */
 /*       PUZZLE CHAT SECTION (RIGHT)         */
 /* ========================================= */
+/* Чат по задаче - та же прозрачная панель, что и чат на главной: только
+   золотая рамка и отступ от края окна (раньше панель липла к правому
+   краю экрана). */
 .puzzle-chat-section {
   flex: 1 1 360px;
   min-width: 300px;
   max-width: none;
-  height: calc(100vh - 88px);
+  /* Высоту задаёт строка грида: панель растягивается по доске
+     (align-self: stretch). Но не выше видимой области, иначе на
+     невысоких окнах поле ввода уезжает под экран:
+     100vh - шапка 80 - отступ сверху 10 - снизу 16 - футер 32. */
+  height: auto;
+  max-height: calc(100vh - 138px);
   min-height: 0;
   align-self: stretch;
   box-sizing: border-box;
-  border-radius: 0;
+  margin-right: 24px;
+  border-radius: 30px;
   z-index: 1;
-  background: rgba(255, 255, 255, 0.01);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-left: 1px solid rgba(255, 255, 255, 0.4);
-  border-top: none;
-  border-right: none;
-  border-bottom: none;
-  box-shadow: -8px 0 32px 0 rgba(0, 0, 0, 0.1);
+  /* Та же лёгкая белая вуаль, что и у чата на главной. */
+  background: rgba(255, 255, 255, 0.12);
+  border: 2px solid rgba(180, 135, 44, 0.7);
+  box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.18);
   display: flex;
   flex-direction: column;
+  /* Скруглённые углы: содержимое не должно вылезать за рамку. */
+  overflow: hidden;
 }
 
 .puzzle-chat-section .chat-header {
@@ -2192,55 +2716,52 @@ body {
   padding: 14px 18px 18px;
 }
 
-.top-bar-rating-progress {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: min(330px, calc(100vw - 600px));
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-}
-
-.top-bar-rating-progress .rating-band-progress {
-  width: 100%;
-  padding: 5px 10px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.62);
-}
-
-.top-bar-rating-progress .rating-band-progress__track {
-  height: 5px;
-  margin: 4px 0 3px;
-}
-
-.top-bar-rating-progress .rating-band-progress__title > span,
-.top-bar-rating-progress .rating-band-progress__caption {
-  font-size: 10px;
-}
-
-.top-bar-rating-progress .rating-band-progress__title > strong {
-  font-size: 13px;
-}
-
-.top-bar-rating-progress .rating-band-progress__rating {
-  font-size: 14px;
-}
-
-.top-bar-rating-progress .rating-band-progress__rating small {
-  font-size: 9px;
-}
-
-@media (max-width: 900px) {
-  .top-bar-rating-progress {
-    display: none;
-  }
-}
-
 @media (max-width: 760px) {
   .puzzle-chat-section {
     flex-basis: 100%;
     height: min(72vh, 680px);
   }
+}
+
+/* Свёрнутый чат по задаче: третья колонка грида сужается до полосы
+   (48px) плюс отступ 24px, а освободившаяся ширина уходит доске -
+   ровно как на главной странице. */
+.puzzles-layout--chat-collapsed {
+  grid-template-columns: 230px minmax(0, 1fr) 72px;
+}
+
+/* Узкий экран: раскладка в одну колонку, свёрнутый чат не должен
+   возвращать трёхколоночную сетку. */
+@media (max-width: 1150px) {
+  .puzzles-layout--chat-collapsed {
+    grid-template-columns: 1fr;
+  }
+}
+
+.puzzle-chat-section--collapsed {
+  flex: none;
+  min-width: 0;
+  max-width: 48px;
+}
+
+/* Пока колонка чата едет по ширине (см. PuzzlesPage.jsx), содержимое
+   скрыто, а доска подстраивает размер вместе с колонкой. По завершении
+   содержимое мягко проявляется - так же, как на главной странице. */
+.puzzles-layout--chat-sliding .puzzle-chat-section > * {
+  opacity: 0;
+}
+
+.puzzles-layout--chat-reveal .puzzle-chat-section > * {
+  animation: chatContentIn 0.18s ease both;
+}
+
+.puzzles-layout--chat-sliding
+  .puzzle-board-wrapper
+  div[style*="perspective"]
+  > div {
+  transition:
+    width 340ms cubic-bezier(0.4, 0, 0.2, 1),
+    height 340ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* ========================================= */
@@ -2250,7 +2771,8 @@ body {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 18px 28px 36px;
+  /* Сверху больше воздуха под шапкой, чтобы карточки не липли к логотипу. */
+  padding: 40px 28px 36px;
   font-family: "Inter", sans-serif;
   color: #333;
   /* Колонка ради футера: margin-top:auto у него вжимает его вниз
@@ -2526,10 +3048,6 @@ body {
   justify-self: center;
 }
 
-.training-toolbar .training-task-counter {
-  justify-self: end;
-}
-
 /* Тулбар урока: кнопки по краям (кросс-ссылка переехала под доску). */
 .training-toolbar--spread {
   display: flex;
@@ -2750,31 +3268,6 @@ body {
 .training-page--lesson {
   padding-left: 20px;
   padding-right: 20px;
-}
-
-.training-task-counter {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  min-width: 150px;
-  padding: 7px 13px;
-  border-radius: 18px;
-  background: rgba(131, 183, 135, 0.22);
-  color: #2f5c36;
-  font-size: 13px;
-  font-weight: 600;
-  text-align: center;
-}
-
-.training-task-counter .training-progress-bar {
-  width: 150px;
-}
-
-/* Счётчик внутри панели задания: центрируем над блоком. */
-.training-task-panel > .training-task-counter {
-  width: fit-content;
-  margin: 0 auto 14px;
 }
 
 .training-lesson-layout {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Chessboard as ReactChessboard } from "react-chessboard";
 import { Chess } from "chess.js";
@@ -67,6 +67,10 @@ function uciFromMove(move) {
 }
 
 export default function LevelTestPage({ onCompleted = null, autoStart = false, onAutoStartHandled = null }) {
+  // Свой id доски - иначе доски делят один dnd-менеджер и мини-доски
+  // рисуют у курсора чужую перетаскиваемую фигуру (см. Chessboard.jsx).
+  const boardId = useId();
+
   const navigate = useNavigate();
   const [phase, setPhase] = useState("intro");
   const [questions, setQuestions] = useState([]);
@@ -507,8 +511,9 @@ export default function LevelTestPage({ onCompleted = null, autoStart = false, o
 
         <div className="level-test-content">
           <div className="level-test-board-column">
-            <div className="level-test-board-wrap">
+            <div className="level-test-board-wrap" data-logo-anchor>
               <ReactChessboard
+                id={boardId}
                 position={fen}
                 boardOrientation={orientation}
                 showBoardNotation={true}

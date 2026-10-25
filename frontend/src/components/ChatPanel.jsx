@@ -1,6 +1,7 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useLayoutEffect } from "react";
 import { askLLM, fetchOpeningByFen } from "../api.js";
 import MiniBoard from "./MiniBoard.jsx";
+import ChatCollapsedStrip from "./ChatCollapsedStrip.jsx";
 
 const GREETING_ONLY = /^(привет|здравствуй|хай|hello|hi|hey|пока|до свидания|спасибо|благодарю)$/i;
 const CHESS_MARKERS = /позиц|ход|фигур|ферз|конь|ладь|пешк|слон|рокир|мат|шах|взят|игр|доск|парти|elo|rating|уровн|помоги|объясни|что делать|чем ход|лучш|ход\b|uci|fen|дебют/i;
@@ -70,7 +71,16 @@ function formatMarkdown(text) {
   return s;
 }
 
-export default function ChatPanel({ onAnalyze, onLoadOpening, hintMessage, currentFen, currentMoves }) {
+export default function ChatPanel({
+  onAnalyze,
+  onLoadOpening,
+  hintMessage,
+  currentFen,
+  currentMoves,
+  isComparing,
+  collapsed = false,
+  onToggleCollapsed,
+}) {
   const [messages, setMessages] = useState([
     {
       role: "ai",
@@ -81,6 +91,122 @@ export default function ChatPanel({ onAnalyze, onLoadOpening, hintMessage, curre
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef(null);
   const lastHintMessageIdRef = useRef(null);
+  const rootRef = useRef(null);
+  // Ширина панели в развёрнутом виде: с неё начинается анимация сворачивания.
+  const naturalWidthRef = useRef(0);
+  // Ширина, на которой анимацию прервали повторным кликом: следующий
+  // проезд начинаем ровно оттуда, без скачка.
+  const interruptedRef = useRef(0);
+  const firstRunRef = useRef(true);
+
+  /*
+   * Плавное сворачивание/разворачивание: ширина колонки едет к новому
+   * значению, а строка пересчитывается на каждом кадре - доска и шкала
+   * оценки съезжают вместе с ней. Ширина в развёрнутом виде задана
+   * флексом и зависит от окна, поэтому запоминаем её замером, а не
+   * константой.
+   */
+  useEffect(() => {
+    const el = rootRef.current;
+
+    if (!el || collapsed) {
+      return undefined;
+    }
+
+    const remember = () => {
+      if (el.classList.contains("chat-section--sliding")) return;
+      const width = el.getBoundingClientRect().width;
+      if (width > 0) naturalWidthRef.current = width;
+    };
+
+    remember();
+
+    const observer = new ResizeObserver(remember);
+    observer.observe(el);
+
+    return () => observer.disconnect();
+  }, [collapsed]);
+
+  useLayoutEffect(() => {
+    const el = rootRef.current;
+
+    if (!el) {
+      return undefined;
+    }
+
+    // Первый рендер не анимируем: панель и так уже нужной ширины.
+    if (firstRunRef.current) {
+      firstRunRef.current = false;
+      return undefined;
+    }
+
+    // Снимаем остатки прошлой анимации, иначе замерим не ту ширину.
+    el.classList.remove("chat-section--sliding", "chat-section--reveal");
+    el.style.flex = "";
+    el.style.width = "";
+    el.style.minWidth = "";
+    el.style.maxWidth = "";
+
+    const target = el.getBoundingClientRect().width;
+    const from =
+      interruptedRef.current ||
+      (collapsed ? naturalWidthRef.current : 48);
+
+    interruptedRef.current = 0;
+
+    if (!from || Math.abs(target - from) < 1) {
+      return undefined;
+    }
+
+    const reduceMotion =
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const duration = reduceMotion ? 0 : 340;
+
+    /*
+     * На время анимации ширину задаём инлайном: у свёрнутого класса
+     * жёсткие min/max-width 48px, у развёрнутого - min-width 320px,
+     * они бы не дали панели проехать промежуточные значения.
+     */
+    el.classList.add("chat-section--sliding");
+    el.style.flex = "0 0 auto";
+    el.style.minWidth = "0px";
+    el.style.maxWidth = "none";
+    el.style.width = `${target}px`;
+
+    const animation = el.animate(
+      [{ width: `${from}px` }, { width: `${target}px` }],
+      { duration, easing: "cubic-bezier(0.4, 0, 0.2, 1)" }
+    );
+
+    const finish = () => {
+      el.style.flex = "";
+      el.style.width = "";
+      el.style.minWidth = "";
+      el.style.maxWidth = "";
+      el.classList.remove("chat-section--sliding");
+      el.classList.add("chat-section--reveal");
+
+      if (!collapsed) {
+        naturalWidthRef.current = el.getBoundingClientRect().width;
+      }
+
+      window.setTimeout(() => {
+        el.classList.remove("chat-section--reveal");
+      }, 260);
+    };
+
+    animation.addEventListener("finish", finish, { once: true });
+
+    return () => {
+      if (animation.playState === "running") {
+        interruptedRef.current = el.getBoundingClientRect().width;
+      }
+
+      animation.cancel();
+    };
+  }, [collapsed]);
+
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -205,21 +331,38 @@ export default function ChatPanel({ onAnalyze, onLoadOpening, hintMessage, curre
     setLoading(false);
   };
 
+  /*
+   * Свёрнутый чат: узкая стеклянная полоса во всю высоту колонки.
+   * История сообщений не теряется: компонент не размонтируется,
+   * меняется только разметка.
+   */
+  if (collapsed) {
+    return (
+      <div className="chat-section chat-section--collapsed" ref={rootRef}>
+        <ChatCollapsedStrip onExpand={onToggleCollapsed} />
+      </div>
+    );
+  }
+
   return (
-    <div className="chat-section">
+    <div className="chat-section" ref={rootRef}>
       <div className="chat-header">
         <div className="chat-avatar">
           <img src="\bot-icon.svg" alt="Maia 3" />
         </div>
         <div className="chat-title-block">
-          <h2>ЧАТ</h2>
-          <span className="chat-subtitle">Шахматный ассистент</span>
+          <h2 className="chat-panel-title">Шахматный ассистент</h2>
         </div>
-      </div>
-
-      <div className="status-bar">
-        <span className="dot"></span>
-        <span>Maia Chess Engine подключён</span>
+        <button
+          type="button"
+          className="chat-collapse-btn"
+          onClick={onToggleCollapsed}
+          title="Свернуть чат"
+          aria-label="Свернуть чат"
+          aria-expanded={true}
+        >
+          »
+        </button>
       </div>
 
       <div className="chat-messages">
@@ -228,8 +371,8 @@ export default function ChatPanel({ onAnalyze, onLoadOpening, hintMessage, curre
             className={`chat-msg ${msg.role === "user" ? "user" : ""}`}
             key={i}
           >
-            <div className="msg-avatar">
-              {msg.role === "user" ? "👤" : "⚡"}
+            <div className={`msg-avatar ${msg.role === "ai" ? "msg-avatar--ai" : ""}`}>
+              {msg.role === "user" ? "♟" : "♞"}
             </div>
 
             <div className="msg-content">
@@ -252,7 +395,7 @@ export default function ChatPanel({ onAnalyze, onLoadOpening, hintMessage, curre
 
         {loading && (
           <div className="chat-msg">
-            <div className="msg-avatar">⚡</div>
+            <div className="msg-avatar msg-avatar--ai">♞</div>
             <div className="msg-body">Думаю...</div>
           </div>
         )}
@@ -272,15 +415,26 @@ export default function ChatPanel({ onAnalyze, onLoadOpening, hintMessage, curre
         </button>
       </div>
 
-      <button
-        type="button"
-        className="chat-opening-btn"
-        onClick={handleShowOpening}
-        disabled={loading}
-        title="Определить дебют по текущей позиции"
-      >
-        ♟ Определить дебют
-      </button>
+      <div className="chat-bottom-actions">
+        <button
+          type="button"
+          className="chat-opening-btn"
+          onClick={handleShowOpening}
+          disabled={loading}
+          title="Определить дебют по текущей позиции"
+        >
+          ♟ Определить дебют
+        </button>
+        <button
+          type="button"
+          className="chat-opening-btn"
+          onClick={onAnalyze}
+          disabled={isComparing}
+          title="Показать лучший ход в текущей позиции"
+        >
+          {isComparing ? "Анализ..." : "Подсказка"}
+        </button>
+      </div>
     </div>
   );
 }

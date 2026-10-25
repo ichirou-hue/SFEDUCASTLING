@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { linkChessAccount, saveOnboarding } from "../api.js";
+import { formatApiError } from "../apiErrors.js";
 import "./OnboardingModal.css";
 
 // Дословно из «Анкеты оценки уровня игры», раздел 1 / приложение Д.1.
@@ -100,6 +101,34 @@ export default function OnboardingModal({ isOpen, onClose, onDone }) {
   const [linkError, setLinkError] = useState("");
   const [linked, setLinked] = useState(null);
 
+  // Хуки перетаскивания Q5 — строго до раннего return ниже:
+  // условные хуки ломают порядок вызовов React и роняют модалку.
+  const rankRowRefs = useRef({});
+  const flipFromRef = useRef(null);
+  const dragFromRef = useRef(null);
+  const [dragIndex, setDragIndex] = useState(null);
+  const [dropIndex, setDropIndex] = useState(null);
+
+  // FLIP-анимация перестановки строк Q5: после рендера сдвигаем каждую
+  // строку на измеренную разницу и плавно отпускаем в ноль.
+  useEffect(() => {
+    const from = flipFromRef.current;
+    if (!from) return;
+    flipFromRef.current = null;
+    for (const code of a.q5) {
+      const el = rankRowRefs.current[code];
+      if (!el || from[code] === undefined) continue;
+      const dy = from[code] - el.getBoundingClientRect().top;
+      if (!dy) continue;
+      el.style.transition = "none";
+      el.style.transform = `translateY(${dy}px)`;
+      requestAnimationFrame(() => {
+        el.style.transition = "transform 0.28s ease";
+        el.style.transform = "";
+      });
+    }
+  }, [a.q5]);
+
   if (!isOpen) return null;
 
   const set = (patch) => setA((prev) => ({ ...prev, ...patch }));
@@ -152,6 +181,43 @@ export default function OnboardingModal({ isOpen, onClose, onDone }) {
       [next[index], next[target]] = [next[target], next[index]];
       return { ...prev, q5: next };
     });
+
+  // Замер Y-координат строк Q5 до перестановки; сама FLIP-анимация —
+  // в эффекте выше (хуки обязаны стоять до раннего return).
+  const measureRankFlip = () => {
+    const from = {};
+    for (const code of a.q5) {
+      const el = rankRowRefs.current[code];
+      if (el) from[code] = el.getBoundingClientRect().top;
+    }
+    flipFromRef.current = from;
+  };
+
+  const moveQ5Step = (index, delta) => {
+    const target = index + delta;
+    if (target < 0 || target >= a.q5.length) return;
+    measureRankFlip();
+    moveQ5(index, delta);
+  };
+
+  const moveQ5To = (fromIndex, toIndex) => {
+    if (
+      fromIndex === null ||
+      fromIndex === undefined ||
+      fromIndex === toIndex ||
+      toIndex < 0 ||
+      toIndex >= a.q5.length
+    ) {
+      return;
+    }
+    measureRankFlip();
+    setA((prev) => {
+      const next = [...prev.q5];
+      const [moved] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, moved);
+      return { ...prev, q5: next };
+    });
+  };
 
   const validate = () => {
     if (!a.q1) return "Ответьте на вопрос 1";
@@ -219,19 +285,13 @@ export default function OnboardingModal({ isOpen, onClose, onDone }) {
       setLinked(null);
       setLinkError("");
     } catch (e) {
-      const d = e?.response?.data?.detail;
-      if (Array.isArray(d)) {
-        setError(
-          d
-            .map((x) => String(x?.msg || "").replace(/^Value error,\s*/i, ""))
-            .filter(Boolean)
-            .join("; "),
-        );
-      } else if (typeof d === "string") {
-        setError(d);
-      } else {
-        setError("Не удалось сохранить анкету. Попробуйте ещё раз.");
-      }
+      // Ошибки валидации бэкенда переводим на русский (см. apiErrors.js).
+      setError(
+        formatApiError(
+          e?.response?.data?.detail,
+          "Не удалось сохранить анкету. Попробуйте ещё раз.",
+        ),
+      );
     } finally {
       setSubmitting(false);
     }
@@ -383,7 +443,7 @@ export default function OnboardingModal({ isOpen, onClose, onDone }) {
               3. Зачем вам шахматы?{" "}
               <span className="onb-optional">можно выбрать до 2</span>
             </h3>
-            <div className="onb-options onb-options--wrap">
+            <div className="onb-options onb-options--wrap onb-options--multi">
               {Q3.map(([code, label]) => {
                 const active = a.q3.includes(code);
                 const disabled = !active && a.q3.length >= 2;
@@ -416,7 +476,50 @@ export default function OnboardingModal({ isOpen, onClose, onDone }) {
             </h3>
             <ol className="onb-rank">
               {a.q5.map((code, i) => (
-                <li key={code} className="onb-rank-item">
+                <li
+                  key={code}
+                  ref={(el) => {
+                    if (el) rankRowRefs.current[code] = el;
+                    else delete rankRowRefs.current[code];
+                  }}
+                  className={[
+                    "onb-rank-item",
+                    dragIndex === i ? "onb-rank-item--dragging" : "",
+                    dropIndex === i && dragIndex !== i
+                      ? "onb-rank-item--drop-target"
+                      : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                  draggable
+                  onDragStart={(e) => {
+                    dragFromRef.current = i;
+                    setDragIndex(i);
+                    e.dataTransfer.effectAllowed = "move";
+                    try {
+                      e.dataTransfer.setData("text/plain", String(i));
+                    } catch {
+                      // Firefox требует setData, остальные игнорируют.
+                    }
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = "move";
+                    if (dropIndex !== i) setDropIndex(i);
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    moveQ5To(dragFromRef.current, i);
+                    dragFromRef.current = null;
+                    setDragIndex(null);
+                    setDropIndex(null);
+                  }}
+                  onDragEnd={() => {
+                    dragFromRef.current = null;
+                    setDragIndex(null);
+                    setDropIndex(null);
+                  }}
+                >
                   <span className="onb-rank-pos">{i + 1}</span>
                   <span className="onb-rank-label">{Q5_LABELS[code]}</span>
                   <span className="onb-rank-arrows">
@@ -424,7 +527,7 @@ export default function OnboardingModal({ isOpen, onClose, onDone }) {
                       type="button"
                       className="onb-rank-btn"
                       disabled={i === 0}
-                      onClick={() => moveQ5(i, -1)}
+                      onClick={() => moveQ5Step(i, -1)}
                       aria-label={`Поднять «${Q5_LABELS[code]}»`}
                     >
                       ▲
@@ -433,7 +536,7 @@ export default function OnboardingModal({ isOpen, onClose, onDone }) {
                       type="button"
                       className="onb-rank-btn"
                       disabled={i === a.q5.length - 1}
-                      onClick={() => moveQ5(i, 1)}
+                      onClick={() => moveQ5Step(i, 1)}
                       aria-label={`Опустить «${Q5_LABELS[code]}»`}
                     >
                       ▼

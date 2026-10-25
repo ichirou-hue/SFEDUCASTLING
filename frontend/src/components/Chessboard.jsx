@@ -4,6 +4,7 @@ import {
   useCallback,
   useEffect,
   forwardRef,
+  useId,
   useImperativeHandle,
 } from "react";
 import { Chessboard as ReactChessboard } from "react-chessboard";
@@ -31,6 +32,31 @@ function getCurrentUserId() {
 }
 
 let gameId = "game_" + Date.now();
+
+/*
+ * Имена файлов фигур в public/pieces. Ключи — как в chess.js
+ * (piece.type). Нужны, чтобы рисовать иконки съеденного материала.
+ */
+const PIECE_FILE_NAMES = {
+  p: "pawn",
+  n: "knight",
+  b: "bishop",
+  r: "rook",
+  q: "queen",
+};
+
+/*
+ * Порядок иконок в плашке перевеса: от пешки к ферзю, как в списке
+ * съеденных фигур на chess.com.
+ */
+const MATERIAL_PIECE_ORDER = ["p", "n", "b", "r", "q"];
+
+/*
+ * Начальная позиция: по ней понимаем, что партия только началась —
+ * нужно для первого хода Maia3, когда играем чёрными.
+ */
+const START_POSITION =
+  "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 let audioCtx = null;
 
@@ -64,10 +90,22 @@ function playMoveSound() {
 }
 
 const ChessboardComponent = forwardRef(function ChessboardComponent(
-  { onStateChange },
+  { onStateChange, chatCollapsed = false },
   ref,
 ) {
   const gameRef = useRef(new Chess());
+
+  /*
+   * Уникальный id доски.
+   *
+   * Все доски react-chessboard на странице делят один dnd-менеджер
+   * (библиотека держит его синглтоном на window), а внутренний
+   * CustomDragLayer рисует «фигуру под курсором» только тогда, когда
+   * item.id совпадает с id доски. По умолчанию id = 0 у всех досок,
+   * поэтому при перетаскивании фигуры на главной доске такую же фигуру
+   * рисовала и мини-доска из подсказки - фигура «раздваивалась».
+   */
+  const boardId = useId();
 
   const [fen, setFen] = useState(gameRef.current.fen());
   const [moveHistory, setMoveHistory] = useState([]);
@@ -76,13 +114,21 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
   /*
    * Итог партии для оверлея «Победа / Поражение / Ничья»:
    * null — партия идёт, иначе { outcome: "win"|"loss"|"draw", reason }.
-   * Игрок всегда играет белыми (ходы пускаем только за "w"), поэтому
-   * мат при ходе чёрных — победа игрока, мат при ходе белых — поражение.
+   * Игрок играет выбранной стороной (см. playerColor), поэтому мат при
+   * ходе игрока — поражение, мат при ходе соперника — победа.
    */
   const [gameResult, setGameResult] = useState(null);
 
   const [boardFlipped, setBoardFlipped] = useState(false);
   const [elo, setElo] = useState(1500);
+
+  /*
+   * Сторона игрока: "w" — белые, "b" — чёрные. При открытии главной
+   * страницы показываем меню выбора (та же карточка, что и итог партии),
+   * поэтому по умолчанию выбраны белые, а меню открыто.
+   */
+  const [playerColor, setPlayerColor] = useState("w");
+  const [sidePickerOpen, setSidePickerOpen] = useState(true);
 
   const [isAiThinking, setIsAiThinking] = useState(false);
 
@@ -116,6 +162,30 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
    */
   const [compareData, setCompareData] = useState(null);
   const [isComparing, setIsComparing] = useState(false);
+
+  /*
+   * Номер партии для отложенного ответа Maia3: если начали новую партию
+   * или загрузили другой FEN, пока движок думал, пришедший ход уже
+   * неактуален и применяться не должен.
+   */
+  const gameGenRef = useRef(0);
+
+  /*
+   * Первый ход Maia3 при игре за чёрных запускаем один раз на партию:
+   * иначе повторные рендеры дёргали бы движок заново.
+   */
+  const aiFirstMoveGenRef = useRef(-1);
+
+  /*
+   * Ключ доски. react-chessboard держит позицию в своём внутреннем
+   * состоянии (currentPosition) и обновляет её эффектом от пропа position
+   * через анимацию длиной animationDuration. При резкой внешней смене
+   * позиции (новая партия после мата, загрузка FEN) это состояние может
+   * остаться от прежней позиции — фигуры не обновляются. Смена key
+   * пересоздаёт доску, и она монтируется сразу с нужной позицией
+   * (currentPosition берётся из пропа при монтировании).
+   */
+  const [boardKey, setBoardKey] = useState(0);
 
   const game = gameRef.current;
 
@@ -153,30 +223,105 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
   /*
    * Размер доски.
    */
+  const updateBoardSize = useCallback(() => {
+    const evalW = 62;      // шкала 38px + поля по 12px (см. .eval-bar)
+    const sideW = 260;     // панель истории (фикс. ширина в CSS)
+    const gapW = 24;       // отступы между панелями
+    const sideMargin = 24; // левый отступ от края
+
+    /*
+     * Чат можно свернуть в узкую полосу - тогда его ширина достаётся
+     * доске. Свёрнутая полоса не тянется (flex: 0 0 48px), поэтому
+     * резерв считаем точно: 48px полосы + 24px отступа справа +
+     * 66px хрома колонки доски (паддинги 14+14 и рамка с паддингами
+     * карточки 38), иначе ряд вылез бы за окно.
+     */
+    const chatReserve = chatCollapsed ? 138 : 520;
+
+    const availW =
+      window.innerWidth - evalW - sideW - gapW * 3 - chatReserve - sideMargin;
+
+    /*
+     * Высота — замером живых элементов, а не гаданием по window:
+     * clientHeight .main-area уже исключает топбар, футер, отступы
+     * и хром браузера. Из него вычитаем всё, что лежит в карточке
+     * доски кроме самой доски: верхнюю панель, кнопки, карточку
+     * сравнения, ФЕН-панель, паддинги и рамку. Именно замером, потому
+     * что карточка сравнения появляется только после подсказки и
+     * добавляет ~100px — иначе доска перестаёт помещаться на экране.
+     *
+     * Через scrollHeight, а не offsetHeight: когда содержимого больше,
+     * чем места, карточка сжимается по высоте колонки и offsetHeight
+     * перестаёт отражать реальную высоту содержимого.
+     */
+    const mainEl = document.querySelector(".main-area");
+    const boardBox = boardBoxRef.current;
+    const wrapper = boardBox
+      ? boardBox.closest(".board-wrapper")
+      : null;
+
+    const measuredChrome =
+      wrapper && boardBox
+        ? wrapper.scrollHeight - boardBox.offsetHeight
+        : 0;
+
+    // Минимум — панель противника + кнопки + ФЕН-панель + рамка
+    // с паддингами, когда карточки сравнения ещё нет.
+    const chromeH = Math.max(150, measuredChrome);
+
+    const availH =
+      (mainEl?.clientHeight || window.innerHeight) - chromeH - 12;
+
+    const size = Math.floor(Math.min(availW, availH));
+
+    setBoardWidth(Math.max(360, Math.min(size, 1150)));
+  }, [chatCollapsed]);
+
   useEffect(() => {
-    const updateSize = () => {
-      const evalW = 62;      // eval-bar 46px + отступы
-      const sideW = 260;     // панель истории
-      const gapW = 24;       // отступы между панелями
-      const chatMin = 640;   // доля чата (растёт до 760px)
-      const sideMargin = 24; // левый отступ от края
-      const uiHeight = 110;  // управление + панели вокруг доски
+    updateBoardSize();
 
-      const availW =
-        window.innerWidth - evalW - sideW - gapW * 3 - chatMin - sideMargin;
-      const availH = window.innerHeight * 0.92 - uiHeight;
+    window.addEventListener("resize", updateBoardSize);
 
-      const size = Math.floor(Math.min(availW, availH));
+    /*
+     * Топбар, футер и подгрузка шрифтов меняют высоту колонки уже
+     * после первого замера — пересчитываем по её изменению.
+     * Петли нет: высота .main-area не зависит от размера доски.
+     */
+    const mainEl = document.querySelector(".main-area");
+    let observer;
 
-      setBoardWidth(Math.max(360, Math.min(size, 980)));
+    if (mainEl && typeof ResizeObserver !== "undefined") {
+      observer = new ResizeObserver(() => {
+        /*
+         * Пока чат анимируется, колонка пересчитывается каждый кадр,
+         * и замер высоты в этот момент врёт. Новый размер уже посчитал
+         * эффект выше (по смене chatCollapsed), здесь он не нужен.
+         */
+        if (document.querySelector(".chat-section--sliding")) {
+          return;
+        }
+
+        updateBoardSize();
+      });
+      observer.observe(mainEl);
+    }
+
+    return () => {
+      window.removeEventListener("resize", updateBoardSize);
+
+      if (observer) {
+        observer.disconnect();
+      }
     };
+  }, [updateBoardSize]);
 
-    updateSize();
-
-    window.addEventListener("resize", updateSize);
-
-    return () => window.removeEventListener("resize", updateSize);
-  }, []);
+  /*
+   * Карточка сравнения появляется/меняет высоту после подсказки —
+   * пересчитываем размер доски, чтобы карточка и ФЕН-панель влезали.
+   */
+  useEffect(() => {
+    updateBoardSize();
+  }, [compareData, updateBoardSize]);
 
   const updateStatus = useCallback(() => {
     const g = gameRef.current;
@@ -202,23 +347,9 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
     if (!g || finishSentRef.current || !g.isGameOver()) return;
 
     /*
-     * moveHistory хранит SAN — разворачиваем в UCI для бэкенда.
+     * Итог этой партии считаем обработанным: оверлей показываем один
+     * раз, чтобы он не всплывал снова, если игрок его закрыл.
      */
-    const replay = new Chess();
-    const uciMoves = [];
-
-    for (const san of moveHistory) {
-      try {
-        const m = replay.move(san);
-
-        if (m) uciMoves.push(m.from + m.to + (m.promotion || ""));
-      } catch {
-        break;
-      }
-    }
-
-    if (uciMoves.length === 0) return;
-
     finishSentRef.current = true;
 
     let result = "*";
@@ -236,13 +367,18 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
     }
 
     /*
-     * Оверлей итога партии. Игрок — белые:
-     * мат при ходе чёрных = победа, мат при ходе белых = поражение.
+     * Оверлей итога партии. На мате ход принадлежит проигравшей стороне:
+     * если это сторона игрока — поражение, иначе победа.
      */
     if (g.isCheckmate()) {
       setGameResult(
-        g.turn() === "w"
-          ? { outcome: "loss", reason: "Мат - победили чёрные" }
+        g.turn() === playerColor
+          ? {
+              outcome: "loss",
+              reason: `Мат - победили ${
+                playerColor === "w" ? "чёрные" : "белые"
+              }`,
+            }
           : { outcome: "win", reason: "Мат! Вы победили" },
       );
     } else if (g.isStalemate()) {
@@ -257,6 +393,26 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
       setGameResult({ outcome: "draw", reason: "Ничья" });
     }
 
+    /*
+     * Партию на разбор отправляем, только если ходы разворачиваются
+     * из начальной позиции: после загрузки FEN история начинается
+     * с середины и повтор собрать нельзя.
+     */
+    const replay = new Chess();
+    const uciMoves = [];
+
+    for (const san of moveHistory) {
+      try {
+        const m = replay.move(san);
+
+        if (m) uciMoves.push(m.from + m.to + (m.promotion || ""));
+      } catch {
+        break;
+      }
+    }
+
+    if (uciMoves.length === 0) return;
+
     const uid = getCurrentUserId();
 
     finishGame({
@@ -266,7 +422,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
       result,
       status,
     }).catch(() => {});
-  }, [moveHistory, elo]);
+  }, [moveHistory, elo, playerColor]);
 
   /*
    * Пересчитываем FEN позиции по истории SAN.
@@ -435,6 +591,14 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
 
     const startFen = game.fen();
 
+    /*
+     * Партия начата заново: отложенный ответ движка больше не применять,
+     * а доску пересоздать — иначе react-chessboard может оставить
+     * на ней прежнюю позицию.
+     */
+    gameGenRef.current += 1;
+    setBoardKey((key) => key + 1);
+
     setFen(startFen);
     setMoveHistory([]);
     setGameResult(null);
@@ -448,6 +612,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
     setLegalMovesForSelected([]);
 
     setIsAiThinking(false);
+    setIsComparing(false);
 
     setEvalScore(null);
 
@@ -472,9 +637,36 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
         viewIndex: -1,
         turn: "w",
         evalScore: null,
+        isComparing: false,
       }));
     }
   }, [game, onStateChange]);
+
+  /*
+   * Выбор стороны в меню при входе на страницу: доска разворачивается
+   * так, чтобы игрок был внизу, и партия начинается заново. Если выбраны
+   * чёрные, первый ход сделает Maia3 (эффект ниже — по начальной позиции
+   * с пустой историей).
+   */
+  const handleChooseSide = useCallback(
+    (color) => {
+      setPlayerColor(color);
+      setBoardFlipped(color === "b");
+      setSidePickerOpen(false);
+      handleNewGame();
+    },
+    [handleNewGame],
+  );
+
+  /*
+   * «Новая игра» сначала спрашивает сторону: меню открывается и при
+   * входе на страницу, и по кнопке. Карточку итога прячем, чтобы два
+   * оверлея не накладывались друг на друга.
+   */
+  const openSidePicker = useCallback(() => {
+    setGameResult(null);
+    setSidePickerOpen(true);
+  }, []);
 
   /*
    * Загрузка FEN.
@@ -485,6 +677,13 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
         game.load(newFen);
 
         const validFen = game.fen();
+
+        /*
+         * Позиция загружена извне: отложенный ответ движка отменяем,
+         * доску пересоздаём (см. boardKey).
+         */
+        gameGenRef.current += 1;
+        setBoardKey((key) => key + 1);
 
         setFen(validFen);
         setMoveHistory([]);
@@ -499,6 +698,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
         setLegalMovesForSelected([]);
 
         setIsAiThinking(false);
+        setIsComparing(false);
 
         setEvalScore(null);
 
@@ -570,6 +770,7 @@ const fetchBestMove = useCallback(
     }
 
     setIsComparing(true);
+    onStateChange((prev) => ({ ...prev, isComparing: true }));
 
     try {
       /*
@@ -937,6 +1138,7 @@ const fetchBestMove = useCallback(
       setCompareData(null);
     } finally {
       setIsComparing(false);
+      onStateChange((prev) => ({ ...prev, isComparing: false }));
     }
   },
   [
@@ -955,6 +1157,12 @@ const fetchBestMove = useCallback(
    */
   const makeAiMove = useCallback(async () => {
     if (game.isGameOver() || game.isDraw()) return;
+
+    /*
+     * Номер партии на момент вызова: после ответа движка сверяем —
+     * если партия успела смениться, ход применять нельзя.
+     */
+    const gen = gameGenRef.current;
 
     setIsAiThinking(true);
 
@@ -997,6 +1205,12 @@ const fetchBestMove = useCallback(
         elo,
         uciMoves,
       );
+
+      /*
+       * Пока движок думал, могли начать новую партию или загрузить
+       * другой FEN — тогда этот ход уже не для текущей позиции.
+       */
+      if (gen !== gameGenRef.current) return;
 
       if (data.error) {
         setIsAiThinking(false);
@@ -1258,13 +1472,17 @@ const fetchBestMove = useCallback(
       ).catch(() => {});
 
       /*
-       * После хода игрока Maia3 отвечает.
+       * После хода игрока Maia3 отвечает. Если за это время партию
+       * начали заново — ответ не запрашиваем.
        */
       if (
         !game.isGameOver() &&
         !game.isDraw()
       ) {
-        setTimeout(makeAiMove, 500);
+        const gen = gameGenRef.current;
+        setTimeout(() => {
+          if (gen === gameGenRef.current) makeAiMove();
+        }, 500);
       }
 
       return true;
@@ -1281,6 +1499,37 @@ const fetchBestMove = useCallback(
   );
 
   /*
+   * Играем чёрными: партия начинается с хода Maia3 за белых.
+   *
+   * Условия — начальная позиция, пустая история и закрытое меню выбора
+   * стороны. Запускаем один раз на партию (aiFirstMoveGenRef), чтобы
+   * неудачный запрос не превратился в бесконечный цикл повторов.
+   */
+  useEffect(() => {
+    if (sidePickerOpen || playerColor !== "b") return;
+    if (fen !== START_POSITION || moveHistory.length > 0) return;
+    if (isAiThinking || gameResult) return;
+    if (aiFirstMoveGenRef.current === gameGenRef.current) return;
+
+    aiFirstMoveGenRef.current = gameGenRef.current;
+
+    const gen = gameGenRef.current;
+    const timer = setTimeout(() => {
+      if (gen === gameGenRef.current) makeAiMove();
+    }, 600);
+
+    return () => clearTimeout(timer);
+  }, [
+    sidePickerOpen,
+    playerColor,
+    fen,
+    moveHistory.length,
+    isAiThinking,
+    gameResult,
+    makeAiMove,
+  ]);
+
+  /*
    * Drag & Drop.
    */
   const onDrop = useCallback(
@@ -1288,7 +1537,7 @@ const fetchBestMove = useCallback(
       if (
         isViewMode ||
         isAiThinking ||
-        game.turn() !== "w"
+        game.turn() !== playerColor
       ) {
         return false;
       }
@@ -1302,6 +1551,7 @@ const fetchBestMove = useCallback(
       game,
       isViewMode,
       isAiThinking,
+      playerColor,
       processPlayerMove,
     ],
   );
@@ -1313,7 +1563,8 @@ const fetchBestMove = useCallback(
     (square) => {
       if (isViewMode) return;
       if (isAiThinking) return;
-      if (game.turn() !== "w") return;
+      if (sidePickerOpen) return;
+      if (game.turn() !== playerColor) return;
 
       const piece = game.get(square);
 
@@ -1388,6 +1639,8 @@ const fetchBestMove = useCallback(
       selectedSquare,
       isViewMode,
       isAiThinking,
+      playerColor,
+      sidePickerOpen,
       processPlayerMove,
     ],
   );
@@ -1405,6 +1658,8 @@ const fetchBestMove = useCallback(
     handleNewGame,
     getFen: () => gameRef.current.fen(),
     handleLoadFen,
+    // Кнопка «Подсказка» живёт в ChatPanel — дёргает анализ через ref.
+    requestBestMove: () => fetchBestMove(),
   }));
 
   /*
@@ -1421,6 +1676,18 @@ const fetchBestMove = useCallback(
       b: 3,
       r: 5,
       q: 9,
+    };
+
+    /*
+     * Полный комплект на начало партии: разница с тем, что стоит на
+     * доске, — это съеденные фигуры.
+     */
+    const fullSet = {
+      p: 8,
+      n: 2,
+      b: 2,
+      r: 2,
+      q: 1,
     };
 
     let white = 0;
@@ -1453,54 +1720,45 @@ const fetchBestMove = useCallback(
     const diff = white - black;
     const excess = {};
 
-    if (diff > 0) {
-      let remaining = diff;
+    /*
+     * Перевес показываем по реально съеденным фигурам, а не раскладкой
+     * численной разницы на «удобные» фигуры: если с доски ушёл ферзь,
+     * в перевесе будет ферзь, а не слон с ладьёй.
+     *
+     * По каждому типу фигур считаем, сколько взял лидер и сколько взял
+     * отстающий, взаимные взятия одного типа сокращаем — остаётся то,
+     * что лидер взял сверх соперника.
+     */
+    if (diff !== 0) {
+      const leader = diff > 0 ? "w" : "b";
 
-      ["q", "r", "b", "n", "p"].forEach(
-        (type) => {
-          const count =
-            whitePieces[type] || 0;
+      MATERIAL_PIECE_ORDER.forEach((type) => {
+        const leaderLeft =
+          (leader === "w" ? whitePieces : blackPieces)[type] || 0;
 
-          const needed = Math.min(
-            Math.floor(
-              remaining /
-                pieceValues[type],
-            ),
-            count,
-          );
+        const loserLeft =
+          (leader === "w" ? blackPieces : whitePieces)[type] || 0;
 
-          if (needed > 0) {
-            excess[type] = needed;
+        /*
+         * Math.max(0, ...) — страховка от превращения пешки: взятая
+         * «лишняя» фигура превращения съеденной не считается.
+         */
+        const takenByLeader = Math.max(
+          0,
+          fullSet[type] - Math.max(0, loserLeft),
+        );
 
-            remaining -=
-              needed * pieceValues[type];
-          }
-        },
-      );
-    } else if (diff < 0) {
-      let remaining = Math.abs(diff);
+        const takenByLoser = Math.max(
+          0,
+          fullSet[type] - Math.max(0, leaderLeft),
+        );
 
-      ["q", "r", "b", "n", "p"].forEach(
-        (type) => {
-          const count =
-            blackPieces[type] || 0;
+        const extra = takenByLeader - takenByLoser;
 
-          const needed = Math.min(
-            Math.floor(
-              remaining /
-                pieceValues[type],
-            ),
-            count,
-          );
-
-          if (needed > 0) {
-            excess[type] = needed;
-
-            remaining -=
-              needed * pieceValues[type];
-          }
-        },
-      );
+        if (extra > 0) {
+          excess[type] = extra;
+        }
+      });
     }
 
     return {
@@ -1524,11 +1782,48 @@ const fetchBestMove = useCallback(
     onStateChange,
   ]);
 
-  const MaterialDisplay = ({ diff }) => {
+  /*
+   * Материальный перевес: рядом с числом — иконки конкретных фигур,
+   * которые лидер съел сверх соперника. Цвет иконок — цвет отстающей
+   * стороны: это её фигуры и были съедены.
+   */
+  const MaterialDisplay = ({
+    diff,
+    excess = {},
+    leading = "w",
+  }) => {
     if (diff <= 0) return null;
 
+    const capturedColor =
+      leading === "w" ? "black" : "white";
+
+    const captured = [];
+
+    MATERIAL_PIECE_ORDER.forEach((type) => {
+      const count = excess[type] || 0;
+
+      for (let i = 0; i < count; i += 1) {
+        captured.push(type);
+      }
+    });
+
     return (
-      <div className="material-display">
+      <div
+        className="material-display"
+        title={`Материальный перевес: +${diff}`}
+      >
+        <span className="material-pieces">
+          {captured.map((type, index) => (
+            <img
+              key={`${type}-${index}`}
+              className="material-piece"
+              src={`/pieces/${capturedColor}_${PIECE_FILE_NAMES[type]}.svg`}
+              alt=""
+              aria-hidden="true"
+            />
+          ))}
+        </span>
+
         <span className="material-diff">
           +{diff}
         </span>
@@ -1650,7 +1945,7 @@ const fetchBestMove = useCallback(
 
   return (
     <div className="board-section">
-      <div className="board-wrapper">
+      <div className="board-wrapper" data-logo-anchor>
 
         {/* =====================================================
             Верхняя панель
@@ -1699,6 +1994,22 @@ const fetchBestMove = useCallback(
               cursor: "pointer",
             }}
           />
+
+          {/*
+           * Перевес верхней стороны живёт в её же строке, а не плашкой
+           * поверх доски: так он ничего не перекрывает.
+           */}
+          <MaterialDisplay
+            diff={
+              boardFlipped
+                ? materialAdv.diff
+                : -materialAdv.diff
+            }
+            excess={materialAdv.excess}
+            leading={
+              materialAdv.diff > 0 ? "w" : "b"
+            }
+          />
         </div>
 
         {/* =====================================================
@@ -1711,15 +2022,9 @@ const fetchBestMove = useCallback(
             display: "inline-block",
           }}
         >
-          <MaterialDisplay
-            diff={
-              boardFlipped
-                ? materialAdv.diff
-                : -materialAdv.diff
-            }
-          />
-
           <ReactChessboard
+            key={boardKey}
+            id={boardId}
             position={fen}
             onPieceDrop={onDrop}
             onSquareClick={onSquareClick}
@@ -1917,13 +2222,65 @@ const fetchBestMove = useCallback(
             }
           />
 
-          <MaterialDisplay
-            diff={
-              boardFlipped
-                ? -materialAdv.diff
-                : materialAdv.diff
-            }
-          />
+          {/*
+           * Выбор стороны — та же карточка, что и итог партии.
+           * Открывается при входе на главную и по кнопке «Новая игра»;
+           * клик по фону оставляет текущую сторону и партию.
+           */}
+          {sidePickerOpen && (
+            <div
+              className="gameover-overlay"
+              onClick={() => setSidePickerOpen(false)}
+            >
+              <div
+                className="gameover-card gameover-card--side"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="gameover-title">
+                  За кого играем?
+                </div>
+                <div className="gameover-reason">
+                  Партия начнётся с начальной позиции
+                </div>
+                <div className="side-picker">
+                  <button
+                    type="button"
+                    className="side-pick"
+                    onClick={() => handleChooseSide("w")}
+                  >
+                    <img
+                      className="side-pick-piece"
+                      src="/pieces/white_king.svg"
+                      alt=""
+                    />
+                    <span className="side-pick-name">
+                      Белые
+                    </span>
+                    <span className="side-pick-note">
+                      первый ход ваш
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    className="side-pick"
+                    onClick={() => handleChooseSide("b")}
+                  >
+                    <img
+                      className="side-pick-piece"
+                      src="/pieces/black_king.svg"
+                      alt=""
+                    />
+                    <span className="side-pick-name">
+                      Чёрные
+                    </span>
+                    <span className="side-pick-note">
+                      начнёт Maia 3
+                    </span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/*
            * Итог партии в духе chess.com: затемнение доски + карточка
@@ -1952,7 +2309,7 @@ const fetchBestMove = useCallback(
                 <button
                   type="button"
                   className="gameover-btn"
-                  onClick={handleNewGame}
+                  onClick={openSidePicker}
                 >
                   Новая игра
                 </button>
@@ -1980,38 +2337,38 @@ const fetchBestMove = useCallback(
             ↺ Доска
           </button>
 
+          {/*
+           * «Новая игра» открывает меню выбора стороны: партия начнётся
+           * сразу после выбора. Клик по фону — отмена, текущая партия
+           * остаётся.
+           */}
           <button
             className="ctrl-btn"
             style={{
               background: "#C9A96E",
             }}
             onClick={
-              handleNewGame
+              openSidePicker
             }
           >
             Новая игра
           </button>
 
-          <button
-            className="ctrl-btn"
-            style={{
-              background: "#83b787",
-              opacity:
-                isComparing
-                  ? 0.7
-                  : 1,
-            }}
-            disabled={isComparing}
-            onClick={() =>
-              fetchBestMove(
-                game.fen(),
-              )
+          {/*
+           * Перевес нижней стороны — в её строке под доской,
+           * а не плашкой поверх поля.
+           */}
+          <MaterialDisplay
+            diff={
+              boardFlipped
+                ? -materialAdv.diff
+                : materialAdv.diff
             }
-          >
-            {isComparing
-              ? "Анализ..."
-              : "Лучший ход"}
-          </button>
+            excess={materialAdv.excess}
+            leading={
+              materialAdv.diff > 0 ? "w" : "b"
+            }
+          />
         </div>
 
         {/* =====================================================

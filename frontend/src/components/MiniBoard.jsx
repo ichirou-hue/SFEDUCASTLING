@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { Chessboard as ReactChessboard } from "react-chessboard";
 
 const PIECE_IMAGES = {
@@ -26,6 +27,13 @@ const STOCKFISH_GREEN = "rgba(0, 150, 50, 0.85)";
 const MAIA_ORANGE = "rgba(220, 120, 20, 0.9)";
 
 export default function MiniBoard({ fen, width = 220, lastMove = null, arrows = null }) {
+  /*
+   * Уникальный id доски: все доски react-chessboard на странице делят
+   * один dnd-менеджер, и без своего id мини-доска рисовала бы у курсора
+   * фигуру, которую перетаскивают на главной доске (см. Chessboard.jsx).
+   */
+  const boardId = useId();
+
   const customSquareStyles = {};
 
   if (lastMove && lastMove.from && lastMove.to) {
@@ -44,6 +52,7 @@ export default function MiniBoard({ fen, width = 220, lastMove = null, arrows = 
   return (
     <div className="chat-board">
       <ReactChessboard
+        id={boardId}
         position={fen}
         boardWidth={width}
         arePiecesDraggable={false}

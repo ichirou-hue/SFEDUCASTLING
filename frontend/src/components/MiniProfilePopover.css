@@ -122,14 +122,50 @@
 
 .mini-profile__details-link {
   display: block;
-  margin-top: 4px;
-  padding-top: 9px;
-  border-top: 1px solid rgba(71, 112, 85, 0.12);
   color: #315d47;
   font-size: 12px;
   font-weight: 700;
   text-align: right;
   text-decoration: none;
+}
+
+.mini-profile__footer {
+  display: grid;
+  gap: 8px;
+  margin-top: 4px;
+  padding-top: 9px;
+  border-top: 1px solid rgba(71, 112, 85, 0.12);
+}
+
+/* Внутри общего низа ссылке не нужны собственные рамка и отступы. */
+.mini-profile__footer .mini-profile__details-link {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+  text-align: left;
+}
+
+.mini-profile__logout {
+  width: 100%;
+  padding: 6px 12px;
+  border: 1px solid rgba(180, 135, 44, 0.55);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.55);
+  color: #7a5a2a;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  cursor: pointer;
+  transition:
+    background 0.2s,
+    border-color 0.2s;
+}
+
+.mini-profile__logout:hover,
+.mini-profile__logout:focus-visible {
+  background: rgba(201, 169, 110, 0.22);
+  border-color: rgba(180, 135, 44, 0.85);
 }
 
 .mini-profile__details-link:hover,

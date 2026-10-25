@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { Chessboard as ReactChessboard } from "react-chessboard";
 import { Chess } from "chess.js";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -117,6 +117,10 @@ function getTaskHint(task) {
 }
 
 export default function TrainingPage({ user, onRegister }) {
+  // Свой id доски - иначе доски делят один dnd-менеджер и мини-доски
+  // рисуют у курсора чужую перетаскиваемую фигуру (см. Chessboard.jsx).
+  const boardId = useId();
+
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const requestedModuleSlug = searchParams.get("module");
@@ -302,18 +306,6 @@ export default function TrainingPage({ user, onRegister }) {
     }
     return sections;
   }, [lessons, lessonProgressById]);
-
-  // Сколько заданий текущего урока решено. Пересекаемся с tasks:
-  // solvedTaskIds заполняется по конкретному уроку, но защищаемся,
-  // если после смены урока state ещё не успел сброситься.
-  const solvedCount = useMemo(() => {
-    if (!tasks.length) return 0;
-    let count = 0;
-    for (const task of tasks) {
-      if (solvedTaskIds.has(task.id)) count += 1;
-    }
-    return count;
-  }, [solvedTaskIds, tasks]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1171,8 +1163,9 @@ export default function TrainingPage({ user, onRegister }) {
             Проверить на пазлах этой темы →
           </button>
           {currentTask ? (
-            <div className="training-board-wrapper">
+            <div className="training-board-wrapper" data-logo-anchor>
               <ReactChessboard
+                id={boardId}
                 position={boardFen || currentTask.fen}
                 onPieceDrop={handlePieceDrop}
                 onSquareClick={handleSquareClick}
@@ -1219,17 +1212,6 @@ export default function TrainingPage({ user, onRegister }) {
         </main>
 
         <aside className="training-task-panel">
-          <div className="training-task-counter">
-            <span>
-              Задание {Math.min(taskIndex + 1, tasks.length)} из {tasks.length}
-            </span>
-            {tasks.length > 0 && (
-              <ProgressBar
-                value={(solvedCount * 100) / tasks.length}
-                label={`Решено ${solvedCount} из ${tasks.length} заданий урока`}
-              />
-            )}
-          </div>
           {currentTask && (
             <>
               <div className="training-task-type">
