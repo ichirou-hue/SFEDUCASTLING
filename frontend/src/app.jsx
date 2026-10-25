@@ -14,6 +14,7 @@ import UserProfilePage from "./components/UserProfilePage.jsx";
 import AdminPage from "./components/AdminPage.jsx";
 import LevelTestPage from "./components/LevelTestPage.jsx";
 import "./home.css";
+import "./mobile.css";
 import {
   AUTH_EXPIRED_EVENT,
   fetchCurrentUser,

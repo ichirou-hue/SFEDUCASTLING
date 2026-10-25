@@ -33,7 +33,7 @@ body {
   align-items: stretch;
   gap: 24px;
   width: auto;
-  margin: 10px 0 0 24px;
+  margin: 10px 24px 0;
   /* Воздух между контентом и футером (футер прибит к низу). */
   padding-bottom: 12px;
   flex: 1;

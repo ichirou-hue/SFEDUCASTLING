@@ -283,7 +283,7 @@
 
 /* У каждой рабочей страницы своя сцена; все игровые и учебные элементы
    остаются поверх фона без изменений. */
-.main-area,
+.main-page-scroll,
 .puzzles-page,
 .puzzles-page-shell,
 .training-page,
@@ -296,7 +296,7 @@
   background-position:center;
   background-attachment:fixed
 }
-.main-area {
+.main-page-scroll {
   background-image:linear-gradient(110deg,#07111699,#07111652 58%,#07111680),url("/backgrounds/play-king.webp")
 }
 .puzzles-page,

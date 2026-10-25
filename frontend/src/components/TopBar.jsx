@@ -13,6 +13,15 @@ export default function TopBar({ user, onUserChange, onRegister, onOpenOnboardin
 
   // Плашка видна, пока анкета не заполнена.
   const needsOnboarding = Boolean(user) && !user?.onboarding_completed;
+  const navItems = [
+    { to: "/", label: "Главная", mobileLabel: "Главная", end: true, icon: "M3 10.5 12 3l9 7.5M5.5 9v11h13V9M9 20v-6h6v6" },
+    { to: "/play", label: "Игра", mobileLabel: "Игра", icon: "M7 21c-2.2 0-4-1.8-4-4 0-1.9 1.3-3.5 3-3.9V11a3 3 0 1 1 3-3h2a3 3 0 1 1 3 3v2.1c1.7.4 3 2 3 3.9 0 2.2-1.8 4-4 4H7Z" },
+    { to: "/puzzles", label: "Задачи", mobileLabel: "Задачи", icon: "M4 4h6v5a2 2 0 1 0 4 0V4h6v6h-5a2 2 0 1 0 0 4h5v6h-6v-5a2 2 0 1 0-4 0v5H4v-6h5a2 2 0 1 0 0-4H4V4Z" },
+    { to: "/training", label: "Обучение", mobileLabel: "Учёба", icon: "M3 5.5A2.5 2.5 0 0 1 5.5 3H12v17H5.5A2.5 2.5 0 0 0 3 22V5.5ZM21 5.5A2.5 2.5 0 0 0 18.5 3H12v17h6.5A2.5 2.5 0 0 1 21 22V5.5Z" },
+  ];
+  if (user?.is_admin === true || user?.role === "admin") {
+    navItems.push({ to: "/admin", label: "Администрирование", mobileLabel: "Админ", icon: "M12 3v2m0 14v2m9-9h-2M5 12H3m15.36-6.36-1.42 1.42M7.06 16.94l-1.42 1.42m12.72 0-1.42-1.42M7.06 7.06 5.64 5.64M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z" });
+  }
 
   return (
     <div className="top-bar">
@@ -22,49 +31,22 @@ export default function TopBar({ user, onUserChange, onRegister, onOpenOnboardin
         </Link>
       </div>
       <nav className="top-nav" aria-label="Основная навигация">
-        <NavLink
-          to="/"
-          end
-          className={({ isActive }) =>
-            `top-nav-link ${isActive ? "top-nav-link--active" : ""}`
-          }
-        >
-          Главная
-        </NavLink>
-        <NavLink
-          to="/play"
-          className={({ isActive }) =>
-            `top-nav-link ${isActive ? "top-nav-link--active" : ""}`
-          }
-        >
-          Игра
-        </NavLink>
-        <NavLink
-          to="/puzzles"
-          className={({ isActive }) =>
-            `top-nav-link ${isActive ? "top-nav-link--active" : ""}`
-          }
-        >
-          Задачи
-        </NavLink>
-        <NavLink
-          to="/training"
-          className={({ isActive }) =>
-            `top-nav-link ${isActive ? "top-nav-link--active" : ""}`
-          }
-        >
-          Обучение
-        </NavLink>
-        {user?.is_admin === true || user?.role === "admin" ? (
+        {navItems.map((item) => (
           <NavLink
-            to="/admin"
+            key={item.to}
+            to={item.to}
+            end={item.end}
             className={({ isActive }) =>
               `top-nav-link ${isActive ? "top-nav-link--active" : ""}`
             }
           >
-            Администрирование
+            <svg className="mobile-nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d={item.icon} />
+            </svg>
+            <span className="top-nav-label">{item.label}</span>
+            <span className="top-nav-label-mobile">{item.mobileLabel}</span>
           </NavLink>
-        ) : null}
+        ))}
       </nav>
       {user ? (
         <div className="user-box">

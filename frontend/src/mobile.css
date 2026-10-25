@@ -1,0 +1,835 @@
+/* Mobile-first adjustments for the compact app shell and stacked chess views. */
+.mobile-nav-icon,
+.top-nav-label-mobile {
+  display: none;
+}
+
+@media (max-width: 1150px) and (min-width: 761px) {
+  .main-area {
+    display: grid;
+    flex: 0 0 auto;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "evaluation"
+      "board"
+      "history"
+      "chat";
+    gap: 16px;
+    margin: 18px 24px 24px;
+    padding-bottom: 0;
+  }
+
+  .main-area > .eval-bar {
+    grid-area: evaluation;
+    width: auto;
+    height: 10px !important;
+    min-height: 10px;
+    margin: 0 2px;
+    border-radius: 99px;
+    transform: none;
+  }
+
+  .main-area > .eval-bar .eval-bar-fill {
+    top: 0;
+    right: auto;
+    bottom: auto;
+    left: 0;
+    width: var(--eval-fill, 50%);
+    height: 100% !important;
+    min-height: 0;
+    border-top: 0;
+    border-right: 2px solid rgba(180, 135, 44, 0.9);
+  }
+
+  .main-area > .eval-bar .eval-bar-label {
+    display: none;
+  }
+
+  .main-area > .board-section {
+    grid-area: board;
+    min-width: 0;
+    padding: 0;
+  }
+
+  .main-area .board-wrapper {
+    width: 100%;
+    max-width: 860px;
+  }
+
+  .main-area > .move-history-panel {
+    grid-area: history;
+    width: 100%;
+    max-height: 290px;
+  }
+
+  .main-area > .chat-section {
+    grid-area: chat;
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    min-height: 400px;
+    height: min(52vh, 560px);
+    max-height: none;
+    margin: 0;
+  }
+
+  .main-area > .chat-section--collapsed {
+    min-height: 58px;
+    height: 58px;
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    flex: 0 0 58px;
+  }
+
+  .main-area .chat-strip {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 12px;
+    padding: 10px 14px;
+  }
+
+  .main-area .chat-strip-title {
+    margin: 0;
+    writing-mode: initial;
+  }
+
+  .main-area .chat-strip-chevron {
+    margin-left: auto;
+    transform: rotate(-90deg);
+  }
+}
+
+@media (max-width: 760px) {
+  :root {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html,
+  body {
+    width: 100%;
+    min-width: 320px;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  #root {
+    width: 100%;
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  button,
+  a {
+    touch-action: manipulation;
+  }
+
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+
+  .top-bar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: 1fr;
+    gap: 8px;
+    min-height: 58px;
+    padding: 6px 14px;
+    flex: 0 0 auto;
+  }
+
+  .top-bar-left {
+    grid-column: 1;
+    grid-row: 1;
+    min-width: 0;
+  }
+
+  .top-bar .logo-wrapper {
+    justify-self: start;
+    transform: none;
+  }
+
+  .top-bar .gigachess-logo {
+    width: auto;
+    max-width: 44vw;
+    height: 36px;
+  }
+
+  .top-nav {
+    position: fixed;
+    z-index: 100;
+    right: 10px;
+    bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+    left: 10px;
+    display: flex;
+    align-items: stretch;
+    justify-content: space-around;
+    gap: 2px;
+    width: auto;
+    min-height: 66px;
+    padding: 5px;
+    border: 1px solid rgba(213, 180, 118, 0.36);
+    border-radius: 20px;
+    background: rgba(8, 12, 11, 0.94);
+    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.38);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+  }
+
+  .top-nav-link {
+    display: flex;
+    min-width: 0;
+    min-height: 54px;
+    flex: 1 1 0;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 5px 2px 4px;
+    border-radius: 14px;
+    color: rgba(246, 244, 239, 0.66);
+    font: 500 9px/1.15 Inter, sans-serif;
+    letter-spacing: 0.01em;
+    text-align: center;
+    text-transform: none;
+    white-space: normal;
+  }
+
+  .top-nav-link--active {
+    color: #f0d39b;
+    background: rgba(213, 180, 118, 0.13);
+  }
+
+  .mobile-nav-icon {
+    display: block;
+    width: 21px;
+    height: 21px;
+    flex: 0 0 21px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .top-nav-label-mobile {
+    display: inline;
+  }
+
+  .top-nav-label {
+    display: none;
+  }
+
+  .top-bar .user-box,
+  .top-bar > .reg-btn {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+    max-width: 54vw;
+    gap: 5px;
+  }
+
+  .top-bar .user-name {
+    max-width: 40vw;
+    overflow: hidden;
+    font-size: 14px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .top-bar .onb-badge {
+    max-width: 21vw;
+    overflow: hidden;
+    padding: 7px 8px;
+    font-size: 10px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .top-bar .reg-btn {
+    min-height: 40px;
+    padding: 0 12px;
+    font-size: 11px;
+  }
+
+  .top-bar-logout-compact {
+    min-height: 38px;
+    padding: 0 10px;
+  }
+
+  .main-page-scroll,
+  .home-page,
+  .puzzles-page,
+  .puzzles-page-shell,
+  .training-page,
+  .user-profile-page,
+  .admin-page,
+  .level-test-page {
+    min-height: 0;
+    padding-bottom: calc(92px + env(safe-area-inset-bottom, 0px));
+    scroll-padding-bottom: calc(92px + env(safe-area-inset-bottom, 0px));
+    overscroll-behavior-y: contain;
+  }
+
+  .site-footer {
+    flex-wrap: wrap;
+    gap: 4px 12px;
+    padding: 10px 14px;
+    font-size: 11px;
+    line-height: 1.4;
+    text-align: center;
+  }
+
+  .training-page > .site-footer,
+  .admin-page > .site-footer,
+  .user-profile-page > .site-footer,
+  .level-test-page > .site-footer,
+  .puzzles-layout > .site-footer {
+    margin-bottom: 0;
+  }
+
+  /* Landing page */
+  .home-page {
+    overflow-y: auto;
+  }
+
+  .home-hero {
+    width: 100%;
+    min-height: 0;
+    gap: 18px;
+    padding: 24px 14px 28px;
+  }
+
+  .home-hero-copy {
+    max-width: none;
+    padding: 20px 17px;
+  }
+
+  .home-hero h1 {
+    font-size: clamp(36px, 10vw, 48px);
+  }
+
+  .home-title-line {
+    white-space: normal;
+  }
+
+  .home-lead {
+    margin-top: 12px;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .home-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 9px;
+  }
+
+  .home-primary,
+  .home-secondary {
+    min-height: 48px;
+    gap: 8px;
+    padding: 0 10px;
+    font-size: 12px;
+  }
+
+  .home-proof {
+    align-items: flex-start;
+    margin-top: 18px;
+    font-size: 10px;
+  }
+
+  .home-hero-aside {
+    justify-self: stretch;
+    width: 100%;
+    padding: 14px;
+  }
+
+  /* Play: keep the board primary, then history and the full-width coach. */
+  .main-area {
+    display: grid;
+    flex: 0 0 auto;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "evaluation"
+      "board"
+      "history"
+      "chat";
+    align-items: start;
+    gap: 12px;
+    width: auto;
+    min-width: 0;
+    margin: 12px 12px 20px;
+    padding-bottom: 0;
+  }
+
+  .main-area > .eval-bar {
+    grid-area: evaluation;
+    width: auto;
+    height: 9px !important;
+    min-height: 9px;
+    margin: 0 2px;
+    border-width: 1px;
+    border-radius: 99px;
+    transform: none;
+  }
+
+  .main-area > .eval-bar .eval-bar-fill {
+    top: 0;
+    right: auto;
+    bottom: auto;
+    left: 0;
+    width: var(--eval-fill, 50%);
+    height: 100% !important;
+    min-height: 0;
+    border-top: 0;
+    border-right: 2px solid rgba(180, 135, 44, 0.9);
+    transition: width 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .main-area > .eval-bar .eval-bar-label {
+    display: none;
+  }
+
+  .main-area > .board-section {
+    grid-area: board;
+    width: 100%;
+    min-width: 0;
+    padding: 0;
+  }
+
+  .main-area .board-wrapper {
+    width: 100%;
+    max-width: 100%;
+    padding: 8px;
+    border-radius: 18px;
+  }
+
+  .main-area > .move-history-panel {
+    grid-area: history;
+    width: 100%;
+    max-height: 270px;
+    padding: 14px;
+    border-radius: 20px;
+  }
+
+  .main-area .move-list {
+    flex: 0 1 auto;
+    max-height: 126px;
+  }
+
+  .main-area .history-title {
+    font-size: 20px;
+  }
+
+  .main-area > .chat-section {
+    grid-area: chat;
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    min-height: 380px;
+    height: min(58vh, 520px);
+    max-height: none;
+    margin: 0;
+    border-radius: 20px;
+  }
+
+  .main-area > .chat-section--collapsed {
+    min-height: 58px;
+    height: 58px;
+    flex: 0 0 58px;
+  }
+
+  .main-area .chat-strip {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 10px;
+    padding: 8px 12px;
+  }
+
+  .main-area .chat-strip-title {
+    margin: 0;
+    writing-mode: initial;
+    font-size: 14px;
+  }
+
+  .main-area .chat-strip-chevron {
+    margin-left: auto;
+    transform: rotate(-90deg);
+  }
+
+  .main-area .chat-header {
+    gap: 10px;
+    padding: 12px 14px;
+  }
+
+  .main-area .chat-avatar img {
+    width: 40px;
+    height: 40px;
+  }
+
+  .main-area .chat-title-block h2.chat-panel-title {
+    font-size: 19px;
+  }
+
+  .main-area .chat-messages {
+    padding: 12px;
+  }
+
+  .main-area .chat-input-area {
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .main-area .chat-input-area input {
+    min-height: 44px;
+    padding: 9px 12px;
+  }
+
+  .main-area .chat-input-area button {
+    min-width: 46px;
+    min-height: 44px;
+    padding: 8px 12px;
+  }
+
+  /* Puzzles: compact context card, board, controls, then coach. */
+  .puzzles-page-shell {
+    overflow-y: auto;
+  }
+
+  .puzzles-page {
+    overflow-y: auto;
+  }
+
+  .puzzles-layout,
+  .puzzles-layout--chat-collapsed {
+    display: grid;
+    flex: 0 0 auto;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto;
+    gap: 12px;
+    min-height: 0;
+    overflow: visible;
+    padding: 12px 12px 20px;
+  }
+
+  .puzzle-info-panel {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 5px 9px;
+    padding: 11px 13px;
+    border-radius: 18px;
+    text-align: left;
+  }
+
+  .puzzle-theme-label {
+    font-size: 11px;
+  }
+
+  .puzzle-theme-name {
+    font-size: 15px;
+  }
+
+  .puzzle-theme-icon {
+    width: 34px;
+    height: 34px;
+    margin-left: auto;
+    font-size: 27px;
+    line-height: 34px;
+  }
+
+  .puzzle-instruction {
+    flex-basis: 100%;
+    font-size: 12px;
+  }
+
+  .puzzle-instruction br {
+    display: none;
+  }
+
+  .puzzle-turn-indicator,
+  .puzzle-side {
+    margin-top: 2px;
+    font-size: 11px;
+  }
+
+  .puzzle-board-section {
+    min-width: 0;
+    width: 100%;
+    gap: 9px;
+  }
+
+  .puzzle-board-wrapper {
+    max-width: 100%;
+    padding: 8px;
+    border-radius: 18px;
+  }
+
+  .puzzle-controls {
+    display: grid;
+    width: 100%;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 7px;
+  }
+
+  .puzzle-ctrl-btn {
+    min-height: 44px;
+    padding: 8px 5px;
+    border-radius: 14px;
+    font: 600 11px/1.2 Inter, sans-serif;
+  }
+
+  .puzzle-chat-section,
+  .puzzle-chat-section--collapsed {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    min-height: 380px;
+    height: min(56vh, 500px);
+    max-height: none;
+    margin: 0;
+    border-radius: 20px;
+  }
+
+  .puzzle-chat-section--collapsed {
+    min-height: 58px;
+    height: 58px;
+  }
+
+  .puzzle-chat-section .chat-strip {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 10px;
+    padding: 8px 12px;
+  }
+
+  .puzzle-chat-section .chat-strip-title {
+    margin: 0;
+    writing-mode: initial;
+    font-size: 14px;
+  }
+
+  .puzzle-chat-section .chat-strip-chevron {
+    margin-left: auto;
+    transform: rotate(-90deg);
+  }
+
+  .puzzle-chat-section .chat-header {
+    gap: 10px;
+    padding: 10px 12px;
+  }
+
+  .puzzle-chat-section .chat-title-block h2 {
+    font-size: 18px;
+  }
+
+  .puzzle-chat-section .chat-subtitle {
+    font-size: 12px;
+  }
+
+  .puzzle-chat-section .chat-messages,
+  .puzzle-chat-section .chat-input-area {
+    padding: 10px 12px;
+  }
+
+  .puzzle-chat-section .chat-input-area input {
+    min-height: 44px;
+  }
+
+  /* Training path and lesson flow */
+  .training-page {
+    overflow-y: auto;
+    padding: 16px 12px calc(92px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .training-page--grid,
+  .training-page--grid-with-due {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+
+  .training-hero,
+  .training-module-header {
+    gap: 14px;
+    margin-bottom: 14px;
+    padding: 17px 15px;
+    border-radius: 20px;
+  }
+
+  .training-module-header {
+    align-items: flex-start;
+  }
+
+  .training-module-header-icon {
+    width: 54px;
+    height: 54px;
+    flex: 0 0 54px;
+    border-radius: 16px;
+    font-size: 38px;
+  }
+
+  .training-hero h1,
+  .training-module-header h1 {
+    font-size: 27px;
+    line-height: 1.1;
+  }
+
+  .training-hero p,
+  .training-module-header p {
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .training-modules-path {
+    gap: 12px;
+    padding: 72px 0 8px;
+  }
+
+  .training-modules-path::before {
+    left: 18px;
+  }
+
+  .training-module-node,
+  .training-module-node--left,
+  .training-module-node--right {
+    width: 100%;
+    align-self: stretch;
+    gap: 11px;
+    padding: 13px;
+    border-radius: 18px;
+  }
+
+  .training-page--lesson {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .training-toolbar {
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .training-lesson-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .training-theory-panel,
+  .training-task-panel {
+    padding: 16px;
+    border-radius: 19px;
+  }
+
+  .training-theory-panel h2,
+  .training-task-panel h2 {
+    font-size: 21px;
+  }
+
+  .training-theory-panel p,
+  .training-task-instruction {
+    font-size: 13px;
+    text-align: left;
+  }
+
+  .training-board-column {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .training-board-wrapper {
+    width: fit-content;
+    max-width: 100%;
+    padding: 6px;
+    border-radius: 15px;
+  }
+
+  .training-task-panel .training-options {
+    gap: 8px;
+  }
+
+  .training-due-rail {
+    width: 100%;
+  }
+
+  .training-due-rail--collapsed .training-due-toggle {
+    min-height: 48px;
+  }
+
+  /* Profile, placement test and admin tools use the full phone width. */
+  .user-profile-page,
+  .admin-page,
+  .level-test-page {
+    width: 100%;
+    margin: 0;
+    padding: 16px 12px calc(92px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .user-profile-card,
+  .user-profile-section,
+  .admin-panel,
+  .level-test-card,
+  .level-test-side-card {
+    min-width: 0;
+    padding: 15px;
+    border-radius: 18px;
+  }
+
+  .level-test-content {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .level-test-page h1 {
+    font-size: 26px;
+  }
+
+  .admin-summary,
+  .admin-stats,
+  .admin-tracks {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px;
+  }
+
+  .admin-layout {
+    min-width: 0;
+    gap: 12px;
+  }
+
+  .admin-users-panel,
+  .admin-panel,
+  .user-profile-section {
+    overflow-wrap: anywhere;
+  }
+}
+
+@media (max-width: 380px) {
+  .top-bar {
+    padding-right: 10px;
+    padding-left: 10px;
+  }
+
+  .top-nav {
+    right: 6px;
+    left: 6px;
+  }
+
+  .top-nav-link {
+    font-size: 8px;
+  }
+
+  .home-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .puzzle-ctrl-btn {
+    font-size: 10px;
+  }
+}

@@ -391,15 +391,19 @@ export default function TrainingPage({ user, onRegister }) {
 
   useEffect(() => {
     const updateSize = () => {
-      const availableWidth = Math.max(320, window.innerWidth - 720);
+      const isMobile = window.matchMedia("(max-width: 760px)").matches;
+      const boardColumn = document.querySelector(".training-board-column");
+      const availableWidth = isMobile
+        ? (boardColumn?.clientWidth || window.innerWidth - 24) - 30
+        : window.innerWidth - 720;
       const availableHeight = Math.max(320, window.innerHeight - 180);
-      setBoardWidth(Math.max(320, Math.min(540, availableWidth, availableHeight)));
+      setBoardWidth(Math.max(isMobile ? 240 : 320, Math.min(540, availableWidth, availableHeight)));
     };
 
     updateSize();
     window.addEventListener("resize", updateSize);
     return () => window.removeEventListener("resize", updateSize);
-  }, []);
+  }, [selectedModule?.slug, lesson?.id]);
 
   useEffect(() => {
     if (!currentTask) return;

@@ -134,6 +134,15 @@ export default function ChatPanel({
       return undefined;
     }
 
+    if (window.matchMedia("(max-width: 1150px)").matches) {
+      el.classList.remove("chat-section--sliding", "chat-section--reveal");
+      el.style.flex = "";
+      el.style.width = "";
+      el.style.minWidth = "";
+      el.style.maxWidth = "";
+      return undefined;
+    }
+
     // Первый рендер не анимируем: панель и так уже нужной ширины.
     if (firstRunRef.current) {
       firstRunRef.current = false;
