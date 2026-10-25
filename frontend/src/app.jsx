@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from "react";
-import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import { Routes, Route, Navigate, Link, useNavigate } from "react-router-dom";
 import TopBar from "./components/TopBar.jsx";
-import Sidebar from "./components/Sidebar.jsx";
 import SiteFooter from "./components/SiteFooter.jsx";
 import ChessboardComponent from "./components/Chessboard.jsx";
 import MoveHistory from "./components/MoveHistory.jsx";
@@ -14,6 +13,7 @@ import TrainingPage from "./components/TrainingPage.jsx";
 import UserProfilePage from "./components/UserProfilePage.jsx";
 import AdminPage from "./components/AdminPage.jsx";
 import LevelTestPage from "./components/LevelTestPage.jsx";
+import "./home.css";
 import {
   AUTH_EXPIRED_EVENT,
   fetchCurrentUser,
@@ -80,13 +80,106 @@ function MainPage({ user }) {
   );
 }
 
+function HomePage({ user, onRegister, onOpenOnboarding }) {
+  return (
+    <main className="home-page">
+      <section className="home-hero">
+        <div className="home-hero-copy">
+          <h1>
+            <span className="home-title-line">Думай на ход</span>
+            <br />
+            <em>вперёд.</em>
+          </h1>
+          <p className="home-lead">
+            Играй, решай задачи и учись вместе с ИИ-тренером. Персональный путь
+            к более сильной игре начинается здесь.
+          </p>
+          <div className="home-actions">
+            <Link className="home-primary" to="/play">
+              Начать играть <span aria-hidden="true">↗</span>
+            </Link>
+            {!user ? (
+              <button type="button" className="home-secondary" onClick={onRegister}>
+                Создать аккаунт
+              </button>
+            ) : !user.onboarding_completed ? (
+              <button
+                type="button"
+                className="home-secondary"
+                onClick={onOpenOnboarding}
+              >
+                Подобрать обучение
+              </button>
+            ) : null}
+          </div>
+          <div className="home-proof">
+            <span className="home-proof-mark">♞</span>
+            <span>Твой темп. Твоя стратегия. Твой прогресс.</span>
+          </div>
+        </div>
+        <div className="home-hero-aside" aria-label="Возможности GigaChess">
+          <div className="home-aside-heading">
+            <span>Твой прогресс</span>
+            <span className="home-online-dot" />
+          </div>
+          <div className="home-progress-chart" aria-hidden="true">
+            <div className="home-chart-label">
+              <span>Точность ходов</span>
+              <span>+12%</span>
+            </div>
+            <svg viewBox="0 0 320 130" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="home-chart-fill" x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0%" stopColor="#74d8bf" stopOpacity=".32" />
+                  <stop offset="100%" stopColor="#74d8bf" stopOpacity="0" />
+                </linearGradient>
+              </defs>
+              <path
+                d="M0 112 C24 99 31 78 54 84 S83 100 106 67 S145 81 165 56 S199 61 220 40 S247 67 269 48 S294 28 320 12 V130 H0Z"
+                fill="url(#home-chart-fill)"
+              />
+              <path
+                d="M0 112 C24 99 31 78 54 84 S83 100 106 67 S145 81 165 56 S199 61 220 40 S247 67 269 48 S294 28 320 12"
+                fill="none"
+                stroke="#74d8bf"
+                strokeWidth="3"
+                strokeLinecap="round"
+              />
+            </svg>
+            <div className="home-chart-days">
+              <span>ПН</span><span>ВТ</span><span>СР</span><span>ЧТ</span>
+              <span>ПТ</span><span>СБ</span><span>ВС</span>
+            </div>
+          </div>
+          <div className="home-aside-caption">
+            Каждая партия — возможность стать сильнее.
+          </div>
+          <div className="home-stats">
+            <div>
+              <span>Играй</span>
+              <strong>Свои партии</strong>
+              <small>Игра с Maia и разбор</small>
+            </div>
+            <div>
+              <span>Тренируйся</span>
+              <strong>Тактический расчёт</strong>
+              <small>Задачи под твой уровень</small>
+            </div>
+          </div>
+        </div>
+      </section>
+      <SiteFooter />
+    </main>
+  );
+}
+
+
 export default function App() {
   const navigate = useNavigate();
   const [showRegister, setShowRegister] = useState(false);
   const [authMode, setAuthMode] = useState("register");
   const [authNotice, setAuthNotice] = useState("");
   const [user, setUser] = useState(null);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   // Пока не прочитали localStorage, роль неизвестна — нельзя редиректить с /admin.
   const [authChecked, setAuthChecked] = useState(false);
   // Анкета открывается автоматически после регистрации/входа, пока не заполнена.
@@ -116,7 +209,6 @@ export default function App() {
 
     const handleAuthExpired = () => {
       setUser(null);
-      setSidebarOpen(false);
       setAuthMode("login");
       setAuthNotice("Сессия истекла. Войдите в аккаунт снова.");
       setShowRegister(true);
@@ -158,15 +250,23 @@ export default function App() {
           setAuthNotice("");
           setShowRegister(true);
         }}
-        onMenuClick={() => setSidebarOpen(true)}
-      />
-      <Sidebar
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-        user={user}
       />
       <Routes>
-        <Route path="/" element={<MainPage user={user} />} />
+        <Route
+          path="/"
+          element={
+            <HomePage
+              user={user}
+              onRegister={() => {
+                setAuthMode("register");
+                setAuthNotice("");
+                setShowRegister(true);
+              }}
+              onOpenOnboarding={() => setShowOnboarding(true)}
+            />
+          }
+        />
+        <Route path="/play" element={<MainPage user={user} />} />
         <Route
           path="/puzzles"
           element={
