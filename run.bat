@@ -43,7 +43,19 @@ if not exist .env (
     echo Created .env with the local SQLite database
 )
 
-rem 4. Start the local PostgreSQL 18 cluster only for a local PostgreSQL URL.
+rem 4. Avoid starting a duplicate backend on the same port.
+python -m scripts.check_running_server
+if not errorlevel 1 (
+    echo SFEDUCASTLING is already running at http://127.0.0.1:8005
+    exit /b 0
+)
+if errorlevel 2 (
+    echo ERROR: Port 8005 is occupied, but the process is not SFEDUCASTLING.
+    pause
+    exit /b 1
+)
+
+rem 5. Start the local PostgreSQL 18 cluster only for a local PostgreSQL URL.
 python -c "import os; from dotenv import dotenv_values; from sqlalchemy.engine import make_url; u=make_url(os.getenv('DATABASE_URL') or dotenv_values('.env').get('DATABASE_URL') or 'sqlite+aiosqlite:///'); raise SystemExit(0 if u.get_backend_name() == 'postgresql' and u.host in ('127.0.0.1', 'localhost', '::1') else 1)"
 if not errorlevel 1 (
     if not exist "%ProgramFiles%\PostgreSQL\18\bin\pg_ctl.exe" (
@@ -63,7 +75,7 @@ if not errorlevel 1 (
     )
 )
 
-rem 5. Database (migrations)
+rem 6. Database (migrations)
 echo Updating database...
 python -m scripts.init_db
 if errorlevel 1 (
@@ -72,7 +84,7 @@ if errorlevel 1 (
     exit /b 1
 )
 
-rem 5. Server: http://127.0.0.1:8005
+rem 7. Server: http://127.0.0.1:8005
 rem Run via -m so that the project root lands in sys.path and the
 rem `backend` package resolves (python backend\app.py would not).
 echo Starting server: http://127.0.0.1:8005
