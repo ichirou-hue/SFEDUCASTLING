@@ -26,7 +26,7 @@ export default function TopBar({ user, onUserChange, onRegister, onOpenOnboardin
   return (
     <div className="top-bar">
       <div className="top-bar-left">
-        <Link to="/" className="logo-wrapper" aria-label="GigaChess — главная">
+        <Link to="/" className="logo-wrapper" aria-label="GigaChess: главная">
           <img src="/gigachess-logo.svg" alt="GIGACHESS" className="gigachess-logo" />
         </Link>
       </div>
@@ -72,6 +72,14 @@ export default function TopBar({ user, onUserChange, onRegister, onOpenOnboardin
             </button>
           )}
           <MiniProfilePopover user={user} onUserChange={onUserChange} onLogout={handleLogout} />
+          <button
+            type="button"
+            className="reg-btn reg-btn--ghost top-bar-logout-compact"
+            onClick={handleLogout}
+            aria-label="Выйти из аккаунта"
+          >
+            Выйти
+          </button>
         </div>
       ) : (
         <button className="reg-btn" onClick={onRegister}>Регистрация</button>

@@ -274,7 +274,7 @@ body {
   display: none;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 760px) {
   .top-bar-logout-compact {
     display: inline-flex;
     align-items: center;
