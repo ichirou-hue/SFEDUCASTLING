@@ -43,7 +43,27 @@ if not exist .env (
     echo Created .env with the local SQLite database
 )
 
-rem 4. Database (migrations)
+rem 4. Start the local PostgreSQL 18 cluster only for a local PostgreSQL URL.
+python -c "import os; from dotenv import dotenv_values; from sqlalchemy.engine import make_url; u=make_url(os.getenv('DATABASE_URL') or dotenv_values('.env').get('DATABASE_URL') or 'sqlite+aiosqlite:///'); raise SystemExit(0 if u.get_backend_name() == 'postgresql' and u.host in ('127.0.0.1', 'localhost', '::1') else 1)"
+if not errorlevel 1 (
+    if not exist "%ProgramFiles%\PostgreSQL\18\bin\pg_ctl.exe" (
+        echo ERROR: Local PostgreSQL 18 was selected but pg_ctl.exe was not found.
+        pause
+        exit /b 1
+    )
+    "%ProgramFiles%\PostgreSQL\18\bin\pg_ctl.exe" status -D "%ProgramFiles%\PostgreSQL\18\data" >nul 2>&1
+    if errorlevel 1 (
+        echo Starting local PostgreSQL 18...
+        "%ProgramFiles%\PostgreSQL\18\bin\pg_ctl.exe" start -D "%ProgramFiles%\PostgreSQL\18\data" -w -t 30
+        if errorlevel 1 (
+            echo ERROR: Could not start the local PostgreSQL 18 cluster.
+            pause
+            exit /b 1
+        )
+    )
+)
+
+rem 5. Database (migrations)
 echo Updating database...
 python -m scripts.init_db
 if errorlevel 1 (
