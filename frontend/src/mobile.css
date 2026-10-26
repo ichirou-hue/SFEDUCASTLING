@@ -15,7 +15,8 @@
       "history"
       "chat";
     gap: 16px;
-    margin: 18px 24px 24px;
+    width: min(calc(100% - 48px), 860px);
+    margin: 18px auto 24px;
     padding-bottom: 0;
   }
 

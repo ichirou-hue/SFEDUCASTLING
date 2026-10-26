@@ -29,11 +29,11 @@ body {
 }
 .main-area {
   display: flex;
-  justify-content: flex-start;
-  align-items: stretch;
+  justify-content: center;
+  align-items: center;
   gap: 24px;
-  width: auto;
-  margin: 10px 24px 0;
+  width: min(calc(100% - 48px), 1880px);
+  margin: 10px auto 0;
   /* Воздух между контентом и футером (футер прибит к низу). */
   padding-bottom: 12px;
   flex: 1;
@@ -807,12 +807,11 @@ body {
   flex: 1 1 520px;
   min-width: 320px;
   max-width: 760px;
-
-  height: auto;
-  align-self: stretch;
-
-  /* Симметрично левой панели - такой же отступ от края окна. */
-  margin: 0 24px 0 0;
+  height: min(680px, 100%);
+  min-height: min(420px, 100%);
+  max-height: 680px;
+  align-self: center;
+  margin: 0;
 
   border-radius: 30px;
   border: 2px solid rgba(180, 135, 44, 0.7);
@@ -1285,8 +1284,10 @@ body {
 .move-history-panel {
   flex-shrink: 0;
   width: 260px;
-  height: auto;
-  align-self: stretch;
+  height: min(680px, 100%);
+  min-height: min(360px, 100%);
+  max-height: 680px;
+  align-self: center;
   border-radius: 30px;
   border: 3px solid rgba(180, 135, 44, 0.85);
   background: rgba(255, 255, 255, 0.87);
@@ -2382,15 +2383,16 @@ body {
   display: grid;
   grid-template-columns: 230px minmax(0, 1fr) minmax(320px, 620px);
   gap: 16px;
-  align-items: stretch;
-  width: 100%;
-  max-width: 100%;
-  margin: 0;
+  align-items: center;
+  align-content: center;
+  width: min(calc(100% - 48px), 1880px);
+  max-width: 1880px;
+  margin: 0 auto;
   box-sizing: border-box;
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 10px 0 16px 24px;
+  padding: 10px 0 16px;
 }
 
 /* На средних экранах (ноутбук 1280) чат не должен забирать максимум:
@@ -2405,9 +2407,17 @@ body {
 @media (max-width: 1150px) {
   .puzzles-layout {
     grid-template-columns: 1fr;
+    align-content: start;
+    justify-items: center;
+    width: min(calc(100% - 32px), 860px);
+    margin: 0 auto;
+    padding: 10px 0 16px;
   }
-  .puzzle-info-panel {
+  .puzzle-info-panel,
+  .puzzle-board-section,
+  .puzzle-chat-section {
     width: 100%;
+    max-width: 780px;
   }
 }
 
@@ -2736,17 +2746,14 @@ body {
 .puzzle-chat-section {
   flex: 1 1 360px;
   min-width: 300px;
-  max-width: none;
-  /* Высоту задаёт строка грида: панель растягивается по доске
-     (align-self: stretch). Но не выше видимой области, иначе на
-     невысоких окнах поле ввода уезжает под экран:
-     100vh - шапка 80 - отступ сверху 10 - снизу 16 - футер 32. */
-  height: auto;
-  max-height: calc(100vh - 138px);
-  min-height: 0;
-  align-self: stretch;
+  max-width: 620px;
+  /* Ограничиваем панель по высоте и центрируем рядом с доской. */
+  height: min(680px, calc(100vh - 138px));
+  max-height: 680px;
+  min-height: min(420px, calc(100vh - 138px));
+  align-self: center;
   box-sizing: border-box;
-  margin-right: 24px;
+  margin-right: 0;
   border-radius: 30px;
   z-index: 1;
   /* Та же лёгкая белая вуаль, что и у чата на главной. */
@@ -3895,19 +3902,28 @@ body {
    панели не перекрывает и не сдвигает курс. */
 .training-page--grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1600px);
+  justify-content: center;
   align-content: start;
   align-items: start;
   gap: 20px;
 }
 
 .training-page--grid-with-due {
-  grid-template-columns: minmax(0, 1fr) 82px;
+  grid-template-columns: minmax(0, 1600px) 82px;
+  justify-content: center;
   transition: grid-template-columns 0.22s ease;
 }
 
 .training-page--grid-with-due.training-page--due-open {
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 350px);
+  grid-template-columns: minmax(0, 1600px) minmax(280px, 350px);
+}
+
+.training-page--lessons .training-module-header,
+.training-page--lessons > .training-global-error {
+  width: min(100%, 900px);
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .training-course-main {
