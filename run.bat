@@ -39,8 +39,8 @@ if exist maia3\pyproject.toml (
 
 rem 3. Configuration
 if not exist .env (
-    copy .env.example .env >nul
-    echo Created .env from .env.example
+    >.env echo DATABASE_URL=sqlite+aiosqlite:///./backend.db
+    echo Created .env with the local SQLite database
 )
 
 rem 4. Database (migrations)

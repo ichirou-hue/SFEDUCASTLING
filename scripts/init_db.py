@@ -16,16 +16,20 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import getpass
+import os
 import sys
 from pathlib import Path
 
 from alembic import command
 from alembic.config import Config
 from alembic.script import ScriptDirectory
+from dotenv import set_key
 from sqlalchemy.engine import make_url
 from sqlalchemy.exc import DBAPIError
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+DATABASE_URL_ENV_AT_START = os.environ.get("DATABASE_URL")
 
 
 def _safe_database_url(url: str) -> str:
@@ -34,6 +38,47 @@ def _safe_database_url(url: str) -> str:
         return make_url(url).render_as_string(hide_password=True)
     except Exception:
         return "<некорректный DATABASE_URL>"
+
+
+def _repair_postgres_password(cfg: Config, url: str) -> bool:
+    """Локально обновляет сохранённый пароль после отказа PostgreSQL."""
+    if not sys.stdin.isatty():
+        print(
+            "PostgreSQL отклонил пароль. Запусти run.bat из окна PowerShell, "
+            "чтобы безопасно обновить пароль локально.",
+            file=sys.stderr,
+        )
+        return False
+
+    password = getpass.getpass("Актуальный пароль PostgreSQL (ввод скрыт): ")
+    if not password:
+        print("Пароль не введён. Настройки не изменены.", file=sys.stderr)
+        return False
+
+    updated_url = make_url(url).set(password=password).render_as_string(hide_password=False)
+    if DATABASE_URL_ENV_AT_START is None:
+        set_key(BASE_DIR / ".env", "DATABASE_URL", updated_url, quote_mode="always")
+        print("Локальный .env обновлён. Повторяю миграции...")
+    else:
+        print(
+            "DATABASE_URL задана переменной среды и перекрывает .env. "
+            "Пароль обновится только для этого запуска.",
+            file=sys.stderr,
+        )
+
+    os.environ["DATABASE_URL"] = updated_url
+    from backend.config.settings import settings
+
+    settings.database.url = updated_url
+    try:
+        command.upgrade(cfg, "head")
+    except DBAPIError:
+        print(
+            "PostgreSQL снова отклонил подключение. Проверь пароль, пользователя и базу.",
+            file=sys.stderr,
+        )
+        return False
+    return True
 
 
 def _alembic_config() -> Config:
@@ -105,11 +150,8 @@ def main(argv: list[str] | None = None) -> int:
     except DBAPIError as error:
         message = str(error.orig).lower()
         if "password authentication failed" in message:
-            print(
-                "PostgreSQL отклонил пароль. Проверь DATABASE_URL в локальном .env. "
-                "Пароль намеренно не выводится.",
-                file=sys.stderr,
-            )
+            if not _repair_postgres_password(cfg, settings.database.url):
+                return 1
         else:
             print(
                 f"Не удалось подключиться к базе {safe_url}. Проверь доступность БД и настройки .env.",
