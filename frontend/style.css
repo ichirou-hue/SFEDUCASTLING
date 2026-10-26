@@ -30,7 +30,7 @@ body {
 .main-area {
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: flex-start;
   gap: 24px;
   width: min(calc(100% - 48px), 1880px);
   margin: 10px auto 0;
@@ -810,7 +810,7 @@ body {
   height: min(680px, 100%);
   min-height: min(420px, 100%);
   max-height: 680px;
-  align-self: center;
+  align-self: flex-start;
   margin: 0;
 
   border-radius: 30px;
@@ -1287,7 +1287,7 @@ body {
   height: min(680px, 100%);
   min-height: min(360px, 100%);
   max-height: 680px;
-  align-self: center;
+  align-self: flex-start;
   border-radius: 30px;
   border: 3px solid rgba(180, 135, 44, 0.85);
   background: rgba(255, 255, 255, 0.87);
@@ -2383,8 +2383,8 @@ body {
   display: grid;
   grid-template-columns: 230px minmax(0, 1fr) minmax(320px, 620px);
   gap: 16px;
-  align-items: center;
-  align-content: center;
+  align-items: start;
+  align-content: start;
   width: min(calc(100% - 48px), 1880px);
   max-width: 1880px;
   margin: 0 auto;
@@ -2751,7 +2751,7 @@ body {
   height: min(680px, calc(100vh - 138px));
   max-height: 680px;
   min-height: min(420px, calc(100vh - 138px));
-  align-self: center;
+  align-self: start;
   box-sizing: border-box;
   margin-right: 0;
   border-radius: 30px;
