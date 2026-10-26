@@ -888,7 +888,12 @@ export default function TrainingPage({ user, onRegister }) {
     const course = progress?.modules;
 
     return (
-      <div className="training-page training-page--grid training-page--grid-with-due" ref={pageRef}>
+      <div
+        className={`training-page training-page--grid training-page--grid-with-due${
+          duePanelOpen ? " training-page--due-open" : ""
+        }`}
+        ref={pageRef}
+      >
         <main className="training-course-main">
         <section className="training-hero">
           <div className="training-kicker">Учебный режим</div>

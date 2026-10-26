@@ -2926,6 +2926,8 @@ body {
 /*              TRAINING PAGE                */
 /* ========================================= */
 .training-page {
+  box-sizing: border-box;
+  width: 100%;
   flex: 1;
   min-height: 0;
   overflow-y: auto;
@@ -3014,6 +3016,7 @@ body {
   line-height: 1.6;
   color: #555;
   font-size: 15px;
+  text-align: justify;
 }
 
 .training-kicker {
@@ -3029,7 +3032,7 @@ body {
 .training-modules-path {
   position: relative;
   width: 100%;
-  max-width: 1000px;
+  max-width: none;
   margin: 0 auto;
   padding: 112px 0 10px;
   display: flex;
@@ -3051,7 +3054,7 @@ body {
 
 .training-module-node {
   position: relative;
-  width: min(560px, 84%);
+  width: min(720px, 88%);
   padding: 18px 20px;
   border: 2px solid rgba(131, 183, 135, 0.7);
   border-radius: 24px;
@@ -3111,6 +3114,7 @@ body {
   font-size: 13px;
   line-height: 1.45;
   color: #666;
+  text-align: justify;
 }
 
 .training-module-meta {
@@ -3860,7 +3864,12 @@ body {
 }
 
 .training-page--grid-with-due {
-  grid-template-columns: minmax(0, 1fr) 350px;
+  grid-template-columns: minmax(0, 1fr) 82px;
+  transition: grid-template-columns 0.22s ease;
+}
+
+.training-page--grid-with-due.training-page--due-open {
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 350px);
 }
 
 .training-course-main {
@@ -4061,6 +4070,7 @@ body {
 @media (max-width: 1150px) {
   .training-page--grid-with-due {
     grid-template-columns: minmax(0, 1fr);
+    transition: none;
   }
 
   .training-due-rail {
