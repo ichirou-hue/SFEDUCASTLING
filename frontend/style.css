@@ -513,7 +513,7 @@ body {
      (evalW в Chessboard.jsx). */
   margin: 0 12px;
   order: 1;
-  align-self: center;
+  align-self: flex-start;
   /* Сдвиг к середине просвета между историей и доской (замеряет
      EvalBar.jsx). transform, а не margin: раскладка строки не меняется. */
   transform: translateX(var(--eval-shift, 0px));

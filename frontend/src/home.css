@@ -77,12 +77,12 @@
   display:grid;
   flex:1 0 auto;
   grid-template-columns:minmax(0,1.15fr) minmax(290px,.75fr);
-  align-items:center;
+  align-items:start;
   gap:clamp(24px,4vw,64px);
   width:min(1320px,calc(100% - 48px));
   min-height:min(720px,calc(100vh - 112px));
   margin:0 auto;
-  padding:36px 0 34px 10vw
+  padding:36px 0 34px
 }
 .home-hero::before {
   content:"";
@@ -296,7 +296,7 @@
   grid-template-columns:minmax(0,1fr) minmax(220px,.75fr);
   width:calc(100% - 32px);
   gap:18px;
-  padding-left:8vw
+  padding:24px 0
 }
 
 }
