@@ -233,12 +233,27 @@
     gap: 5px;
   }
 
+  .topbar-gigacoins {
+    gap: 3px;
+    padding: 5px 6px;
+    font-size: 11px;
+  }
+
+  .topbar-gigacoins small {
+    display: none;
+  }
+
   .top-bar .user-name {
-    max-width: 40vw;
+    max-width: 27vw;
     overflow: hidden;
     font-size: 14px;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .gigacoin-reward-toast {
+    right: 14px;
+    bottom: calc(84px + env(safe-area-inset-bottom, 0px));
   }
 
   .top-bar .onb-badge {
@@ -346,7 +361,7 @@
   .home-hero-aside {
     justify-self: stretch;
     width: 100%;
-    padding: 14px;
+    padding: 0;
   }
 
   /* Play: keep the board primary, then history and the full-width coach. */

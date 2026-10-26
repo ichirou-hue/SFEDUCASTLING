@@ -8,13 +8,23 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api_gateway import state
 from backend.api_gateway.dependecies import get_current_user
 from backend.db.session import get_db
 from backend.models.training_task import TrainingTask
+from backend.models.training_attempt import TrainingAttempt
+from backend.models.training_lesson import TrainingLesson
+from backend.models.training_module import TrainingModule
 from backend.models.user import User
+from backend.services.gigacoin_service import (
+    TRAINING_FIRST_CORRECT,
+    TRAINING_REPEAT,
+    award_gigacoins,
+    moscow_today,
+)
 from backend.services.training_checker import TrainingCheckError, check_training_task
 from backend.services.assessment import rating_for_selection
 from backend.services.difficulty_logic import difficulty_for_rating
@@ -202,6 +212,16 @@ async def check_task(
         player_rating=effective_player_rating(user),
     )
 
+    previously_solved = False
+    if result.correct:
+        previously_solved = await db.scalar(
+            select(TrainingAttempt.id).where(
+                TrainingAttempt.user_id == user.id,
+                TrainingAttempt.task_id == task.id,
+                TrainingAttempt.correct.is_(True),
+            ).limit(1)
+        ) is not None
+
     attempt = await save_attempt(
         db,
         task=task,
@@ -227,6 +247,52 @@ async def check_task(
         correct=result.correct,
     )
 
+    gigacoins_earned = 0
+    if result.correct:
+        if previously_solved:
+            today = moscow_today().isoformat()
+            reward_reason = "training_repeat"
+            reward_ref = f"{task.id}:{today}"
+            reward_amount = TRAINING_REPEAT
+        else:
+            reward_reason = "training_first"
+            reward_ref = str(task.id)
+            reward_amount = TRAINING_FIRST_CORRECT
+        gigacoins_earned += await award_gigacoins(
+            db, user, reward_reason, reward_ref, reward_amount
+        )
+
+        module_id = await db.scalar(
+            select(TrainingLesson.module_id)
+            .join(TrainingTask, TrainingTask.lesson_id == TrainingLesson.id)
+            .where(TrainingTask.id == task.id)
+        )
+        module = await db.get(TrainingModule, module_id) if module_id else None
+        if module is not None and module.enabled:
+            module_task_ids = set((await db.scalars(
+                select(TrainingTask.id)
+                .join(TrainingLesson, TrainingLesson.id == TrainingTask.lesson_id)
+                .where(
+                    TrainingLesson.module_id == module.id,
+                    TrainingLesson.enabled.is_(True),
+                    TrainingTask.enabled.is_(True),
+                )
+            )).all())
+            solved_task_ids = set((await db.scalars(
+                select(TrainingAttempt.task_id)
+                .where(
+                    TrainingAttempt.user_id == user.id,
+                    TrainingAttempt.correct.is_(True),
+                    TrainingAttempt.task_id.in_(module_task_ids or {-1}),
+                )
+                .distinct()
+            )).all())
+            if module_task_ids and module_task_ids.issubset(solved_task_ids):
+                gigacoins_earned += await award_gigacoins(
+                    db, user, "module_complete", str(module.id), 10
+                )
+        await db.commit()
+
     return {
         "ok": True,
         "task_id": task.id,
@@ -242,4 +308,6 @@ async def check_task(
         "explanation": task.explanation,
         "expected": result.expected,
         "details": result.details,
+        "gigacoins_earned": gigacoins_earned,
+        "gigacoins_balance": int(user.gigacoins or 0),
     }

@@ -178,99 +178,62 @@
 }
 .home-hero-aside {
   justify-self:end;
-  width:min(100%,380px);
-  padding:17px;
-  border:1px solid #ffffff33;
-  border-radius:5px;
-  background:linear-gradient(145deg,#071216d9,#0a191bd1);
-  box-shadow:0 24px 70px #0003;
-  backdrop-filter:blur(12px)
+  width:min(100%,510px);
+  padding:0;
+  border:0;
+  border-radius:12px;
+  background:transparent;
+  box-shadow:none;
+  backdrop-filter:none
 }
-.home-aside-heading {
+.home-stats-guest {
   display:flex;
-  justify-content:space-between;
-  align-items:center;
-  color:#f5f0e6;
-  font:500 12px Inter,sans-serif;
-  letter-spacing:.04em
+  align-items:flex-start;
+  gap:14px;
+  padding:22px;
+  border:1px solid rgba(213,180,118,.28);
+  border-radius:12px;
+  color:#f6f4ef;
+  background:linear-gradient(145deg,#071216ed,#0a191be8);
+  box-shadow:0 24px 70px #0003
 }
-.home-online-dot {
-  width:7px;
-  height:7px;
-  border-radius:50%;
-  background:#a8c7aa;
-  box-shadow:0 0 12px #a8c7aa
-}
-.home-progress-chart {
-  margin-top:14px;
-  padding:12px 12px 9px;
-  border:1px solid #ffffff24;
-  background:#06111270
-}
-.home-chart-label {
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  color:#f5f0e6b8;
-  font:500 10px Inter,sans-serif;
-  letter-spacing:.04em
-}
-.home-chart-label span {
-  font-size:10px
-}
-.home-chart-label span:last-child {
-  color:#92ddc8;
-}
-.home-progress-chart svg {
-  display:block;
-  width:100%;
-  height:108px;
-  margin-top:8px;
-  overflow:visible
-}
-.home-chart-days {
-  display:flex;
-  justify-content:space-between;
-  color:#f6f4ef70;
-  font:500 8px Inter,sans-serif;
-  letter-spacing:.06em
-}
-.home-aside-caption {
-  margin-top:12px;
-  color:#f6f4efb8;
-  font:400 12px/1.5 Inter,sans-serif
-}
-.home-stats {
+.home-stats-guest__mark {
   display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:9px;
-  margin-top:13px
-}
-.home-stats>div {
-  padding:10px;
-  border:1px solid #ffffff1f;
-  background:#050c0c2e
-}
-.home-stats span,.home-stats strong,.home-stats small {
-  display:block;
-  font-family:Inter,sans-serif
-}
-.home-stats span {
+  width:44px;
+  height:44px;
+  flex:0 0 44px;
+  place-items:center;
+  border:1px solid rgba(213,180,118,.34);
+  border-radius:12px;
   color:#d5b476;
-  font-size:9px;
-  letter-spacing:.14em;
-  text-transform:uppercase
+  font-size:25px;
+  background:rgba(213,180,118,.08)
 }
-.home-stats strong {
-  margin-top:7px;
-  color:#f7f4ec;
-  font-size:12px;
-  font-weight:600
+.home-stats-guest .user-profile-kicker {
+  color:#d5b476
 }
-.home-stats small {
-  margin-top:5px;
-  color:#f6f4ef91;
-  font-size:10px
+.home-stats-guest h2 {
+  margin:5px 0 8px;
+  color:#fbfaf6;
+  font:500 20px/1.2 Inter,sans-serif
+}
+.home-stats-guest p {
+  color:#f6f4efb8;
+  font:400 12px/1.55 Inter,sans-serif
+}
+.home-stats-guest__button {
+  display:inline-flex;
+  min-height:40px;
+  align-items:center;
+  gap:10px;
+  margin-top:14px;
+  padding:0 14px;
+  border:1px solid #d5b476;
+  border-radius:4px;
+  color:#161a16;
+  background:#d5b476;
+  font:600 11px Inter,sans-serif;
+  cursor:pointer
 }
 .home-page .site-footer {
   color:#f6f4ef7a;
@@ -392,9 +355,6 @@
   margin-top:27px
 }
 .home-hero-aside {
-  padding:16px
-}
-.home-progress-chart svg {
-  height:104px
+  padding:0
 }
 }

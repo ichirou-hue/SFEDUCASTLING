@@ -194,6 +194,79 @@ body {
   gap: 12px;
 }
 
+.topbar-gigacoins {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 9px;
+  border: 1px solid rgba(201, 169, 110, 0.48);
+  border-radius: 999px;
+  background: rgba(201, 169, 110, 0.12);
+  color: #e4c58d;
+  font: 600 12px/1 Inter, sans-serif;
+  white-space: nowrap;
+}
+
+.topbar-gigacoins svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.topbar-gigacoins small {
+  opacity: 0.75;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.gigacoin-reward-toast {
+  position: fixed;
+  z-index: 2000;
+  right: 22px;
+  bottom: 22px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 220px;
+  padding: 12px 16px;
+  border: 1px solid rgba(201, 169, 110, 0.6);
+  border-radius: 14px;
+  background: rgba(12, 15, 13, 0.94);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+  color: #f0d39b;
+  font: 600 13px/1.25 Inter, sans-serif;
+  animation: gigacoin-toast-in 180ms ease-out;
+}
+
+.gigacoin-reward-toast__icon {
+  font-size: 18px;
+  flex: 0 0 auto;
+}
+
+.gigacoin-reward-toast__copy {
+  display: grid;
+  gap: 3px;
+}
+
+.gigacoin-reward-toast__copy strong {
+  font-weight: 700;
+}
+
+.gigacoin-reward-toast__copy small {
+  color: rgba(240, 211, 155, 0.76);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+@keyframes gigacoin-toast-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 /* Кнопка «Выйти» в шапке нужна только там, где меню профиля скрыто
    (см. MiniProfilePopover.css, до 640px). На широких экранах выход
    живёт внутри меню профиля. */

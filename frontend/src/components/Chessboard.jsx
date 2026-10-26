@@ -433,6 +433,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
       engine: "maia3",
       result,
       status,
+      playerColor,
     }).catch(() => {});
   }, [moveHistory, elo, playerColor]);
 

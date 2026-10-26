@@ -13,6 +13,7 @@ import TrainingPage from "./components/TrainingPage.jsx";
 import UserProfilePage from "./components/UserProfilePage.jsx";
 import AdminPage from "./components/AdminPage.jsx";
 import LevelTestPage from "./components/LevelTestPage.jsx";
+import UserRecordsWidget from "./components/UserRecordsWidget.jsx";
 import "./home.css";
 import "./mobile.css";
 import {
@@ -118,55 +119,22 @@ function HomePage({ user, onRegister, onOpenOnboarding }) {
             <span>Твой темп. Твоя стратегия. Твой прогресс.</span>
           </div>
         </div>
-        <div className="home-hero-aside" aria-label="Возможности GigaChess">
-          <div className="home-aside-heading">
-            <span>Твой прогресс</span>
-            <span className="home-online-dot" />
-          </div>
-          <div className="home-progress-chart" aria-hidden="true">
-            <div className="home-chart-label">
-              <span>Точность ходов</span>
-              <span>+12%</span>
-            </div>
-            <svg viewBox="0 0 320 130" preserveAspectRatio="none">
-              <defs>
-                <linearGradient id="home-chart-fill" x1="0" x2="0" y1="0" y2="1">
-                  <stop offset="0%" stopColor="#74d8bf" stopOpacity=".32" />
-                  <stop offset="100%" stopColor="#74d8bf" stopOpacity="0" />
-                </linearGradient>
-              </defs>
-              <path
-                d="M0 112 C24 99 31 78 54 84 S83 100 106 67 S145 81 165 56 S199 61 220 40 S247 67 269 48 S294 28 320 12 V130 H0Z"
-                fill="url(#home-chart-fill)"
-              />
-              <path
-                d="M0 112 C24 99 31 78 54 84 S83 100 106 67 S145 81 165 56 S199 61 220 40 S247 67 269 48 S294 28 320 12"
-                fill="none"
-                stroke="#74d8bf"
-                strokeWidth="3"
-                strokeLinecap="round"
-              />
-            </svg>
-            <div className="home-chart-days">
-              <span>ПН</span><span>ВТ</span><span>СР</span><span>ЧТ</span>
-              <span>ПТ</span><span>СБ</span><span>ВС</span>
-            </div>
-          </div>
-          <div className="home-aside-caption">
-            Каждая партия — возможность стать сильнее.
-          </div>
-          <div className="home-stats">
-            <div>
-              <span>Играй</span>
-              <strong>Свои партии</strong>
-              <small>Игра с Maia и разбор</small>
-            </div>
-            <div>
-              <span>Тренируйся</span>
-              <strong>Тактический расчёт</strong>
-              <small>Задачи под твой уровень</small>
-            </div>
-          </div>
+        <div className="home-hero-aside" aria-label="Статистика пользователя">
+          {user ? (
+            <UserRecordsWidget variant="home" />
+          ) : (
+            <section className="home-stats-guest">
+              <span className="home-stats-guest__mark" aria-hidden="true">♞</span>
+              <div>
+                <div className="user-profile-kicker">Твой прогресс</div>
+                <h2>Твои партии и рекорды — в одном месте</h2>
+                <p>Создай аккаунт, чтобы сохранять результаты и видеть настоящую статистику.</p>
+                <button type="button" className="home-stats-guest__button" onClick={onRegister}>
+                  Создать аккаунт <span aria-hidden="true">↗</span>
+                </button>
+              </div>
+            </section>
+          )}
         </div>
       </section>
       <SiteFooter />
@@ -187,6 +155,7 @@ export default function App() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   // После анкеты сразу запускаем входной тест на /level-test.
   const [autoStartTest, setAutoStartTest] = useState(false);
+  const [gigacoinToast, setGigacoinToast] = useState(null);
 
   const isAdmin = user?.is_admin === true || user?.role === "admin";
 
@@ -221,12 +190,30 @@ export default function App() {
         })
         .catch(() => {});
     };
+    let gigacoinToastTimer;
+    const showGigacoinReward = (event) => {
+      const amount = Number(event?.detail?.amount || 0);
+      if (amount <= 0) return;
+      const balance = Number(event?.detail?.balance);
+      if (Number.isFinite(balance)) {
+        setUser((current) => current ? { ...current, gigacoins: balance } : current);
+      }
+      setGigacoinToast({
+        amount,
+        balance: Number.isFinite(balance) ? balance : null,
+      });
+      window.clearTimeout(gigacoinToastTimer);
+      gigacoinToastTimer = window.setTimeout(() => setGigacoinToast(null), 4000);
+    };
 
     window.addEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired);
     window.addEventListener("sfedu-assessment-updated", refreshAfterAssessment);
+    window.addEventListener("sfedu-gigacoins-earned", showGigacoinReward);
     return () => {
       window.removeEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired);
       window.removeEventListener("sfedu-assessment-updated", refreshAfterAssessment);
+      window.removeEventListener("sfedu-gigacoins-earned", showGigacoinReward);
+      window.clearTimeout(gigacoinToastTimer);
     };
   }, []);
 
@@ -252,6 +239,17 @@ export default function App() {
           setShowRegister(true);
         }}
       />
+      {gigacoinToast?.amount > 0 && (
+        <div className="gigacoin-reward-toast" role="status" aria-live="polite">
+          <span className="gigacoin-reward-toast__icon" aria-hidden="true">✦</span>
+          <span className="gigacoin-reward-toast__copy">
+            <strong>Получено +{gigacoinToast.amount} GigaCoin</strong>
+            {gigacoinToast.balance != null && (
+              <small>Баланс: {gigacoinToast.balance.toLocaleString("ru-RU")}</small>
+            )}
+          </span>
+        </div>
+      )}
       <Routes>
         <Route
           path="/"
