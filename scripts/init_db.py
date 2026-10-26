@@ -22,8 +22,18 @@ from pathlib import Path
 from alembic import command
 from alembic.config import Config
 from alembic.script import ScriptDirectory
+from sqlalchemy.engine import make_url
+from sqlalchemy.exc import DBAPIError
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+
+def _safe_database_url(url: str) -> str:
+    """Показывает адрес базы, скрывая пароль и не печатая исходный URL."""
+    try:
+        return make_url(url).render_as_string(hide_password=True)
+    except Exception:
+        return "<некорректный DATABASE_URL>"
 
 
 def _alembic_config() -> Config:
@@ -88,8 +98,24 @@ def main(argv: list[str] | None = None) -> int:
 
     from backend.config.settings import settings
 
-    print(f"База: {settings.database.url}")
-    command.upgrade(cfg, "head")
+    safe_url = _safe_database_url(settings.database.url)
+    print(f"База: {safe_url}")
+    try:
+        command.upgrade(cfg, "head")
+    except DBAPIError as error:
+        message = str(error.orig).lower()
+        if "password authentication failed" in message:
+            print(
+                "PostgreSQL отклонил пароль. Проверь DATABASE_URL в локальном .env. "
+                "Пароль намеренно не выводится.",
+                file=sys.stderr,
+            )
+        else:
+            print(
+                f"Не удалось подключиться к базе {safe_url}. Проверь доступность БД и настройки .env.",
+                file=sys.stderr,
+            )
+        return 1
     print(f"Схема обновлена до ревизии {head}.")
 
     if args.admin:
