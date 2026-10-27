@@ -418,15 +418,15 @@
     padding: 0;
   }
 
-  /* Play: keep the board primary, then history and the full-width coach. */
+  /* Put a compact move history before the board so it is visible on phones. */
   .main-area {
     display: grid;
     flex: 0 0 auto;
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
       "evaluation"
-      "board"
       "history"
+      "board"
       "chat";
     align-items: start;
     gap: 12px;
@@ -478,38 +478,112 @@
     border-radius: 18px;
   }
 
-  .main-area > .move-history-panel {
+  .main-area > .game-history-column {
+    display: flex;
     grid-area: history;
     width: 100%;
-    max-height: 270px;
-    padding: 14px;
-    border-radius: 20px;
-  }
-
-  .main-area > .game-history-column {
-    grid-area: history;
-    flex: 0 0 auto;
-    gap: 10px;
     height: auto;
     min-height: 0;
-    width: 100%;
+    flex-direction: column;
+    gap: 10px;
   }
 
   .main-area .game-history-column > .move-history-panel {
+    order: 0;
     height: auto;
-    max-height: 270px;
+    max-height: none;
     min-height: 0;
-    padding: 14px;
+    padding: 10px 12px;
     width: 100%;
+    border-radius: 18px;
+  }
+
+  .main-area .game-history-column > .maia-level-progress {
+    order: 1;
+    padding: 9px;
+    border-radius: 16px;
+  }
+
+  .main-area .maia-level-progress-title {
+    font-size: 8px;
+  }
+
+  .main-area .maia-level-progress-grid {
+    grid-template-columns: repeat(10, minmax(0, 1fr));
+    gap: 3px;
+    margin-top: 6px;
+  }
+
+  .main-area .maia-level-chip {
+    aspect-ratio: 1.45;
+    border-radius: 6px;
+    font-size: 8px;
+    padding: 2px;
+  }
+
+  .main-area .maia-level-chip.is-earned {
+    font-size: 12px;
+  }
+
+  .main-area .history-title {
+    margin-bottom: 2px;
+    font-size: 18px;
+  }
+
+  .main-area .title-separator {
+    margin-bottom: 6px;
   }
 
   .main-area .move-list {
     flex: 0 1 auto;
-    max-height: 126px;
+    max-height: 84px;
+    padding-right: 3px;
   }
 
-  .main-area .history-title {
-    font-size: 20px;
+  .main-area .move-pair {
+    grid-template-columns: 26px minmax(0, 1fr) minmax(0, 1fr);
+    padding: 2px 0;
+    font-size: 15px;
+  }
+
+  .main-area .move-pair span {
+    padding: 4px 2px;
+  }
+
+  .main-area .move-pair .num {
+    font-size: 11px;
+  }
+
+  .main-area .player-info {
+    display: none;
+  }
+
+  .main-area .nav-row {
+    gap: 18px;
+    margin-bottom: 7px;
+  }
+
+  .main-area .arrow-btn {
+    width: 40px;
+    height: 34px;
+  }
+
+  .main-area .arrow-btn svg {
+    width: 40px;
+    height: 32px;
+  }
+
+  .main-area .move-counter {
+    font-size: 16px;
+  }
+
+  .main-area .action-buttons {
+    gap: 0;
+  }
+
+  .main-area .btn-import {
+    height: 36px;
+    font-size: 16px;
   }
 
   .main-area > .chat-section {

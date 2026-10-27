@@ -140,12 +140,6 @@ export default function MoveHistory({
         {/* Обновленный счетчик ходов */}
         <span
           className="move-counter"
-          style={{
-            fontFamily: '"Calypso", serif',
-            fontSize: "24px",
-            color: "#333",
-            whiteSpace: "nowrap", // <-- Добавили запрет на перенос строки
-          }}
         >
           {currentHalfMove} / {safeHistory.length}
         </span>

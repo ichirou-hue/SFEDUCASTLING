@@ -60,6 +60,11 @@ body {
   max-height: none;
   min-height: 0;
   width: 100%;
+  order: 0;
+}
+
+.game-history-column > .maia-level-progress {
+  order: 1;
 }
 
 .maia-level-progress {
@@ -1387,13 +1392,13 @@ body {
   min-height: min(360px, 100%);
   max-height: 680px;
   align-self: flex-start;
-  border-radius: 30px;
-  border: 3px solid rgba(180, 135, 44, 0.85);
+  border-radius: 24px;
+  border: 2px solid rgba(180, 135, 44, 0.85);
   background: rgba(255, 255, 255, 0.87);
   box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.25);
   display: flex;
   flex-direction: column;
-  padding: 20px 24px;
+  padding: 14px 16px;
   box-sizing: border-box;
   order: 1;
 }
@@ -1471,11 +1476,13 @@ body {
 /* --- РЎРїРёСЃРѕРє С…РѕРґРѕРІ (С‡РµСЂРµРґРѕРІР°РЅРёРµ С†РІРµС‚РѕРІ РєР°Рє РЅР° РјР°РєРµС‚Рµ) --- */
 .move-pair {
   position: relative;
-  display: flex;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) minmax(0, 1fr);
+  gap: 2px;
   align-items: center;
-  padding: 12px 6px;
+  padding: 4px 2px;
   font-family: "Calypso", serif;
-  font-size: 22px;
+  font-size: 16px;
   color: #333;
 }
 
@@ -1520,19 +1527,33 @@ body {
   min-width: 45px; /* Р§С‚РѕР±С‹ РІСЃРµ РїР»Р°С€РєРё Р±С‹Р»Рё РѕРґРёРЅР°РєРѕРІРѕР№ С€РёСЂРёРЅС‹ Рё СЃРјРѕС‚СЂРµР»РёСЃСЊ СЃРёРјРјРµС‚СЂРёС‡РЅРѕ */
 }
 .num {
-  width: 40px;
+  width: auto;
+  min-width: 0;
   color: #555;
-  font-size: 22px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: left;
 }
 .move-w {
-  flex: 1;
-  text-align: left; /* Р‘РµР»С‹Рµ С…РѕРґС‹ РїСЂРёР¶Р°С‚С‹ РІР»РµРІРѕ (РїРѕРґ Р’С‹) */
-  padding-left: 10px;
+  min-width: 0;
+  text-align: center;
 }
 .move-b {
-  flex: 1;
-  text-align: right; /* Р§РµСЂРЅС‹Рµ С…РѕРґС‹ РїСЂРёР¶Р°С‚С‹ РІРїСЂР°РІРѕ (РїРѕРґ Maia 2) */
-  padding-right: 15px;
+  min-width: 0;
+  text-align: center;
+}
+
+.move-pair span {
+  min-width: 0;
+  padding: 4px 2px;
+}
+
+.move-counter {
+  color: #333;
+  font-family: "Calypso", serif;
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 /* --- РќР°РІРёРіР°С†РёСЏ СЃРѕ СЃС‚СЂРµР»РєР°РјРё --- */
 /* Р’С‹СЃС‚СЂР°РёРІР°РµРј РєРЅРѕРїРєРё Рё СЃС‡РµС‚С‡РёРє СЃС‚СЂРѕРіРѕ РїРѕ С†РµРЅС‚СЂСѓ РЅР° СЂР°РІРЅРѕРј СѓРґР°Р»РµРЅРёРё */
@@ -1606,10 +1627,11 @@ body {
 }
 .history-title {
   font-family: "Calypso", serif;
-  font-size: clamp(20px, 1.8vw, 32px); /* РЎРґРµР»Р°Р»Рё С€СЂРёС„С‚ РЅРµРјРЅРѕРіРѕ РјРµРЅСЊС€Рµ */
+  font-size: clamp(18px, 1.45vw, 22px);
   font-weight: normal;
   white-space: nowrap; /* РџСЂРёРЅСѓРґРёС‚РµР»СЊРЅРѕ РІС‹СЃС‚СЂР°РёРІР°РµРј С‚РµРєСЃС‚ СЃС‚СЂРѕРіРѕ РІ РѕРґРЅСѓ СЃС‚СЂРѕРєСѓ */
-  overflow: visible;
+  overflow: hidden;
+  text-overflow: ellipsis;
   text-align: center;
   color: #333;
   margin: 0 0 5px 0;
@@ -1623,7 +1645,7 @@ body {
   width: 100%;
   height: 2px;
   border-radius: 2px;
-  margin-bottom: 22px;
+  margin-bottom: 10px;
   background: linear-gradient(
     90deg,
     rgba(201, 169, 110, 0) 0%,
