@@ -56,6 +56,11 @@ function MainPage({ user }) {
           maiaRating={boardState.maiaRating}
           userRating={user?.elo || undefined}
           onNavigate={(dir) => boardRef.current?.onNavigate(dir)}
+          fen={boardState.fen}
+          onLoadFen={(nextFen) =>
+            boardRef.current?.loadFen?.(nextFen) ?? false
+          }
+          getPgn={() => boardRef.current?.getPgn?.() || ""}
         />
         <EvalBar
           diff={boardState.materialDiff}

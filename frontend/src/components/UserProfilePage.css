@@ -7,7 +7,7 @@
   width: 100%;
   margin: 0;
   /* Сверху больше воздуха под шапкой (как на «Обучении»). */
-  padding: 40px 0 48px;
+  padding: 40px 0 0;
   color: #20332d;
   /* Колонка ради футера (см. .training-page). */
   display: flex;

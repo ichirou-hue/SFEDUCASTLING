@@ -9,7 +9,6 @@ import {
 } from "react";
 import { Chessboard as ReactChessboard } from "react-chessboard";
 import { Chess } from "chess.js";
-import FenBar from "./FenBar.jsx";
 
 import {
   fetchMaiaMove,
@@ -737,9 +736,11 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
             turn: game.turn(),
           }));
         }
+        return true;
       } catch (error) {
+        // Сообщение покажет меню «Позиция», откуда загружают FEN.
         console.error("Неверный FEN:", error);
-        alert("Ошибка: Неверный формат FEN-строки!");
+        return false;
       }
     },
     [game, onStateChange],
@@ -1670,7 +1671,15 @@ const fetchBestMove = useCallback(
     onNavigate,
     handleNewGame,
     getFen: () => gameRef.current.fen(),
-    handleLoadFen,
+    // Меню «Позиция»: загрузка FEN и экспорт партии в PGN.
+    loadFen: handleLoadFen,
+    getPgn: () => {
+      try {
+        return gameRef.current.pgn();
+      } catch {
+        return "";
+      }
+    },
     // Кнопка «Подсказка» живёт в ChatPanel — дёргает анализ через ref.
     requestBestMove: () => fetchBestMove(),
   }));
@@ -2461,11 +2470,6 @@ const fetchBestMove = useCallback(
             )}
           </div>
         )}
-
-        <FenBar
-          fen={fen}
-          onLoadFen={handleLoadFen}
-        />
       </div>
     </div>
   );

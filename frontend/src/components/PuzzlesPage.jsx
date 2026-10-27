@@ -400,11 +400,18 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
       const availW = isMobile
         ? (layoutEl?.clientWidth || window.innerWidth) - hGaps
         : window.innerWidth - infoW - chatReserve - hGaps;
-      // Высота — замер живого контейнера (исключает топбар и хром
-      // браузера), минус всё под доской: рамка 30 + кнопки ~110 + отступы.
+      // Высота — видимая область страницы (без топбара и футера), а не
+      // высота самой раскладки: она теперь растягивается по содержимому,
+      // и замер её clientHeight дал бы петлю (доска растит саму себя).
       const belowBoard = 175;
-      const layoutH = layoutEl?.clientHeight || window.innerHeight;
-      const availH = layoutH - belowBoard;
+      const shellEl = document.querySelector(".puzzles-page-shell");
+      const footerEl = document.querySelector(
+        ".puzzles-page-shell > .site-footer"
+      );
+      const viewH = shellEl
+        ? shellEl.clientHeight - (footerEl?.offsetHeight || 0)
+        : window.innerHeight;
+      const availH = viewH - belowBoard;
       // Страховка от переполнения колонки: доска никогда не шире
       // реальной ширины своей грид-колонки минус рамка обёртки (38px).
       // Иначе доска залезает на инфо-панель и чат (так и было).

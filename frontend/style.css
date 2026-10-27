@@ -109,10 +109,6 @@ body {
   flex-direction: column;
 }
 
-/* Футер в гриде пазлов: отдельной строкой на всю ширину. */
-.puzzles-layout > .site-footer {
-  grid-column: 1 / -1;
-}
 .site-footer {
   flex-shrink: 0;
   display: flex;
@@ -120,12 +116,13 @@ body {
   justify-content: center;
   gap: 18px;
   padding: 7px 16px;
+  box-sizing: border-box;
   border-top: 1px solid rgba(180, 135, 44, 0.35);
   background: rgba(255, 255, 255, 0.55);
   font-size: 12px;
   color: #888;
-  /* В колонке скролл-контейнера вжимается вниз: на коротких страницах
-     стоит у нижнего края экрана, на длинных — уезжает под контент. */
+  /* Футер — последний элемент страницы: на коротких страницах auto-отступ
+     прижимает его к самому низу, на длинных он идёт сразу за контентом. */
   margin-top: auto;
 }
 
@@ -146,24 +143,39 @@ body {
   color: #5e9463;
 }
 
-/* Футер должен стоять строго у нижнего края, без полоски фона под ним.
-   Контейнеры страниц имеют нижний padding — компенсируем его отрицательным
-   margin-bottom (значения связаны с padding-bottom каждого контейнера). */
-.training-page > .site-footer {
-  margin-bottom: -36px; /* training-page: padding 40px 28px 36px */
+/* Футер должен быть полосой во всю ширину страницы и стоять вплотную
+   к её нижнему краю: у страниц нет нижнего padding'а (он давал полоску
+   фона под футером), а боковые отступы/центрирование контейнера футер
+   обходит растяжением на ширину окна. Лишнее по бокам срезаем
+   overflow-x: clip у самой страницы. */
+.training-page,
+.user-profile-page,
+.admin-page,
+.level-test-page,
+.puzzles-page,
+.puzzles-page-shell {
+  overflow-x: clip;
 }
 
+.training-page > .site-footer,
+.user-profile-page > .site-footer,
 .admin-page > .site-footer,
-.user-profile-page > .site-footer {
-  margin-bottom: -48px; /* padding 28px 0 48px */
+.level-test-page > .site-footer,
+.puzzles-page > .site-footer,
+.puzzles-page-shell > .site-footer {
+  width: 100vw;
+  max-width: 100vw;
+  margin-left: 0;
+  margin-right: 0;
+  justify-self: center; /* грид-страницы (обучение) */
+  align-self: center; /* флекс-страницы */
 }
 
-.level-test-page > .site-footer {
-  margin-bottom: -26px; /* padding 26px */
-}
-
-.puzzles-layout > .site-footer {
-  margin-bottom: -16px; /* padding 10px 0 16px 24px */
+/* Воздух между последним блоком и футером: сам футер остаётся вплотную
+   к нижнему краю страницы, поэтому отступ отдаём контенту перед ним. */
+.user-profile-page:has(> .site-footer) > *:nth-last-child(2),
+.admin-page:has(> .site-footer) > *:nth-last-child(2) {
+  margin-bottom: 20px;
 }
 
 .gigachess-logo {
@@ -631,65 +643,6 @@ body {
   height: 34px;
   line-height: 1;
   text-align: center;
-}
-
-.fen-bar {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  margin-top: 10px;
-  width: 100%;
-  background: #f0f2ea;
-  border-radius: 8px;
-  padding: 8px 12px;
-  box-sizing: border-box;
-}
-
-.fen-bar input {
-  flex: 1;
-  background: #f0f2ea;
-  border: 1px solid #c2974d;
-  border-radius: 6px;
-  padding: 6px 10px;
-  color: #333;
-  font-size: 11px;
-  font-family: "Consolas", "Courier New", monospace;
-  outline: none;
-  min-width: 0;
-}
-
-.fen-bar input:focus {
-  border-color: #c2974d;
-  color: #111;
-}
-
-.fen-bar button {
-  background: #83b787;
-  border: none;
-  border-radius: 6px;
-  padding: 5px 10px;
-  color: #333;
-  font-family: "Calypso", serif;
-  font-size: 14px;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.fen-bar button:hover {
-  background: #76a87a;
-}
-
-.fen-bar .fen-file-btn {
-  background: #0d3550;
-  font-size: 13px;
-  padding: 4px 8px;
-  border-radius: 6px;
-  cursor: pointer;
-  border: 1px solid #225a73;
-}
-
-.fen-bar .fen-file-btn:hover {
-  background: #164a63;
 }
 
 /* --- Move History --- */
@@ -1469,37 +1422,208 @@ body {
   fill-opacity: 0.5;
 }
 
-/* --- РќРёР¶РЅРёРµ РєРЅРѕРїРєРё --- */
+/* --- Нижние кнопки панели истории: меню «Позиция» --- */
 .action-buttons {
   display: flex;
   flex-direction: column;
-  gap: 10px; /* Р Р°СЃСЃС‚РѕСЏРЅРёРµ РјРµР¶РґСѓ РєРЅРѕРїРєРѕР№ Рё РёРЅРїСѓС‚РѕРј */
+  gap: 10px;
 }
-.btn-import {
+
+.position-menu {
+  position: relative;
+  width: 100%;
+}
+
+.btn-position {
   width: 100%;
   height: 52px;
+  gap: 10px;
   border-radius: 30px;
   background: #83b787;
   border: none;
-
-  /* Р¤РёСЂРјРµРЅРЅС‹Р№ С€СЂРёС„С‚ РїСЂРѕРµРєС‚Р° */
   font-family: "Calypso", serif;
   font-size: 24px;
-  color: #333; /* РўРµРјРЅС‹Р№ С†РІРµС‚ С‚РµРєСЃС‚Р°, С‡С‚РѕР±С‹ С…РѕСЂРѕС€Рѕ С‡РёС‚Р°Р»СЃСЏ РЅР° РјСЏС‚РЅРѕРј С„РѕРЅРµ */
-
+  color: #333;
   cursor: pointer;
   display: flex;
   justify-content: center;
   align-items: center;
-
-  /* РЎС‚Р°РІРёРј РєРЅРѕРїРєСѓ СЃС‚СЂРѕРіРѕ РїРѕ С†РµРЅС‚СЂСѓ */
   margin: 0 auto;
   transition: background 0.2s;
 }
 
-.btn-import:hover {
-  background: #76a87a; /* Р§СѓС‚СЊ С‚РµРјРЅРµРµС‚ РїСЂРё РЅР°РІРµРґРµРЅРёРё */
+.btn-position:hover,
+.btn-position[aria-expanded="true"] {
+  background: #76a87a;
 }
+
+.btn-position__chevron {
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 7px solid currentColor;
+  opacity: 0.5;
+  transition: transform 0.2s;
+}
+
+.btn-position[aria-expanded="true"] .btn-position__chevron {
+  transform: rotate(180deg);
+}
+
+/* Всплывающее меню импорта/экспорта: открывается над кнопкой. */
+.position-menu__panel {
+  position: absolute;
+  z-index: 60;
+  bottom: calc(100% + 10px);
+  left: 0;
+  width: 372px;
+  max-width: calc(100vw - 32px);
+  box-sizing: border-box;
+  padding: 16px 18px 14px;
+  border: 1px solid rgba(180, 135, 44, 0.55);
+  border-radius: 20px;
+  background: #f7f6f0;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  color: #20332d;
+  text-align: left;
+  font-family: "Inter", sans-serif;
+}
+
+.position-menu__title {
+  margin: 0;
+  font-family: "Calypso", serif;
+  font-size: 20px;
+  font-weight: normal;
+  letter-spacing: 0.02em;
+}
+
+.position-menu__group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.position-menu__label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #71847b;
+}
+
+.position-menu__row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.position-menu__input,
+.position-menu__textarea {
+  flex: 1;
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid #c2974d;
+  border-radius: 8px;
+  background: #fffdf7;
+  color: #333;
+  font: 11px/1.45 "Consolas", "Courier New", monospace;
+  outline: none;
+}
+
+.position-menu__textarea {
+  resize: vertical;
+  min-height: 48px;
+}
+
+.position-menu__input:focus,
+.position-menu__textarea:focus {
+  border-color: #a97f33;
+  box-shadow: 0 0 0 2px rgba(194, 151, 77, 0.18);
+}
+
+.position-menu__action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 9px 12px;
+  border: none;
+  border-radius: 8px;
+  background: #83b787;
+  color: #1f2b24;
+  font: 600 12px/1.1 "Inter", sans-serif;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.position-menu__action:hover {
+  background: #76a87a;
+}
+
+.position-menu__action--ghost {
+  background: transparent;
+  border: 1px solid rgba(111, 143, 116, 0.55);
+  color: #35553a;
+}
+
+.position-menu__action--ghost:hover {
+  background: rgba(131, 183, 135, 0.18);
+}
+
+.position-menu__row .position-menu__action {
+  flex: 1 1 0;
+}
+
+.position-menu__hint {
+  font-size: 11px;
+  color: #7a8a82;
+}
+
+.position-menu__file {
+  display: none;
+}
+
+.position-menu__backdrop {
+  display: none;
+}
+
+.position-menu__status {
+  min-height: 14px;
+  font-size: 11px;
+  line-height: 14px;
+  color: #2f5c36;
+}
+
+.position-menu__status--error {
+  color: #b3543a;
+}
+
+@media (max-width: 760px) {
+  /* На телефоне меню удобнее листом у нижнего края, а не над кнопкой. */
+  .position-menu__backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 59;
+    display: block;
+    background: rgba(4, 10, 10, 0.42);
+  }
+
+  .position-menu__panel {
+    position: fixed;
+    right: 12px;
+    bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+    left: 12px;
+    width: auto;
+    max-width: none;
+    max-height: calc(100vh - 140px);
+    overflow-y: auto;
+  }
+}
+
 .input-fen {
   border: 2px solid #a5d6a7;
   border-radius: 20px;
@@ -2352,10 +2476,14 @@ body {
 /* ========================================= */
 .puzzles-page {
   flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   display: flex;
+  /* Колонка: контент сверху, футер прижат к низу страницы. */
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 20px;
+  padding: 20px 20px 0;
 }
 
 .puzzles-page-shell {
@@ -2363,7 +2491,29 @@ body {
   flex: 1;
   flex-direction: column;
   min-height: 0;
-  overflow: hidden;
+  /* Прокручивается вся страница целиком: футер — последний элемент потока,
+     а не полоса, приклеенная к низу экрана (как на остальных вкладках). */
+  overflow-y: auto;
+  /* Тонкий скроллбар в стиле сайта. */
+  scrollbar-width: thin;
+  scrollbar-color: #79b180 transparent;
+}
+
+.puzzles-page-shell::-webkit-scrollbar {
+  width: 8px;
+}
+
+.puzzles-page-shell::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.puzzles-page-shell::-webkit-scrollbar-thumb {
+  background: #79b180;
+  border-radius: 10px;
+}
+
+.puzzles-page-shell::-webkit-scrollbar-thumb:hover {
+  background: #5d9364;
 }
 
 .puzzles-loading,
@@ -2389,9 +2539,12 @@ body {
   max-width: 1880px;
   margin: 0 auto;
   box-sizing: border-box;
-  flex: 1;
+  /* Высота — по содержимому колонок, а не по высоте экрана: иначе раскладка
+     прокручивалась бы внутри себя и футер всегда висел внизу экрана.
+     Прокрутка — у .puzzles-page-shell, футер идёт после раскладки. */
+  flex: 0 0 auto;
   min-height: 0;
-  overflow-y: auto;
+  overflow: visible;
   padding: 10px 0 16px;
 }
 
@@ -2939,7 +3092,7 @@ body {
   min-height: 0;
   overflow-y: auto;
   /* Сверху больше воздуха под шапкой, чтобы карточки не липли к логотипу. */
-  padding: 40px 28px 36px;
+  padding: 40px 28px 0;
   font-family: "Inter", sans-serif;
   color: #333;
   /* Колонка ради футера: margin-top:auto у него вжимает его вниз
