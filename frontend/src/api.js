@@ -331,6 +331,11 @@ export async function finishGame({ moves, elo, engine, result, status, playerCol
   return data;
 }
 
+export async function fetchMaiaAchievements() {
+  const { data } = await api.get("/api/game/maia-achievements");
+  return Array.isArray(data?.levels) ? data.levels : [];
+}
+
 export async function fetchRandomOpening() {
   const { data } = await api.get("/api/knowledge/random-opening");
   return data;

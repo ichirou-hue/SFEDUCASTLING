@@ -41,6 +41,105 @@ body {
   box-sizing: border-box;
 }
 
+.game-history-column {
+  align-self: flex-start;
+  display: flex;
+  flex: 0 0 260px;
+  flex-direction: column;
+  gap: 12px;
+  height: min(680px, calc(100vh - 190px));
+  min-height: 360px;
+  order: 1;
+  width: 260px;
+}
+
+.game-history-column > .move-history-panel {
+  align-self: stretch;
+  flex: 1 1 auto;
+  height: auto;
+  max-height: none;
+  min-height: 0;
+  width: 100%;
+}
+
+.maia-level-progress {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(180, 135, 44, 0.58);
+  border-left: 3px solid rgba(180, 135, 44, 0.9);
+  border-radius: 18px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+  flex: 0 0 auto;
+  padding: 12px;
+}
+
+.maia-level-progress-title {
+  color: #80652f;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  line-height: 1.3;
+  text-transform: uppercase;
+}
+
+.maia-level-progress-title span {
+  color: #4f4a3f;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.03em;
+}
+
+.maia-level-progress-grid {
+  display: grid;
+  gap: 5px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  margin-top: 9px;
+}
+
+.maia-level-chip {
+  align-items: center;
+  aspect-ratio: 1.45;
+  background: rgba(243, 240, 232, 0.9);
+  border: 1px solid rgba(180, 135, 44, 0.16);
+  border-radius: 9px;
+  color: #6f6759;
+  cursor: pointer;
+  display: flex;
+  font: 600 10px/1 "Inter", sans-serif;
+  justify-content: center;
+  min-width: 0;
+  padding: 3px;
+  transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease, transform 0.16s ease;
+}
+
+.maia-level-chip:hover {
+  border-color: rgba(180, 135, 44, 0.72);
+  color: #493914;
+  transform: translateY(-1px);
+}
+
+.maia-level-chip.is-earned {
+  background: rgba(201, 169, 110, 0.24);
+  border-color: rgba(180, 135, 44, 0.58);
+  color: #765518;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.maia-level-chip.is-current {
+  background: #fff;
+  border-color: #8b6822;
+  box-shadow: inset 0 0 0 1px rgba(139, 104, 34, 0.42);
+  color: #4b3712;
+}
+
+.maia-level-chip.is-current.is-earned {
+  background: rgba(201, 169, 110, 0.36);
+}
+
+.maia-level-chip:focus-visible {
+  outline: 2px solid #8b6822;
+  outline-offset: 2px;
+}
+
 #root {
   display: flex;
   flex-direction: column;

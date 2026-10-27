@@ -4,6 +4,7 @@ import TopBar from "./components/TopBar.jsx";
 import SiteFooter from "./components/SiteFooter.jsx";
 import ChessboardComponent from "./components/Chessboard.jsx";
 import MoveHistory from "./components/MoveHistory.jsx";
+import MaiaLevelProgress from "./components/MaiaLevelProgress.jsx";
 import ChatPanel from "./components/ChatPanel.jsx";
 import EvalBar from "./components/EvalBar.jsx";
 import RegisterModal from "./components/RegisterModal.jsx";
@@ -33,6 +34,7 @@ function MainPage({ user }) {
     isViewMode: false,
     evalScore: null,
     maiaRating: 1500,
+    maiaVictory: null,
     hintMessage: null,
     isComparing: false,
   });
@@ -48,15 +50,23 @@ function MainPage({ user }) {
     // а не зафиксированной полосой поверх страницы.
     <div className="main-page-scroll">
       <div className="main-area">
-        <MoveHistory
-          moveHistory={boardState.moveHistory}
-          positionSnapshots={boardState.positionSnapshots}
-          viewIndex={boardState.viewIndex}
-          isViewMode={boardState.isViewMode}
-          maiaRating={boardState.maiaRating}
-          userRating={user?.elo || undefined}
-          onNavigate={(dir) => boardRef.current?.onNavigate(dir)}
-        />
+        <div className="game-history-column">
+          <MoveHistory
+            moveHistory={boardState.moveHistory}
+            positionSnapshots={boardState.positionSnapshots}
+            viewIndex={boardState.viewIndex}
+            isViewMode={boardState.isViewMode}
+            maiaRating={boardState.maiaRating}
+            userRating={user?.elo || undefined}
+            onNavigate={(dir) => boardRef.current?.onNavigate(dir)}
+          />
+          <MaiaLevelProgress
+            userId={user?.id}
+            currentLevel={boardState.maiaRating}
+            lastWin={boardState.maiaVictory}
+            onSelectLevel={(level) => boardRef.current?.setMaiaLevel?.(level)}
+          />
+        </div>
         <EvalBar
           diff={boardState.materialDiff}
           flipped={boardState.boardFlipped}

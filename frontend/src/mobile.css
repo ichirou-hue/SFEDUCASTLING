@@ -63,6 +63,21 @@
     max-height: 290px;
   }
 
+  .main-area > .game-history-column {
+    grid-area: history;
+    flex: 0 0 auto;
+    height: auto;
+    min-height: 0;
+    width: 100%;
+  }
+
+  .main-area .game-history-column > .move-history-panel {
+    height: auto;
+    max-height: 290px;
+    min-height: 0;
+    width: 100%;
+  }
+
   .main-area > .chat-section {
     grid-area: chat;
     width: 100%;
@@ -110,16 +125,18 @@
   body {
     width: 100%;
     min-width: 320px;
-    height: 100%;
-    overflow: hidden;
+    min-height: 100%;
+    height: auto;
+    overflow-x: hidden;
+    overflow-y: auto;
   }
 
   #root {
     width: 100%;
-    height: 100vh;
-    height: 100dvh;
-    min-height: 0;
-    overflow: hidden;
+    min-height: 100vh;
+    min-height: 100dvh;
+    height: auto;
+    overflow: visible;
   }
 
   button,
@@ -139,8 +156,10 @@
     grid-template-rows: 1fr;
     gap: 8px;
     min-height: 58px;
-    padding: 6px 14px;
+    padding: calc(6px + env(safe-area-inset-top, 0px)) 14px 6px;
     flex: 0 0 auto;
+    position: sticky;
+    top: 0;
   }
 
   .top-bar-left {
@@ -279,16 +298,49 @@
 
   .main-page-scroll,
   .home-page,
+  .training-page,
+  .user-profile-page,
+  .admin-page,
+  .level-test-page {
+    min-height: calc(100dvh - 58px);
+    flex: 1 0 auto;
+    padding-bottom: calc(92px + env(safe-area-inset-bottom, 0px));
+    scroll-padding-bottom: calc(92px + env(safe-area-inset-bottom, 0px));
+    overscroll-behavior-y: contain;
+  }
+
+  /* Mobile pages scroll with the document, so long screens remain reachable
+     and the fixed navigation stays attached to the visible viewport. */
+  .main-page-scroll,
+  .home-page,
+  .training-page,
+  .user-profile-page,
+  .admin-page,
+  .level-test-page {
+    min-height: calc(100dvh - 58px);
+    overflow: visible;
+  }
+
+  .main-page-scroll,
+  .home-page,
   .puzzles-page,
   .puzzles-page-shell,
   .training-page,
   .user-profile-page,
   .admin-page,
+  .level-test-page,
+  .puzzles-layout {
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .main-page-scroll,
+  .home-page,
+  .training-page,
+  .user-profile-page,
+  .admin-page,
   .level-test-page {
-    min-height: 0;
-    padding-bottom: calc(92px + env(safe-area-inset-bottom, 0px));
-    scroll-padding-bottom: calc(92px + env(safe-area-inset-bottom, 0px));
-    overscroll-behavior-y: contain;
+    background-attachment: scroll;
   }
 
   .site-footer {
@@ -310,7 +362,8 @@
 
   /* Landing page */
   .home-page {
-    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
   }
 
   .home-hero {
@@ -433,6 +486,23 @@
     border-radius: 20px;
   }
 
+  .main-area > .game-history-column {
+    grid-area: history;
+    flex: 0 0 auto;
+    gap: 10px;
+    height: auto;
+    min-height: 0;
+    width: 100%;
+  }
+
+  .main-area .game-history-column > .move-history-panel {
+    height: auto;
+    max-height: 270px;
+    min-height: 0;
+    padding: 14px;
+    width: 100%;
+  }
+
   .main-area .move-list {
     flex: 0 1 auto;
     max-height: 126px;
@@ -514,17 +584,22 @@
 
   /* Puzzles: compact context card, board, controls, then coach. */
   .puzzles-page-shell {
-    overflow-y: auto;
+    display: block;
+    min-height: 0;
+    overflow: visible;
   }
 
   .puzzles-page {
-    overflow-y: auto;
+    display: block;
+    min-height: calc(100dvh - 58px);
+    overflow: visible;
+    padding: 0 0 calc(92px + env(safe-area-inset-bottom, 0px));
   }
 
   .puzzles-layout,
   .puzzles-layout--chat-collapsed {
     display: grid;
-    flex: 0 0 auto;
+    flex: none;
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto;
     gap: 12px;
@@ -773,6 +848,10 @@
 
   .training-due-rail {
     width: 100%;
+    grid-column: 1 / -1;
+    grid-row: 2;
+    position: static;
+    max-height: none;
   }
 
   .training-due-rail--collapsed .training-due-toggle {
@@ -847,5 +926,43 @@
 
   .puzzle-ctrl-btn {
     font-size: 10px;
+  }
+
+  .top-nav-link {
+    gap: 2px;
+    padding-right: 1px;
+    padding-left: 1px;
+  }
+}
+
+@media (max-width: 760px) and (max-height: 520px) {
+  .top-bar {
+    min-height: 48px;
+    padding-bottom: 4px;
+  }
+
+  .top-bar .gigachess-logo {
+    height: 28px;
+  }
+
+  .top-nav {
+    right: 8px;
+    bottom: calc(4px + env(safe-area-inset-bottom, 0px));
+    left: 8px;
+    min-height: 52px;
+    padding: 3px;
+    border-radius: 16px;
+  }
+
+  .top-nav-link {
+    min-height: 44px;
+    gap: 1px;
+    font-size: 8px;
+  }
+
+  .mobile-nav-icon {
+    width: 18px;
+    height: 18px;
+    flex-basis: 18px;
   }
 }
