@@ -1407,11 +1407,17 @@ const fetchBestMove = useCallback(
    */
   const processPlayerMove = useCallback(
     (sourceSquare, targetSquare) => {
-      const move = game.move({
-        from: sourceSquare,
-        to: targetSquare,
-        promotion: "q",
-      });
+      let move;
+      try {
+        move = game.move({
+          from: sourceSquare,
+          to: targetSquare,
+          promotion: "q",
+        });
+      } catch {
+        // Illegal drops are normal input; chess.js throws instead of returning null.
+        return false;
+      }
 
       if (move === null) {
         return false;
