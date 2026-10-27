@@ -75,7 +75,7 @@ export default function EvalBar({ diff = 0, flipped, height }) {
       className={`eval-bar${
         flipped ? " eval-bar--bottom-black" : ""
       }`}
-      style={{ height: height || undefined }}
+      style={{ height: height || undefined, "--eval-fill": `${fillPct}%` }}
       title={title}
       aria-label={title}
       role="img"

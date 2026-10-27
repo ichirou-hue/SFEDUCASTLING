@@ -118,9 +118,18 @@
 
 .user-profile-stats {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
   margin-top: 18px;
+}
+
+.user-profile-stat--coins {
+  border-color: rgba(180, 135, 44, 0.27);
+  background: linear-gradient(135deg, #fffaf0, #f6f0df);
+}
+
+.user-profile-stat--coins strong {
+  color: #806127;
 }
 
 .user-profile-stat {

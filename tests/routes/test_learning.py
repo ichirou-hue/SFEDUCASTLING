@@ -237,6 +237,73 @@ def _start_test(token: str) -> tuple[int, list[str]]:
     return data["test_id"], [q["id"] for q in data["questions"]]
 
 
+class TestGigaCoinLearningRewards:
+    def test_puzzle_reward_is_added_once(self, cleanup):
+        token, _ = _registered_user(cleanup)
+        with patch(MATCH_ANCHOR, NEW_PUZZLES):
+            first = client.post(
+                "/api/learning/puzzle/attempt",
+                json={"puzzle_id": "b5", "correct": True},
+                headers=_headers(token),
+            )
+            second = client.post(
+                "/api/learning/puzzle/attempt",
+                json={"puzzle_id": "b5", "correct": True},
+                headers=_headers(token),
+            )
+        assert first.status_code == second.status_code == 200
+        assert first.json()["gigacoins_earned"] == 2  # rating 1290
+        assert first.json()["gigacoins_balance"] == 2
+        assert second.json()["gigacoins_earned"] == 0
+        assert second.json()["gigacoins_balance"] == 2
+
+    def test_onboarding_rewards_once_even_when_resubmitted(self, cleanup):
+        token, _ = _registered_user(cleanup)
+        first = client.post(
+            "/api/auth/onboarding", json=ONBOARDING, headers=_headers(token)
+        )
+        second = client.post(
+            "/api/auth/onboarding", json=ONBOARDING, headers=_headers(token)
+        )
+        assert first.status_code == second.status_code == 200
+        assert first.json()["gigacoins_earned"] == 5
+        assert first.json()["gigacoins_balance"] == 5
+        assert second.json()["gigacoins_earned"] == 0
+        assert second.json()["gigacoins_balance"] == 5
+
+    def test_initial_level_test_rewards_once(self, cleanup):
+        token, _ = _registered_user(cleanup)
+        onboarding = client.post(
+            "/api/auth/onboarding", json=ONBOARDING, headers=_headers(token)
+        )
+        assert onboarding.status_code == 200
+
+        with patch(MATCH_ANCHOR, NEW_PUZZLES):
+            test_id, question_ids = _start_test(token)
+            payload = {
+                "test_id": test_id,
+                "answers": [
+                    {"puzzle_id": puzzle_id, "correct": False}
+                    for puzzle_id in question_ids
+                ],
+            }
+            first = client.post(
+                "/api/learning/level-test/submit",
+                json=payload,
+                headers=_headers(token),
+            )
+            second = client.post(
+                "/api/learning/level-test/submit",
+                json=payload,
+                headers=_headers(token),
+            )
+        assert first.status_code == second.status_code == 200
+        assert first.json()["gigacoins_earned"] == 10
+        assert first.json()["gigacoins_balance"] == 15
+        assert second.json()["gigacoins_earned"] == 0
+        assert second.json()["gigacoins_balance"] == 15
+
+
 class TestLevelTestStart:
     def test_without_puzzle_base(self, cleanup):
         token = _authed_user(cleanup)

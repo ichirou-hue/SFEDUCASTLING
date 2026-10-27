@@ -39,11 +39,43 @@ if exist maia3\pyproject.toml (
 
 rem 3. Configuration
 if not exist .env (
-    copy .env.example .env >nul
-    echo Created .env from .env.example
+    >.env echo DATABASE_URL=sqlite+aiosqlite:///./backend.db
+    echo Created .env with the local SQLite database
 )
 
-rem 4. Database (migrations)
+rem 4. Avoid starting a duplicate backend on the same port.
+python -m scripts.check_running_server
+if not errorlevel 1 (
+    echo SFEDUCASTLING is already running at http://127.0.0.1:8005
+    exit /b 0
+)
+if errorlevel 2 (
+    echo ERROR: Port 8005 is occupied, but the process is not SFEDUCASTLING.
+    pause
+    exit /b 1
+)
+
+rem 5. Start the local PostgreSQL 18 cluster only for a local PostgreSQL URL.
+python -c "import os; from dotenv import dotenv_values; from sqlalchemy.engine import make_url; u=make_url(os.getenv('DATABASE_URL') or dotenv_values('.env').get('DATABASE_URL') or 'sqlite+aiosqlite:///'); raise SystemExit(0 if u.get_backend_name() == 'postgresql' and u.host in ('127.0.0.1', 'localhost', '::1') else 1)"
+if not errorlevel 1 (
+    if not exist "%ProgramFiles%\PostgreSQL\18\bin\pg_ctl.exe" (
+        echo ERROR: Local PostgreSQL 18 was selected but pg_ctl.exe was not found.
+        pause
+        exit /b 1
+    )
+    "%ProgramFiles%\PostgreSQL\18\bin\pg_ctl.exe" status -D "%ProgramFiles%\PostgreSQL\18\data" >nul 2>&1
+    if errorlevel 1 (
+        echo Starting local PostgreSQL 18...
+        "%ProgramFiles%\PostgreSQL\18\bin\pg_ctl.exe" start -D "%ProgramFiles%\PostgreSQL\18\data" -w -t 30
+        if errorlevel 1 (
+            echo ERROR: Could not start the local PostgreSQL 18 cluster.
+            pause
+            exit /b 1
+        )
+    )
+)
+
+rem 6. Database (migrations)
 echo Updating database...
 python -m scripts.init_db
 if errorlevel 1 (
@@ -52,7 +84,7 @@ if errorlevel 1 (
     exit /b 1
 )
 
-rem 5. Server: http://127.0.0.1:8005
+rem 7. Server: http://127.0.0.1:8005
 rem Run via -m so that the project root lands in sys.path and the
 rem `backend` package resolves (python backend\app.py would not).
 echo Starting server: http://127.0.0.1:8005

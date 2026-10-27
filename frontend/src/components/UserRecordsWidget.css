@@ -308,3 +308,140 @@
     flex-direction: column;
   }
 }
+
+/* Shared live statistics panel: the same records and chart appear on Home and Profile. */
+.user-records {
+  border-color: rgba(213, 180, 118, 0.28);
+  color: #f6f4ef;
+  background: linear-gradient(145deg, rgba(7, 18, 22, 0.97), rgba(10, 25, 27, 0.96));
+  box-shadow: 0 20px 52px rgba(0, 0, 0, 0.24);
+}
+
+.user-records--home {
+  width: 100%;
+  margin: 0;
+  padding: 19px;
+}
+
+.user-records .user-profile-kicker {
+  color: #d5b476;
+}
+
+.user-records__heading h2 {
+  color: #fbfaf6;
+  font-size: 22px;
+}
+
+.user-records__range {
+  border-color: rgba(213, 180, 118, 0.2);
+  color: rgba(246, 244, 239, 0.75);
+  background: rgba(213, 180, 118, 0.08);
+}
+
+.user-record-card {
+  border-color: var(--record-border);
+  background: var(--record-bg);
+}
+
+.user-record-card--gold {
+  --record-border: rgba(213, 180, 118, 0.23);
+  --record-bg: linear-gradient(145deg, rgba(213, 180, 118, 0.1), rgba(213, 180, 118, 0.035));
+  --record-accent: #d5b476;
+}
+
+.user-record-card--green {
+  --record-border: rgba(141, 199, 155, 0.22);
+  --record-bg: linear-gradient(145deg, rgba(102, 180, 128, 0.11), rgba(102, 180, 128, 0.035));
+  --record-accent: #9bd0a6;
+}
+
+.user-record-card--blue {
+  --record-border: rgba(147, 191, 218, 0.22);
+  --record-bg: linear-gradient(145deg, rgba(112, 164, 194, 0.11), rgba(112, 164, 194, 0.035));
+  --record-accent: #9ac7df;
+}
+
+.user-record-card__label {
+  color: rgba(246, 244, 239, 0.74);
+}
+
+.user-record-card__value {
+  color: #fffdf8;
+}
+
+.user-record-card__detail {
+  color: rgba(246, 244, 239, 0.58);
+}
+
+.user-records__activity {
+  border-color: rgba(213, 180, 118, 0.16);
+  background: rgba(4, 11, 12, 0.42);
+}
+
+.user-records__activity-heading h3 {
+  color: #fbfaf6;
+}
+
+.user-records__activity-heading p,
+.user-record-chart__empty,
+.user-record-chart__count,
+.user-record-chart__date,
+.user-record-legend span,
+.user-record-chart__footer > strong {
+  color: rgba(246, 244, 239, 0.58);
+}
+
+.user-record-chart__plot {
+  border-color: rgba(213, 180, 118, 0.18);
+}
+
+.user-record-chart__bar {
+  background: rgba(246, 244, 239, 0.08);
+}
+
+.user-records__tabs {
+  border-color: rgba(213, 180, 118, 0.18);
+  background: rgba(246, 244, 239, 0.06);
+}
+
+.user-records__tabs button {
+  color: rgba(246, 244, 239, 0.7);
+}
+
+.user-records__tabs button.is-active {
+  color: #161a16;
+  background: #d5b476;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.user-records__profile-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 13px;
+  color: #e0c58f;
+  font: 600 11px/1.4 Inter, sans-serif;
+  text-decoration: none;
+}
+
+.user-records__profile-link:hover {
+  color: #fff0c9;
+}
+
+.user-records--loading {
+  min-height: 100px;
+  padding: 20px;
+  border-radius: 12px;
+  color: rgba(246, 244, 239, 0.76);
+  background: linear-gradient(145deg, rgba(7, 18, 22, 0.97), rgba(10, 25, 27, 0.96));
+}
+
+@media (max-width: 760px) {
+  .user-records--home {
+    padding: 16px;
+  }
+
+  .user-records--home .user-records__heading h2 {
+    font-size: 20px;
+  }
+}

@@ -29,11 +29,11 @@ body {
 }
 .main-area {
   display: flex;
-  justify-content: flex-start;
-  align-items: stretch;
+  justify-content: center;
+  align-items: flex-start;
   gap: 24px;
-  width: auto;
-  margin: 10px 0 0 24px;
+  width: min(calc(100% - 48px), 1880px);
+  margin: 10px auto 0;
   /* Воздух между контентом и футером (футер прибит к низу). */
   padding-bottom: 12px;
   flex: 1;
@@ -194,6 +194,79 @@ body {
   gap: 12px;
 }
 
+.topbar-gigacoins {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 9px;
+  border: 1px solid rgba(201, 169, 110, 0.48);
+  border-radius: 999px;
+  background: rgba(201, 169, 110, 0.12);
+  color: #e4c58d;
+  font: 600 12px/1 Inter, sans-serif;
+  white-space: nowrap;
+}
+
+.topbar-gigacoins svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.topbar-gigacoins small {
+  opacity: 0.75;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.gigacoin-reward-toast {
+  position: fixed;
+  z-index: 2000;
+  right: 22px;
+  bottom: 22px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 220px;
+  padding: 12px 16px;
+  border: 1px solid rgba(201, 169, 110, 0.6);
+  border-radius: 14px;
+  background: rgba(12, 15, 13, 0.94);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+  color: #f0d39b;
+  font: 600 13px/1.25 Inter, sans-serif;
+  animation: gigacoin-toast-in 180ms ease-out;
+}
+
+.gigacoin-reward-toast__icon {
+  font-size: 18px;
+  flex: 0 0 auto;
+}
+
+.gigacoin-reward-toast__copy {
+  display: grid;
+  gap: 3px;
+}
+
+.gigacoin-reward-toast__copy strong {
+  font-weight: 700;
+}
+
+.gigacoin-reward-toast__copy small {
+  color: rgba(240, 211, 155, 0.76);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+@keyframes gigacoin-toast-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 /* Кнопка «Выйти» в шапке нужна только там, где меню профиля скрыто
    (см. MiniProfilePopover.css, до 640px). На широких экранах выход
    живёт внутри меню профиля. */
@@ -201,7 +274,7 @@ body {
   display: none;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 760px) {
   .top-bar-logout-compact {
     display: inline-flex;
     align-items: center;
@@ -440,7 +513,7 @@ body {
      (evalW в Chessboard.jsx). */
   margin: 0 12px;
   order: 1;
-  align-self: center;
+  align-self: flex-start;
   /* Сдвиг к середине просвета между историей и доской (замеряет
      EvalBar.jsx). transform, а не margin: раскладка строки не меняется. */
   transform: translateX(var(--eval-shift, 0px));
@@ -734,12 +807,11 @@ body {
   flex: 1 1 520px;
   min-width: 320px;
   max-width: 760px;
-
-  height: auto;
-  align-self: stretch;
-
-  /* Симметрично левой панели - такой же отступ от края окна. */
-  margin: 0 24px 0 0;
+  height: min(680px, 100%);
+  min-height: min(420px, 100%);
+  max-height: 680px;
+  align-self: flex-start;
+  margin: 0;
 
   border-radius: 30px;
   border: 2px solid rgba(180, 135, 44, 0.7);
@@ -1212,8 +1284,10 @@ body {
 .move-history-panel {
   flex-shrink: 0;
   width: 260px;
-  height: auto;
-  align-self: stretch;
+  height: min(680px, 100%);
+  min-height: min(360px, 100%);
+  max-height: 680px;
+  align-self: flex-start;
   border-radius: 30px;
   border: 3px solid rgba(180, 135, 44, 0.85);
   background: rgba(255, 255, 255, 0.87);
@@ -2309,15 +2383,16 @@ body {
   display: grid;
   grid-template-columns: 230px minmax(0, 1fr) minmax(320px, 620px);
   gap: 16px;
-  align-items: stretch;
-  width: 100%;
-  max-width: 100%;
-  margin: 0;
+  align-items: start;
+  align-content: start;
+  width: min(calc(100% - 48px), 1880px);
+  max-width: 1880px;
+  margin: 0 auto;
   box-sizing: border-box;
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 10px 0 16px 24px;
+  padding: 10px 0 16px;
 }
 
 /* На средних экранах (ноутбук 1280) чат не должен забирать максимум:
@@ -2332,9 +2407,17 @@ body {
 @media (max-width: 1150px) {
   .puzzles-layout {
     grid-template-columns: 1fr;
+    align-content: start;
+    justify-items: center;
+    width: min(calc(100% - 32px), 860px);
+    margin: 0 auto;
+    padding: 10px 0 16px;
   }
-  .puzzle-info-panel {
+  .puzzle-info-panel,
+  .puzzle-board-section,
+  .puzzle-chat-section {
     width: 100%;
+    max-width: 780px;
   }
 }
 
@@ -2663,17 +2746,14 @@ body {
 .puzzle-chat-section {
   flex: 1 1 360px;
   min-width: 300px;
-  max-width: none;
-  /* Высоту задаёт строка грида: панель растягивается по доске
-     (align-self: stretch). Но не выше видимой области, иначе на
-     невысоких окнах поле ввода уезжает под экран:
-     100vh - шапка 80 - отступ сверху 10 - снизу 16 - футер 32. */
-  height: auto;
-  max-height: calc(100vh - 138px);
-  min-height: 0;
-  align-self: stretch;
+  max-width: 620px;
+  /* Ограничиваем панель по высоте и центрируем рядом с доской. */
+  height: min(680px, calc(100vh - 138px));
+  max-height: 680px;
+  min-height: min(420px, calc(100vh - 138px));
+  align-self: start;
   box-sizing: border-box;
-  margin-right: 24px;
+  margin-right: 0;
   border-radius: 30px;
   z-index: 1;
   /* Та же лёгкая белая вуаль, что и у чата на главной. */
@@ -2764,10 +2844,97 @@ body {
     height 340ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* Матовый стеклянный чат на игровом экране и в задачах. */
+.main-area > .chat-section,
+.puzzle-chat-section {
+  border: 1px solid rgba(255, 255, 255, 0.58);
+  border-radius: 16px;
+  background: linear-gradient(
+    145deg,
+    rgba(248, 249, 244, 0.82),
+    rgba(232, 240, 234, 0.74)
+  );
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(22px) saturate(135%);
+  -webkit-backdrop-filter: blur(22px) saturate(135%);
+}
+
+.main-area > .chat-section .chat-header,
+.puzzle-chat-section .chat-header,
+.main-area > .chat-section .status-bar {
+  border-color: rgba(35, 58, 49, 0.14);
+}
+
+.main-area > .chat-section .chat-title-block h2,
+.puzzle-chat-section .chat-title-block h2 {
+  color: #24362e;
+}
+
+.main-area > .chat-section .chat-subtitle,
+.puzzle-chat-section .chat-subtitle {
+  color: #55794c;
+}
+
+.main-area > .chat-section .status-bar {
+  color: rgba(36, 54, 46, 0.74);
+}
+
+.main-area > .chat-section .status-bar .dot {
+  background: #79b180;
+}
+
+.main-area > .chat-section .chat-msg .msg-body,
+.puzzle-chat-section .chat-msg .msg-body {
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 12px 12px 12px 3px;
+  background: rgba(238, 242, 237, 0.94);
+  color: #1b2926;
+  box-shadow: 0 6px 18px rgba(25, 52, 43, 0.1);
+}
+
+.main-area > .chat-section .chat-msg.user .msg-body,
+.puzzle-chat-section .chat-msg.user .msg-body {
+  border-color: rgba(71, 112, 85, 0.2);
+  border-radius: 12px 12px 3px 12px;
+  background: rgba(220, 236, 217, 0.96);
+  color: #20332d;
+}
+
+.main-area > .chat-section .chat-input-area,
+.puzzle-chat-section .chat-input-area {
+  border-color: rgba(35, 58, 49, 0.14);
+}
+
+.main-area > .chat-section .chat-input-area input,
+.puzzle-chat-section .chat-input-area input {
+  border-color: rgba(213, 180, 118, 0.38);
+  background: rgba(245, 245, 238, 0.94);
+  color: #1b2926;
+}
+
+.main-area > .chat-section .chat-input-area input:focus,
+.puzzle-chat-section .chat-input-area input:focus {
+  border-color: #d5b476;
+  background: #fffef9;
+}
+
+.main-area > .chat-section .chat-input-area button,
+.puzzle-chat-section .chat-input-area button {
+  background: #d5b476;
+  color: #191a16;
+}
+
+.main-area > .chat-section .chat-input-area button:hover,
+.puzzle-chat-section .chat-input-area button:hover {
+  background: #e3c68f;
+}
+
 /* ========================================= */
 /*              TRAINING PAGE                */
 /* ========================================= */
 .training-page {
+  box-sizing: border-box;
+  width: 100%;
   flex: 1;
   min-height: 0;
   overflow-y: auto;
@@ -2830,7 +2997,9 @@ body {
 
 .training-hero,
 .training-module-header {
-  max-width: 1180px;
+  width: 100%;
+  box-sizing: border-box;
+  max-width: none;
   margin: 0 auto 24px;
   padding: 26px 30px;
   border-radius: 26px;
@@ -2839,6 +3008,13 @@ body {
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
+}
+
+.training-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
 }
 
 .training-hero h1,
@@ -2852,10 +3028,40 @@ body {
 
 .training-hero p,
 .training-module-header p {
-  max-width: 780px;
+  width: min(100%, 820px);
+  max-width: 820px;
+  margin: 0 auto 16px;
   line-height: 1.6;
   color: #555;
   font-size: 15px;
+  text-align: center;
+}
+
+.training-hero .rating-band-progress {
+  align-self: center;
+  text-align: center;
+}
+
+.training-hero .rating-band-progress__header {
+  justify-content: center;
+  gap: 28px;
+}
+
+.training-hero .rating-band-progress__title,
+.training-hero .rating-band-progress__rating {
+  align-items: center;
+}
+
+.training-hero .training-course-progress {
+  width: min(100%, 520px);
+  max-width: none;
+  align-self: center;
+  text-align: center;
+}
+
+.training-hero .training-course-progress__head {
+  justify-content: center;
+  gap: 24px;
 }
 
 .training-kicker {
@@ -2871,7 +3077,7 @@ body {
 .training-modules-path {
   position: relative;
   width: 100%;
-  max-width: 1000px;
+  max-width: none;
   margin: 0 auto;
   padding: 112px 0 10px;
   display: flex;
@@ -2893,7 +3099,7 @@ body {
 
 .training-module-node {
   position: relative;
-  width: min(560px, 84%);
+  width: min(720px, 88%);
   padding: 18px 20px;
   border: 2px solid rgba(131, 183, 135, 0.7);
   border-radius: 24px;
@@ -2953,6 +3159,7 @@ body {
   font-size: 13px;
   line-height: 1.45;
   color: #666;
+  text-align: center;
 }
 
 .training-module-meta {
@@ -3690,50 +3897,175 @@ body {
   opacity: 0.78;
 }
 
-/* === Секция «Пора повторить» (spaced repetition) на странице курса === */
+/* На широком экране очередь повторов занимает собственную правую колонку.
+   Колонка сохраняет размер и в свёрнутом состоянии, поэтому раскрытие
+   панели не перекрывает и не сдвигает курс. */
+.training-page--grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1600px);
+  justify-content: center;
+  align-content: start;
+  align-items: start;
+  gap: 20px;
+}
 
-.training-due-section {
-  margin-bottom: 26px;
-  padding: 18px 20px;
-  border: 1px solid rgba(180, 135, 44, 0.3);
+.training-page--grid-with-due {
+  grid-template-columns: minmax(0, 1600px) 82px;
+  justify-content: center;
+  transition: grid-template-columns 0.22s ease;
+}
+
+.training-page--grid-with-due.training-page--due-open {
+  grid-template-columns: minmax(0, 1600px) minmax(280px, 350px);
+}
+
+.training-page--lessons .training-module-header,
+.training-page--lessons > .training-global-error {
+  width: min(100%, 900px);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.training-course-main {
+  min-width: 0;
+}
+
+.training-page--grid > .site-footer {
+  grid-column: 1 / -1;
+}
+
+.training-due-rail {
+  position: sticky;
+  top: 12px;
+  grid-column: 2;
+  grid-row: 1;
+  display: flex;
+  min-width: 0;
+  max-height: calc(100vh - 120px);
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  align-self: start;
+  z-index: 1;
+}
+
+.training-due-toggle {
+  display: flex;
+  width: 100%;
+  min-height: 54px;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  border: 1px solid rgba(180, 135, 44, 0.4);
+  border-radius: 16px;
+  background: rgba(253, 248, 236, 0.96);
+  box-shadow: 0 8px 22px rgba(35, 44, 38, 0.12);
+  color: #284333;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.training-due-toggle:hover {
+  border-color: rgba(180, 135, 44, 0.68);
+  background: #fffaf0;
+  box-shadow: 0 10px 26px rgba(35, 44, 38, 0.16);
+}
+
+.training-due-toggle-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.training-due-toggle-label {
+  flex: 1;
+  text-align: left;
+}
+
+.training-due-toggle-count {
+  display: inline-flex;
+  min-width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: #e9d8ae;
+  color: #5c4720;
+  font-size: 13px;
+}
+
+.training-due-toggle-chevron {
+  width: 18px;
+  color: #8d6d31;
+  font-size: 22px;
+  line-height: 1;
+  text-align: center;
+}
+
+.training-due-rail--collapsed .training-due-toggle {
+  width: 82px;
+  min-height: 54px;
+  justify-content: center;
+  align-self: flex-end;
+  padding: 10px;
+}
+
+.training-due-rail--collapsed .training-due-toggle-label,
+.training-due-rail--collapsed .training-due-toggle-chevron {
+  display: none;
+}
+
+.training-due-panel {
+  display: flex;
+  min-height: 0;
+  max-height: calc(100vh - 190px);
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid rgba(180, 135, 44, 0.35);
   border-radius: 18px;
-  background: #fdf8ec;
+  background: rgba(253, 248, 236, 0.97);
+  box-shadow: 0 12px 32px rgba(35, 44, 38, 0.16);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 .training-due-heading {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  margin-bottom: 14px;
+  flex: 0 0 auto;
+  padding: 16px 16px 12px;
 }
 
-.training-due-heading strong,
+.training-due-heading strong {
+  display: block;
+  color: #284333;
+  font-size: 16px;
+}
+
 .training-due-heading span {
   display: block;
-}
-
-.training-due-heading span:not(.training-due-icon) {
-  margin-top: 3px;
+  margin-top: 5px;
+  color: #66746b;
   font-size: 13px;
-  opacity: 0.7;
-}
-
-.training-due-icon {
-  font-size: 22px;
+  line-height: 1.4;
 }
 
 .training-due-list {
   display: flex;
+  min-height: 0;
+  max-height: calc(100vh - 300px);
   flex-direction: column;
   gap: 8px;
+  overflow-y: auto;
+  padding: 0 8px 8px;
 }
 
 .training-due-card {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 8px;
   width: 100%;
-  padding: 10px 14px;
+  padding: 10px;
   border: 1px solid rgba(180, 135, 44, 0.25);
   border-radius: 13px;
   background: #fff;
@@ -3760,10 +4092,9 @@ body {
 }
 
 .training-due-card-main strong {
-  overflow: hidden;
+  overflow-wrap: anywhere;
   font-size: 14px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.3;
 }
 
 .training-due-card-main span {
@@ -3782,4 +4113,42 @@ body {
   flex-shrink: 0;
   font-size: 16px;
   opacity: 0.6;
+}
+
+.training-due-empty {
+  padding: 0 16px 16px;
+  color: #66746b;
+  font-size: 13px;
+}
+
+@media (max-width: 1150px) {
+  .training-page--grid-with-due {
+    grid-template-columns: minmax(0, 1fr);
+    transition: none;
+  }
+
+  .training-due-rail {
+    position: static;
+    grid-column: 1;
+    grid-row: 2;
+    max-height: none;
+  }
+
+  .training-due-rail--collapsed .training-due-toggle {
+    width: 100%;
+    justify-content: flex-start;
+    padding: 11px 14px;
+  }
+
+  .training-due-rail--collapsed .training-due-toggle-label {
+    display: block;
+  }
+
+  .training-due-panel {
+    max-height: 60vh;
+  }
+
+  .training-due-list {
+    max-height: calc(60vh - 110px);
+  }
 }

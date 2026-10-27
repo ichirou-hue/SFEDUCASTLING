@@ -7,6 +7,7 @@
 from backend.models.chat_message import ChatMessage
 from backend.models.dataset_move import DatasetMove
 from backend.models.game import Game, GameMove
+from backend.models.gigacoin_event import GigacoinEvent
 from backend.models.level_test import LevelTest
 from backend.models.puzzle_attempt import PuzzleAttempt
 from backend.models.training_attempt import TrainingAttempt
@@ -23,6 +24,7 @@ __all__ = [
     "DatasetMove",
     "Game",
     "GameMove",
+    "GigacoinEvent",
     "LevelTest",
     "PuzzleAttempt",
     "RefreshToken",
