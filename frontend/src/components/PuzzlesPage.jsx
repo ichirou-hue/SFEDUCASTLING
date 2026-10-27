@@ -206,6 +206,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
    * при переходе в другой раздел. Неверный ход по-прежнему прерывает её.
    */
   const [streak, setStreak] = useState(() => {
+    if (Number.isFinite(Number(user?.puzzle_streak))) return Number(user.puzzle_streak);
     try {
       const saved = Number(sessionStorage.getItem("gigachess:puzzle-streak") || 0);
       return Number.isFinite(saved) && saved > 0 ? saved : 0;
@@ -402,6 +403,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
 
   const gameRef = useRef(new Chess());
   const solutionMovesRef = useRef([]);
+  const playerMovesRef = useRef([]);
   const solutionIndexRef = useRef(0);
   const puzzlesRef = useRef([]);
   const loadSeqRef = useRef(0);
@@ -492,6 +494,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
 
       const moves = (puzzle.moves || "").trim().split(/\s+/).filter(Boolean);
       solutionMovesRef.current = moves;
+      playerMovesRef.current = [];
       solutionIndexRef.current = 0;
       setMovesLeft(countPlayerMoves(puzzle.moves));
     },
@@ -623,15 +626,25 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
   const savePuzzleProgress = useCallback(
     (correct) => {
       if (!currentPuzzle?.id || !getAccessToken()) return;
-      recordPuzzleAttempt(currentPuzzle.id, correct)
-        .then(() => {
+      recordPuzzleAttempt(
+        currentPuzzle.id,
+        correct,
+        correct ? playerMovesRef.current : [],
+      )
+        .then((data) => {
+          if (Number.isFinite(Number(data?.puzzle_streak))) {
+            const serverStreak = Number(data.puzzle_streak);
+            setStreak(serverStreak);
+            setBestStreak((best) => Math.max(best, serverStreak));
+            persistPuzzleStreak(serverStreak, Math.max(bestStreak, serverStreak));
+          }
           window.dispatchEvent(new Event("sfedu-progress-updated"));
         })
         .catch(() => {
           // Ошибка статистики не должна мешать решению самой задачи.
         });
     },
-    [currentPuzzle?.id],
+    [currentPuzzle?.id, bestStreak],
   );
 
   const handleMove = useCallback(
@@ -663,6 +676,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
           promotion: promo,
         });
         if (!move) return false;
+        playerMovesRef.current.push(`${move.from}${move.to}${move.promotion || ""}`.toLowerCase());
 
         setFen(game.fen());
         setLastMove({ from: sourceSquare, to: targetSquare });
@@ -1027,6 +1041,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
               рекорд сессии: {bestStreak}
             </div>
           )}
+          <div className="puzzle-streak-rewards">Награды за серию: 5 · +3, 10 · +5, 20 · +10, 30 · +15 GigaCoin</div>
         </div>
 
         {adaptiveMode && hasRealProfile && (

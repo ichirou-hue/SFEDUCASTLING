@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import date, datetime, time, timedelta, timezone
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.models.gigacoin_event import GigacoinEvent
@@ -23,6 +23,7 @@ MAIA_DRAW_COINS = 1
 MAIA_FAIR_GAP = 100
 ACTIVE_STREAK_BONUS = 10
 STREAK_CAP_EXEMPT = True
+PUZZLE_STREAK_REWARDS = {5: 3, 10: 5, 20: 10, 30: 15}
 
 
 def puzzle_reward(rating: int | None) -> int:
@@ -62,7 +63,7 @@ async def _earned_between(db: AsyncSession, user_id: int, start: datetime, end: 
             GigacoinEvent.created_at >= start,
             GigacoinEvent.created_at < end,
             GigacoinEvent.amount > 0,
-            GigacoinEvent.reason != "active_streak",
+            GigacoinEvent.reason.not_in(("active_streak", "shop_purchase")),
         )
     ) or 0)
 
@@ -75,7 +76,7 @@ async def _active_streak(db: AsyncSession, user_id: int, today: date) -> int:
             GigacoinEvent.user_id == user_id,
             GigacoinEvent.created_at >= start,
             GigacoinEvent.created_at < end,
-            GigacoinEvent.amount > 0,
+            or_(GigacoinEvent.amount > 0, GigacoinEvent.reason == "activity_day"),
         )
     )).all()
     active_days = {value.replace(tzinfo=timezone.utc).astimezone(MOSCOW_TZ).date() for value in timestamps}
@@ -85,6 +86,41 @@ async def _active_streak(db: AsyncSession, user_id: int, today: date) -> int:
         streak += 1
         cursor -= timedelta(days=1)
     return streak
+
+
+async def active_day_streak(
+    db: AsyncSession, user_id: int, now: datetime | None = None,
+) -> int:
+    """Current daily activity chain, including today when already active."""
+    now = now or datetime.now(timezone.utc)
+    start, end, today = _utc_bounds(now)
+    previous = await _active_streak(db, user_id, today)
+    today_active = await db.scalar(select(GigacoinEvent.id).where(
+        GigacoinEvent.user_id == user_id,
+        GigacoinEvent.created_at >= start,
+        GigacoinEvent.created_at < end,
+        or_(GigacoinEvent.amount > 0, GigacoinEvent.reason == "activity_day"),
+    ).limit(1))
+    return previous + 1 if today_active is not None else previous
+
+
+async def _record_activity_day(
+    db: AsyncSession, user_id: int, today: date, now: datetime,
+) -> bool:
+    """Persist meaningful learning activity once per Moscow calendar day."""
+    ref = today.isoformat()
+    exists = await db.scalar(select(GigacoinEvent.id).where(
+        GigacoinEvent.user_id == user_id,
+        GigacoinEvent.reason == "activity_day",
+        GigacoinEvent.ref == ref,
+    ).limit(1))
+    if exists is not None:
+        return False
+    db.add(GigacoinEvent(
+        user_id=user_id, reason="activity_day", ref=ref, amount=0, created_at=now,
+    ))
+    await db.flush()
+    return True
 
 
 async def award_gigacoins(
@@ -100,18 +136,17 @@ async def award_gigacoins(
 ) -> int:
     """Award once per (user, reason, ref); returns the actual credited amount."""
     now = now or datetime.now(timezone.utc)
+    await db.scalar(select(User.id).where(User.id == user.id).with_for_update())
+    start, end, today = _utc_bounds(now)
+    is_new_activity_day = await _record_activity_day(db, user.id, today, now)
     existing = await db.scalar(select(GigacoinEvent.id).where(
         GigacoinEvent.user_id == user.id,
         GigacoinEvent.reason == reason,
         GigacoinEvent.ref == ref,
     ).limit(1))
-    if existing is not None:
-        return 0
-
-    start, end, today = _utc_bounds(now)
     requested = max(0, int(amount))
-    credited = requested
-    if requested and not exempt_daily_cap:
+    credited = 0 if existing is not None else requested
+    if credited and not exempt_daily_cap:
         credited = min(requested, max(0, DAILY_CAP - await _earned_between(db, user.id, start, end)))
         if reason == "puzzle":
             puzzle_earned = int(await db.scalar(select(func.coalesce(func.sum(GigacoinEvent.amount), 0)).where(
@@ -123,14 +158,15 @@ async def award_gigacoins(
             )) or 0)
             credited = min(credited, max(0, PUZZLE_DAILY_CAP - puzzle_earned))
 
-    db.add(GigacoinEvent(user_id=user.id, reason=reason, ref=str(ref)[:128], amount=credited, created_at=now))
-    user.gigacoins = max(0, int(user.gigacoins or 0)) + credited
-    await db.flush()
+    if existing is None:
+        db.add(GigacoinEvent(user_id=user.id, reason=reason, ref=str(ref)[:128], amount=credited, created_at=now))
+        user.gigacoins = max(0, int(user.gigacoins or 0)) + credited
+        await db.flush()
 
-    # Bonus за каждые 7 подряд активных дней. Считаем реальные начисления,
-    # поэтому нулевой capped event не продолжает серию.
+    # Бонус за каждые 7 подряд активных дней. Учебное действие засчитывается,
+    # даже если дневной лимит обычных монет уже достигнут.
     streak_bonus = 0
-    if credited and check_streak:
+    if is_new_activity_day and check_streak:
         streak = await _active_streak(db, user.id, today)
         if streak and streak % 7 == 6:
             streak_bonus = await award_gigacoins(

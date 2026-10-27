@@ -200,6 +200,12 @@ export default function App() {
         })
         .catch(() => {});
     };
+    const updatePuzzleStreak = (event) => {
+      const streak = Number(event?.detail?.streak);
+      if (Number.isFinite(streak)) {
+        setUser((current) => current ? { ...current, puzzle_streak: streak } : current);
+      }
+    };
     let gigacoinToastTimer;
     const showGigacoinReward = (event) => {
       const amount = Number(event?.detail?.amount || 0);
@@ -219,10 +225,12 @@ export default function App() {
     window.addEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired);
     window.addEventListener("sfedu-assessment-updated", refreshAfterAssessment);
     window.addEventListener("sfedu-gigacoins-earned", showGigacoinReward);
+    window.addEventListener("sfedu-puzzle-streak-updated", updatePuzzleStreak);
     return () => {
       window.removeEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired);
       window.removeEventListener("sfedu-assessment-updated", refreshAfterAssessment);
       window.removeEventListener("sfedu-gigacoins-earned", showGigacoinReward);
+      window.removeEventListener("sfedu-puzzle-streak-updated", updatePuzzleStreak);
       window.clearTimeout(gigacoinToastTimer);
     };
   }, []);

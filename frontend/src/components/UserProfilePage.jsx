@@ -12,6 +12,7 @@ import RatingBandProgress from "./RatingBandProgress.jsx";
 import UserRecordsWidget from "./UserRecordsWidget.jsx";
 import PhaseAccuracyWidget from "./PhaseAccuracyWidget.jsx";
 import SiteFooter from "./SiteFooter.jsx";
+import GigacoinShop from "./GigacoinShop.jsx";
 import "./UserProfilePage.css";
 
 function formatDate(value) {
@@ -232,8 +233,8 @@ export default function UserProfilePage({ user, onUserChange }) {
 
   return (
     <main className="user-profile-page">
-      <section className="user-profile-card">
-        <div className="user-profile-avatar" aria-hidden="true">
+      <section className={`user-profile-card user-profile-card--accent-${profile?.equipped_profile_accent || "default"}`}>
+        <div className={`user-profile-avatar user-profile-avatar--${profile?.equipped_avatar_frame || "default"}`} aria-hidden="true">
           {profile?.is_admin ? "♛" : "♟"}
         </div>
 
@@ -292,6 +293,11 @@ export default function UserProfilePage({ user, onUserChange }) {
           {error && <div className="user-profile-warning">{error}</div>}
         </div>
       </section>
+
+      <GigacoinShop onUserChange={(updated) => {
+        setProfile(updated);
+        onUserChange?.(updated);
+      }} />
 
       <UserRecordsWidget />
       <PhaseAccuracyWidget />

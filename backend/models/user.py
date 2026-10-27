@@ -28,6 +28,9 @@ class User(Base):
     elo: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # Внутренняя валюта GigaChess; пополняется только серверными наградами.
     gigacoins: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
+    puzzle_streak: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
+    equipped_avatar_frame: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    equipped_profile_accent: Mapped[str | None] = mapped_column(String(64), nullable=True)
     # Сырые ответы онбординг-анкеты Q1-Q8. None — анкета ещё не заполнена
     # (по этому признаку фронтенд показывает плашку «Заполните анкету»).
     #
@@ -85,6 +88,9 @@ class User(Base):
             "email": self.email,
             "elo": self.elo,
             "gigacoins": int(self.gigacoins or 0),
+            "puzzle_streak": int(self.puzzle_streak or 0),
+            "equipped_avatar_frame": self.equipped_avatar_frame,
+            "equipped_profile_accent": self.equipped_profile_accent,
             # Наша анкета: сырой ответ (TopBar-плашка «Заполните анкету»
             # и OnboardingModal проверяют user.onboarding !== null).
             "onboarding": self.onboarding,

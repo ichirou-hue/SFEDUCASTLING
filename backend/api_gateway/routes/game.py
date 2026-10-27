@@ -558,15 +558,18 @@ async def finish_game(
     coins_earned = 0
     if user is not None:
         verified_result = _verified_maia_result(req)
+        if verified_result is not None:
+            ref_payload = f"{req.engine}:{req.elo}:{req.player_color}:{','.join(req.moves)}:{verified_result}"
+            ref = hashlib.sha256(ref_payload.encode("utf-8")).hexdigest()
+            coins_earned = await award_gigacoins(db, user, "game_activity", ref, 0)
         player_won = verified_result == ("1-0" if req.player_color == "w" else "0-1")
         player_drew = verified_result == "1/2-1/2"
         player_rating = int(user.elo or user.rating_estimate or 1000)
         fair_level = req.elo is not None and req.elo + MAIA_FAIR_GAP >= player_rating
         requested_coins = MAIA_WIN_COINS.get(req.elo, 0) if player_won else MAIA_DRAW_COINS if player_drew else 0
         if requested_coins and fair_level:
-            ref_payload = f"{req.engine}:{req.elo}:{req.player_color}:{','.join(req.moves)}:{verified_result}"
-            ref = hashlib.sha256(ref_payload.encode("utf-8")).hexdigest()
-            coins_earned = await award_gigacoins(db, user, "maia_game", ref, requested_coins)
+            coins_earned += await award_gigacoins(db, user, "maia_game", ref, requested_coins)
+        if verified_result is not None:
             await db.commit()
 
     background_tasks.add_task(

@@ -590,3 +590,11 @@
 .user-profile-page > .site-footer a {
   color: #e0c58f;
 }
+
+.user-profile-page .user-profile-avatar--frame_bronze { border-color: #d5a66e; box-shadow: 0 0 0 3px rgba(213, 166, 110, .18), 0 0 22px rgba(213, 166, 110, .22); }
+.user-profile-page .user-profile-avatar--frame_sapphire { border-color: #77b7e6; box-shadow: 0 0 0 3px rgba(119, 183, 230, .18), 0 0 22px rgba(119, 183, 230, .24); }
+.user-profile-page .user-profile-avatar--frame_emerald { border-color: #79c69a; box-shadow: 0 0 0 3px rgba(121, 198, 154, .18), 0 0 22px rgba(121, 198, 154, .24); }
+.user-profile-page .user-profile-card--accent-accent_aurora { border-color: rgba(118, 214, 197, .5); box-shadow: 0 20px 52px rgba(0, 0, 0, .24), 0 0 24px rgba(118, 214, 197, .08); }
+.user-profile-page .user-profile-card--accent-accent_ruby { border-color: rgba(232, 139, 147, .5); box-shadow: 0 20px 52px rgba(0, 0, 0, .24), 0 0 24px rgba(232, 139, 147, .08); }
+.user-profile-page .user-profile-card--accent-accent_amethyst { border-color: rgba(187, 160, 242, .5); box-shadow: 0 20px 52px rgba(0, 0, 0, .24), 0 0 24px rgba(187, 160, 242, .08); }
+.user-profile-page .progress-widget__streak-reward { color: var(--profile-muted); }

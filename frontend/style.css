@@ -2675,6 +2675,13 @@ body {
   color: #888;
 }
 
+.puzzle-streak-rewards {
+  grid-column: 1 / -1;
+  color: rgba(246, 244, 239, 0.62);
+  font-size: 10px;
+  line-height: 1.35;
+}
+
 /* Строчка серии в оверлее "Задача решена!". */
 .puzzle-solved-streak {
   margin-top: 6px;
