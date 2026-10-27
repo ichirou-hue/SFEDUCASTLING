@@ -12,6 +12,7 @@ import OnboardingModal from "./components/OnboardingModal.jsx";
 import PuzzlesPage from "./components/PuzzlesPage.jsx";
 import TrainingPage from "./components/TrainingPage.jsx";
 import UserProfilePage from "./components/UserProfilePage.jsx";
+import GigacoinShopPage from "./components/GigacoinShopPage.jsx";
 import AdminPage from "./components/AdminPage.jsx";
 import LevelTestPage from "./components/LevelTestPage.jsx";
 import UserRecordsWidget from "./components/UserRecordsWidget.jsx";
@@ -314,6 +315,14 @@ export default function App() {
         <Route
           path="/profile"
           element={<UserProfilePage user={user} onUserChange={setUser} />}
+        />
+        <Route
+          path="/gigacoins"
+          element={!authChecked ? null : user ? (
+            <GigacoinShopPage onUserChange={setUser} />
+          ) : (
+            <Navigate to="/profile" replace />
+          )}
         />
         <Route
           path="/level-test"

@@ -309,6 +309,19 @@ body {
   color: #e4c58d;
   font: 600 12px/1 Inter, sans-serif;
   white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.16s ease, border-color 0.16s ease, transform 0.16s ease;
+}
+
+.topbar-gigacoins:hover,
+.topbar-gigacoins:focus-visible {
+  border-color: rgba(228, 197, 141, 0.82);
+  background: rgba(201, 169, 110, 0.2);
+}
+
+.topbar-gigacoins:active {
+  transform: translateY(1px);
 }
 
 .topbar-gigacoins svg {

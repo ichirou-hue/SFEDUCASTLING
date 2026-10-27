@@ -12,6 +12,21 @@ const SLOT_TITLES = {
   profile_accent: "Акцент профиля",
 };
 
+function friendlyError(err, fallback) {
+  const status = err?.response?.status;
+  if (status === 404) {
+    return "Текущий backend ещё не содержит API магазина. Обнови сервер до версии с GigaCoin и перезапусти его.";
+  }
+  if (status === 500) {
+    return "Backend не смог прочитать магазин. Проверь, что применена миграция базы данных: alembic upgrade head.";
+  }
+  if (status === 401) return "Сессия истекла. Войди в аккаунт заново.";
+  if (status === 409 || status === 403) {
+    return err?.response?.data?.detail || fallback;
+  }
+  return fallback;
+}
+
 export default function GigacoinShop({ onUserChange }) {
   const [shop, setShop] = useState(null);
   const [busyId, setBusyId] = useState("");
@@ -24,7 +39,7 @@ export default function GigacoinShop({ onUserChange }) {
       setShop(await fetchGigacoinShop());
       setError("");
     } catch (err) {
-      setError(err?.response?.data?.detail || "Магазин временно недоступен.");
+      setError(friendlyError(err, "Не удалось загрузить каталог магазина. Проверь подключение и попробуй ещё раз."));
     }
   }, []);
 
@@ -47,7 +62,7 @@ export default function GigacoinShop({ onUserChange }) {
       }
       await load();
     } catch (err) {
-      setError(err?.response?.data?.detail || "Не удалось выполнить действие.");
+      setError(friendlyError(err, "Не удалось выполнить действие. Попробуй ещё раз."));
     } finally {
       setBusyId("");
     }
@@ -75,7 +90,12 @@ export default function GigacoinShop({ onUserChange }) {
       </header>
 
       {notice && <p className="gigacoin-shop__notice" role="status">{notice}</p>}
-      {error && <p className="gigacoin-shop__error" role="alert">{error}</p>}
+      {error && (
+        <div className="gigacoin-shop__error-box" role="alert">
+          <p className="gigacoin-shop__error">{error}</p>
+          <button type="button" className="gigacoin-shop__retry" onClick={load}>Повторить</button>
+        </div>
+      )}
       {!shop && !error && <p className="gigacoin-shop__message">Загружаем предметы…</p>}
 
       {groups.map((group) => group.items.length > 0 && (

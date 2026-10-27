@@ -12,7 +12,6 @@ import RatingBandProgress from "./RatingBandProgress.jsx";
 import UserRecordsWidget from "./UserRecordsWidget.jsx";
 import PhaseAccuracyWidget from "./PhaseAccuracyWidget.jsx";
 import SiteFooter from "./SiteFooter.jsx";
-import GigacoinShop from "./GigacoinShop.jsx";
 import "./UserProfilePage.css";
 
 function formatDate(value) {
@@ -262,10 +261,15 @@ export default function UserProfilePage({ user, onUserChange }) {
               <span>В системе с</span>
               <strong>{formatDate(profile?.created_at)}</strong>
             </div>
-            <div className="user-profile-stat user-profile-stat--coins">
+            <button
+              type="button"
+              className="user-profile-stat user-profile-stat--coins user-profile-stat--link"
+              onClick={() => navigate("/gigacoins")}
+              aria-label="Открыть магазин GigaCoin"
+            >
               <span>Баланс GigaCoin</span>
               <strong>{Number(profile?.gigacoins || 0).toLocaleString("ru-RU")}</strong>
-            </div>
+            </button>
           </div>
 
           <div className="user-profile-actions">
@@ -293,11 +297,6 @@ export default function UserProfilePage({ user, onUserChange }) {
           {error && <div className="user-profile-warning">{error}</div>}
         </div>
       </section>
-
-      <GigacoinShop onUserChange={(updated) => {
-        setProfile(updated);
-        onUserChange?.(updated);
-      }} />
 
       <UserRecordsWidget />
       <PhaseAccuracyWidget />

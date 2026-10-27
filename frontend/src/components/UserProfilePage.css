@@ -435,6 +435,20 @@
   background: linear-gradient(145deg, rgba(213, 180, 118, 0.13), rgba(213, 180, 118, 0.045));
 }
 
+.user-profile-page .user-profile-stat--link {
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 0.16s ease, background 0.16s ease, transform 0.16s ease;
+}
+
+.user-profile-page .user-profile-stat--link:hover,
+.user-profile-page .user-profile-stat--link:focus-visible {
+  border-color: rgba(213, 180, 118, 0.62);
+  background: linear-gradient(145deg, rgba(213, 180, 118, 0.2), rgba(213, 180, 118, 0.08));
+}
+
 .user-profile-page .user-profile-stat span,
 .user-profile-page .user-profile-account-main span,
 .user-profile-page .rating-band-progress__title > span,

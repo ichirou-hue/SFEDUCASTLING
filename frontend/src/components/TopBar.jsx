@@ -50,7 +50,8 @@ export default function TopBar({ user, onUserChange, onRegister, onOpenOnboardin
       </nav>
       {user ? (
         <div className="user-box">
-          <span
+          <Link
+            to="/gigacoins"
             className="topbar-gigacoins"
             title="Твой баланс GigaCoin"
             aria-label={`Баланс: ${user.gigacoins ?? 0} GigaCoin`}
@@ -61,7 +62,7 @@ export default function TopBar({ user, onUserChange, onRegister, onOpenOnboardin
             </svg>
             <strong>{Number(user.gigacoins || 0).toLocaleString("ru-RU")}</strong>
             <small>GigaCoin</small>
-          </span>
+          </Link>
           {needsOnboarding && (
             <button
               className="onb-badge"
