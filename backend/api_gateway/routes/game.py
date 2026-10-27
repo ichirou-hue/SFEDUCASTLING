@@ -3,7 +3,8 @@
 import random
 
 import chess
-from fastapi import APIRouter, BackgroundTasks, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api_gateway.dependecies import get_optional_current_user
 from backend.api_gateway.models import (

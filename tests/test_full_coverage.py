@@ -219,7 +219,7 @@ class TestDataSaveSuccess:
 
         with patch("backend.api_gateway.routes.data.ensure_stockfish", return_value=mock_sf):
             resp = client.post("/api/save-move-to-dataset", json={
-                "fen": START_FEN, "move": "e2e4", "user_id": 1, "game_id": "g1"
+                "fen": START_FEN, "move": "e2e4", "game_id": "g1"
             })
 
         assert resp.status_code == 200
