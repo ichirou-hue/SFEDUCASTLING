@@ -368,3 +368,225 @@
   opacity: 0.55;
   cursor: default;
 }
+
+/* Keep every profile panel in the same dark, warm-gold visual system as
+   the "Твои достижения" records panel. */
+.user-profile-page {
+  --profile-panel: linear-gradient(145deg, rgba(7, 18, 22, 0.97), rgba(10, 25, 27, 0.96));
+  --profile-surface: rgba(246, 244, 239, 0.055);
+  --profile-surface-strong: rgba(246, 244, 239, 0.085);
+  --profile-border: rgba(213, 180, 118, 0.22);
+  --profile-ink: #f6f4ef;
+  --profile-muted: rgba(246, 244, 239, 0.62);
+  --profile-gold: #d5b476;
+  color: var(--profile-ink);
+}
+
+.user-profile-page .user-profile-card,
+.user-profile-page .user-profile-rating-section,
+.user-profile-page .user-profile-progress-section,
+.user-profile-page .user-profile-section,
+.user-profile-page .user-profile-empty,
+.user-profile-page .phase-accuracy,
+.user-profile-page .progress-widget {
+  border-color: var(--profile-border);
+  color: var(--profile-ink);
+  background: var(--profile-panel);
+  box-shadow: 0 20px 52px rgba(0, 0, 0, 0.24);
+}
+
+.user-profile-page .user-profile-heading h1,
+.user-profile-page .user-profile-section-heading h2,
+.user-profile-page .progress-widget__header h2,
+.user-profile-page .phase-accuracy__header h2 {
+  color: var(--profile-ink);
+}
+
+.user-profile-page .user-profile-kicker,
+.user-profile-page .progress-widget__kicker,
+.user-profile-page .progress-widget__topics-title {
+  color: var(--profile-gold);
+}
+
+.user-profile-page .user-profile-section-heading p,
+.user-profile-page .user-profile-muted {
+  color: var(--profile-muted);
+}
+
+.user-profile-page .user-profile-avatar,
+.user-profile-page .user-profile-stat,
+.user-profile-page .user-profile-account,
+.user-profile-page .user-profile-badge,
+.user-profile-page .rating-band-progress,
+.user-profile-page .progress-track-card,
+.user-profile-page .progress-widget__streak,
+.user-profile-page .progress-widget__adaptive,
+.user-profile-page .phase-accuracy__games,
+.user-profile-page .phase-accuracy__insight,
+.user-profile-page .phase-accuracy__summary-item,
+.user-profile-page .phase-accuracy__details {
+  border-color: var(--profile-border);
+  color: var(--profile-ink);
+  background: var(--profile-surface);
+}
+
+.user-profile-page .user-profile-stat--coins {
+  border-color: rgba(213, 180, 118, 0.3);
+  background: linear-gradient(145deg, rgba(213, 180, 118, 0.13), rgba(213, 180, 118, 0.045));
+}
+
+.user-profile-page .user-profile-stat span,
+.user-profile-page .user-profile-account-main span,
+.user-profile-page .rating-band-progress__title > span,
+.user-profile-page .rating-band-progress__caption,
+.user-profile-page .progress-track-card__caption,
+.user-profile-page .progress-track-card__footer,
+.user-profile-page .progress-topic__name,
+.user-profile-page .progress-topic strong,
+.user-profile-page .progress-widget__empty,
+.user-profile-page .phase-accuracy__header p,
+.user-profile-page .phase-accuracy__details-heading span,
+.user-profile-page .phase-accuracy__footnote {
+  color: var(--profile-muted);
+}
+
+.user-profile-page .user-profile-stat strong,
+.user-profile-page .user-profile-account-main strong,
+.user-profile-page .rating-band-progress__title > strong,
+.user-profile-page .rating-band-progress__rating,
+.user-profile-page .progress-track-card__title,
+.user-profile-page .progress-track-card__value,
+.user-profile-page .progress-topic,
+.user-profile-page .phase-accuracy__summary-item strong,
+.user-profile-page .phase-accuracy__details-heading strong {
+  color: var(--profile-ink);
+}
+
+.user-profile-page .user-profile-stat--coins strong {
+  color: var(--profile-gold);
+}
+
+.user-profile-page .user-profile-level-test-btn,
+.user-profile-page .progress-widget__adaptive button {
+  border-color: var(--profile-gold);
+  color: #161a16;
+  background: var(--profile-gold);
+}
+
+.user-profile-page .user-profile-level-test-btn:hover,
+.user-profile-page .progress-widget__adaptive button:hover {
+  background: #e3c68f;
+}
+
+.user-profile-page .user-profile-account-form select,
+.user-profile-page .user-profile-account-form input {
+  border-color: var(--profile-border);
+  color: var(--profile-ink);
+  background: var(--profile-surface-strong);
+}
+
+.user-profile-page .user-profile-account-form input::placeholder {
+  color: var(--profile-muted);
+}
+
+.user-profile-page .user-profile-account-form option {
+  color: var(--profile-ink);
+  background: #101c1d;
+}
+
+.user-profile-page .user-profile-account-remove {
+  border-color: rgba(215, 117, 105, 0.32);
+  color: #f0aaa1;
+  background: rgba(150, 62, 57, 0.18);
+}
+
+.user-profile-page .user-profile-account-remove:hover:not(:disabled) {
+  background: rgba(150, 62, 57, 0.3);
+}
+
+.user-profile-page .user-profile-warning {
+  color: #f0aaa1;
+}
+
+.user-profile-page .user-profile-warning--ok {
+  border-color: rgba(141, 199, 155, 0.25);
+  color: #a9d8b2;
+  background: rgba(102, 180, 128, 0.1);
+}
+
+.user-profile-page .progress-meter,
+.user-profile-page .progress-topic__bar,
+.user-profile-page .rating-band-progress__track {
+  background: rgba(246, 244, 239, 0.1);
+}
+
+.user-profile-page .progress-widget__topics {
+  border-color: var(--profile-border);
+}
+
+.user-profile-page .progress-widget__adaptive {
+  border-color: var(--profile-border);
+}
+
+.user-profile-page .phase-accuracy {
+  --phase-ink: var(--profile-ink);
+  --phase-muted: var(--profile-muted);
+}
+
+.user-profile-page .phase-accuracy--loading {
+  background: linear-gradient(100deg, rgba(246, 244, 239, 0.035) 30%, rgba(213, 180, 118, 0.12) 50%, rgba(246, 244, 239, 0.035) 70%);
+}
+
+.user-profile-page .phase-accuracy__grid-row line,
+.user-profile-page .phase-accuracy__grid-row:first-child line,
+.user-profile-page .phase-accuracy__grid-row:last-child line {
+  stroke: rgba(213, 180, 118, 0.18);
+}
+
+.user-profile-page .phase-accuracy__grid-row text,
+.user-profile-page .phase-accuracy__axis-label,
+.user-profile-page .phase-accuracy__point-value {
+  fill: var(--profile-muted);
+}
+
+.user-profile-page .phase-accuracy__point-core,
+.user-profile-page .phase-accuracy__point-empty {
+  fill: #102022;
+  stroke: #d5b476;
+}
+
+.user-profile-page .phase-accuracy__point.is-selected .phase-accuracy__axis-label,
+.user-profile-page .phase-accuracy__point:hover .phase-accuracy__axis-label,
+.user-profile-page .phase-accuracy__point:focus-visible .phase-accuracy__axis-label {
+  fill: #f0d39b;
+}
+
+.user-profile-page .phase-accuracy__summary-item span,
+.user-profile-page .phase-accuracy__summary-item small {
+  color: var(--profile-muted);
+}
+
+.user-profile-page .phase-accuracy__error--soft {
+  color: #e6ca83;
+  background: rgba(177, 137, 55, 0.15);
+}
+
+.user-profile-page .phase-accuracy__error--medium {
+  color: #f0b38e;
+  background: rgba(180, 99, 56, 0.16);
+}
+
+.user-profile-page .phase-accuracy__error--strong {
+  color: #f0aaa1;
+  background: rgba(164, 79, 74, 0.17);
+}
+
+.user-profile-page > .site-footer {
+  border-color: var(--profile-border);
+  color: var(--profile-muted);
+  background: rgba(7, 18, 22, 0.94);
+}
+
+.user-profile-page > .site-footer a {
+  color: #e0c58f;
+}
