@@ -26,6 +26,8 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(String(128))
     # elo — итоговая числовая оценка после level-test.
     elo: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Внутренняя валюта GigaChess; пополняется только серверными наградами.
+    gigacoins: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
     # Сырые ответы онбординг-анкеты Q1-Q8. None — анкета ещё не заполнена
     # (по этому признаку фронтенд показывает плашку «Заполните анкету»).
     #
@@ -57,7 +59,7 @@ class User(Base):
     )
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)
 
-    refresh_tokens: Mapped[list[RefreshToken]] = relationship(
+    refresh_tokens: Mapped[list["RefreshToken"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
 
@@ -82,6 +84,7 @@ class User(Base):
             "login": self.login,
             "email": self.email,
             "elo": self.elo,
+            "gigacoins": int(self.gigacoins or 0),
             # Наша анкета: сырой ответ (TopBar-плашка «Заполните анкету»
             # и OnboardingModal проверяют user.onboarding !== null).
             "onboarding": self.onboarding,

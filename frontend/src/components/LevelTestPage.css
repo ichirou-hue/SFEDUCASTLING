@@ -66,8 +66,12 @@
 .level-test-page {
   flex: 1;
   min-height: 0;
-  overflow: auto;
-  padding: 26px;
+  /* Футер растянут на всю ширину окна и срезается по краям (style.css),
+     поэтому горизонтальной прокрутки быть не должно: иначе она съедает
+     12px высоты и футер не дотягивается до низа. */
+  overflow-y: auto;
+  overflow-x: clip;
+  padding: 26px 26px 0;
   /* Без собственного фона — как у остальных страниц: виден общий мрамор body. */
   box-sizing: border-box;
   /* Колонка ради футера (см. .training-page). */

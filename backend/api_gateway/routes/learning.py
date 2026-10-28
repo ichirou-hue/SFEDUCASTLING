@@ -20,6 +20,10 @@ from backend.db.session import get_db
 from backend.models.game import Game
 from backend.models.level_test import LevelTest
 from backend.models.puzzle_attempt import PuzzleAttempt
+from backend.models.training_attempt import TrainingAttempt
+from backend.models.training_lesson import TrainingLesson
+from backend.models.training_module import TrainingModule
+from backend.models.training_task import TrainingTask
 from backend.models.user import ROLE_ADMIN, User
 from backend.models.user_chess_account import UserChessAccount
 from backend.services.adaptive_logic import select_adaptive_puzzles
@@ -54,6 +58,11 @@ from backend.services.dynamic_difficulty import (
 from backend.services.difficulty_logic import difficulty_for_rating
 from backend.services.phase_accuracy import load_user_phase_accuracy
 from backend.services.user_records import build_user_records
+from backend.services.gigacoin_service import (
+    LEVEL_TEST_REWARD,
+    award_gigacoins,
+    puzzle_reward,
+)
 
 router = APIRouter(tags=["learning"])
 
@@ -417,6 +426,11 @@ async def level_test_submit(
         raise HTTPException(status_code=404, detail="Тест не найден")
 
     if test.status == "submitted":
+        gigacoins_earned = await award_gigacoins(
+            db, user, "level_test", "initial-assessment", LEVEL_TEST_REWARD
+        )
+        if gigacoins_earned:
+            await db.commit()
         return {
             "ok": True,
             "test_id": test.id,
@@ -427,6 +441,8 @@ async def level_test_submit(
             "result": (test.score or {}).get("result"),
             "feedback": (test.score or {}).get("feedback", []),
             "already_submitted": True,
+            "gigacoins_earned": gigacoins_earned,
+            "gigacoins_balance": int(user.gigacoins or 0),
         }
 
     expected_ids = [str(x) for x in (test.question_ids or [])]
@@ -505,6 +521,9 @@ async def level_test_submit(
     test.band = int(group["id"])
     test.status = "submitted"
     test.submitted_at = datetime.now(UTC)
+    gigacoins_earned = await award_gigacoins(
+        db, locked_user, "level_test", "initial-assessment", LEVEL_TEST_REWARD
+    )
     await db.commit()
 
     return {
@@ -517,6 +536,8 @@ async def level_test_submit(
         "result": score["result"],
         "feedback": feedback,
         "already_submitted": False,
+        "gigacoins_earned": gigacoins_earned,
+        "gigacoins_balance": int(locked_user.gigacoins or 0),
     }
 
 
@@ -551,12 +572,25 @@ async def record_puzzle_attempt(
         player_rating=effective_player_rating(user),
     )
 
+    already_solved = await db.scalar(select(PuzzleAttempt.id).where(
+        PuzzleAttempt.user_id == user.id,
+        PuzzleAttempt.puzzle_id == req.puzzle_id,
+        PuzzleAttempt.correct.is_(True),
+    ).limit(1)) is not None
+
     attempt = PuzzleAttempt(
         user_id=user.id,
         puzzle_id=req.puzzle_id,
         correct=req.correct,
     )
     db.add(attempt)
+    await db.flush()
+    coins_due = puzzle_reward(puzzle.get("rating")) if req.correct and not already_solved else 0
+    coins_earned = 0
+    if coins_due:
+        coins_earned = await award_gigacoins(
+            db, user, "puzzle", req.puzzle_id, coins_due
+        )
     await db.commit()
     await db.refresh(attempt)
 
@@ -576,6 +610,10 @@ async def record_puzzle_attempt(
         "correct": attempt.correct,
         "topic": topic_slug,
         "difficulty_update": difficulty_update,
+        "gigacoins_earned": coins_earned,
+        "gigacoins_capped": coins_due > coins_earned,
+        "gigacoins_balance": int(user.gigacoins or 0),
+        "already_solved": already_solved,
     }
 
 

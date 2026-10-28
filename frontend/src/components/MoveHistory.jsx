@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
+import PositionMenu from "./PositionMenu.jsx";
 
 export default function MoveHistory({
   moveHistory,
@@ -6,12 +7,13 @@ export default function MoveHistory({
   viewIndex,
   isViewMode,
   onNavigate,
-  onImport,
+  fen,
+  onLoadFen,
+  getPgn,
   maiaRating = 1500,
   userRating = "?",
 }) {
   const listRef = useRef(null);
-  const fileInputRef = useRef(null);
 
   // Скролл теперь будет следить не только за новыми ходами, но и за переключением активного хода
   useEffect(() => {
@@ -40,12 +42,6 @@ export default function MoveHistory({
       bIndex: i + 1, // Индекс полухода черных
     });
   }
-  // Функция для программного клика по скрытому загрузчику файлов
-  const handleImportClick = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
-  };
   return (
     <div className="move-history-panel">
       <h3 className="history-title">История ходов</h3>
@@ -138,15 +134,7 @@ export default function MoveHistory({
         </button>
 
         {/* Обновленный счетчик ходов */}
-        <span
-          className="move-counter"
-          style={{
-            fontFamily: '"Calypso", serif',
-            fontSize: "24px",
-            color: "#333",
-            whiteSpace: "nowrap", // <-- Добавили запрет на перенос строки
-          }}
-        >
+        <span className="move-counter">
           {currentHalfMove} / {safeHistory.length}
         </span>
 
@@ -184,19 +172,7 @@ export default function MoveHistory({
 
       {/* Нижние кнопки */}
       <div className="action-buttons">
-        {/* Скрытый инпут для файлов */}
-        <input
-          type="file"
-          ref={fileInputRef}
-          style={{ display: "none" }}
-          accept=".fen,.pgn,.png"
-          onChange={onImport}
-        />
-
-        {/* Красивая кнопка, которая триггерит инпут */}
-        <button className="btn-import" onClick={handleImportClick}>
-          Импорт
-        </button>
+        <PositionMenu fen={fen} onLoadFen={onLoadFen} getPgn={getPgn} />
       </div>
     </div>
   );

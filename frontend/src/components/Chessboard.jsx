@@ -9,7 +9,6 @@ import {
 } from "react";
 import { Chessboard as ReactChessboard } from "react-chessboard";
 import { Chess } from "chess.js";
-import FenBar from "./FenBar.jsx";
 
 import {
   fetchMaiaMove,
@@ -224,10 +223,11 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
    * Размер доски.
    */
   const updateBoardSize = useCallback(() => {
+    const isMobile = window.matchMedia("(max-width: 760px)").matches;
+    const isStacked = window.matchMedia("(max-width: 1150px)").matches;
     const evalW = 62;      // шкала 38px + поля по 12px (см. .eval-bar)
     const sideW = 260;     // панель истории (фикс. ширина в CSS)
     const gapW = 24;       // отступы между панелями
-    const sideMargin = 24; // левый отступ от края
 
     /*
      * Чат можно свернуть в узкую полосу - тогда его ширина достаётся
@@ -236,10 +236,21 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
      * 66px хрома колонки доски (паддинги 14+14 и рамка с паддингами
      * карточки 38), иначе ряд вылез бы за окно.
      */
-    const chatReserve = chatCollapsed ? 138 : 520;
-
-    const availW =
-      window.innerWidth - evalW - sideW - gapW * 3 - chatReserve - sideMargin;
+    const boardChromeW = isMobile ? 22 : 66; // карточка (22 mobile / 38 desktop) + desktop column padding
+    const mainEl = document.querySelector(".main-area");
+    const chatEl = document.querySelector(".chat-section");
+    const chatStyle = chatEl ? window.getComputedStyle(chatEl) : null;
+    const chatReserve = chatEl
+      ? chatEl.getBoundingClientRect().width +
+        parseFloat(chatStyle.marginLeft || 0) +
+        parseFloat(chatStyle.marginRight || 0)
+      : chatCollapsed
+        ? 72
+        : 544;
+    const containerW = mainEl?.clientWidth || window.innerWidth;
+    const availW = isStacked
+      ? containerW - boardChromeW
+      : containerW - evalW - sideW - gapW * 3 - chatReserve - boardChromeW;
 
     /*
      * Высота — замером живых элементов, а не гаданием по window:
@@ -254,7 +265,6 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
      * чем места, карточка сжимается по высоте колонки и offsetHeight
      * перестаёт отражать реальную высоту содержимого.
      */
-    const mainEl = document.querySelector(".main-area");
     const boardBox = boardBoxRef.current;
     const wrapper = boardBox
       ? boardBox.closest(".board-wrapper")
@@ -274,7 +284,8 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
 
     const size = Math.floor(Math.min(availW, availH));
 
-    setBoardWidth(Math.max(360, Math.min(size, 1150)));
+    const maxBoardWidth = isMobile ? 720 : isStacked ? 860 : 1150;
+    setBoardWidth(Math.max(isMobile ? 240 : 360, Math.min(size, maxBoardWidth)));
   }, [chatCollapsed]);
 
   useEffect(() => {
@@ -421,6 +432,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
       engine: "maia3",
       result,
       status,
+      playerColor,
     }).catch(() => {});
   }, [moveHistory, elo, playerColor]);
 
@@ -724,9 +736,11 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
             turn: game.turn(),
           }));
         }
+        return true;
       } catch (error) {
+        // Сообщение покажет меню «Позиция», откуда загружают FEN.
         console.error("Неверный FEN:", error);
-        alert("Ошибка: Неверный формат FEN-строки!");
+        return false;
       }
     },
     [game, onStateChange],
@@ -1657,7 +1671,15 @@ const fetchBestMove = useCallback(
     onNavigate,
     handleNewGame,
     getFen: () => gameRef.current.fen(),
-    handleLoadFen,
+    // Меню «Позиция»: загрузка FEN и экспорт партии в PGN.
+    loadFen: handleLoadFen,
+    getPgn: () => {
+      try {
+        return gameRef.current.pgn();
+      } catch {
+        return "";
+      }
+    },
     // Кнопка «Подсказка» живёт в ChatPanel — дёргает анализ через ref.
     requestBestMove: () => fetchBestMove(),
   }));
@@ -2448,11 +2470,6 @@ const fetchBestMove = useCallback(
             )}
           </div>
         )}
-
-        <FenBar
-          fen={fen}
-          onLoadFen={handleLoadFen}
-        />
       </div>
     </div>
   );

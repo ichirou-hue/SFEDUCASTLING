@@ -4,17 +4,28 @@
 по правилам движения фигур и базовым шахматным понятиям.
 """
 
+import random
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api_gateway import state
 from backend.api_gateway.dependecies import get_current_user
 from backend.db.session import get_db
 from backend.models.training_task import TrainingTask
+from backend.models.training_attempt import TrainingAttempt
+from backend.models.training_lesson import TrainingLesson
+from backend.models.training_module import TrainingModule
 from backend.models.user import User
+from backend.services.gigacoin_service import (
+    TRAINING_FIRST_CORRECT,
+    TRAINING_REPEAT,
+    award_gigacoins,
+    moscow_today,
+)
 from backend.services.training_checker import TrainingCheckError, check_training_task
 from backend.services.assessment import rating_for_selection
 from backend.services.difficulty_logic import difficulty_for_rating
@@ -54,11 +65,41 @@ class TrainingAnswerRequest(BaseModel):
     response_time_ms: int | None = Field(default=None, ge=0)
 
 
-def _task_public(task: TrainingTask) -> dict[str, Any]:
+def _task_public(
+    task: TrainingTask,
+    correct_option_position: int | None = None,
+) -> dict[str, Any]:
     """Публичная часть задания: эталон ответа намеренно не выдаётся."""
     payload = dict(task.payload or {})
     payload.pop("accepted_moves", None)
-    payload.pop("correct_option", None)
+    correct_option = payload.pop("correct_option", None)
+
+    options = payload.get("options")
+    if task.task_type == "choose_option" and isinstance(options, list) and options:
+        public_options = [dict(option) for option in options if isinstance(option, dict)]
+        correct_option_data = next(
+            (option for option in public_options if option.get("id") == correct_option),
+            None,
+        )
+        if correct_option_data and len(public_options) > 1:
+            distractors = [
+                option for option in public_options
+                if option.get("id") != correct_option
+            ]
+            random.shuffle(distractors)
+            if correct_option_position is None:
+                correct_option_position = random.randrange(len(public_options))
+            correct_option_position = max(
+                0,
+                min(correct_option_position, len(public_options) - 1),
+            )
+            shuffled_options = []
+            for index in range(len(public_options)):
+                if index == correct_option_position:
+                    shuffled_options.append(correct_option_data)
+                else:
+                    shuffled_options.append(distractors.pop())
+            payload["options"] = shuffled_options
 
     return {
         "id": task.id,
@@ -72,6 +113,29 @@ def _task_public(task: TrainingTask) -> dict[str, Any]:
         "payload": payload,
         "sort_order": task.sort_order,
     }
+
+
+def _tasks_public(tasks: list[TrainingTask]) -> list[dict[str, Any]]:
+    """Смешивает позиции правильных вариантов в пределах списка заданий."""
+    positions_by_count: dict[int, list[int]] = {}
+    result = []
+
+    for task in tasks:
+        payload = task.payload or {}
+        options = payload.get("options") or []
+        correct_position = None
+        if task.task_type == "choose_option" and len(options) > 1:
+            option_count = len(options)
+            position_pool = positions_by_count.get(option_count)
+            if not position_pool:
+                position_pool = list(range(option_count))
+                random.shuffle(position_pool)
+                positions_by_count[option_count] = position_pool
+            correct_position = position_pool.pop()
+
+        result.append(_task_public(task, correct_position))
+
+    return result
 
 
 @router.get("/progress")
@@ -160,7 +224,7 @@ async def training_lesson(
             "theory": lesson.theory,
             "sort_order": lesson.sort_order,
         },
-        "tasks": [_task_public(task) for task in tasks],
+        "tasks": _tasks_public(tasks),
     }
 
 
@@ -202,6 +266,16 @@ async def check_task(
         player_rating=effective_player_rating(user),
     )
 
+    previously_solved = False
+    if result.correct:
+        previously_solved = await db.scalar(
+            select(TrainingAttempt.id).where(
+                TrainingAttempt.user_id == user.id,
+                TrainingAttempt.task_id == task.id,
+                TrainingAttempt.correct.is_(True),
+            ).limit(1)
+        ) is not None
+
     attempt = await save_attempt(
         db,
         task=task,
@@ -227,6 +301,52 @@ async def check_task(
         correct=result.correct,
     )
 
+    gigacoins_earned = 0
+    if result.correct:
+        if previously_solved:
+            today = moscow_today().isoformat()
+            reward_reason = "training_repeat"
+            reward_ref = f"{task.id}:{today}"
+            reward_amount = TRAINING_REPEAT
+        else:
+            reward_reason = "training_first"
+            reward_ref = str(task.id)
+            reward_amount = TRAINING_FIRST_CORRECT
+        gigacoins_earned += await award_gigacoins(
+            db, user, reward_reason, reward_ref, reward_amount
+        )
+
+        module_id = await db.scalar(
+            select(TrainingLesson.module_id)
+            .join(TrainingTask, TrainingTask.lesson_id == TrainingLesson.id)
+            .where(TrainingTask.id == task.id)
+        )
+        module = await db.get(TrainingModule, module_id) if module_id else None
+        if module is not None and module.enabled:
+            module_task_ids = set((await db.scalars(
+                select(TrainingTask.id)
+                .join(TrainingLesson, TrainingLesson.id == TrainingTask.lesson_id)
+                .where(
+                    TrainingLesson.module_id == module.id,
+                    TrainingLesson.enabled.is_(True),
+                    TrainingTask.enabled.is_(True),
+                )
+            )).all())
+            solved_task_ids = set((await db.scalars(
+                select(TrainingAttempt.task_id)
+                .where(
+                    TrainingAttempt.user_id == user.id,
+                    TrainingAttempt.correct.is_(True),
+                    TrainingAttempt.task_id.in_(module_task_ids or {-1}),
+                )
+                .distinct()
+            )).all())
+            if module_task_ids and module_task_ids.issubset(solved_task_ids):
+                gigacoins_earned += await award_gigacoins(
+                    db, user, "module_complete", str(module.id), 10
+                )
+        await db.commit()
+
     return {
         "ok": True,
         "task_id": task.id,
@@ -242,4 +362,6 @@ async def check_task(
         "explanation": task.explanation,
         "expected": result.expected,
         "details": result.details,
+        "gigacoins_earned": gigacoins_earned,
+        "gigacoins_balance": int(user.gigacoins or 0),
     }

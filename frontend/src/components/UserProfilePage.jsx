@@ -188,6 +188,10 @@ export default function UserProfilePage({ user, onUserChange }) {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    if (user) setProfile(user);
+  }, [user]);
+
+  useEffect(() => {
     let cancelled = false;
 
     async function loadProfile() {
@@ -256,6 +260,10 @@ export default function UserProfilePage({ user, onUserChange }) {
             <div className="user-profile-stat">
               <span>В системе с</span>
               <strong>{formatDate(profile?.created_at)}</strong>
+            </div>
+            <div className="user-profile-stat user-profile-stat--coins">
+              <span>Баланс GigaCoin</span>
+              <strong>{Number(profile?.gigacoins || 0).toLocaleString("ru-RU")}</strong>
             </div>
           </div>
 

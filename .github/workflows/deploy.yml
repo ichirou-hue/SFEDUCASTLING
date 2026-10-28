@@ -1,0 +1,101 @@
+name: Deploy production
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [dev]
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Full SHA with a successful CI run on dev
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: gigachess-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: >-
+      vars.PRODUCTION_DEPLOY_ENABLED == 'true' &&
+      ((github.event_name == 'workflow_run' &&
+        github.event.workflow_run.event == 'push' &&
+        github.event.workflow_run.head_branch == 'dev' &&
+        github.event.workflow_run.head_repository.full_name == github.repository &&
+        github.event.workflow_run.conclusion == 'success') ||
+       (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/dev'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: production
+    steps:
+      - name: Resolve verified source commit
+        id: source
+        env:
+          EVENT: ${{ github.event_name }}
+          RUN_SHA: ${{ github.event.workflow_run.head_sha }}
+          INPUT_SHA: ${{ inputs.source_sha }}
+        run: |
+          set -euo pipefail
+          sha="$RUN_SHA"
+          if [[ "$EVENT" == workflow_dispatch ]]; then sha="$INPUT_SHA"; fi
+          [[ "$sha" =~ ^[0-9a-f]{40}$ ]]
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
+      - name: Download artifact from successful CI run
+        if: github.event_name == 'workflow_run'
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: sfeducasling-${{ steps.source.outputs.sha }}
+          path: bundle
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+
+      - name: Find verified artifact for manual dispatch
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ steps.source.outputs.sha }}
+        run: |
+          set -euo pipefail
+          run_id="$(gh run list --workflow CI --branch dev --commit "$SHA" --status success --limit 1 --json databaseId --jq '.[0].databaseId')"
+          test -n "$run_id" && test "$run_id" != null
+          gh run download "$run_id" --name "sfeducasling-$SHA" --dir bundle
+
+      - name: Verify artifact is present
+        env:
+          SHA: ${{ steps.source.outputs.sha }}
+        run: test -s "bundle/gigachess-$SHA.tar.gz"
+
+      - name: Configure pinned SSH host key
+        env:
+          KNOWN_HOSTS: ${{ secrets.SERVER_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          test -n "$KNOWN_HOSTS"
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s\n' "$KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/known_hosts"
+
+      - name: Upload verified bundle
+        env:
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+          SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
+          SHA: ${{ steps.source.outputs.sha }}
+        run: |
+          set -euo pipefail
+          test -n "$SERVER_HOST" && test -n "$SERVER_USER" && test -n "$SSH_KEY"
+          key="$RUNNER_TEMP/deploy_key"
+          printf '%s\n' "$SSH_KEY" > "$key"
+          chmod 600 "$key"
+          scp -i "$key" -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            "bundle/gigachess-$SHA.tar.gz" "$SERVER_USER@$SERVER_HOST:/tmp/gigachess-$SHA.tar.gz"
+          ssh -i "$key" -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            "$SERVER_USER@$SERVER_HOST" "sudo -n /usr/local/sbin/gigachess-deploy $SHA"

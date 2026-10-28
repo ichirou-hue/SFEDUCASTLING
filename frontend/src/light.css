@@ -1,0 +1,478 @@
+/* =========================================================================
+   СВЕТЛАЯ ТЕМА
+   -------------------------------------------------------------------------
+   Тёмная тема живёт в theme.css, светлая — здесь. Правила включаются
+   только при data-theme="light" на <html>, поэтому базовые стили и
+   компонентные CSS остаются нетронутыми.
+
+   Палитра: тёплая бумага, тёмно-зелёные чернила и приглушённое золото.
+   ========================================================================= */
+
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --lt-bg: #f4efe4;
+  --lt-surface: linear-gradient(145deg, rgba(255, 255, 255, 0.97), rgba(250, 247, 239, 0.95));
+  --lt-surface-flat: rgba(255, 253, 248, 0.92);
+  --lt-ink: #20332d;
+  --lt-ink-strong: #16261f;
+  --lt-muted: #5f7067;
+  --lt-muted-2: #7f8b83;
+  --lt-gold: #a07c36;
+  --lt-gold-strong: #826125;
+  --lt-gold-soft: rgba(169, 133, 63, 0.12);
+  --lt-line: rgba(48, 82, 61, 0.13);
+  --lt-line-gold: rgba(160, 124, 54, 0.28);
+  --lt-green: #3f7a51;
+  --lt-input: rgba(255, 255, 255, 0.9);
+  --lt-shadow: 0 14px 38px rgba(48, 65, 52, 0.1);
+}
+
+:root[data-theme="light"] ::selection {
+  background: rgba(169, 133, 63, 0.24);
+  color: var(--lt-ink-strong);
+}
+
+/* =========================================================================
+   ШАПКА
+   ========================================================================= */
+
+:root[data-theme="light"] .top-bar {
+  background: linear-gradient(180deg, rgba(253, 250, 243, 0.97), rgba(247, 242, 232, 0.95));
+  border-bottom-color: rgba(160, 124, 54, 0.26);
+  box-shadow: 0 6px 24px rgba(48, 65, 52, 0.08);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Логотип уже нарисован тёмно-коричневым, фильтр тёмной темы не нужен. */
+:root[data-theme="light"] .gigachess-logo {
+  filter: none;
+}
+
+:root[data-theme="light"] .top-nav-link {
+  color: #526158;
+}
+
+:root[data-theme="light"] .top-nav-link:hover,
+:root[data-theme="light"] .top-nav-link--active {
+  color: var(--lt-gold-strong);
+}
+
+:root[data-theme="light"] .top-bar .reg-btn {
+  border-color: rgba(160, 124, 54, 0.5);
+  background: transparent;
+  color: var(--lt-gold-strong);
+}
+
+:root[data-theme="light"] .top-bar .reg-btn:hover {
+  border-color: #b08b45;
+  background: #b08b45;
+  color: #fffdf8;
+}
+
+:root[data-theme="light"] .top-bar .reg-btn--ghost {
+  border-color: rgba(48, 82, 61, 0.2);
+  color: var(--lt-ink);
+}
+
+:root[data-theme="light"] .top-bar .user-name {
+  color: var(--lt-ink);
+}
+
+:root[data-theme="light"] .topbar-gigacoins {
+  border-color: rgba(160, 124, 54, 0.4);
+  background: rgba(169, 133, 63, 0.1);
+  color: var(--lt-gold-strong);
+}
+
+:root[data-theme="light"] .gigacoin-reward-toast {
+  border-color: rgba(160, 124, 54, 0.42);
+  background: rgba(253, 250, 243, 0.98);
+  box-shadow: 0 12px 30px rgba(48, 65, 52, 0.16);
+  color: var(--lt-gold-strong);
+}
+
+:root[data-theme="light"] .gigacoin-reward-toast__copy small {
+  color: rgba(130, 97, 37, 0.78);
+}
+
+/* =========================================================================
+   ГЛАВНАЯ СТРАНИЦА
+   ========================================================================= */
+
+:root[data-theme="light"] .home-page {
+  color: var(--lt-ink);
+  background-color: #f2ecdf;
+  background-image:
+    linear-gradient(180deg, rgba(248, 244, 235, 0.72), rgba(240, 234, 221, 0.8)),
+    url("/marble-bg.jpg");
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+}
+
+/* Сцену оставляем, но укрываем тёплой дымкой: она даёт лёгкую текстуру,
+   не превращая главную в тёмную страницу. */
+:root[data-theme="light"] .home-hero::before {
+  background-image:
+    linear-gradient(180deg, rgba(250, 247, 239, 0.58) 0%, rgba(250, 247, 239, 0.72) 48%, rgba(246, 241, 231, 0.9) 100%),
+    linear-gradient(90deg, rgba(250, 247, 239, 0.68) 0%, rgba(250, 247, 239, 0.24) 46%, rgba(250, 247, 239, 0.48) 100%),
+    url("/home-clouds-emerald.png");
+  background-position: center, center, center 48%;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+
+:root[data-theme="light"] .home-hero-copy {
+  border-color: var(--lt-line-gold);
+  border-left: 3px solid #b08b45;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(251, 247, 238, 0.84));
+  box-shadow: 0 18px 44px rgba(55, 66, 52, 0.12);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+:root[data-theme="light"] .home-hero h1 {
+  color: var(--lt-ink-strong);
+}
+
+:root[data-theme="light"] .home-hero h1 em {
+  color: var(--lt-gold);
+}
+
+:root[data-theme="light"] .home-lead {
+  color: #48584f;
+}
+
+:root[data-theme="light"] .home-primary {
+  border-color: #c9a96e;
+  background: #c9a96e;
+  color: #23302a;
+}
+
+:root[data-theme="light"] .home-primary:hover {
+  border-color: #b89a5e;
+  background: #b89a5e;
+}
+
+:root[data-theme="light"] .home-secondary {
+  border-color: rgba(160, 124, 54, 0.45);
+  background: rgba(255, 255, 255, 0.42);
+  color: var(--lt-ink);
+}
+
+:root[data-theme="light"] .home-secondary:hover {
+  border-color: rgba(160, 124, 54, 0.7);
+  background: rgba(201, 169, 110, 0.22);
+}
+
+:root[data-theme="light"] .home-proof {
+  color: #5f6e65;
+}
+
+:root[data-theme="light"] .home-proof-mark {
+  color: var(--lt-gold);
+}
+
+:root[data-theme="light"] .home-stats-guest {
+  border-color: var(--lt-line-gold);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(250, 246, 237, 0.92));
+  box-shadow: var(--lt-shadow);
+  color: var(--lt-ink);
+}
+
+:root[data-theme="light"] .home-stats-guest__mark {
+  border-color: rgba(160, 124, 54, 0.34);
+  background: rgba(169, 133, 63, 0.09);
+  color: var(--lt-gold);
+}
+
+:root[data-theme="light"] .home-stats-guest .user-profile-kicker {
+  color: var(--lt-gold-strong);
+}
+
+:root[data-theme="light"] .home-stats-guest h2 {
+  color: var(--lt-ink);
+}
+
+:root[data-theme="light"] .home-stats-guest p {
+  color: #617067;
+}
+
+:root[data-theme="light"] .home-stats-guest__button {
+  border-color: #c9a96e;
+  background: #c9a96e;
+  color: #23302a;
+}
+
+:root[data-theme="light"] .home-stats-guest__button:hover {
+  border-color: #b89a5e;
+  background: #b89a5e;
+}
+
+/* =========================================================================
+   ОБЩИЕ ФОНЫ СТРАНИЦ
+   ========================================================================= */
+
+:root[data-theme="light"] body {
+  background-color: #efe9dc;
+}
+
+:root[data-theme="light"] .main-page-scroll,
+:root[data-theme="light"] .puzzles-page,
+:root[data-theme="light"] .puzzles-page-shell,
+:root[data-theme="light"] .training-page,
+:root[data-theme="light"] .user-profile-page,
+:root[data-theme="light"] .level-test-page,
+:root[data-theme="light"] .admin-page {
+  background-color: #f2ecdf;
+}
+
+:root[data-theme="light"] .main-page-scroll {
+  background-image:
+    linear-gradient(110deg, rgba(248, 244, 235, 0.8), rgba(248, 244, 235, 0.64) 58%, rgba(242, 237, 226, 0.86)),
+    url("/backgrounds/play-king.webp");
+}
+
+:root[data-theme="light"] .puzzles-page,
+:root[data-theme="light"] .puzzles-page-shell {
+  background-image:
+    linear-gradient(110deg, rgba(248, 244, 235, 0.8), rgba(248, 244, 235, 0.64) 56%, rgba(242, 237, 226, 0.86)),
+    url("/backgrounds/puzzles-queen.webp");
+}
+
+:root[data-theme="light"] .training-page,
+:root[data-theme="light"] .training-page.level-test-background {
+  background-image:
+    linear-gradient(110deg, rgba(248, 244, 235, 0.8), rgba(248, 244, 235, 0.64) 58%, rgba(242, 237, 226, 0.86)),
+    url("/backgrounds/training-rook.webp");
+}
+
+:root[data-theme="light"] .user-profile-page {
+  background-image:
+    linear-gradient(110deg, rgba(248, 244, 235, 0.8), rgba(248, 244, 235, 0.64) 55%, rgba(242, 237, 226, 0.86)),
+    url("/backgrounds/profile-bishop.webp");
+}
+
+:root[data-theme="light"] .level-test-page {
+  background-image:
+    linear-gradient(110deg, rgba(248, 244, 235, 0.8), rgba(248, 244, 235, 0.64) 58%, rgba(242, 237, 226, 0.86)),
+    url("/backgrounds/level-test-crown.webp");
+}
+
+:root[data-theme="light"] .admin-page {
+  background-image:
+    linear-gradient(110deg, rgba(248, 244, 235, 0.8), rgba(248, 244, 235, 0.64) 58%, rgba(242, 237, 226, 0.86)),
+    url("/backgrounds/admin-rook.webp");
+}
+
+/* =========================================================================
+   ФУТЕР
+   ========================================================================= */
+
+:root[data-theme="light"] .site-footer,
+:root[data-theme="light"] .home-page .site-footer {
+  border-top-color: rgba(160, 124, 54, 0.3);
+  background: rgba(250, 247, 240, 0.66);
+  color: #7b857d;
+}
+
+:root[data-theme="light"] .site-footer-brand,
+:root[data-theme="light"] .home-page .site-footer-brand {
+  color: #6d7a71;
+}
+
+:root[data-theme="light"] .site-footer-link,
+:root[data-theme="light"] .home-page .site-footer-link {
+  color: #35643d;
+}
+
+:root[data-theme="light"] .site-footer-link:hover,
+:root[data-theme="light"] .home-page .site-footer-link:hover {
+  color: #4f8156;
+}
+
+/* =========================================================================
+   «ТВОИ ДОСТИЖЕНИЯ» НА ГЛАВНОЙ И В ПРОФИЛЕ
+   ========================================================================= */
+
+:root[data-theme="light"] .user-records {
+  border-color: rgba(160, 124, 54, 0.26);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.97), rgba(250, 247, 239, 0.95));
+  box-shadow: 0 14px 38px rgba(48, 65, 52, 0.09);
+  color: var(--lt-ink);
+}
+
+:root[data-theme="light"] .user-records .user-profile-kicker {
+  color: var(--lt-gold-strong);
+}
+
+:root[data-theme="light"] .user-records__heading h2 {
+  color: var(--lt-ink);
+}
+
+:root[data-theme="light"] .user-records__range {
+  border-color: rgba(160, 124, 54, 0.24);
+  background: rgba(169, 133, 63, 0.09);
+  color: #7a6a4c;
+}
+
+:root[data-theme="light"] .user-record-card--gold {
+  --record-border: rgba(190, 151, 78, 0.24);
+  --record-bg: linear-gradient(145deg, #fffaf0, #fffdf8);
+  --record-accent: #a27c32;
+}
+
+:root[data-theme="light"] .user-record-card--green {
+  --record-border: rgba(75, 132, 90, 0.2);
+  --record-bg: linear-gradient(145deg, #eff7ef, #fbfdf9);
+  --record-accent: #47775a;
+}
+
+:root[data-theme="light"] .user-record-card--blue {
+  --record-border: rgba(62, 119, 144, 0.2);
+  --record-bg: linear-gradient(145deg, #eef6f9, #fbfdfe);
+  --record-accent: #3f7285;
+}
+
+:root[data-theme="light"] .user-record-card {
+  border-color: var(--record-border);
+  background: var(--record-bg);
+}
+
+:root[data-theme="light"] .user-record-card__label {
+  color: #5d6d64;
+}
+
+:root[data-theme="light"] .user-record-card__value {
+  color: #263a31;
+}
+
+:root[data-theme="light"] .user-record-card__detail {
+  color: #748078;
+}
+
+:root[data-theme="light"] .user-records__activity {
+  border-color: rgba(34, 90, 115, 0.12);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+:root[data-theme="light"] .user-records__activity-heading h3 {
+  color: var(--lt-ink);
+}
+
+:root[data-theme="light"] .user-records__activity-heading p,
+:root[data-theme="light"] .user-record-chart__empty,
+:root[data-theme="light"] .user-record-chart__count,
+:root[data-theme="light"] .user-record-chart__date,
+:root[data-theme="light"] .user-record-legend span,
+:root[data-theme="light"] .user-record-chart__footer > strong {
+  color: #7d8a81;
+}
+
+:root[data-theme="light"] .user-record-chart__plot {
+  border-color: rgba(34, 90, 115, 0.14);
+}
+
+:root[data-theme="light"] .user-record-chart__bar {
+  background: rgba(71, 112, 85, 0.08);
+}
+
+:root[data-theme="light"] .user-records__tabs {
+  border-color: rgba(34, 90, 115, 0.12);
+  background: #f3f0e7;
+}
+
+:root[data-theme="light"] .user-records__tabs button {
+  color: #6d786f;
+}
+
+:root[data-theme="light"] .user-records__tabs button.is-active {
+  background: #fff;
+  color: #315d40;
+  box-shadow: 0 1px 4px rgba(23, 51, 34, 0.1);
+}
+
+:root[data-theme="light"] .user-records__profile-link {
+  color: var(--lt-gold-strong);
+}
+
+:root[data-theme="light"] .user-records__profile-link:hover {
+  color: var(--lt-gold);
+}
+
+:root[data-theme="light"] .user-records--loading {
+  border-color: rgba(160, 124, 54, 0.2);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(250, 247, 239, 0.94));
+  color: #63736a;
+}
+
+/* =========================================================================
+   ПРОФИЛЬ, АДМИНКА, ОБУЧЕНИЕ: ОБЩИЕ АКЦЕНТЫ
+   ========================================================================= */
+
+:root[data-theme="light"] .user-profile-card,
+:root[data-theme="light"] .user-profile-rating-section,
+:root[data-theme="light"] .user-profile-progress-section,
+:root[data-theme="light"] .user-profile-section,
+:root[data-theme="light"] .admin-card,
+:root[data-theme="light"] .admin-users-panel,
+:root[data-theme="light"] .admin-summary,
+:root[data-theme="light"] .training-hero,
+:root[data-theme="light"] .training-module-header,
+:root[data-theme="light"] .training-module-node {
+  border-color: rgba(48, 82, 61, 0.12);
+  box-shadow: 0 10px 30px rgba(48, 65, 52, 0.07);
+}
+
+:root[data-theme="light"] .user-profile-kicker,
+:root[data-theme="light"] .training-kicker,
+:root[data-theme="light"] .admin-kicker {
+  color: var(--lt-gold-strong);
+}
+
+/* =========================================================================
+   МОДАЛЬНЫЕ ОКНА
+   ========================================================================= */
+
+/* Левый блок авторизации раньше был полупрозрачным и сквозь него
+   читалась главная страница: делаем карточку плотной, но тёплой. */
+:root[data-theme="light"] .auth-card {
+  border-color: rgba(140, 190, 150, 0.5);
+  background: rgba(255, 253, 248, 0.97);
+  box-shadow:
+    0 4px 12px rgba(40, 70, 46, 0.12),
+    0 24px 60px rgba(40, 70, 46, 0.22);
+}
+
+:root[data-theme="light"] .auth-side--brand {
+  border-right-color: rgba(160, 124, 54, 0.28);
+  background: linear-gradient(160deg, rgba(201, 169, 110, 0.2), rgba(131, 183, 135, 0.14));
+}
+
+:root[data-theme="light"] .auth-section {
+  border-color: rgba(180, 200, 175, 0.5);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+/* =========================================================================
+   МОБИЛЬНАЯ НИЖНЯЯ НАВИГАЦИЯ
+   ========================================================================= */
+
+@media (max-width: 760px) {
+  :root[data-theme="light"] .top-nav {
+    border-color: var(--lt-line-gold);
+    background: rgba(252, 249, 242, 0.96);
+    box-shadow: 0 12px 32px rgba(48, 65, 52, 0.16);
+  }
+
+  :root[data-theme="light"] .top-nav-link {
+    color: rgba(32, 51, 45, 0.64);
+  }
+
+  :root[data-theme="light"] .top-nav-link--active {
+    color: var(--lt-gold-strong);
+    background: rgba(169, 133, 63, 0.14);
+  }
+}

@@ -395,16 +395,26 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
       // Ширина — по формуле от окна (колонки грида фиксированы).
       // Свёрнутый чат занимает 48px полосы + 24px отступа, остальное
       // достаётся доске (см. .puzzles-layout--chat-collapsed).
-      const infoW = 230;
+      const isMobile = window.matchMedia("(max-width: 760px)").matches;
+      const infoW = isMobile ? 0 : 230;
       const chatReserve = chatCollapsed ? 64 : 560;
-      const hGaps = 64; // gaps + паддинги + скроллбар
-      const availW = window.innerWidth - infoW - chatReserve - hGaps;
-      // Высота — замер живого контейнера (исключает топбар и хром
-      // браузера), минус всё под доской: рамка 30 + кнопки ~110 + отступы.
+      const hGaps = isMobile ? 48 : 64; // gaps + паддинги + скроллбар
       const layoutEl = document.querySelector(".puzzles-layout");
+      const availW = isMobile
+        ? (layoutEl?.clientWidth || window.innerWidth) - hGaps
+        : window.innerWidth - infoW - chatReserve - hGaps;
+      // Высота — видимая область страницы (без топбара и футера), а не
+      // высота самой раскладки: она теперь растягивается по содержимому,
+      // и замер её clientHeight дал бы петлю (доска растит саму себя).
       const belowBoard = 175;
-      const layoutH = layoutEl?.clientHeight || window.innerHeight;
-      const availH = layoutH - belowBoard;
+      const shellEl = document.querySelector(".puzzles-page-shell");
+      const footerEl = document.querySelector(
+        ".puzzles-page-shell > .site-footer"
+      );
+      const viewH = shellEl
+        ? shellEl.clientHeight - (footerEl?.offsetHeight || 0)
+        : window.innerHeight;
+      const availH = viewH - belowBoard;
       // Страховка от переполнения колонки: доска никогда не шире
       // реальной ширины своей грид-колонки минус рамка обёртки (38px).
       // Иначе доска залезает на инфо-панель и чат (так и было).
@@ -415,15 +425,16 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
        */
       const targetCol = boardColTargetRef.current;
       boardColTargetRef.current = 0;
+      const boardChrome = isMobile ? 22 : 38;
       const colW = targetCol
-        ? targetCol - 38
+        ? targetCol - boardChrome
         : colEl
-          ? colEl.clientWidth - 38
+          ? colEl.clientWidth - boardChrome
           : Infinity;
       const size = Math.floor(
-        Math.min(Math.max(availW, 280), Math.max(availH, 280), colW),
+        Math.min(Math.max(availW, isMobile ? 240 : 280), Math.max(availH, 280), colW),
       );
-      setBoardWidth(Math.max(320, Math.min(size, 780)));
+      setBoardWidth(Math.max(isMobile ? 240 : 320, Math.min(size, 780)));
     };
     updateSize();
     window.addEventListener("resize", updateSize);

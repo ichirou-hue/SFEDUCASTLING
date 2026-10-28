@@ -22,6 +22,17 @@ export function getStoredUser() {
   }
 }
 
+function announceGigacoinReward(data) {
+  if (typeof window === "undefined" || !data) return;
+  const balance = Number(data.gigacoins_balance);
+  const amount = Number(data.gigacoins_earned || 0);
+  if (amount > 0) {
+    window.dispatchEvent(new CustomEvent("sfedu-gigacoins-earned", {
+      detail: { amount, balance: Number.isFinite(balance) ? balance : null },
+    }));
+  }
+}
+
 export async function fetchCurrentUser() {
   const { data } = await api.get("/api/auth/me");
   const user = data?.user ?? data;
@@ -215,6 +226,7 @@ export async function logout() {
 
 export async function saveOnboarding(answers) {
   const { data } = await api.post("/api/auth/onboarding", answers);
+  announceGigacoinReward(data);
   const user = data?.user;
   if (user) {
     localStorage.setItem(USER_KEY, JSON.stringify(user));
@@ -295,14 +307,16 @@ export async function saveMoveToDataset(fen, move, userId, gameId) {
   return data;
 }
 
-export async function finishGame({ moves, elo, engine, result, status }) {
+export async function finishGame({ moves, elo, engine, result, status, playerColor = "w" }) {
   const { data } = await api.post("/api/game/finish", {
     moves,
     elo: elo ?? null,
     engine: engine || "maia3",
     result: result || "*",
     status: status || "playing",
+    player_color: playerColor,
   });
+  announceGigacoinReward(data);
   if (getAccessToken() && typeof window !== "undefined") {
     const previousCount = localStorage.getItem("sfedu-phase-accuracy-game-count");
     localStorage.setItem(
@@ -384,6 +398,7 @@ export async function recordPuzzleAttempt(puzzleId, correct) {
     puzzle_id: puzzleId,
     correct,
   });
+  announceGigacoinReward(data);
   return data;
 }
 
@@ -448,6 +463,7 @@ export async function checkTrainingTask(
     hints_used: hintsUsed,
     response_time_ms: responseTimeMs,
   });
+  announceGigacoinReward(data);
   return data;
 }
 
@@ -502,6 +518,7 @@ export async function finishLevelTest(testId, answers = []) {
     test_id: testId,
     answers,
   });
+  announceGigacoinReward(data);
   return data;
 }
 
