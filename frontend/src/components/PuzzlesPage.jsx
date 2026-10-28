@@ -209,6 +209,9 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
   const solutionMovesRef = useRef([]);
   const solutionIndexRef = useRef(0);
   const puzzlesRef = useRef([]);
+  // Уникальные задачи, решённые за текущую загрузку страницы. Повторное
+  // решение той же задачи не приближает пробный лимит.
+  const solvedPuzzleIdsRef = useRef(new Set());
   const loadSeqRef = useRef(0);
 
   useEffect(() => {
@@ -275,6 +278,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
     setLoading(true);
     setError(null);
     setSolvedCount(0);
+    solvedPuzzleIdsRef.current = new Set();
     setAdaptiveMeta(null);
     setPreviewInfo(null);
 
@@ -359,18 +363,24 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
     getCourseTopicForPuzzle(currentPuzzle);
 
   // Пробный доступ исчерпан: либо бэкенд уже вернул пусто (лимит на сегодня
-  // выбран), либо на последней пробной задаче открыт гейт анкеты.
+  // выбран), либо на третьей решённой задаче открыт гейт анкеты.
   const previewLocked =
     Boolean(previewInfo) && (previewInfo.locked || previewGate);
 
-  // Последняя задача пробного набора: её нельзя дорешить без анкеты. Доску
-  // показываем полностью, но завершающий (решающий) ход не пропускаем —
-  // вместо него выскакивает окно с предложением пройти анкету.
-  const isLastPreviewPuzzle =
+  // Гейт анкеты показываем на последнем ходу ТРЕТЬЕЙ решённой за сегодня
+  // задачи, а не на последней задаче в списке. previewInfo.remaining —
+  // сколько ещё можно решить сегодня с учётом прошлых заходов, поэтому
+  // в этой сессии гейт включается после (remaining - 1) новых решений.
+  // Какую именно из оставшихся задач пользователь решит третьей — не важно.
+  const previewGateAfterSolved = previewInfo
+    ? Math.max(0, previewInfo.remaining - 1)
+    : null;
+  const isPreviewGatePuzzle =
     Boolean(previewInfo) &&
     !previewInfo.locked &&
     puzzles.length > 0 &&
-    currentIndex === puzzles.length - 1;
+    solvedCount >= previewGateAfterSolved &&
+    !(currentPuzzle?.id && solvedPuzzleIdsRef.current.has(currentPuzzle.id));
 
   // «Позже» в пробном гейте: если задача на доске есть — просто закрываем
   // напоминание, доска остаётся на последнем ходу без сделанного хода.
@@ -408,10 +418,10 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
       const moveCore = sourceSquare + targetSquare;
 
       if (moveCore === expectedCore) {
-        // Последняя пробная задача: не даём дорешить без анкеты. Вместо
-        // завершающего (решающего) хода показываем окно с анкетой.
+        // Третья решённая за сегодня задача: не даём дорешить без анкеты.
+        // Вместо завершающего (решающего) хода показываем окно с анкетой.
         if (
-          isLastPreviewPuzzle &&
+          isPreviewGatePuzzle &&
           solutionIndexRef.current === solutionMovesRef.current.length - 1
         ) {
           setPreviewGate(true);
@@ -441,7 +451,10 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
 
         if (solutionIndexRef.current >= totalMoves) {
           setResultMessage({ type: "success", text: "Правильно! Задача решена!" });
-          setSolvedCount((c) => c + 1);
+          if (currentPuzzle?.id) {
+            solvedPuzzleIdsRef.current.add(currentPuzzle.id);
+          }
+          setSolvedCount(solvedPuzzleIdsRef.current.size);
           setPuzzleSolved(true);
           savePuzzleProgress(true);
           return true;
@@ -493,7 +506,16 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
       savePuzzleProgress(false);
       return false;
     },
-    [waitingForOpponent, showSolution, showRegGate, previewGate, isLastPreviewPuzzle, user, savePuzzleProgress],
+    [
+      waitingForOpponent,
+      showSolution,
+      showRegGate,
+      previewGate,
+      isPreviewGatePuzzle,
+      currentPuzzle?.id,
+      user,
+      savePuzzleProgress,
+    ],
   );
 
   const onSquareClick = useCallback(
@@ -643,6 +665,17 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
 
   const customSquareStyles = {};
 
+  // Подсветка последнего хода — базовая. Точки возможных ходов накладываем
+  // поверх неё, иначе клетка, совпавшая с ходом соперника, теряет точку.
+  if (lastMove) {
+    customSquareStyles[lastMove.from] = {
+      backgroundColor: "rgba(201, 169, 110, 0.45)",
+    };
+    customSquareStyles[lastMove.to] = {
+      backgroundColor: "rgba(201, 169, 110, 0.6)",
+    };
+  }
+
   if (selectedSquare) {
     customSquareStyles[selectedSquare] = {
       backgroundColor: "rgba(201, 169, 110, 0.55)",
@@ -651,34 +684,22 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
 
   for (const sq of legalMovesForSelected) {
     const targetPiece = gameRef.current.get(sq);
-    if (!customSquareStyles[sq]) {
-      if (targetPiece) {
-        customSquareStyles[sq] = {
+    const dotStyle = targetPiece
+      ? {
           backgroundImage:
             "radial-gradient(circle, transparent 48%, rgba(100,80,40,0.25) 50%, rgba(100,80,40,0.25) 80%, transparent 82%)",
           backgroundPosition: "center",
           backgroundSize: "100% 100%",
           backgroundRepeat: "no-repeat",
-        };
-      } else {
-        customSquareStyles[sq] = {
+        }
+      : {
           backgroundImage:
             "radial-gradient(circle, rgba(100,80,40,0.2) 15%, transparent 16%)",
           backgroundPosition: "center",
           backgroundSize: "100% 100%",
           backgroundRepeat: "no-repeat",
         };
-      }
-    }
-  }
-
-  if (lastMove) {
-    customSquareStyles[lastMove.from] = {
-      backgroundColor: "rgba(201, 169, 110, 0.45)",
-    };
-    customSquareStyles[lastMove.to] = {
-      backgroundColor: "rgba(201, 169, 110, 0.6)",
-    };
+    customSquareStyles[sq] = { ...(customSquareStyles[sq] || {}), ...dotStyle };
   }
 
   if (loading) {
