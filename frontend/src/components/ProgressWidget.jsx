@@ -122,7 +122,7 @@ export default function ProgressWidget() {
           <div className="progress-widget__kicker">Два трека · один прогресс</div>
           <h2>Мой прогресс</h2>
         </div>
-        <div className="progress-widget__streak" title="Серия учебных дней">
+        <div className="progress-widget__streak" title="Серия дней подряд: визиты и учебная активность">
           <span className="progress-widget__streak-icon">🔥</span>
           <span>
             <strong>{training?.streak ?? 0}</strong>

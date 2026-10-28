@@ -1,5 +1,7 @@
 """Сервисный слой учебной подсистемы."""
 
+from datetime import date, timedelta
+
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -9,6 +11,7 @@ from backend.models.training_lesson import TrainingLesson
 from backend.models.training_module import TrainingModule
 from backend.models.training_task import TrainingTask
 from backend.models.user import User
+from backend.models.user_activity_day import UserActivityDay
 from backend.services.training_checker import TrainingCheckResult
 
 
@@ -138,13 +141,13 @@ async def save_attempt(
 
 
 def _current_streak(activity_dates: set, today=None) -> int:
-    """Возвращает текущую серию дней с учебной активностью.
+    """Возвращает текущую серию дней с активностью или визитом.
 
-    Серия не обнуляется утром нового дня: если сегодня попыток ещё не было,
-    но активность была вчера, отсчёт продолжается от вчерашней даты.
+    ``activity_dates`` — объединение дат учебных попыток и дней визитов
+    (см. ``get_training_progress``). Серия не обнуляется утром нового дня:
+    если сегодня попыток ещё не было, но активность/визит были вчера,
+    отсчёт продолжается от вчерашней даты.
     """
-    from datetime import date, timedelta
-
     if not activity_dates:
         return 0
 
@@ -277,6 +280,23 @@ async def get_training_progress(db: AsyncSession, user_id: int) -> dict:
     for (created_at,) in puzzle_date_rows:
         if created_at is not None:
             activity_dates.add(created_at.date())
+
+    # Дни визитов (регистрация/вход/открытие приложения) тоже продлевают
+    # серию: пользователь, который просто зашёл, но ничего не решал, не
+    # должен видеть 0. Серия = объединение учебных дней и дней визитов.
+    visit_date_rows = (
+        await db.execute(
+            select(UserActivityDay.activity_date).where(
+                UserActivityDay.user_id == user_id,
+            )
+        )
+    ).all()
+    for (activity_date,) in visit_date_rows:
+        if activity_date is None:
+            continue
+        if isinstance(activity_date, str):
+            activity_date = date.fromisoformat(activity_date)
+        activity_dates.add(activity_date)
 
     completed_modules = 0
     module_items = []

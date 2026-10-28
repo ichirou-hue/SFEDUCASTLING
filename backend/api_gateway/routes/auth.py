@@ -36,31 +36,40 @@ from backend.db.session import get_db
 from backend.models.user import ROLE_ADMIN, ROLE_LEARNER, RefreshToken, User
 from backend.models.user_chess_account import UserChessAccount
 from backend.services.assessment import onboarding_rating
+from backend.services.user_activity import record_user_visit
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
 class RegisterRequest(BaseModel):
-    login: str = Field(min_length=3, max_length=32)
-    password: str = Field(min_length=8, max_length=72)
+    login: str
+    password: str
     email: str | None = Field(default=None, max_length=255)
     elo: int | None = Field(default=None, ge=100, le=3500)
 
     @field_validator("login")
     @classmethod
-    def login_charset(cls, v: str) -> str:
+    def login_valid(cls, v: str) -> str:
         # Обычный для авторизации безопасный набор: латиница, цифры и
         # спецсимволы _ - . ! @ # $ % ^ & * + = ~ . Пробелы, кавычки (", '),
         # национальная пунктуация и кириллица не принимаются.
+        if len(v) < 3:
+            raise ValueError("Логин: минимум 3 символа")
+        if len(v) > 32:
+            raise ValueError("Логин: максимум 32 символа")
         if not re.fullmatch(r"[A-Za-z0-9_.\-!@#$%^&*+=~]+", v):
-            raise ValueError(
-                "Логин: только латинские буквы, цифры и специальные символы"
-            )
+            raise ValueError("Логин: только латинские буквы, цифры и спецсимволы")
         return v
 
     @field_validator("password")
     @classmethod
-    def password_strength(cls, v: str) -> str:
+    def password_valid(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError("Пароль: минимум 8 символов")
+        if len(v) > 72:
+            raise ValueError("Пароль: максимум 72 символа")
+        if not re.fullmatch(r"[\x21-\x7E]+", v):
+            raise ValueError("Пароль: только латинские буквы, цифры и спецсимволы")
         if not re.search(r"[A-Za-z]", v):
             raise ValueError("Пароль: нужна хотя бы одна латинская буква")
         if not re.search(r"\d", v):
@@ -69,8 +78,22 @@ class RegisterRequest(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    login: str = Field(min_length=3, max_length=255)
-    password: str = Field(min_length=1, max_length=72)
+    login: str
+    password: str
+
+    @field_validator("login")
+    @classmethod
+    def login_length(cls, v: str) -> str:
+        if not 3 <= len(v) <= 255:
+            raise ValueError("Логин: от 3 до 255 символов")
+        return v
+
+    @field_validator("password")
+    @classmethod
+    def password_length(cls, v: str) -> str:
+        if not 1 <= len(v) <= 72:
+            raise ValueError("Пароль: от 1 до 72 символов")
+        return v
 
 
 class RefreshRequest(BaseModel):
@@ -264,6 +287,8 @@ async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
     )
     db.add(user)
     await db.flush()
+    # День регистрации сразу считается первым днём серии.
+    await record_user_visit(db, user.id)
     tokens = await _issue_tokens(db, user)
     return {"message": "Аккаунт создан", **tokens}
 
@@ -275,6 +300,7 @@ async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
     )
     if not user or not verify_password(req.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Неверный логин или пароль")
+    await record_user_visit(db, user.id)
     return {"message": "Вход выполнен", **(await _issue_tokens(db, user))}
 
 
@@ -292,6 +318,9 @@ async def refresh(req: RefreshRequest, db: AsyncSession = Depends(get_db)):
     user = await db.get(User, row.user_id)
     if not user:
         raise HTTPException(status_code=401, detail="Пользователь не найден")
+
+    # Возврат пользователя с валидным refresh-токеном — тоже визит.
+    await record_user_visit(db, user.id)
 
     # Старый refresh больше использовать нельзя; новая пара получает новый TTL.
     row.revoked = True
@@ -320,7 +349,13 @@ async def logout(req: RefreshRequest, db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/me")
-async def me(user: User = Depends(get_current_user)):
+async def me(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    # Открытие приложения (фронт вызывает /me на старте) отмечает визит,
+    # даже если access-токен ещё жив и refresh не понадобился.
+    await record_user_visit(db, user.id)
     return {"user": user.public()}
 
 
