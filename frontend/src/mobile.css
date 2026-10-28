@@ -155,9 +155,13 @@
   }
 
   .top-bar .gigachess-logo {
-    width: auto;
-    max-width: 44vw;
-    height: 36px;
+    /* Логотип не должен наезжать на монеты и профиль: тянем его по ширине
+       свободной колонки, а object-fit сохраняет пропорции. */
+    width: 100%;
+    max-width: 36vw;
+    height: 34px;
+    object-fit: contain;
+    object-position: left center;
   }
 
   .top-nav {

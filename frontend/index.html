@@ -5,6 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SFEDUCASTLING — AI Chess Platform</title>
     <link rel="icon" type="image/png" href="/—Pngtree—crown icon_4479655.png">
+    <script>
+      // Тема ставится до первой отрисовки, чтобы не мелькал светлый фон.
+      (function () {
+        var theme = "dark";
+        try {
+          var saved = localStorage.getItem("sfedu_theme");
+          if (saved === "dark" || saved === "light") theme = saved;
+        } catch (e) {}
+        document.documentElement.setAttribute("data-theme", theme);
+      })();
+    </script>
     <link rel="stylesheet" href="./style.css">
 </head>
 <body>

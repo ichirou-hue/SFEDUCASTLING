@@ -1422,6 +1422,14 @@ body {
   fill-opacity: 0.5;
 }
 
+/* Счётчик ходов между стрелками. */
+.move-counter {
+  font-family: "Calypso", serif;
+  font-size: 24px;
+  color: #333;
+  white-space: nowrap;
+}
+
 /* --- Нижние кнопки панели истории: меню «Позиция» --- */
 .action-buttons {
   display: flex;
@@ -3540,7 +3548,11 @@ body {
   box-shadow: 0 2px 9px rgba(0, 0, 0, 0.06);
   cursor: pointer;
   text-align: left;
-  transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    transform 0.26s cubic-bezier(0.2, 0.8, 0.3, 1),
+    background-color 0.26s ease,
+    border-color 0.26s ease,
+    box-shadow 0.26s ease;
 }
 
 .training-path-node--left {
@@ -3554,7 +3566,7 @@ body {
 }
 
 .training-path-node:hover {
-  transform: translateY(-2px);
+  transform: translateY(-3px);
   background: rgba(245, 252, 245, 0.94);
   box-shadow: 0 5px 14px rgba(54, 100, 62, 0.16);
 }

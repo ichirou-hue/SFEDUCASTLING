@@ -16,6 +16,9 @@ import LevelTestPage from "./components/LevelTestPage.jsx";
 import UserRecordsWidget from "./components/UserRecordsWidget.jsx";
 import "./home.css";
 import "./mobile.css";
+import "./theme.css";
+import "./light.css";
+import { getStoredTheme, setStoredTheme } from "./theme.js";
 import {
   AUTH_EXPIRED_EVENT,
   fetchCurrentUser,
@@ -161,6 +164,12 @@ export default function App() {
   // После анкеты сразу запускаем входной тест на /level-test.
   const [autoStartTest, setAutoStartTest] = useState(false);
   const [gigacoinToast, setGigacoinToast] = useState(null);
+  // Тёмная тема — основная; выбор хранится в localStorage (см. theme.js).
+  const [theme, setTheme] = useState(getStoredTheme);
+
+  const handleThemeChange = (nextTheme) => {
+    setTheme(setStoredTheme(nextTheme));
+  };
 
   const isAdmin = user?.is_admin === true || user?.role === "admin";
 
@@ -236,6 +245,8 @@ export default function App() {
     <>
       <TopBar
         user={user}
+        theme={theme}
+        onThemeChange={handleThemeChange}
         onUserChange={setUser}
         onOpenOnboarding={() => setShowOnboarding(true)}
         onRegister={() => {

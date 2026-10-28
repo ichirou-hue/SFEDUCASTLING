@@ -2,7 +2,7 @@ import { Link, NavLink } from "react-router-dom";
 import { logout as apiLogout } from "../api.js";
 import MiniProfilePopover from "./MiniProfilePopover.jsx";
 
-export default function TopBar({ user, onUserChange, onRegister, onOpenOnboarding }) {
+export default function TopBar({ user, theme, onThemeChange, onUserChange, onRegister, onOpenOnboarding }) {
   const handleLogout = async () => {
     try {
       await apiLogout();
@@ -71,7 +71,13 @@ export default function TopBar({ user, onUserChange, onRegister, onOpenOnboardin
               Заполните анкету
             </button>
           )}
-          <MiniProfilePopover user={user} onUserChange={onUserChange} onLogout={handleLogout} />
+          <MiniProfilePopover
+            user={user}
+            theme={theme}
+            onThemeChange={onThemeChange}
+            onUserChange={onUserChange}
+            onLogout={handleLogout}
+          />
           <button
             type="button"
             className="reg-btn reg-btn--ghost top-bar-logout-compact"
