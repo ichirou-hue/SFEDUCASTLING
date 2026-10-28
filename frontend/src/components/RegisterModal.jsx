@@ -85,7 +85,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess, initialMode = "r
         ? d
             .map((x) => String(x?.msg || "").replace(/^Value error,\s*/i, ""))
             .filter(Boolean)
-            .join("; ")
+            .join("\n")
         : typeof d === "string"
           ? d
           : "";

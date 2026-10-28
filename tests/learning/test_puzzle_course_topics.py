@@ -12,6 +12,7 @@ def test_course_topics_cover_all_training_modules():
         "endgames",
         "tactics",
         "openings",
+        "middlegame",
     }
 
 

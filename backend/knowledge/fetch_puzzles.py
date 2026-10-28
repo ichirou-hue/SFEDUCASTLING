@@ -137,7 +137,7 @@ def _collect(
         ok, _ = _cheap_valid(candidate)
         if not ok:
             continue
-        if not validate_puzzle(_project_form(candidate)):
+        if validate_puzzle(_project_form(candidate)):
             continue
         buckets[bucket].append(candidate)
         now = time.time()
@@ -152,8 +152,9 @@ def _project_form(puzzle: dict) -> dict:
     """Переводит запись Lichess (FEN до хода соперника) в формат проекта."""
     decoded = _decode(puzzle["fen"], puzzle["moves"])
     if not decoded:
-        return {"fen": None, "moves": None, "themes": puzzle.get("themes")}
+        return {"id": puzzle.get("id"), "fen": None, "moves": None, "themes": puzzle.get("themes")}
     return {
+        "id": puzzle.get("id"),
         "fen": decoded["presented"],
         "moves": " ".join(decoded["player_moves"]),
         "themes": puzzle.get("themes"),
