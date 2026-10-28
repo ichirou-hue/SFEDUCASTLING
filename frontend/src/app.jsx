@@ -116,6 +116,28 @@ function MainPage({ user }) {
   );
 }
 
+function AccessWall({ kicker, title, text, onRegister }) {
+  return (
+    <div className="training-page training-page--centered">
+      <div className="training-center-wrap">
+        <div className="training-register-wall">
+          <div className="training-kicker">{kicker}</div>
+          <h1>{title}</h1>
+          <p>{text}</p>
+          <button
+            type="button"
+            className="training-primary-btn"
+            onClick={onRegister}
+          >
+            Зарегистрироваться
+          </button>
+        </div>
+      </div>
+      <SiteFooter />
+    </div>
+  );
+}
+
 export default function App() {
   const navigate = useNavigate();
   const [showRegister, setShowRegister] = useState(false);
@@ -131,6 +153,12 @@ export default function App() {
   const [autoStartTest, setAutoStartTest] = useState(false);
 
   const isAdmin = user?.is_admin === true || user?.role === "admin";
+
+  const openRegister = () => {
+    setAuthMode("register");
+    setAuthNotice("");
+    setShowRegister(true);
+  };
 
   // Пользователь без заполненной анкеты (и не админ) должен увидеть её сразу.
   const needsOnboarding = (u) =>
@@ -210,28 +238,35 @@ export default function App() {
         <Route
           path="/puzzles"
           element={
-            <PuzzlesPage
-              user={user}
-              onOpenOnboarding={() => setShowOnboarding(true)}
-              onRegister={() => {
-                setAuthMode("register");
-                setAuthNotice("");
-                setShowRegister(true);
-              }}
-            />
+            !authChecked ? null : user ? (
+              <PuzzlesPage
+                user={user}
+                onOpenOnboarding={() => setShowOnboarding(true)}
+                onRegister={openRegister}
+              />
+            ) : (
+              <AccessWall
+                kicker="Шахматные задачи"
+                title="Задачи доступны после регистрации"
+                text="Создайте аккаунт, чтобы решать задачи, сохранять прогресс и получать персональные тренировки. Это займёт минуту."
+                onRegister={openRegister}
+              />
+            )
           }
         />
         <Route
           path="/training"
           element={
-            <TrainingPage
-              user={user}
-              onRegister={() => {
-                setAuthMode("register");
-                setAuthNotice("");
-                setShowRegister(true);
-              }}
-            />
+            !authChecked ? null : user ? (
+              <TrainingPage user={user} onRegister={openRegister} />
+            ) : (
+              <AccessWall
+                kicker="Обучение"
+                title="Обучение доступно после регистрации"
+                text="Создайте аккаунт, чтобы проходить уроки, выполнять задания и сохранять прогресс обучения. Это займёт минуту."
+                onRegister={openRegister}
+              />
+            )
           }
         />
         <Route

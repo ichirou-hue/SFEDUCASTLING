@@ -206,7 +206,11 @@ def _registered_user(cleanup) -> tuple[str, int]:
 
 
 def _add_puzzle_attempts(
-    user_id: int, puzzle_ids: list[str], *, days_ago: int = 0
+    user_id: int,
+    puzzle_ids: list[str],
+    *,
+    days_ago: int = 0,
+    correct: bool = True,
 ) -> None:
     async def _run() -> None:
         async with async_session_factory() as db:
@@ -220,7 +224,11 @@ def _add_puzzle_attempts(
                     days=days_ago
                 )
             for pid in puzzle_ids:
-                values: dict = {"user_id": user_id, "puzzle_id": pid, "correct": True}
+                values: dict = {
+                "user_id": user_id,
+                "puzzle_id": pid,
+                "correct": correct,
+            }
                 if created_at is not None:
                     values["created_at"] = created_at
                 db.add(PuzzleAttempt(**values))
@@ -361,28 +369,31 @@ class TestLevelTestResult:
 
 
 class TestPuzzleCheck:
-    def test_correct(self):
+    def test_correct(self, cleanup):
+        token = _authed_user(cleanup)
+        with patch(MATCH_ANCHOR, NEW_PUZZLES):
+            resp = client.post(
+                "/api/learning/puzzle/check",
+                json={"puzzle_id": "b5", "move": "b1b8"},
+                headers=_headers(token),
+            )
+        assert resp.status_code == 200
+        assert resp.json()["correct"] is True
+
+    def test_requires_auth(self):
         with patch(MATCH_ANCHOR, NEW_PUZZLES):
             resp = client.post(
                 "/api/learning/puzzle/check",
                 json={"puzzle_id": "b5", "move": "b1b8"},
             )
-        assert resp.status_code == 200
-        assert resp.json()["correct"] is True
+        assert resp.status_code == 401
 
 
 class TestPuzzleSelectionByRating:
-    def test_guest_gets_uniform_buckets(self):
+    def test_guest_is_rejected(self):
         with patch(MATCH_ANCHOR, RATING_PUZZLES):
             resp = client.get("/api/learning/puzzles", params={"count": 8})
-        assert resp.status_code == 200, resp.text
-        data = resp.json()
-        assert data["total"] == 8
-        assert data["personalization"] == {
-            "source": "none",
-            "group": None,
-            "max_rating": None,
-        }
+        assert resp.status_code == 401
 
     def test_rated_user_gets_only_own_group(self, cleanup):
         token = _authed_user_with_rating(cleanup, 1200)
@@ -486,7 +497,7 @@ class TestPuzzlePreviewBeforeOnboarding:
         assert len(data["puzzles"]) == 3
         assert all(p["rating"] <= 700 for p in data["puzzles"])
 
-    def test_preview_locks_after_three_distinct_attempts(self, cleanup):
+    def test_preview_locks_after_three_solved(self, cleanup):
         token, user_id = _registered_user(cleanup)
         with patch(MATCH_ANCHOR, PREVIEW_PUZZLES):
             first = client.get(
@@ -511,6 +522,30 @@ class TestPuzzlePreviewBeforeOnboarding:
         assert data["preview_locked"] is True
         assert data["puzzles"] == []
         assert data["total"] == 0
+
+    def test_preview_wrong_attempts_do_not_consume_limit(self, cleanup):
+        # Неверные ходы не тратят дневной запас: та же задача остаётся доступной.
+        token, user_id = _registered_user(cleanup)
+        with patch(MATCH_ANCHOR, PREVIEW_PUZZLES):
+            first = client.get(
+                "/api/learning/puzzles",
+                params={"count": 20},
+                headers=_headers(token),
+            )
+        ids = [p["id"] for p in first.json()["puzzles"]]
+        assert len(ids) == 3
+        _add_puzzle_attempts(user_id, ids[:2], correct=False)
+
+        with patch(MATCH_ANCHOR, PREVIEW_PUZZLES):
+            resp = client.get(
+                "/api/learning/puzzles",
+                params={"count": 20},
+                headers=_headers(token),
+            )
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data["preview_remaining"] == 3
+        assert {p["id"] for p in data["puzzles"]} == set(ids)
 
     def test_preview_resets_next_day(self, cleanup):
         # Лимит — на сутки: вчерашние попытки не тратят сегодняшний запас.
