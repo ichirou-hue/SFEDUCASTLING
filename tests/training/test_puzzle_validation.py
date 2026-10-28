@@ -4,7 +4,6 @@ import json
 from pathlib import Path
 
 import chess
-import pytest
 
 from backend.services.course_topics import (
     COURSE_TOPIC_META,
@@ -137,10 +136,8 @@ def test_served_puzzles_respect_target_piece():
             )
 
 
-def test_mismatched_puzzle_is_not_served_by_piece_topic():
-    # '0POVV' помечен pawnEndgame, но пешка в решении не ходит.
-    puzzle = next((p for p in _all_puzzles() if p["id"] == "0POVV"), None)
-    if puzzle is None:
-        pytest.skip("контрольный пазл отсутствует в базе")
-    assert not puzzle_themes_piece_ok(puzzle)
-    assert not puzzle_matches_course_topic(puzzle, "pieces")
+def test_no_puzzle_keeps_a_piece_theme_whose_piece_does_not_move():
+    for puzzle in _all_puzzles():
+        assert puzzle_themes_piece_ok(puzzle), (
+            f"{puzzle['id']}: тема называет фигуру, которая не ходит в решении"
+        )

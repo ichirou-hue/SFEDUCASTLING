@@ -1901,6 +1901,7 @@ body {
   margin-top: 10px;
   font-size: 14px;
   color: #b3543a;
+  white-space: pre-line;
 }
 
 /* --- Карточка найденного профиля --- */

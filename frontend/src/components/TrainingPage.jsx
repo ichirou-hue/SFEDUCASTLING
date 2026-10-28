@@ -147,6 +147,7 @@ export default function TrainingPage({ user, onRegister }) {
   const [selectedSquares, setSelectedSquares] = useState([]);
   const [selectedOption, setSelectedOption] = useState(null);
   const [moveSource, setMoveSource] = useState(null);
+  const [legalMovesForSelected, setLegalMovesForSelected] = useState([]);
   const [taskResult, setTaskResult] = useState(null);
   const [boardFen, setBoardFen] = useState(null);
   const [boardWidth, setBoardWidth] = useState(500);
@@ -396,6 +397,7 @@ export default function TrainingPage({ user, onRegister }) {
     setSelectedSquares([]);
     setSelectedOption(null);
     setMoveSource(null);
+    setLegalMovesForSelected([]);
     setTaskResult(null);
     setBoardFen(currentTask.fen);
     setHintsUsed(0);
@@ -685,6 +687,7 @@ export default function TrainingPage({ user, onRegister }) {
       if (!currentTask || taskResult?.correct || checking) return;
       submitAnswer({ move: `${from}${to}` }, { from, to });
       setMoveSource(null);
+      setLegalMovesForSelected([]);
     },
     [checking, currentTask, submitAnswer, taskResult?.correct],
   );
@@ -714,18 +717,49 @@ export default function TrainingPage({ user, onRegister }) {
       }
 
       if (currentTask.task_type === "make_move") {
-        if (!moveSource) {
-          setMoveSource(square);
+        let game;
+        try {
+          game = new Chess(boardFen || currentTask.fen);
+        } catch {
           return;
         }
+        const piece = game.get(square);
+        const isOwnPiece = Boolean(piece && piece.color === game.turn());
+
+        if (!moveSource) {
+          if (!isOwnPiece) return;
+          setMoveSource(square);
+          setLegalMovesForSelected(
+            game.moves({ square, verbose: true }).map((move) => move.to),
+          );
+          return;
+        }
+
         if (moveSource === square) {
           setMoveSource(null);
+          setLegalMovesForSelected([]);
           return;
         }
+
+        if (isOwnPiece) {
+          setMoveSource(square);
+          setLegalMovesForSelected(
+            game.moves({ square, verbose: true }).map((move) => move.to),
+          );
+          return;
+        }
+
         submitMove(moveSource, square);
       }
     },
-    [checking, currentTask, moveSource, submitMove, taskResult?.correct],
+    [
+      boardFen,
+      checking,
+      currentTask,
+      moveSource,
+      submitMove,
+      taskResult?.correct,
+    ],
   );
 
   const customSquareStyles = useMemo(() => {
@@ -751,8 +785,42 @@ export default function TrainingPage({ user, onRegister }) {
       };
     }
 
+    if (legalMovesForSelected.length > 0 && currentTask) {
+      let game = null;
+      try {
+        game = new Chess(boardFen || currentTask.fen);
+      } catch {
+        game = null;
+      }
+      for (const square of legalMovesForSelected) {
+        const targetPiece = game?.get(square);
+        styles[square] = targetPiece
+          ? {
+              backgroundImage:
+                "radial-gradient(circle, transparent 48%, rgba(100,80,40,0.25) 50%, rgba(100,80,40,0.25) 80%, transparent 82%)",
+              backgroundPosition: "center",
+              backgroundSize: "100% 100%",
+              backgroundRepeat: "no-repeat",
+            }
+          : {
+              backgroundImage:
+                "radial-gradient(circle, rgba(100,80,40,0.2) 15%, transparent 16%)",
+              backgroundPosition: "center",
+              backgroundSize: "100% 100%",
+              backgroundRepeat: "no-repeat",
+            };
+      }
+    }
+
     return styles;
-  }, [currentTask?.source_square, moveSource, selectedSquares]);
+  }, [
+    boardFen,
+    currentTask?.fen,
+    currentTask?.source_square,
+    legalMovesForSelected,
+    moveSource,
+    selectedSquares,
+  ]);
 
   const nextTask = () => {
     if (taskIndex < tasks.length - 1) {
