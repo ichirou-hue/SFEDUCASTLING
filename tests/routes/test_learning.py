@@ -2,12 +2,12 @@
 
 import asyncio
 import uuid
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import patch
-from sqlalchemy import DateTime, cast, delete, func, select
+from sqlalchemy import delete, select
 
 from backend.app import app
 from backend.db.session import async_session_factory
@@ -216,9 +216,13 @@ def _add_puzzle_attempts(
         async with async_session_factory() as db:
             created_at = None
             if days_ago:
-                # naive-«сейчас» в поясе БД (created_at — timestamp без tz).
-                base = await db.scalar(select(cast(func.now(), DateTime)))
-                created_at = base - timedelta(days=days_ago)
+                # naive-UTC «сейчас» — так же, как пишет приложение
+                # (created_at — timestamp без tz, серверный CURRENT_TIMESTAMP).
+                # Считаем в Python, а не SQL: CAST(CURRENT_TIMESTAMP AS DATETIME)
+                # в SQLite даёт 0 (NUMERIC-аффинитет), и драйвер падает.
+                created_at = datetime.now(UTC).replace(tzinfo=None) - timedelta(
+                    days=days_ago
+                )
             for pid in puzzle_ids:
                 values: dict = {
                 "user_id": user_id,

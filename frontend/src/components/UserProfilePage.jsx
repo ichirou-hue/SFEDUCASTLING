@@ -8,6 +8,9 @@ import {
   unlinkChessAccount,
 } from "../api.js";
 import ProgressWidget from "./ProgressWidget.jsx";
+import RatingBandProgress from "./RatingBandProgress.jsx";
+import UserRecordsWidget from "./UserRecordsWidget.jsx";
+import PhaseAccuracyWidget from "./PhaseAccuracyWidget.jsx";
 import SiteFooter from "./SiteFooter.jsx";
 import "./UserProfilePage.css";
 
@@ -242,14 +245,10 @@ export default function UserProfilePage({ user, onUserChange }) {
           </div>
 
           <div className="user-profile-stats">
-<div className="user-profile-stat">
-          <span>Роль</span>
-          <strong>{profile?.role === "admin" ? "Администратор" : "Ученик"}</strong>
-        </div>
-        <div className="user-profile-stat">
-          <span>Шахматный уровень</span>
-          <strong>{profile?.elo ?? "Не определён"}</strong>
-        </div>
+            <div className="user-profile-stat">
+              <span>Шахматный уровень</span>
+              <strong>{profile?.elo ?? "Не определён"}</strong>
+            </div>
             <div className="user-profile-stat">
               <span>Email</span>
               <strong>{profile?.email || "Не указан"}</strong>
@@ -284,6 +283,20 @@ export default function UserProfilePage({ user, onUserChange }) {
 
           {error && <div className="user-profile-warning">{error}</div>}
         </div>
+      </section>
+
+      <UserRecordsWidget />
+      <PhaseAccuracyWidget />
+
+      <section className="user-profile-rating-section">
+        <div className="user-profile-section-heading">
+          <div>
+            <div className="user-profile-kicker">Ваш результат</div>
+            <h2>Прогресс уровня</h2>
+          </div>
+          <p>Путь от текущего уровня к следующему по рейтингу.</p>
+        </div>
+        <RatingBandProgress userId={profile?.id ?? user?.id} />
       </section>
 
       <LinkedAccountsSection />

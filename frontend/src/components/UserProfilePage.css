@@ -6,7 +6,8 @@
      а не у края центрированной колонки. Центрирование — на детях ниже. */
   width: 100%;
   margin: 0;
-  padding: 28px 0 48px;
+  /* Сверху больше воздуха под шапкой (как на «Обучении»). */
+  padding: 40px 0 48px;
   color: #20332d;
   /* Колонка ради футера (см. .training-page). */
   display: flex;
@@ -20,6 +21,9 @@
   width: min(1120px, calc(100% - 40px));
   margin-left: auto;
   margin-right: auto;
+  /* Страница сама прокручивается; её карточки должны сохранять высоту,
+     иначе flex сжимает секцию разбора партий до одной строки. */
+  flex-shrink: 0;
 }
 
 .user-profile-page::-webkit-scrollbar {
@@ -40,6 +44,7 @@
 }
 
 .user-profile-card,
+.user-profile-rating-section,
 .user-profile-progress-section,
 .user-profile-empty {
   border: 1px solid rgba(34, 90, 115, 0.16);
@@ -152,6 +157,19 @@
 .user-profile-progress-section {
   margin-top: 18px;
   padding: 22px;
+}
+
+.user-profile-rating-section {
+  margin-top: 18px;
+  padding: 22px;
+  border: 1px solid rgba(34, 90, 115, 0.16);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 10px 32px rgba(25, 52, 43, 0.07);
+}
+
+.user-profile-rating-section .rating-band-progress {
+  width: min(100%, 620px);
 }
 
 .user-profile-section-heading {

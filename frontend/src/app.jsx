@@ -20,7 +20,7 @@ import {
   getStoredUser,
 } from "./api.js";
 
-function MainPage() {
+function MainPage({ user }) {
   const boardRef = useRef(null);
   const [boardState, setBoardState] = useState({
     fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
@@ -32,7 +32,14 @@ function MainPage() {
     evalScore: null,
     maiaRating: 1500,
     hintMessage: null,
+    isComparing: false,
   });
+
+  /*
+   * Чат можно свернуть в узкую полосу - тогда освободившаяся ширина
+   * уходит доске (см. updateBoardSize в Chessboard.jsx).
+   */
+  const [chatCollapsed, setChatCollapsed] = useState(false);
 
   return (
     // Своя скролл-колонка: футер в потоке контента (внизу при проскролле),
@@ -45,6 +52,7 @@ function MainPage() {
           viewIndex={boardState.viewIndex}
           isViewMode={boardState.isViewMode}
           maiaRating={boardState.maiaRating}
+          userRating={user?.elo || undefined}
           onNavigate={(dir) => boardRef.current?.onNavigate(dir)}
         />
         <EvalBar
@@ -52,11 +60,19 @@ function MainPage() {
           flipped={boardState.boardFlipped}
           height={boardState.boardHeight}
         />
-        <ChessboardComponent ref={boardRef} onStateChange={setBoardState} />
+        <ChessboardComponent
+          ref={boardRef}
+          onStateChange={setBoardState}
+          chatCollapsed={chatCollapsed}
+        />
         <ChatPanel
           hintMessage={boardState.hintMessage}
           currentFen={boardState.fen}
           currentMoves={boardState.moveHistory}
+          isComparing={boardState.isComparing}
+          onAnalyze={() => boardRef.current?.requestBestMove?.()}
+          collapsed={chatCollapsed}
+          onToggleCollapsed={() => setChatCollapsed((v) => !v)}
         />
       </div>
       <SiteFooter />
@@ -133,9 +149,20 @@ export default function App() {
       setAuthNotice("Сессия истекла. Войдите в аккаунт снова.");
       setShowRegister(true);
     };
+    const refreshAfterAssessment = () => {
+      fetchCurrentUser()
+        .then((fresh) => {
+          if (fresh) setUser(fresh);
+        })
+        .catch(() => {});
+    };
 
     window.addEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired);
-    return () => window.removeEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired);
+    window.addEventListener("sfedu-assessment-updated", refreshAfterAssessment);
+    return () => {
+      window.removeEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired);
+      window.removeEventListener("sfedu-assessment-updated", refreshAfterAssessment);
+    };
   }, []);
 
   const handleAuthSuccess = (u) => {
@@ -167,7 +194,7 @@ export default function App() {
         user={user}
       />
       <Routes>
-        <Route path="/" element={<MainPage />} />
+        <Route path="/" element={<MainPage user={user} />} />
         <Route
           path="/puzzles"
           element={

@@ -83,7 +83,9 @@ def test_admin_users_ok_for_admin():
         "elo",
         "skill_band",
         "created_at",
+        "chess_accounts",
     }
+    assert isinstance(sample["chess_accounts"], list)
 
 
 def test_admin_only_ok_for_admin():

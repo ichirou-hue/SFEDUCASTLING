@@ -5,6 +5,7 @@ import {
   login as apiLogin,
   register as apiRegister,
 } from "../api.js";
+import { formatApiError } from "../apiErrors.js";
 
 const PLATFORM_LABELS = {
   lichess: "Lichess",
@@ -80,16 +81,8 @@ export default function AuthModal({ isOpen, onClose, onSuccess, initialMode = "r
       onSuccess?.(user);
       onClose();
     } catch (e) {
-      const d = e?.response?.data?.detail;
-      const msg = Array.isArray(d)
-        ? d
-            .map((x) => String(x?.msg || "").replace(/^Value error,\s*/i, ""))
-            .filter(Boolean)
-            .join("\n")
-        : typeof d === "string"
-          ? d
-          : "";
-      setAuthError(msg || "Не удалось выполнить запрос. Попробуйте позже.");
+      // Ошибки валидации бэкенда переводим на русский (см. apiErrors.js).
+      setAuthError(formatApiError(e?.response?.data?.detail));
     } finally {
       setSubmitting(false);
     }

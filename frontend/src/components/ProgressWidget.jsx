@@ -114,14 +114,12 @@ export default function ProgressWidget() {
 
   const modules = training?.modules;
   const trainingAttempts = training?.attempts;
+  const hasLearningAttempts =
+    Number(trainingAttempts?.total || 0) > 0 || Number(learning?.attempts || 0) > 0;
 
   return (
     <section className="progress-widget" aria-label="Общий прогресс обучения">
       <div className="progress-widget__header">
-        <div>
-          <div className="progress-widget__kicker">Два трека · один прогресс</div>
-          <h2>Мой прогресс</h2>
-        </div>
         <div className="progress-widget__streak" title="Серия дней подряд: визиты и учебная активность">
           <span className="progress-widget__streak-icon">🔥</span>
           <span>
@@ -141,11 +139,11 @@ export default function ProgressWidget() {
             {modules ? `${modules.completed} / ${modules.total}` : "0 / 0"}
           </div>
           <div className="progress-track-card__caption">модулей пройдено</div>
-          {modules?.percent != null && (
-            <div className="progress-meter" aria-hidden="true">
-              <span style={{ width: barWidth(modules.percent) }} />
-            </div>
-          )}
+          {/* Полоса рисуется всегда: без неё карточка курса была выше
+              карточки задач и блоки выглядели разного размера. */}
+          <div className="progress-meter" aria-hidden="true">
+            <span style={{ width: barWidth(modules?.percent) ?? "0%" }} />
+          </div>
           <div className="progress-track-card__footer">
             <span>Точность</span>
             <strong>{percent(trainingAttempts?.accuracy)}</strong>
@@ -163,11 +161,9 @@ export default function ProgressWidget() {
           <div className="progress-track-card__caption">
             решено · {learning?.attempted ?? 0} попробовано
           </div>
-          {learning?.accuracy != null && (
-            <div className="progress-meter" aria-hidden="true">
-              <span style={{ width: barWidth(learning.accuracy) }} />
-            </div>
-          )}
+          <div className="progress-meter" aria-hidden="true">
+            <span style={{ width: barWidth(learning?.accuracy) ?? "0%" }} />
+          </div>
           <div className="progress-track-card__footer">
             <span>Точность попыток</span>
             <strong>{percent(learning?.accuracy)}</strong>
@@ -193,9 +189,9 @@ export default function ProgressWidget() {
         </div>
       )}
 
-      <div className="progress-widget__topics">
-        <div className="progress-widget__topics-title">Точность по темам курса</div>
-        {activeTopics.length > 0 ? (
+      {activeTopics.length > 0 ? (
+        <div className="progress-widget__topics">
+          <div className="progress-widget__topics-title">Точность по темам курса</div>
           <div className="progress-topic-list">
             {activeTopics.map((topic) => (
               <div className="progress-topic" key={topic.slug}>
@@ -212,12 +208,12 @@ export default function ProgressWidget() {
               </div>
             ))}
           </div>
-        ) : (
+        </div>
+      ) : (
           <div className="progress-widget__empty">
             Выполните первое задание курса - здесь появится точность по темам.
           </div>
         )}
-      </div>
     </section>
   );
 }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Chessboard as ReactChessboard } from "react-chessboard";
 import { Chess } from "chess.js";
@@ -67,6 +67,10 @@ function uciFromMove(move) {
 }
 
 export default function LevelTestPage({ onCompleted = null, autoStart = false, onAutoStartHandled = null }) {
+  // Свой id доски - иначе доски делят один dnd-менеджер и мини-доски
+  // рисуют у курсора чужую перетаскиваемую фигуру (см. Chessboard.jsx).
+  const boardId = useId();
+
   const navigate = useNavigate();
   const [phase, setPhase] = useState("intro");
   const [questions, setQuestions] = useState([]);
@@ -424,6 +428,7 @@ export default function LevelTestPage({ onCompleted = null, autoStart = false, o
     const totalCorrect = result.score?.correct ?? breakdown.reduce((sum, item) => sum + (item.correct || 0), 0);
     const totalQuestions = result.score?.total ?? breakdown.reduce((sum, item) => sum + (item.total || 0), 0);
     const finalRating = result.rating ?? result.score?.final_rating ?? result.result?.rating;
+    const advancedPractice = Number(finalRating) >= 2000;
 
     return (
       <main className="level-test-page level-test-page--centered">
@@ -462,8 +467,13 @@ export default function LevelTestPage({ onCompleted = null, autoStart = false, o
             </div>
           )}
           <div className="level-test-result-actions">
-            <button className="level-test-primary-btn" onClick={() => navigate("/training")}>
-              Перейти к обучению
+            <button
+              className="level-test-primary-btn"
+              onClick={() =>
+                navigate(advancedPractice ? "/puzzles?rating_min=2000" : "/training")
+              }
+            >
+              {advancedPractice ? "Решать задачи своего уровня" : "Перейти к обучению"}
             </button>
             <button className="level-test-secondary-btn" onClick={() => navigate("/")}>
               На главную
@@ -501,8 +511,9 @@ export default function LevelTestPage({ onCompleted = null, autoStart = false, o
 
         <div className="level-test-content">
           <div className="level-test-board-column">
-            <div className="level-test-board-wrap">
+            <div className="level-test-board-wrap" data-logo-anchor>
               <ReactChessboard
+                id={boardId}
                 position={fen}
                 boardOrientation={orientation}
                 showBoardNotation={true}

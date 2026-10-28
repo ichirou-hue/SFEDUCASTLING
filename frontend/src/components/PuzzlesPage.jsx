@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useId, useRef, useCallback, useLayoutEffect } from "react";
 import { Chessboard as ReactChessboard } from "react-chessboard";
 import { Chess } from "chess.js";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -10,6 +10,7 @@ import {
   recordPuzzleAttempt,
 } from "../api.js";
 import MiniBoard from "./MiniBoard.jsx";
+import ChatCollapsedStrip from "./ChatCollapsedStrip.jsx";
 import PuzzleRegisterGate from "./PuzzleRegisterGate.jsx";
 import PuzzlePreviewGate from "./PuzzlePreviewGate.jsx";
 import SiteFooter from "./SiteFooter.jsx";
@@ -104,7 +105,7 @@ const THEME_ICONS = {
   fork: "♞", pin: "♝", skewer: "♝",
   discoveredAttack: "♜", discoveredCheck: "♜",
   deflection: "♟", attraction: "♛", sacrifice: "♛",
-  endgame: "♟", middlegame: "♝", opening: "♞",
+  endgame: "♔", middlegame: "♝", opening: "♘",
   promotion: "♟", backRankMate: "♜",
   hangingPiece: "♞", capturingDefender: "♝",
   advantage: "♟", crushing: "♛", exposedKing: "♚",
@@ -160,11 +161,27 @@ function formatMarkdown(text) {
 }
 
 export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
+  // Свой id доски - иначе доски делят один dnd-менеджер и мини-доски
+  // рисуют у курсора чужую перетаскиваемую фигуру (см. Chessboard.jsx).
+  const boardId = useId();
+
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const requestedTopicSlug = searchParams.get("topic");
   const requestedTopic = getCourseTopicMeta(requestedTopicSlug);
-  const adaptiveMode = searchParams.get("adaptive") === "1";
+  const explicitAdaptiveMode = searchParams.get("adaptive") === "1";
+  const allPuzzlesMode = searchParams.get("mode") === "all";
+  const ratingMinParam = searchParams.get("rating_min");
+  const ratingMin =
+    ratingMinParam != null && /^\d+$/.test(ratingMinParam)
+      ? Number(ratingMinParam)
+      : null;
+  const adaptiveMode =
+    explicitAdaptiveMode ||
+    (Boolean(user && getAccessToken()) &&
+      !allPuzzlesMode &&
+      !requestedTopicSlug &&
+      ratingMin === null);
 
   const [puzzles, setPuzzles] = useState([]);
   const [adaptiveMeta, setAdaptiveMeta] = useState(null);
@@ -184,6 +201,13 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
   const [resultMessage, setResultMessage] = useState(null);
   const [movesLeft, setMovesLeft] = useState(0);
   const [solvedCount, setSolvedCount] = useState(0);
+  /*
+   * Серия подряд правильно решённых задач (конвенция chess.com):
+   * решение без ошибок - +1, любая неверная ставка обнуляет серию.
+   * bestStreak - рекорд текущей сессии страницы.
+   */
+  const [streak, setStreak] = useState(0);
+  const [bestStreak, setBestStreak] = useState(0);
   const [hintArrow, setHintArrow] = useState(null);
   const [boardArrows, setBoardArrows] = useState([]);
   const [boardOrientation, setBoardOrientation] = useState("white");
@@ -205,6 +229,150 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
   const [chatLoading, setChatLoading] = useState(false);
   const chatEndRef = useRef(null);
 
+  /*
+   * Чат можно свернуть в узкую полосу (как на главной): колонка чата
+   * в гриде сужается, а освободившаяся ширина уходит доске.
+   */
+  const [chatCollapsed, setChatCollapsed] = useState(false);
+
+  /*
+   * Плавное сворачивание чата: едет третья колонка грида, поэтому
+   * вместе с ней плавно расширяется колонка доски, а сама доска
+   * съезжает к середине. Ширину развёрнутой колонки запоминаем
+   * замером - она зависит от окна.
+   */
+  const layoutRef = useRef(null);
+  const chatPanelRef = useRef(null);
+  const naturalColRef = useRef(0);
+  const interruptedColRef = useRef(0);
+  // Ширина колонки доски в целевом состоянии: нужна расчёту размера,
+  // пока колонки ещё едут.
+  const boardColTargetRef = useRef(0);
+
+  useEffect(() => {
+    const layout = layoutRef.current;
+    const chat = chatPanelRef.current;
+
+    if (!layout || !chat || chatCollapsed) {
+      return undefined;
+    }
+
+    const remember = () => {
+      if (layout.classList.contains("puzzles-layout--chat-sliding")) return;
+      const width = chat.getBoundingClientRect().width + 24;
+      if (width > 24) naturalColRef.current = width;
+    };
+
+    remember();
+
+    const observer = new ResizeObserver(remember);
+    observer.observe(chat);
+
+    return () => observer.disconnect();
+    // loading в зависимостях: до готовой раскладки панели в DOM нет,
+    // и запомнить ширину можно только после её появления.
+  }, [chatCollapsed, loading]);
+
+  useLayoutEffect(() => {
+    const layout = layoutRef.current;
+    const chat = chatPanelRef.current;
+
+    if (!layout || !chat) {
+      return undefined;
+    }
+
+    // Снимаем остатки прошлой анимации, иначе замерим не ту ширину.
+    layout.classList.remove(
+      "puzzles-layout--chat-sliding",
+      "puzzles-layout--chat-reveal"
+    );
+    layout.style.gridTemplateColumns = "";
+    chat.style.minWidth = "";
+    chat.style.maxWidth = "";
+
+    /*
+     * Документ уже в целевом состоянии: запоминаем ширину колонки
+     * доски - по ней посчитается размер самой доски (эффект ниже).
+     */
+    const boardCol = layout.querySelector(".puzzle-board-section");
+    boardColTargetRef.current = boardCol ? boardCol.clientWidth : 0;
+
+    /* На узком экране колонки идут друг под другом (см. style.css),
+       и анимировать ширину нечего: состояние переключается сразу. */
+    if (
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(max-width: 1150px)").matches
+    ) {
+      interruptedColRef.current = 0;
+      return undefined;
+    }
+
+    const targetCol = chatCollapsed
+      ? 72
+      : chat.getBoundingClientRect().width + 24;
+    const fromCol =
+      interruptedColRef.current ||
+      (chatCollapsed ? naturalColRef.current : 72);
+
+    interruptedColRef.current = 0;
+
+    if (!fromCol || Math.abs(targetCol - fromCol) < 1) {
+      return undefined;
+    }
+
+    const reduceMotion =
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const duration = reduceMotion ? 0 : 340;
+    const easing = "cubic-bezier(0.4, 0, 0.2, 1)";
+
+    // Средняя колонка остаётся гибкой: она и забирает освободившуюся
+    // ширину, пока крайняя колонка едет.
+    const [infoCol] = getComputedStyle(layout).gridTemplateColumns.split(" ");
+    const track = (width) =>
+      `${infoCol} minmax(0, 1fr) ${width}px`;
+
+    layout.classList.add("puzzles-layout--chat-sliding");
+    // Свёрнутая панель ограничена 48px, развёрнутая - 320px: на время
+    // проезда ограничения снимаем, иначе панель не тянется за колонкой.
+    chat.style.minWidth = "0";
+    chat.style.maxWidth = "none";
+
+    const animation = layout.animate(
+      [
+        { gridTemplateColumns: track(fromCol) },
+        { gridTemplateColumns: track(targetCol) },
+      ],
+      { duration, easing }
+    );
+
+    const finish = () => {
+      layout.style.gridTemplateColumns = "";
+      chat.style.minWidth = "";
+      chat.style.maxWidth = "";
+      layout.classList.remove("puzzles-layout--chat-sliding");
+      layout.classList.add("puzzles-layout--chat-reveal");
+
+      if (!chatCollapsed) {
+        naturalColRef.current = chat.getBoundingClientRect().width + 24;
+      }
+
+      window.setTimeout(() => {
+        layout.classList.remove("puzzles-layout--chat-reveal");
+      }, 260);
+    };
+
+    animation.addEventListener("finish", finish, { once: true });
+
+    return () => {
+      if (animation.playState === "running") {
+        interruptedColRef.current = chat.getBoundingClientRect().width + 24;
+      }
+
+      animation.cancel();
+    };
+  }, [chatCollapsed]);
+
   const gameRef = useRef(new Chess());
   const solutionMovesRef = useRef([]);
   const solutionIndexRef = useRef(0);
@@ -219,20 +387,48 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
   }, [chatMessages]);
 
   useEffect(() => {
+    // Замеряем только готовую раскладку: на экране загрузки её нет
+    // в DOM (другая ветка), querySelector вернул бы null и размер
+    // посчитался бы от окна — с переполнением и без пересчёта.
+    if (loading) return;
     const updateSize = () => {
+      // Ширина — по формуле от окна (колонки грида фиксированы).
+      // Свёрнутый чат занимает 48px полосы + 24px отступа, остальное
+      // достаётся доске (см. .puzzles-layout--chat-collapsed).
       const infoW = 230;
-      const chatW = 620;
-      const sideMargin = 24;
-      const gapW = 32;
-      const availW = window.innerWidth - infoW - chatW - sideMargin - gapW;
-      const availH = window.innerHeight * 0.92 - 110;
-      const size = Math.floor(Math.min(Math.max(availW, 280), availH));
-      setBoardWidth(Math.max(320, Math.min(size, 820)));
+      const chatReserve = chatCollapsed ? 64 : 560;
+      const hGaps = 64; // gaps + паддинги + скроллбар
+      const availW = window.innerWidth - infoW - chatReserve - hGaps;
+      // Высота — замер живого контейнера (исключает топбар и хром
+      // браузера), минус всё под доской: рамка 30 + кнопки ~110 + отступы.
+      const layoutEl = document.querySelector(".puzzles-layout");
+      const belowBoard = 175;
+      const layoutH = layoutEl?.clientHeight || window.innerHeight;
+      const availH = layoutH - belowBoard;
+      // Страховка от переполнения колонки: доска никогда не шире
+      // реальной ширины своей грид-колонки минус рамка обёртки (38px).
+      // Иначе доска залезает на инфо-панель и чат (так и было).
+      const colEl = document.querySelector(".puzzle-board-section");
+      /*
+       * Пока колонка чата едет, живой замер колонки доски показывает
+       * промежуточную ширину - берём целевую, её запомнила анимация.
+       */
+      const targetCol = boardColTargetRef.current;
+      boardColTargetRef.current = 0;
+      const colW = targetCol
+        ? targetCol - 38
+        : colEl
+          ? colEl.clientWidth - 38
+          : Infinity;
+      const size = Math.floor(
+        Math.min(Math.max(availW, 280), Math.max(availH, 280), colW),
+      );
+      setBoardWidth(Math.max(320, Math.min(size, 780)));
     };
     updateSize();
     window.addEventListener("resize", updateSize);
     return () => window.removeEventListener("resize", updateSize);
-  }, []);
+  }, [loading, chatCollapsed]);
 
   const countPlayerMoves = useCallback((movesStr) => {
     const moves = movesStr.trim().split(/\s+/).filter(Boolean);
@@ -275,19 +471,24 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
   );
 
   useEffect(() => {
+    let cancelled = false;
     setLoading(true);
     setError(null);
     setSolvedCount(0);
     solvedPuzzleIdsRef.current = new Set();
+    // Новый набор задач - серия начинается заново.
+    setStreak(0);
+    setBestStreak(0);
     setAdaptiveMeta(null);
     setPreviewInfo(null);
 
     const request = adaptiveMode
       ? fetchAdaptivePuzzles(20)
-      : fetchPuzzles(20, requestedTopic?.slug || null);
+      : fetchPuzzles(20, requestedTopic?.slug || null, ratingMin);
 
     request
       .then((data) => {
+        if (cancelled) return;
         const qs = data.puzzles || [];
         const preview = data.preview === true;
         setPreviewInfo(
@@ -302,14 +503,15 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
         if (qs.length === 0) {
           puzzlesRef.current = [];
           setPuzzles([]);
-          // Пробный доступ исчерпан — показываем гейт анкеты, а не ошибку.
           if (!(preview && data.preview_locked)) {
             setError(
               adaptiveMode
                 ? "Пока не удалось подобрать персональную тренировку."
                 : requestedTopic
                   ? `Для темы «${requestedTopic.title}» пока нет доступных пазлов.`
-                  : "Нет доступных задач",
+                  : ratingMin != null
+                    ? `Пока нет доступных пазлов с рейтингом от ${ratingMin}.`
+                    : "Нет доступных задач",
             );
           }
           return;
@@ -319,6 +521,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
             weakTopics: data.weak_topics || [],
             strongTopics: data.strong_topics || [],
             allocation: data.allocation || null,
+            playerLevel: data.player_level || null,
           });
         }
         puzzlesRef.current = qs;
@@ -326,10 +529,16 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
         setCurrentIndex(0);
       })
       .catch((e) => {
+        if (cancelled) return;
         setError("Ошибка загрузки задач: " + (e.response?.data?.detail || e.message));
       })
-      .finally(() => setLoading(false));
-  }, [adaptiveMode, requestedTopic?.slug, requestedTopic?.title]);
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [adaptiveMode, ratingMin, requestedTopic?.slug, requestedTopic?.title]);
 
   useEffect(() => {
     if (puzzles.length > 0 && puzzles[currentIndex]) {
@@ -455,6 +664,11 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
             solvedPuzzleIdsRef.current.add(currentPuzzle.id);
           }
           setSolvedCount(solvedPuzzleIdsRef.current.size);
+          // Серия растёт: задача решена без неверных ставок
+          // (ошибка в ветке ниже уже обнулила счётчик).
+          const nextStreak = streak + 1;
+          setStreak(nextStreak);
+          setBestStreak((b) => Math.max(b, nextStreak));
           setPuzzleSolved(true);
           savePuzzleProgress(true);
           return true;
@@ -499,10 +713,20 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
         return true;
       }
 
-      setResultMessage({
-        type: "error",
-        text: "Неверный ход. Попробуйте ещё раз.",
-      });
+      // Ошибка рвёт серию: счётчик обнуляется, а если серия была,
+      // сообщаем об этом в сообщении над кнопками.
+      if (streak > 0) {
+        setResultMessage({
+          type: "error",
+          text: `Неверный ход. Серия из ${streak} прервана.`,
+        });
+      } else {
+        setResultMessage({
+          type: "error",
+          text: "Неверный ход. Попробуйте ещё раз.",
+        });
+      }
+      setStreak(0);
       savePuzzleProgress(false);
       return false;
     },
@@ -515,6 +739,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
       currentPuzzle?.id,
       user,
       savePuzzleProgress,
+      streak,
     ],
   );
 
@@ -732,7 +957,13 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
   }
 
   return (
-    <div className="puzzles-layout">
+    <div className="puzzles-page-shell">
+      <div
+        ref={layoutRef}
+        className={`puzzles-layout${
+          chatCollapsed ? " puzzles-layout--chat-collapsed" : ""
+        }`}
+      >
       <div className="puzzle-info-panel">
         <div className="puzzle-theme-label">Тема задачи:</div>
         <div className="puzzle-theme-name">{themeInfo.label}</div>
@@ -746,11 +977,13 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
           позиции
         </div>
 
+        {currentPuzzle && (
+          <div className="puzzle-turn-indicator">
+            Ход {currentPuzzle.fen.split(" ")[1] === "b" ? "чёрных" : "белых"}
+          </div>
+        )}
         <div className="puzzle-side">
-          <span
-            className={`puzzle-side-dot puzzle-side-dot--${sideToMove}`}
-            aria-hidden="true"
-          />
+          <span className={`puzzle-side-dot puzzle-side-dot--${sideToMove}`} aria-hidden="true" />
           Играете за {sideToMove === "b" ? "чёрных" : "белых"}
         </div>
 
@@ -767,22 +1000,52 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
           </div>
         )}
 
+        {/*
+         * Серия подряд правильно решённых задач. Показываем всегда
+         * (в том числе ноль), чтобы блок не прыгал при обнулении.
+         */}
+        <div className="puzzle-streak">
+          <div className="puzzle-streak-label">Серия:</div>
+          <div
+            className={`puzzle-streak-value ${
+              streak > 0 ? "puzzle-streak-value--hot" : ""
+            }`}
+          >
+            🔥 {streak}
+          </div>
+          {bestStreak > 0 && (
+            <div className="puzzle-streak-best">
+              рекорд сессии: {bestStreak}
+            </div>
+          )}
+        </div>
+
         {adaptiveMode && hasRealProfile && (
           <div className="learning-topic-filter learning-topic-filter--adaptive">
             Персональная тренировка
-            <strong>70% слабые темы · 30% закрепление сильных</strong>
-            <div className="adaptive-topic-list">
-              Слабые: {observedWeakTopics.map((topic) => topic.title).join(", ")}
-            </div>
-            <button type="button" onClick={() => navigate("/puzzles")}>
+            {adaptiveMeta?.playerLevel && (
+              <strong>
+                {adaptiveMeta.playerLevel.provisional ? "Предварительный уровень" : "Уровень"}: {adaptiveMeta.playerLevel.title}
+              </strong>
+            )}
+            {currentPuzzle?.adaptive_difficulty != null && (
+              <span className="adaptive-topic-list">
+                Целевая сложность: {currentPuzzle.adaptive_difficulty} из 3
+                {currentPuzzle.difficulty_match === false && " · задача вне целевого диапазона"}
+              </span>
+            )}
+            <strong>Подбор по уровню и темам</strong>
+            {adaptiveMeta?.weakTopics?.length > 0 && (
+              <div className="adaptive-topic-list">
+                Слабые: {adaptiveMeta.weakTopics.map((topic) => topic.title).join(", ")}
+              </div>
+            )}
+            <button type="button" onClick={() => navigate("/puzzles?mode=all")}>
               Обычный режим
             </button>
           </div>
         )}
 
-        {/* Прямой заход на ?adaptive=1 без настоящего профиля (нет истории
-            или есть только слабые/только сильные): персонализации нет,
-            поэтому заголовок и «слабые» не показываем - только выход. */}
         {adaptiveMode && !hasRealProfile && (
           <div className="learning-topic-filter learning-topic-filter--adaptive">
             <button type="button" onClick={() => navigate("/puzzles")}>
@@ -797,7 +1060,17 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
             <strong>
               {requestedTopic.icon} {requestedTopic.title}
             </strong>
-            <button type="button" onClick={() => navigate("/puzzles")}>
+            <button type="button" onClick={() => navigate("/puzzles?mode=all")}>
+              Показать все пазлы
+            </button>
+          </div>
+        )}
+
+        {!adaptiveMode && ratingMin != null && (
+          <div className="learning-topic-filter">
+            Подбор по рейтингу
+            <strong>От {ratingMin}</strong>
+            <button type="button" onClick={() => navigate("/puzzles?mode=all")}>
               Показать все пазлы
             </button>
           </div>
@@ -839,8 +1112,9 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
       </div>
 
       <div className="puzzle-board-section">
-        <div className={`puzzle-board-wrapper ${puzzleSolved ? "puzzle-board-wrapper--solved" : ""}`}>
+        <div className={`puzzle-board-wrapper ${puzzleSolved ? "puzzle-board-wrapper--solved" : ""}`} data-logo-anchor>
           <ReactChessboard
+            id={boardId}
             position={fen}
             onPieceDrop={handleMove}
             onSquareClick={onSquareClick}
@@ -887,6 +1161,11 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
             <div className="puzzle-solved-overlay">
               <div className="puzzle-solved-checkmark">✓</div>
               <div className="puzzle-solved-text">Задача решена!</div>
+              {streak > 0 && (
+                <div className="puzzle-solved-streak">
+                  🔥 Серия: {streak}
+                </div>
+              )}
               {currentIndex < puzzles.length - 1 && (
                 <div className="puzzle-solved-hint">
                   Следующая задача откроется автоматически…
@@ -925,66 +1204,85 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
         </div>
       </div>
 
-      <div className="puzzle-chat-section">
-        <div className="chat-header">
-          <div className="chat-avatar">
-            <img src="/bot-icon.svg" alt="Ассистент" />
-          </div>
-          <div className="chat-title-block">
-            <h2>ЧАТ ПО ЗАДАЧЕ</h2>
-            <span className="chat-subtitle">Шахматный ассистент</span>
-          </div>
+      {chatCollapsed ? (
+        <div
+          className="puzzle-chat-section puzzle-chat-section--collapsed"
+          ref={chatPanelRef}
+        >
+          <ChatCollapsedStrip onExpand={() => setChatCollapsed(false)} />
         </div>
-
-        <div className="chat-messages">
-          {chatMessages.map((msg, i) => (
-            <div
-              className={`chat-msg ${msg.role === "user" ? "user" : ""}`}
-              key={i}
+      ) : (
+        <div className="puzzle-chat-section" ref={chatPanelRef}>
+          <div className="chat-header">
+            <div className="chat-avatar">
+              <img src="/bot-icon.svg" alt="Ассистент" />
+            </div>
+            <div className="chat-title-block">
+              <h2>ЧАТ ПО ЗАДАЧЕ</h2>
+              <span className="chat-subtitle">Шахматный ассистент</span>
+            </div>
+            <button
+              type="button"
+              className="chat-collapse-btn"
+              onClick={() => setChatCollapsed(true)}
+              title="Свернуть чат"
+              aria-label="Свернуть чат"
+              aria-expanded={true}
             >
-              <div className="msg-avatar">
-                {msg.role === "user" ? "👤" : "🤖"}
-              </div>
-              <div className="msg-content">
-                <div
-                  className="msg-body"
-                  dangerouslySetInnerHTML={{ __html: formatMarkdown(msg.text) }}
-                />
-                {msg.fen && (
-                  <MiniBoard
-                    fen={msg.fen}
-                    width={220}
-                    lastMove={msg.lastMove}
-                    arrows={msg.arrows || null}
+              »
+            </button>
+          </div>
+
+          <div className="chat-messages">
+            {chatMessages.map((msg, i) => (
+              <div
+                className={`chat-msg ${msg.role === "user" ? "user" : ""}`}
+                key={i}
+              >
+                <div className={`msg-avatar ${msg.role === "ai" ? "msg-avatar--ai" : ""}`}>
+                  {msg.role === "user" ? "♟" : "♞"}
+                </div>
+                <div className="msg-content">
+                  <div
+                    className="msg-body"
+                    dangerouslySetInnerHTML={{ __html: formatMarkdown(msg.text) }}
                   />
-                )}
+                  {msg.fen && (
+                    <MiniBoard
+                      fen={msg.fen}
+                      width={220}
+                      lastMove={msg.lastMove}
+                      arrows={msg.arrows || null}
+                    />
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
-          {chatLoading && (
-            <div className="chat-msg">
-              <div className="msg-avatar">🤖</div>
-              <div className="msg-body">Думаю...</div>
-            </div>
-          )}
-          <div ref={chatEndRef} />
-        </div>
+            ))}
+            {chatLoading && (
+              <div className="chat-msg">
+                <div className="msg-avatar msg-avatar--ai">♞</div>
+                <div className="msg-body">Думаю...</div>
+              </div>
+            )}
+            <div ref={chatEndRef} />
+          </div>
 
-        <div className="chat-input-area">
-          <input
-            type="text"
-            value={chatInput}
-            onChange={(e) => setChatInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleChatSend()}
-            placeholder="Введите ваше сообщение..."
-          />
-          <button onClick={handleChatSend} disabled={chatLoading}>
-            ➤
-          </button>
+          <div className="chat-input-area">
+            <input
+              type="text"
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleChatSend()}
+              placeholder="Введите ваше сообщение..."
+            />
+            <button onClick={handleChatSend} disabled={chatLoading}>
+              ➤
+            </button>
+          </div>
         </div>
-      </div>
-
+      )}
       <PuzzleRegisterGate open={showRegGate} onRegister={onRegister} />
+      </div>
       {previewLocked && puzzles.length > 0 && (
         <PuzzlePreviewGate
           onOpenOnboarding={onOpenOnboarding}

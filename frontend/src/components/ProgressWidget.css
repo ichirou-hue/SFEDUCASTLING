@@ -52,6 +52,9 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  /* Заголовок виджета убран (он дублировал заголовок секции),
+     поэтому серию прижимаем вправо вручную. */
+  margin-left: auto;
   padding: 8px 12px;
   border-radius: 14px;
   background: #f6f1e6;
@@ -77,10 +80,14 @@
 }
 
 .progress-widget__tracks {
+  /* stretch, а не center: карточки курса и задач должны быть одной высоты */
+  align-items: stretch;
   gap: 14px;
 }
 
 .progress-track-card {
+  display: flex;
+  flex-direction: column;
   flex: 1;
   min-width: 0;
   padding: 14px 16px;
@@ -133,6 +140,9 @@
 .progress-track-card__footer {
   justify-content: space-between;
   gap: 12px;
+  /* строка точности всегда прижата к низу карточки, чтобы карточки
+     совпадали по высоте даже если подписи разной длины */
+  margin-top: auto;
   font-size: 13px;
 }
 

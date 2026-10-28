@@ -17,9 +17,11 @@ from backend.api_gateway import state
 from backend.api_gateway.dependecies import get_current_user
 from backend.api_gateway.models import PuzzleAnswerRequest
 from backend.db.session import get_db
+from backend.models.game import Game
 from backend.models.level_test import LevelTest
 from backend.models.puzzle_attempt import PuzzleAttempt
 from backend.models.user import ROLE_ADMIN, User
+from backend.models.user_chess_account import UserChessAccount
 from backend.services.adaptive_logic import select_adaptive_puzzles
 from backend.services.adaptive_training import (
     build_weakness_profile,
@@ -32,6 +34,7 @@ from backend.services.assessment import (
     max_puzzle_rating_for_user,
     personalized_level_test_puzzles,
     puzzle_rating_group,
+    rating_band_progress,
     rating_group_for,
     rating_for_selection,
 )
@@ -43,11 +46,14 @@ from backend.services.course_topics import (
     puzzle_matches_course_topic as _puzzle_matches_course_topic,
 )
 from backend.services.dynamic_difficulty import (
+    effective_player_rating,
     get_user_theme_difficulties,
     public_difficulty_profile,
     update_theme_difficulty_after_attempt,
 )
 from backend.services.difficulty_logic import difficulty_for_rating
+from backend.services.phase_accuracy import load_user_phase_accuracy
+from backend.services.user_records import build_user_records
 
 router = APIRouter(tags=["learning"])
 
@@ -181,6 +187,32 @@ async def _latest_personal_test(db: AsyncSession, user_id: int) -> LevelTest | N
     )
 
 
+async def _starting_rating(db: AsyncSession, user: User) -> int:
+    onboarding = user.onboarding if isinstance(user.onboarding, dict) else {}
+    answers = onboarding.get("answers") if isinstance(onboarding.get("answers"), dict) else {}
+    q2 = answers.get("q2") if isinstance(answers.get("q2"), dict) else {}
+    requested_platform = str(q2.get("platform") or "").strip().lower()
+    if requested_platform in {"chess.com", "chess_com", "chess"}:
+        requested_platform = "chesscom"
+    if requested_platform not in {"lichess", "chesscom"}:
+        requested_platform = ""
+
+    account_query = select(UserChessAccount).where(
+        UserChessAccount.user_id == user.id,
+        UserChessAccount.rating.is_not(None),
+        UserChessAccount.rating_usable.is_(True),
+    )
+    if requested_platform:
+        account_query = account_query.where(
+            UserChessAccount.platform == requested_platform
+        )
+    account = await db.scalar(account_query.order_by(UserChessAccount.updated_at.desc()))
+    if account is not None:
+        return max(0, min(3500, int(account.rating)))
+
+    return max(0, min(3500, int(user.rating_estimate or user.elo or 800)))
+
+
 def _upsert_test_answer(test: LevelTest, answer: dict[str, Any]) -> None:
     answers = [
         item
@@ -219,7 +251,7 @@ async def level_test_start(
             "personalization": active.metrics_snapshot or {},
         }
 
-    rating_estimate = int(user.rating_estimate or user.elo or 800)
+    rating_estimate = await _starting_rating(db, user)
     seed = secrets.randbelow(2_147_483_647)
     puzzles, metrics = await personalized_level_test_puzzles(
         db,
@@ -516,7 +548,7 @@ async def record_puzzle_attempt(
         db,
         user_id=user.id,
         puzzle_base=state.puzzle_base,
-        base_difficulty=_base_difficulty_for_user(user),
+        player_rating=effective_player_rating(user),
     )
 
     attempt = PuzzleAttempt(
@@ -534,6 +566,7 @@ async def record_puzzle_attempt(
         user_id=user.id,
         theme_slug=topic_slug,
         puzzle_base=state.puzzle_base,
+        player_rating=effective_player_rating(user),
     )
 
     return {
@@ -555,6 +588,43 @@ async def learning_progress(
     return await compute_learning_progress(db, user_id=user.id)
 
 
+@router.get("/api/learning/records")
+async def learning_user_records(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Возвращает личные рекорды и активность за последние 14 дней."""
+    games = await db.scalars(
+        select(Game)
+        .where(Game.user_id == user.id)
+        .order_by(Game.created_at, Game.id)
+    )
+    puzzle_attempts = await db.scalars(
+        select(PuzzleAttempt)
+        .where(PuzzleAttempt.user_id == user.id)
+        .order_by(PuzzleAttempt.created_at, PuzzleAttempt.id)
+    )
+    return build_user_records(games.all(), puzzle_attempts.all())
+
+
+@router.get("/api/learning/phase-accuracy")
+async def learning_phase_accuracy(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Возвращает точность ходов пользователя по этапам завершённых партий."""
+    return await load_user_phase_accuracy(db, user_id=user.id)
+
+
+@router.get("/api/learning/level-progress")
+async def learning_level_progress(user: User = Depends(get_current_user)):
+    """Положение пользователя внутри текущей рейтинговой группы."""
+    return {
+        **rating_band_progress(effective_player_rating(user)),
+        "provisional": user.assessment_completed_at is None,
+    }
+
+
 @router.get("/api/learning/difficulty")
 async def learning_difficulty(
     user: User = Depends(get_current_user),
@@ -568,14 +638,14 @@ async def learning_difficulty(
         db,
         user_id=user.id,
         puzzle_base=state.puzzle_base,
-        base_difficulty=_base_difficulty_for_user(user),
+        player_rating=effective_player_rating(user),
     )
     return {
         "topics": public_difficulty_profile(profile, difficulties),
         "rule": {
             "min_difficulty": 1,
             "max_difficulty": 3,
-            "default_difficulty": 2,
+            "default_difficulty": 1,
             "increase_if_accuracy_gt": 80,
             "decrease_if_accuracy_lt": 50,
         },
@@ -632,32 +702,30 @@ async def get_adaptive_puzzles(
         db,
         user_id=user.id,
         puzzle_base=state.puzzle_base,
-        base_difficulty=_base_difficulty_for_user(user),
+        player_rating=effective_player_rating(user),
     )
-    # Жёсткий потолок: не предлагаем задачи сложнее рейтинга игрока более чем
-    # на 200 — ни в слабых, ни в сильных темах. Плюс ограничиваем выборку
-    # ТОЛЬКО текущей рейтинговой корзиной игрока (как и в обычной практике).
-    rating, _ = rating_for_selection(user.elo, user.rating_estimate, user.prior_band)
-    max_puzzle_rating = max_puzzle_rating_for_user(rating)
-    if rating is not None:
-        own_group = int(rating_group_for(rating)["id"])
+    valid_puzzles = [
+        p for p in state.puzzle_base.get("puzzles", []) if _is_puzzle_valid(p)
+    ]
+    player_rating = effective_player_rating(user)
+    max_puzzle_rating = max_puzzle_rating_for_user(player_rating)
+    if player_rating is not None:
+        own_group = int(rating_group_for(player_rating)["id"])
         own_pool = [p for p in valid_puzzles if puzzle_rating_group(p) == own_group]
-        pool = own_pool
-        if max_puzzle_rating is not None:
-            capped = [p for p in own_pool if _puzzle_rating(p) <= max_puzzle_rating]
-            # Потолок не должен обнулять корзину: если в пределах +200 задач
-            # нет, остаёмся в своей корзине без потолка.
-            if capped:
-                pool = capped
-        if pool:
-            valid_puzzles = pool
-
+        capped_pool = [p for p in own_pool if _puzzle_rating(p) <= max_puzzle_rating]
+        # Keep the current rating group available if the ceiling would empty it.
+        if capped_pool:
+            valid_puzzles = capped_pool
+        elif own_pool:
+            valid_puzzles = own_pool
+    phase_profile = await load_user_phase_accuracy(db, user_id=user.id)
     picked, allocation = select_adaptive_puzzles(
         valid_puzzles,
         weak_topics=profile["weak_topics"],
         strong_topics=profile["strong_topics"],
         count=count,
         topic_difficulties=topic_difficulties,
+        phase_stats=phase_profile["phases"],
     )
 
     result = [
@@ -669,20 +737,30 @@ async def get_adaptive_puzzles(
             "rating": p.get("rating", 0),
             "adaptive_group": p.get("adaptive_group"),
             "adaptive_topic": p.get("adaptive_topic"),
+            "adaptive_phase": p.get("adaptive_phase"),
             "adaptive_difficulty": p.get("adaptive_difficulty"),
             "difficulty_match": p.get("difficulty_match"),
         }
         for p in picked
     ]
 
+    player_rating = effective_player_rating(user)
+    rating_group = rating_group_for(player_rating) if player_rating is not None else None
+
     return {
         "puzzles": result,
         "total": len(result),
         "mode": "adaptive",
+        "player_level": {
+            "title": rating_group["title"] if rating_group else "Стартовый",
+            "rating_group": rating_group["key"] if rating_group else None,
+            "provisional": user.assessment_completed_at is None,
+        },
         "weak_topics": profile["weak_topics"],
         "strong_topics": profile["strong_topics"],
         "difficulty_profile": public_difficulty_profile(profile, topic_difficulties),
         "allocation": allocation,
+        "phase_adjustment": allocation["phase_adjustment"],
         "selection_rule": profile["selection_rule"],
         "max_puzzle_rating": max_puzzle_rating,
     }
@@ -862,8 +940,9 @@ def _preview_payload(
 
 @router.get("/api/learning/puzzles")
 async def get_puzzles(
-    count: int = 20,
+    count: int = Query(default=20, ge=1, le=100),
     topic: str | None = None,
+    rating_min: int | None = Query(default=None, ge=0, le=10000),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -896,6 +975,10 @@ async def get_puzzles(
     if normalized_topic:
         valid_puzzles = [
             p for p in valid_puzzles if _puzzle_matches_course_topic(p, normalized_topic)
+        ]
+    if rating_min is not None:
+        valid_puzzles = [
+            p for p in valid_puzzles if int(p.get("rating") or 0) >= rating_min
         ]
 
     # Пробный доступ до анкеты: не больше 3 лёгких задач в день.

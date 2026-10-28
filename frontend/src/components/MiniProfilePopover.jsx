@@ -11,7 +11,7 @@ function safeNumber(value, fallback = 0) {
   return Number.isFinite(Number(value)) ? Number(value) : fallback;
 }
 
-export default function MiniProfilePopover({ user, onUserChange }) {
+export default function MiniProfilePopover({ user, onUserChange, onLogout }) {
   const [open, setOpen] = useState(false);
   const [profile, setProfile] = useState(user || null);
   const [training, setTraining] = useState(null);
@@ -180,12 +180,23 @@ export default function MiniProfilePopover({ user, onUserChange }) {
                 Данные могут быть неактуальны.
               </div>
             )}
-
-            <Link to="/profile" className="mini-profile__details-link">
-              Открыть полный профиль →
-            </Link>
           </>
         )}
+
+        {/* Низ меню: переход в профиль и выход из аккаунта. Выход
+            доступен всегда, даже если прогресс не загрузился. */}
+        <div className="mini-profile__footer">
+          <Link to="/profile" className="mini-profile__details-link">
+            Открыть полный профиль →
+          </Link>
+          <button
+            type="button"
+            className="mini-profile__logout"
+            onClick={onLogout}
+          >
+            Выйти
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -51,31 +51,7 @@ export default function MoveHistory({
       <h3 className="history-title">История ходов</h3>
       <div className="title-separator"></div>
 
-      {/* Блок профиля */}
-      <div className="player-info">
-        {/* Левая часть: Пользователь */}
-        <div className="player-avatar">
-          <img src="\user-icon.svg" alt="Вы" />
-        </div>
-        <div className="player-details">
-          <span className="player-rating">{userRating || "1500"}</span>
-          <span className="player-name">Вы</span>
-        </div>
-
-        <div className="vs-text">VS</div>
-
-        {/* Правая часть: Бот Maia */}
-        <div className="bot-details">
-          <span className="bot-name">Maia 3</span>
-          {/* Сюда мы передаем проп с рейтингом от доски */}
-          <span className="bot-rating">{maiaRating}</span>
-        </div>
-        <div className="bot-avatar">
-          <img src="\bot-icon.svg" alt="Maia 3" />
-        </div>
-      </div>
-
-      {/* Список ходов */}
+      {/* Список ходов - сразу под заголовком, ближе к доске */}
       <div className="move-list" ref={listRef}>
         {movePairs.map((item, index) => (
           <div key={index} className="move-pair">
@@ -102,6 +78,30 @@ export default function MoveHistory({
             )}
           </div>
         ))}
+      </div>
+
+      {/* Карточка соперника - под списком ходов, рядом с навигацией */}
+      <div className="player-info">
+        {/* Левая часть: Пользователь */}
+        <div className="player-avatar">
+          <img src="/user-icon.svg" alt="Вы" />
+        </div>
+        <div className="player-details">
+          <span className="player-rating">{userRating || "1500"}</span>
+          <span className="player-name">Вы</span>
+        </div>
+
+        <div className="vs-text">VS</div>
+
+        {/* Правая часть: Бот Maia */}
+        <div className="bot-details">
+          <span className="bot-name">Maia 3</span>
+          {/* Сюда мы передаем проп с рейтингом от доски */}
+          <span className="bot-rating">{maiaRating}</span>
+        </div>
+        <div className="bot-avatar">
+          <img src="/bot-icon.svg" alt="Maia 3" />
+        </div>
       </div>
 
       {/* Навигация */}
