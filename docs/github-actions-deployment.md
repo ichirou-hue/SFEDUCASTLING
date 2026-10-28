@@ -1,29 +1,27 @@
-# GitHub Actions deployment
+# GigaChess production CI/CD
 
-The CI workflow validates pull requests targeting `main` and pushes to any branch. It runs backend checks against a fresh PostgreSQL database, applies Alembic migrations, runs pytest and Ruff, builds the frontend, and stores a commit-named bundle only for successful `main` runs. Production deployment is triggered only by a successful CI run caused by a push to `main`.
+Production artifacts are built only by successful CI runs for pushes to `dev`. CI validates PRs targeting `dev`, applies Alembic migrations to a fresh PostgreSQL 16 service, runs the backend suite and Ruff, and builds the frontend. The artifact is commit-pinned and excludes credentials, local databases, virtual environments and frontend dependencies. The deploy workflow accepts only a successful `dev` push (or a manually selected SHA with a successful `dev` run), downloads that exact artifact, and uses strict SSH host-key checking.
 
-Production deployment is intentionally disabled until the server is provisioned and the GitHub production environment is protected. The deploy workflow checks `PRODUCTION_DEPLOY_ENABLED == true`, then downloads the artifact from the successful CI run for the exact commit. It serializes production deployments, uploads the archive over SSH with strict host key checking, applies migrations, switches the `current` symlink, restarts systemd, and checks the configured health URL. On restart or health failure it switches the application symlink back to the previous release. Database migrations are not automatically rolled back.
+Deployment is serialized. A root-owned helper creates a full PostgreSQL backup, stages the immutable release, runs migrations, switches the `current` symlink, restarts `gigachess.service`, and polls `http://127.0.0.1:8005/api/health`. A failed service start or health check switches code back to the previous release. Database migrations are not automatically reversed; restore the saved dump only after reviewing writes since deployment.
 
-Before approving a production deployment, the reviewer must verify that a recent restorable database backup exists and that the release migrations are backward-compatible. The workflow does not create a database backup because the production database and approved backup mechanism have not been identified yet.
+## One-time server setup
 
-## Required GitHub configuration before enabling deployment
+The current host is Ubuntu `gigachess`, app path `/srv/SFEDUCASTLING`, service `gigachess.service`, app port `8005`, user `deploy`. Preserve `/srv/SFEDUCASTLING/.env` and `/srv/SFEDUCASTLING/venv`; never copy either into an artifact.
 
-Create the `production` environment and restrict it to the `main` branch. Configure required reviewers if supported by the repository visibility and plan. Add these environment secrets:
+Before enabling deployments, provision Python 3.14 for the service (the repository and `uv.lock` require Python >=3.14; the existing service venv is Python 3.12.3). Install the app requirements into a separate venv and switch the systemd `ExecStart` only after its readiness endpoint succeeds. Keep the service bound to `127.0.0.1:8005` behind Nginx. Python 3.14.10 has been installed at `/srv/SFEDUCASTLING/venv314` and backend imports were verified. The systemd service still uses its old Python 3.12.3 venv until one-time activation is complete.
 
-- `SERVER_HOST`
-- `SERVER_USER`
-- `SERVER_SSH_KEY`
-- `SERVER_KNOWN_HOSTS` with the independently verified host key, never a key collected with an unverified `ssh-keyscan`
+Install `scripts/gigachess-deploy.sh` as root-owned `/usr/local/sbin/gigachess-deploy` (`root:root`, mode `0750`). Add `/etc/sudoers.d/gigachess-deploy` with exactly:
 
-Add these environment variables:
+```
+deploy ALL=(root) NOPASSWD: /usr/local/sbin/gigachess-deploy
+```
 
-- `PRODUCTION_DEPLOY_ENABLED`, initially `false`, then `true` only after a deployment dry run
-- `SERVER_DEPLOY_PATH`, for example `/srv/sfeducasling`
-- `SERVER_SERVICE_NAME`, the preconfigured systemd service name
-- `SERVER_HEALTH_URL`, the externally or locally reachable `/api/health` URL
+Validate with `visudo -cf /etc/sudoers.d/gigachess-deploy`. The helper itself must remain root-owned and non-writable by `deploy`; it accepts only a 40-character lowercase commit SHA. Configure systemd `WorkingDirectory=/srv/SFEDUCASTLING/current`, retain the existing venv executable, and ensure the app loads `/srv/SFEDUCASTLING/.env` from its working directory (the release `.env` symlink points there). Run `systemctl daemon-reload` once after changing the unit.
 
-The SSH account must be restricted to this application host and deployment directory, and must have only the required permission to restart the named systemd service. The server must be provisioned with `$SERVER_DEPLOY_PATH/venv/bin/alembic`, a shared `.env` at `$SERVER_DEPLOY_PATH/shared/.env`, the runtime dependencies, Stockfish if required, and a systemd unit whose working directory is `$SERVER_DEPLOY_PATH/current`. Configure database connection in the server-side `.env`; do not put production values in GitHub workflow files or the bundle.
+The helper uses `runuser -u postgres -- pg_dumpall`, stores mode-0600 compressed backups under `/var/backups/gigachess`, and retains 30 days. Test one restore into a separate database before enabling the workflow.
 
-Before the first deployment, confirm the server OS, current service command, Python/runtime dependency strategy, Maia3 availability, Stockfish binary, database backup and migration compatibility. The workflow does not install ML weights or roll back database schema automatically.
+## GitHub configuration
 
-The manual `workflow_dispatch` path is restricted to `main` and requires a commit SHA that already has a successful CI artifact.
+Create Environment `production` and restrict deployment branches to `dev`. Automatic deployment means do not require a human reviewer on each run; protect `dev` by requiring CI checks before merge. Set Environment secrets `SERVER_HOST=139.100.237.190`, `SERVER_USER=deploy`, `SERVER_SSH_KEY` (a dedicated deploy key), `SERVER_KNOWN_HOSTS` (verified host key). Set Environment variable `PRODUCTION_DEPLOY_ENABLED=false`; set it to `true` only after all server setup and a manual deployment dry run. The deploy key should be limited to this host/account; SSH must keep strict host checking. Do not use the interactive account password or sudo password in Actions.
+
+The running app uses Python 3.12.3 while the repository declares Python >=3.14. Do not enable deployment until systemd uses the validated Python 3.14 venv and CI/deployed runtime agree. Check GitHub Actions is enabled and verify green CI on the exact dev SHA before dispatching a deploy.

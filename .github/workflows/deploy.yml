@@ -4,11 +4,11 @@ on:
   workflow_run:
     workflows: [CI]
     types: [completed]
-    branches: [main]
+    branches: [dev]
   workflow_dispatch:
     inputs:
       source_sha:
-        description: Successful main commit SHA to deploy
+        description: Full SHA with a successful CI run on dev
         required: true
         type: string
 
@@ -17,169 +17,85 @@ permissions:
   contents: read
 
 concurrency:
-  group: production-deploy
+  group: gigachess-production
   cancel-in-progress: false
 
 jobs:
   deploy:
-    name: Deploy verified main commit
     if: >-
       vars.PRODUCTION_DEPLOY_ENABLED == 'true' &&
       ((github.event_name == 'workflow_run' &&
         github.event.workflow_run.event == 'push' &&
-        github.event.workflow_run.conclusion == 'success' &&
-        github.event.workflow_run.head_branch == 'main') ||
-       (github.event_name == 'workflow_dispatch' &&
-        github.ref == 'refs/heads/main'))
+        github.event.workflow_run.head_branch == 'dev' &&
+        github.event.workflow_run.head_repository.full_name == github.repository &&
+        github.event.workflow_run.conclusion == 'success') ||
+       (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/dev'))
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     environment:
       name: production
     steps:
-      - name: Select verified commit
+      - name: Resolve verified source commit
         id: source
         env:
-          EVENT_NAME: ${{ github.event_name }}
+          EVENT: ${{ github.event_name }}
           RUN_SHA: ${{ github.event.workflow_run.head_sha }}
           INPUT_SHA: ${{ inputs.source_sha }}
         run: |
-          if [ "$EVENT_NAME" = "workflow_run" ]; then
-            sha="$RUN_SHA"
-          else
-            sha="$INPUT_SHA"
-          fi
-          if [[ ! "$sha" =~ ^[0-9a-f]{40}$ ]]; then
-            echo "Expected a full 40-character commit SHA" >&2
-            exit 1
-          fi
+          set -euo pipefail
+          sha="$RUN_SHA"
+          if [[ "$EVENT" == workflow_dispatch ]]; then sha="$INPUT_SHA"; fi
+          [[ "$sha" =~ ^[0-9a-f]{40}$ ]]
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
 
-      - name: Validate production deployment configuration
-        env:
-          ENABLED: ${{ vars.PRODUCTION_DEPLOY_ENABLED }}
-          SERVER_HOST: ${{ secrets.SERVER_HOST }}
-          SERVER_USER: ${{ secrets.SERVER_USER }}
-          SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
-          SERVER_KNOWN_HOSTS: ${{ secrets.SERVER_KNOWN_HOSTS }}
-          SERVER_DEPLOY_PATH: ${{ vars.SERVER_DEPLOY_PATH }}
-          SERVER_SERVICE_NAME: ${{ vars.SERVER_SERVICE_NAME }}
-          SERVER_HEALTH_URL: ${{ vars.SERVER_HEALTH_URL }}
-        run: |
-          test "$ENABLED" = "true"
-          test -n "$SERVER_HOST"
-          test -n "$SERVER_USER"
-          test -n "$SERVER_SSH_KEY"
-          test -n "$SERVER_KNOWN_HOSTS"
-          test -n "$SERVER_DEPLOY_PATH"
-          test -n "$SERVER_SERVICE_NAME"
-          [[ "$SERVER_HOST" =~ ^[A-Za-z0-9.-]+$ ]]
-          [[ "$SERVER_USER" =~ ^[A-Za-z0-9._-]+$ ]]
-          [[ "$SERVER_DEPLOY_PATH" =~ ^/[A-Za-z0-9_./-]+$ ]]
-          [[ "$SERVER_DEPLOY_PATH" != *..* ]]
-          [[ "$SERVER_SERVICE_NAME" =~ ^[A-Za-z0-9_.@-]+$ ]]
-          [[ "$SERVER_HEALTH_URL" =~ ^https?://[A-Za-z0-9.-]+(:[0-9]{1,5})?(/[A-Za-z0-9_./-]*)?$ ]]
+      - name: Download artifact from successful CI run
+        if: github.event_name == 'workflow_run'
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: sfeducasling-${{ steps.source.outputs.sha }}
+          path: bundle
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
 
-      - name: Download source commit bundle
+      - name: Find verified artifact for manual dispatch
+        if: github.event_name == 'workflow_dispatch'
         env:
           GH_TOKEN: ${{ github.token }}
-          RUN_ID: ${{ github.event.workflow_run.id }}
           SHA: ${{ steps.source.outputs.sha }}
-          EVENT_NAME: ${{ github.event_name }}
         run: |
-          if [ "$EVENT_NAME" = "workflow_run" ]; then
-            gh run download "$RUN_ID" --name "sfeducasling-$SHA" --dir bundle
-          else
-            gh run download "$(gh run list --workflow CI --branch main --commit "$SHA" --status success --limit 1 --json databaseId --jq '.[0].databaseId')" \
-              --name "sfeducasling-$SHA" --dir bundle
-          fi
+          set -euo pipefail
+          run_id="$(gh run list --workflow CI --branch dev --commit "$SHA" --status success --limit 1 --json databaseId --jq '.[0].databaseId')"
+          test -n "$run_id" && test "$run_id" != null
+          gh run download "$run_id" --name "sfeducasling-$SHA" --dir bundle
+
+      - name: Verify artifact is present
+        env:
+          SHA: ${{ steps.source.outputs.sha }}
+        run: test -s "bundle/gigachess-$SHA.tar.gz"
 
       - name: Configure pinned SSH host key
         env:
-          SERVER_KNOWN_HOSTS: ${{ secrets.SERVER_KNOWN_HOSTS }}
+          KNOWN_HOSTS: ${{ secrets.SERVER_KNOWN_HOSTS }}
         run: |
+          set -euo pipefail
+          test -n "$KNOWN_HOSTS"
           install -d -m 700 "$HOME/.ssh"
-          printf '%s\n' "$SERVER_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          printf '%s\n' "$KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
           chmod 600 "$HOME/.ssh/known_hosts"
 
-      - name: Upload bundle
+      - name: Upload verified bundle
         env:
           SERVER_HOST: ${{ secrets.SERVER_HOST }}
           SERVER_USER: ${{ secrets.SERVER_USER }}
-          SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
+          SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
           SHA: ${{ steps.source.outputs.sha }}
         run: |
-          key_file="$RUNNER_TEMP/deploy_key"
-          printf '%s\n' "$SERVER_SSH_KEY" > "$key_file"
-          chmod 600 "$key_file"
-          scp -i "$key_file" -o BatchMode=yes -o StrictHostKeyChecking=yes \
-            "bundle/sfeducasling-$SHA.tar.gz" \
-            "$SERVER_USER@$SERVER_HOST:/tmp/sfeducasling-$SHA.tar.gz"
-
-      - name: Activate release, migrate, and verify health
-        env:
-          SERVER_HOST: ${{ secrets.SERVER_HOST }}
-          SERVER_USER: ${{ secrets.SERVER_USER }}
-          SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
-          DEPLOY_PATH: ${{ vars.SERVER_DEPLOY_PATH }}
-          SERVICE_NAME: ${{ vars.SERVER_SERVICE_NAME }}
-          HEALTH_URL: ${{ vars.SERVER_HEALTH_URL }}
-          SHA: ${{ steps.source.outputs.sha }}
-        run: |
-          key_file="$RUNNER_TEMP/deploy_key"
-          printf '%s\n' "$SERVER_SSH_KEY" > "$key_file"
-          chmod 600 "$key_file"
-          ssh -i "$key_file" -o BatchMode=yes -o StrictHostKeyChecking=yes \
-            "$SERVER_USER@$SERVER_HOST" bash -s -- "$DEPLOY_PATH" "$SERVICE_NAME" "$HEALTH_URL" "$SHA" <<'REMOTE'
-          set -Eeuo pipefail
-          root="$1"
-          service="$2"
-          health_url="$3"
-          sha="$4"
-          archive="/tmp/sfeducasling-$sha.tar.gz"
-          release="$root/releases/$sha"
-          previous="$(readlink -f "$root/current" || true)"
-
-          test -n "$health_url"
-          mkdir -p "$root/releases" "$root/shared"
-          if [ ! -d "$release" ]; then
-            staging="$root/releases/.$sha.staging.$$"
-            mkdir "$staging"
-            tar -xzf "$archive" -C "$staging"
-            ln -sfn "$root/shared/.env" "$staging/.env"
-            mv "$staging" "$release"
-          fi
-
-          # The host must be provisioned with the app runtime and Python environment first.
-          (cd "$release" && "$root/venv/bin/alembic" upgrade head)
-
-          ln -sfn "$release" "$root/current.next"
-          mv -Tf "$root/current.next" "$root/current"
-          if ! sudo systemctl restart "$service"; then
-            if [ -n "$previous" ]; then
-              ln -sfn "$previous" "$root/current.rollback"
-              mv -Tf "$root/current.rollback" "$root/current"
-              sudo systemctl restart "$service" || true
-            else
-              rm -f "$root/current"
-            fi
-            exit 1
-          fi
-
-          for attempt in $(seq 1 20); do
-            if curl --fail --silent --show-error "$health_url"; then
-              rm -f "$archive"
-              exit 0
-            fi
-            sleep 3
-          done
-
-          if [ -n "$previous" ]; then
-            ln -sfn "$previous" "$root/current.rollback"
-            mv -Tf "$root/current.rollback" "$root/current"
-            sudo systemctl restart "$service" || true
-          else
-            rm -f "$root/current"
-            sudo systemctl stop "$service" || true
-          fi
-          exit 1
-          REMOTE
+          set -euo pipefail
+          test -n "$SERVER_HOST" && test -n "$SERVER_USER" && test -n "$SSH_KEY"
+          key="$RUNNER_TEMP/deploy_key"
+          printf '%s\n' "$SSH_KEY" > "$key"
+          chmod 600 "$key"
+          scp -i "$key" -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            "bundle/gigachess-$SHA.tar.gz" "$SERVER_USER@$SERVER_HOST:/tmp/gigachess-$SHA.tar.gz"
+          ssh -i "$key" -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            "$SERVER_USER@$SERVER_HOST" "sudo -n /usr/local/sbin/gigachess-deploy $SHA"
