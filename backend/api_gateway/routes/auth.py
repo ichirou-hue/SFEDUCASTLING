@@ -34,7 +34,10 @@ from backend.api_gateway.security import (
 )
 from backend.db.session import get_db
 from backend.models.user import ROLE_ADMIN, ROLE_LEARNER, RefreshToken, User
-from backend.models.user_chess_account import UserChessAccount
+from backend.models.user_chess_account import (
+    UserChessAccount,
+    VERIFICATION_VERIFIED,
+)
 from backend.services.assessment import onboarding_rating
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -325,7 +328,7 @@ async def me(user: User = Depends(get_current_user)):
 
 
 async def _linked_rating(db: AsyncSession, user_id: int) -> dict[str, Any] | None:
-    """Последний привязанный внешний рейтинг, пригодный для стартовой оценки.
+    """Последний подтверждённый внешний рейтинг для стартовой оценки.
 
     Возвращает ``{"rating", "scale", "usable"}`` или None. Привязка — единственный
     способ получить стартовую оценку выше ограничения самооценки.
@@ -334,6 +337,8 @@ async def _linked_rating(db: AsyncSession, user_id: int) -> dict[str, Any] | Non
         select(UserChessAccount)
         .where(
             UserChessAccount.user_id == user_id,
+            UserChessAccount.verified.is_(True),
+            UserChessAccount.verification_status == VERIFICATION_VERIFIED,
             UserChessAccount.rating_usable.is_(True),
         )
         .order_by(UserChessAccount.updated_at.desc(), UserChessAccount.id.desc())

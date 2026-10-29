@@ -211,6 +211,108 @@ export async function logout() {
   }
 }
 
+// === OAuth Lichess / Chess.com ===
+
+export async function fetchOAuthProviders() {
+  const { data } = await api.get("/api/auth/oauth/providers");
+  return data;
+}
+
+export async function completeChessOAuth() {
+  const { data } = await api.post("/api/auth/oauth/complete");
+  return saveAuth(data);
+}
+
+export async function startChessOAuth(
+  provider,
+  intent = "login",
+  returnTo = typeof window !== "undefined" ? window.location.pathname : "/",
+) {
+  // Открываем пустое окно синхронно с кликом, иначе браузер может заблокировать popup
+  // после await запроса к backend. Если popup всё же запрещён, используем redirect.
+  const popup =
+    typeof window !== "undefined"
+      ? window.open(
+          "about:blank",
+          "gigachess-oauth",
+          "popup=yes,width=620,height=760,resizable=yes,scrollbars=yes",
+        )
+      : null;
+
+  try {
+    const { data } = await api.post(`/api/auth/oauth/${provider}/start`, {
+      intent,
+      return_to: returnTo || "/",
+      popup: Boolean(popup),
+    });
+
+    if (!popup) {
+      window.location.assign(data.authorization_url);
+      return null;
+    }
+
+    const resultPromise = new Promise((resolve, reject) => {
+      let finished = false;
+      const cleanup = () => {
+        if (finished) return;
+        finished = true;
+        window.removeEventListener("message", onMessage);
+        clearInterval(closedTimer);
+        clearTimeout(timeoutTimer);
+      };
+
+      const onMessage = async (event) => {
+        if (event.source !== popup) return;
+        const message = event.data;
+        if (!message || message.type !== "gigachess-oauth") return;
+        if (message.provider !== provider || message.intent !== intent) return;
+
+        cleanup();
+        if (message.status !== "success") {
+          reject(new Error(message.message || "OAuth-авторизация не завершена"));
+          return;
+        }
+
+        try {
+          if (intent === "login") {
+            const user = await completeChessOAuth();
+            resolve({ ...message, user });
+          } else {
+            resolve(message);
+          }
+        } catch (error) {
+          reject(error);
+        }
+      };
+
+      window.addEventListener("message", onMessage);
+      const closedTimer = setInterval(() => {
+        if (popup.closed && !finished) {
+          cleanup();
+          reject(new Error("Окно авторизации было закрыто"));
+        }
+      }, 500);
+      const timeoutTimer = setTimeout(() => {
+        if (!finished) {
+          cleanup();
+          try {
+            popup.close();
+          } catch {}
+          reject(new Error("Время ожидания авторизации истекло"));
+        }
+      }, 3 * 60 * 1000);
+    });
+
+    popup.location.href = data.authorization_url;
+    return await resultPromise;
+  } catch (error) {
+    try {
+      popup?.close();
+    } catch {}
+    throw error;
+  }
+}
+
 // === Онбординг-анкета Q1-Q8 ===
 
 export async function saveOnboarding(answers) {
@@ -505,7 +607,7 @@ export async function finishLevelTest(testId, answers = []) {
   return data;
 }
 
-// === Связанные шахматные аккаунты (soft link, без OAuth) ===
+// === Связанные шахматные аккаунты и верификация владения ===
 
 export async function fetchLinkedChessAccounts() {
   const { data } = await api.get("/api/chess-profile/linked");
@@ -523,4 +625,23 @@ export async function linkChessAccount(username, platform = "lichess") {
 export async function unlinkChessAccount(platform = "lichess") {
   const { data } = await api.delete(`/api/chess-profile/link/${platform}`);
   return data;
+}
+
+export async function syncChessAccount(platform = "lichess") {
+  const { data } = await api.post(`/api/chess-profile/sync/${platform}`);
+  return data;
+}
+
+export async function fetchChessVerificationHistory(platform = "lichess", limit = 20) {
+  const { data } = await api.get(`/api/chess-profile/verifications/${platform}`, {
+    params: { limit },
+  });
+  return data;
+}
+
+export async function verifyChessAccount(
+  platform = "lichess",
+  returnTo = typeof window !== "undefined" ? window.location.pathname : "/",
+) {
+  return startChessOAuth(platform, "verify", returnTo);
 }

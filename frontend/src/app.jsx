@@ -16,9 +16,45 @@ import AdminPage from "./components/AdminPage.jsx";
 import LevelTestPage from "./components/LevelTestPage.jsx";
 import {
   AUTH_EXPIRED_EVENT,
+  completeChessOAuth,
   fetchCurrentUser,
   getStoredUser,
 } from "./api.js";
+
+function OAuthCallbackPage({ onSuccess }) {
+  const [message, setMessage] = useState("Завершаем вход…");
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("status") === "error") {
+      setMessage(params.get("message") || "OAuth-авторизация не завершена");
+      return;
+    }
+
+    completeChessOAuth()
+      .then((freshUser) => {
+        onSuccess?.(freshUser);
+        window.location.replace("/");
+      })
+      .catch((error) => {
+        setMessage(
+          error?.response?.data?.detail ||
+            error?.message ||
+            "Не удалось завершить OAuth-вход",
+        );
+      });
+  }, [onSuccess]);
+
+  return (
+    <div className="oauth-callback-page">
+      <div className="oauth-callback-card">
+        <div className="auth-brand-name">GIGACHESS</div>
+        <p>{message}</p>
+        <a href="/">Вернуться на главную</a>
+      </div>
+    </div>
+  );
+}
 
 function MainPage({ user }) {
   const boardRef = useRef(null);
@@ -167,6 +203,10 @@ export default function App() {
       />
       <Routes>
         <Route path="/" element={<MainPage user={user} />} />
+        <Route
+          path="/oauth/callback"
+          element={<OAuthCallbackPage onSuccess={setUser} />}
+        />
         <Route
           path="/puzzles"
           element={

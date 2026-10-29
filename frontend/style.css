@@ -3783,3 +3783,76 @@ body {
   font-size: 16px;
   opacity: 0.6;
 }
+
+/* === OAuth Lichess / Chess.com ============================================ */
+.auth-oauth-block {
+  margin-bottom: 14px;
+  padding: 16px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.58);
+  border: 1px solid rgba(140, 190, 150, 0.55);
+}
+
+.auth-oauth-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.auth-oauth-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid rgba(118, 168, 122, 0.7);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.88);
+  color: #31573a;
+  font-family: "Calypso", serif;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, transform 0.2s;
+}
+.auth-oauth-btn:hover:not(:disabled) {
+  background: #fff;
+  border-color: #76a87a;
+  transform: translateY(-1px);
+}
+.auth-oauth-btn:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+}
+.auth-oauth-note {
+  margin: 10px 0 0;
+  font-family: "Inter", system-ui, sans-serif;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #788178;
+}
+
+.oauth-callback-page {
+  min-height: calc(100vh - 70px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.oauth-callback-card {
+  width: min(460px, 92vw);
+  padding: 30px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid rgba(140, 190, 150, 0.55);
+  box-shadow: 0 18px 50px rgba(40, 70, 46, 0.2);
+  text-align: center;
+}
+.oauth-callback-card p {
+  margin: 18px 0;
+  color: #526052;
+  font-family: "Inter", system-ui, sans-serif;
+}
+.oauth-callback-card a {
+  color: #2f6b3a;
+}

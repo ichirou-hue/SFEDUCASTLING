@@ -1,15 +1,18 @@
 import { useEffect, useState } from "react";
 import {
+  fetchOAuthProviders,
   fetchPlayerProfile,
   linkChessAccount,
   login as apiLogin,
   register as apiRegister,
+  startChessOAuth,
 } from "../api.js";
 import { formatApiError } from "../apiErrors.js";
 
 const PLATFORM_LABELS = {
   lichess: "Lichess",
   "chess.com": "Chess.com",
+  chesscom: "Chess.com",
 };
 
 const PERF_LABELS = {
@@ -32,6 +35,8 @@ export default function AuthModal({ isOpen, onClose, onSuccess, initialMode = "r
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [authError, setAuthError] = useState("");
+  const [oauthProviders, setOauthProviders] = useState(null);
+  const [oauthLoading, setOauthLoading] = useState("");
 
   // Подтягивание профиля с Lichess / Chess.com
   const [platform, setPlatform] = useState("lichess");
@@ -45,6 +50,9 @@ export default function AuthModal({ isOpen, onClose, onSuccess, initialMode = "r
     setMode(initialMode);
     setAuthError(notice || "");
     setPassword("");
+    fetchOAuthProviders()
+      .then(setOauthProviders)
+      .catch(() => setOauthProviders(null));
   }, [isOpen, initialMode, notice]);
 
   if (!isOpen) return null;
@@ -93,6 +101,32 @@ export default function AuthModal({ isOpen, onClose, onSuccess, initialMode = "r
     setAuthError("");
   };
 
+  const handleOAuth = async (provider) => {
+    if (oauthLoading) return;
+    setOauthLoading(provider);
+    setAuthError("");
+    try {
+      const result = await startChessOAuth(
+        provider,
+        "login",
+        `${window.location.pathname}${window.location.search}`,
+      );
+      if (result?.user) {
+        onSuccess?.(result.user);
+        onClose();
+      }
+    } catch (e) {
+      const detail = e?.response?.data?.detail;
+      setAuthError(
+        (typeof detail === "string" && detail) ||
+          e?.message ||
+          "Не удалось выполнить вход через шахматный аккаунт",
+      );
+    } finally {
+      setOauthLoading("");
+    }
+  };
+
   const handleFetchProfile = async () => {
     const nick = username.trim();
     if (!nick) return;
@@ -135,9 +169,47 @@ export default function AuthModal({ isOpen, onClose, onSuccess, initialMode = "r
           </h2>
           <p className="auth-subtitle">
             {isRegister
-              ? "Создайте аккаунт и импортируйте ваш шахматный профиль"
+              ? "Создайте аккаунт или продолжите через шахматную платформу"
               : "С возвращением на доску"}
           </p>
+
+          <div className="auth-oauth-block">
+            <div className="auth-section-head">
+              <span className="auth-section-label">Продолжить через</span>
+              <span className="auth-optional">OAuth</span>
+            </div>
+            <div className="auth-oauth-buttons">
+              <button
+                type="button"
+                className="auth-oauth-btn"
+                onClick={() => handleOAuth("lichess")}
+                disabled={Boolean(oauthLoading)}
+              >
+                <span className="auth-provider-glyph">♞</span>
+                {oauthLoading === "lichess" ? "Открываем Lichess…" : "Lichess"}
+              </button>
+              <button
+                type="button"
+                className="auth-oauth-btn"
+                onClick={() => handleOAuth("chesscom")}
+                disabled={Boolean(oauthLoading) || oauthProviders?.chesscom?.oauth !== true}
+                title={
+                  oauthProviders?.chesscom?.oauth === true
+                    ? "Войти через Chess.com"
+                    : "OAuth Chess.com станет доступен после получения developer access"
+                }
+              >
+                <span className="auth-provider-glyph">♕</span>
+                {oauthLoading === "chesscom" ? "Открываем Chess.com…" : "Chess.com"}
+              </button>
+            </div>
+            {oauthProviders?.chesscom?.oauth === false && (
+              <p className="auth-oauth-note">
+                Chess.com OAuth ещё не настроен: при регистрации профиль можно
+                импортировать ниже по нику.
+              </p>
+            )}
+          </div>
 
           {isRegister && (
             <div className="auth-section">

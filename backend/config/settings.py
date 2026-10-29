@@ -115,6 +115,48 @@ class AuthSettings(BaseSettings):
     refresh_token_ttl_days: int = Field(90, alias="REFRESH_TOKEN_TTL_DAYS")
 
 
+
+
+class ChessOAuthSettings(BaseSettings):
+    """OAuth для Lichess/Chess.com и возврат в SPA.
+
+    Lichess работает как public PKCE client и не требует client_secret.
+    Chess.com OAuth включается только после заполнения выданных Chess.com
+    реквизитов и URL; до этого доступна публичная привязка по username.
+    """
+
+    model_config = SettingsConfigDict(
+        env_file=BASE_DIR / ".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
+
+    public_base_url: str = Field("", alias="OAUTH_PUBLIC_BASE_URL")
+    frontend_base_url: str = Field("", alias="FRONTEND_BASE_URL")
+    cookie_secure: bool = Field(False, alias="OAUTH_COOKIE_SECURE")
+    flow_ttl_sec: int = Field(600, alias="OAUTH_FLOW_TTL_SEC")
+    http_timeout: float = Field(10.0, alias="OAUTH_HTTP_TIMEOUT")
+    user_agent: str = Field(
+        "GigaChess/0.3 (OAuth linked chess account)",
+        alias="CHESS_API_USER_AGENT",
+    )
+
+    lichess_client_id: str = Field("gigachess", alias="LICHESS_OAUTH_CLIENT_ID")
+
+    # Chess.com выдаёт эти параметры после одобрения OAuth-доступа.
+    chesscom_client_id: str = Field("", alias="CHESSCOM_OAUTH_CLIENT_ID")
+    chesscom_client_secret: str = Field("", alias="CHESSCOM_OAUTH_CLIENT_SECRET")
+    chesscom_authorize_url: str = Field("", alias="CHESSCOM_OAUTH_AUTHORIZE_URL")
+    chesscom_token_url: str = Field("", alias="CHESSCOM_OAUTH_TOKEN_URL")
+    chesscom_userinfo_url: str = Field("", alias="CHESSCOM_OAUTH_USERINFO_URL")
+    chesscom_scope: str = Field("", alias="CHESSCOM_OAUTH_SCOPE")
+    chesscom_use_pkce: bool = Field(True, alias="CHESSCOM_OAUTH_USE_PKCE")
+    chesscom_token_auth_method: str = Field(
+        "client_secret_post", alias="CHESSCOM_OAUTH_TOKEN_AUTH_METHOD"
+    )
+
+
 class Settings(BaseSettings):
     app_name: str = Field("SFEDUCASTLING API", alias="APP_NAME")
     debug: bool = Field(False, alias="DEBUG")
@@ -131,6 +173,7 @@ class Settings(BaseSettings):
     gigachess: GigachessSettings = GigachessSettings()
     database: DatabaseSettings = DatabaseSettings()
     auth: AuthSettings = AuthSettings()
+    chess_oauth: ChessOAuthSettings = ChessOAuthSettings()
 
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env",

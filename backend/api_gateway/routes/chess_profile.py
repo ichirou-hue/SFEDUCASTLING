@@ -1,14 +1,8 @@
-"""Профиль и мягкая привязка внешнего шахматного аккаунта.
+"""Публичные шахматные профили, soft-link, синхронизация и история верификации.
 
-Публичные API:
-  - Lichess:   GET https://lichess.org/api/user/{username}
-  - Chess.com: GET https://api.chess.com/pub/player/{username}
-               GET https://api.chess.com/pub/player/{username}/stats
-
-Привязка в этом модуле является *soft link*: пользователь подтверждает, что
-публичный профиль принадлежит ему, но владение аккаунтом не доказывается OAuth.
-Это намеренно хранится в поле ``verified=False`` до появления настоящей OAuth-
-верификации.
+Soft-link по username позволяет импортировать публичные данные, но НЕ доказывает
+владение аккаунтом. Только успешная OAuth-проверка переводит аккаунт в
+``verification_status='verified'`` и делает рейтинг доверенным для assessment.
 """
 
 from __future__ import annotations
@@ -25,9 +19,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.concurrency import run_in_threadpool
 
 from backend.api_gateway.dependecies import get_current_user
+from backend.config.settings import settings
 from backend.db.session import get_db
 from backend.models.user import User
-from backend.models.user_chess_account import UserChessAccount
+from backend.models.user_chess_account import (
+    ChessAccountVerification,
+    UserChessAccount,
+    VERIFICATION_ERROR,
+    VERIFICATION_EXPIRED,
+    VERIFICATION_LINKED,
+    VERIFICATION_METHOD_USER_ACTION,
+    VERIFICATION_PENDING,
+    VERIFICATION_REVOKED,
+    VERIFICATION_VERIFIED,
+)
 
 router = APIRouter(tags=["chess-profile"])
 
@@ -35,7 +40,7 @@ LICHESS_USER_URL = "https://lichess.org/api/user/{username}"
 CHESSCOM_PLAYER_URL = "https://api.chess.com/pub/player/{username}"
 CHESSCOM_STATS_URL = "https://api.chess.com/pub/player/{username}/stats"
 
-USER_AGENT = "SfeduCastling/0.2 (linked-chess-profile)"
+USER_AGENT = settings.chess_oauth.user_agent
 HTTP_TIMEOUT = 8.0
 RATING_PRIORITY = ("blitz", "rapid", "bullet")
 MIN_GAMES_FOR_ASSESSMENT = 30
@@ -44,6 +49,16 @@ MAX_ACTIVITY_AGE_DAYS = 365
 # Аккаунт без единой партии не подтверждает уровень: его рейтинг для стартовой
 # оценки ограничивается этим порогом (правило онбординга/регистрации).
 NO_GAMES_RATING_CAP = 800
+
+
+def _now() -> datetime:
+    return datetime.now(UTC)
+
+
+def _utc(value: datetime | None) -> datetime | None:
+    if value is None:
+        return None
+    return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
 
 
 def _normalize_platform(value: str) -> str:
@@ -90,7 +105,7 @@ def _lichess_profile(username: str):
         "name": profile.get("firstName") or None,
         "country": profile.get("flag") or None,
         "avatar": data.get("avatar") or None,
-        "last_seen_at": data.get("seenAt"),  # unix ms, если Lichess его отдаёт
+        "last_seen_at": data.get("seenAt"),
         "perfs": {
             "bullet": _perf("bullet"),
             "blitz": _perf("blitz"),
@@ -123,7 +138,6 @@ def _chesscom_profile(username: str):
         return {"error": f"Chess.com ответил {player_resp.status_code}"}, player_resp.status_code
 
     data = player_resp.json()
-
     try:
         stats_resp = requests.get(
             CHESSCOM_STATS_URL.format(username=username),
@@ -168,24 +182,23 @@ def _chesscom_profile(username: str):
     }, 200
 
 
+def _fetch_profile(platform: str, username: str):
+    platform = _normalize_platform(platform)
+    if platform == "chesscom":
+        return _chesscom_profile(username)
+    return _lichess_profile(username)
+
+
 def _activity_is_recent(last_seen_at: int | None, now: datetime | None = None) -> bool:
     if not last_seen_at:
-        # Не все публичные профили отдают last seen. Отсутствие поля само по себе
-        # не делает рейтинг недостоверным; этот факт отдельно показывается в warning.
         return True
-    now = now or datetime.now(UTC)
+    now = now or _now()
     age_ms = now.timestamp() * 1000 - int(last_seen_at)
     return age_ms <= MAX_ACTIVITY_AGE_DAYS * 24 * 60 * 60 * 1000
 
 
 def select_profile_rating(profile: dict[str, Any]) -> dict[str, Any]:
-    """Выбирает рейтинг для стартовой оценки по правилам анкеты.
-
-    Приоритет внутри платформы: blitz -> rapid -> bullet. Для использования
-    в level-test рейтинг должен иметь >=30 партий; для Lichess дополнительно
-    RD < 110 и отсутствие provisional-флага. Если доступна дата активности,
-    профиль должен быть активен за последний год.
-    """
+    """Выбирает рейтинг для стартовой оценки по существующим правилам проекта."""
     platform = _normalize_platform(str(profile.get("platform") or "lichess"))
     perfs = profile.get("perfs") or {}
     activity_known = bool(profile.get("last_seen_at"))
@@ -258,11 +271,84 @@ def select_profile_rating(profile: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def apply_public_profile(account: UserChessAccount, profile: dict[str, Any]) -> dict[str, Any]:
+    """Обновляет публичные данные, не меняя факт подтверждения владения."""
+    rating_info = select_profile_rating(profile)
+    account.username = str(profile.get("username") or account.username)
+    account.rating_type = rating_info.get("rating_type")
+    account.rating = rating_info.get("rating")
+    account.rating_scale = rating_info.get("scale")
+    account.games = int(rating_info.get("games") or 0)
+    account.rating_deviation = rating_info.get("rd")
+    account.provisional = bool(rating_info.get("provisional", False))
+    account.rating_usable = bool(rating_info.get("usable", False))
+    account.profile_snapshot = profile
+    account.updated_at = _now()
+    if account.linked_at is None:
+        account.linked_at = _now()
+    return rating_info
+
+
+def apply_trusted_rating_to_user(user: User, account: UserChessAccount) -> None:
+    """Синхронизирует trusted rating с профилем пользователя после OAuth/sync."""
+    if not account.rating_trusted:
+        return
+    user.rating_estimate = int(account.rating)
+    user.rating_scale = account.rating_scale
+
+    rating = int(account.rating)
+    if rating >= 1800:
+        band = 4
+    elif rating >= 1400:
+        band = 3
+    elif rating >= 1000:
+        band = 2
+    else:
+        band = 1
+    user.prior_band = band
+
+    # Если анкета уже была заполнена до верификации, обновляем её derived-поля,
+    # не меняя ответы пользователя на остальные вопросы.
+    if isinstance(user.onboarding, dict):
+        onboarding = dict(user.onboarding)
+        answers = dict(onboarding.get("answers") or {})
+        q2 = dict(answers.get("q2") or {})
+        q2.update(
+            {
+                "platform": account.platform,
+                "login": account.username,
+                "time_control": account.rating_type or q2.get("time_control") or "blitz",
+                "rating": account.rating,
+                "rating_used_for_assessment": account.rating,
+                "verified": True,
+                "verification_status": VERIFICATION_VERIFIED,
+                "verification_method": account.verification_method,
+                "rating_trusted": True,
+            }
+        )
+        answers["q2"] = q2
+        onboarding["answers"] = answers
+        onboarding["prior_band"] = band
+        user.onboarding = onboarding
+
+
+def _effective_status(account: UserChessAccount) -> str:
+    status = account.verification_status or (VERIFICATION_VERIFIED if account.verified else VERIFICATION_LINKED)
+    expires = _utc(account.verification_expires_at)
+    if status == VERIFICATION_PENDING and expires and expires <= _now():
+        return VERIFICATION_EXPIRED
+    return status
+
+
 def _public_account(account: UserChessAccount) -> dict[str, Any]:
+    status = _effective_status(account)
+    ownership_verified = bool(account.verified and status == VERIFICATION_VERIFIED)
+    rating_trusted = bool(ownership_verified and account.rating_usable and account.rating is not None)
     return {
         "id": account.id,
         "platform": account.platform,
         "username": account.username,
+        "external_user_id": account.external_user_id,
         "rating_type": account.rating_type,
         "rating": account.rating,
         "rating_scale": account.rating_scale,
@@ -270,9 +356,39 @@ def _public_account(account: UserChessAccount) -> dict[str, Any]:
         "rating_deviation": account.rating_deviation,
         "provisional": account.provisional,
         "rating_usable": account.rating_usable,
-        "verified": account.verified,
+        "rating_trusted": rating_trusted,
+        "verified": ownership_verified,
+        "verification_status": status,
+        "verification_method": account.verification_method,
+        "verified_at": account.verified_at.isoformat() if account.verified_at else None,
+        "last_verified_at": account.last_verified_at.isoformat() if account.last_verified_at else None,
+        "verification_expires_at": (
+            account.verification_expires_at.isoformat() if account.verification_expires_at else None
+        ),
+        "verification_failure_reason": account.verification_failure_reason,
         "linked_at": account.linked_at.isoformat() if account.linked_at else None,
         "updated_at": account.updated_at.isoformat() if account.updated_at else None,
+        "trust": {
+            "ownership": "verified" if ownership_verified else "unverified",
+            "rating": "trusted" if rating_trusted else "untrusted",
+        },
+    }
+
+
+def _public_verification(row: ChessAccountVerification) -> dict[str, Any]:
+    return {
+        "id": row.id,
+        "account_id": row.chess_account_id,
+        "platform": row.platform,
+        "method": row.method,
+        "status": row.status,
+        "expected_username": row.expected_username,
+        "external_username": row.external_username,
+        "external_user_id": row.external_user_id,
+        "started_at": row.started_at.isoformat() if row.started_at else None,
+        "completed_at": row.completed_at.isoformat() if row.completed_at else None,
+        "expires_at": row.expires_at.isoformat() if row.expires_at else None,
+        "failure_reason": row.failure_reason,
     }
 
 
@@ -287,11 +403,7 @@ def chess_profile(
     platform: str = Query("lichess"),
 ):
     platform = _normalize_platform(platform)
-    if platform == "chesscom":
-        payload, status = _chesscom_profile(username)
-    else:
-        payload, status = _lichess_profile(username)
-
+    payload, status = _fetch_profile(platform, username)
     if status == 200:
         payload["assessment_rating"] = select_profile_rating(payload)
     return JSONResponse(content=payload, status_code=status)
@@ -309,6 +421,21 @@ async def linked_chess_accounts(
             .order_by(UserChessAccount.id.asc())
         )
     ).all()
+
+    changed = False
+    for account in accounts:
+        if (
+            account.verification_status == VERIFICATION_PENDING
+            and _utc(account.verification_expires_at)
+            and _utc(account.verification_expires_at) <= _now()
+            and not account.verified
+        ):
+            account.verification_status = VERIFICATION_EXPIRED
+            account.verification_failure_reason = "Срок OAuth-проверки истёк"
+            changed = True
+    if changed:
+        await db.commit()
+
     return {"items": [_public_account(account) for account in accounts]}
 
 
@@ -318,60 +445,100 @@ async def link_chess_account(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Находит публичный профиль и сохраняет soft link за текущим пользователем."""
+    """Находит публичный профиль и сохраняет soft-link за текущим пользователем."""
     username = req.username.strip()
     platform = _normalize_platform(req.platform)
-
-    if platform == "chesscom":
-        payload, status = await run_in_threadpool(_chesscom_profile, username)
-    else:
-        payload, status = await run_in_threadpool(_lichess_profile, username)
-
+    payload, status = await run_in_threadpool(_fetch_profile, platform, username)
     if status != 200:
         raise HTTPException(status_code=status, detail=payload.get("error") or "Профиль не найден")
 
-    rating_info = select_profile_rating(payload)
     canonical_username = str(payload.get("username") or username)
-    now = datetime.now(UTC)
-
     account = await db.scalar(
         select(UserChessAccount)
-        .where(
-            UserChessAccount.user_id == user.id,
-            UserChessAccount.platform == platform,
-        )
+        .where(UserChessAccount.user_id == user.id, UserChessAccount.platform == platform)
         .with_for_update()
     )
     if account is None:
         account = UserChessAccount(user_id=user.id, platform=platform, username=canonical_username)
         db.add(account)
+    elif account.verified and account.username.casefold() != canonical_username.casefold():
+        raise HTTPException(
+            status_code=409,
+            detail="На этой платформе уже подтверждён другой аккаунт. Сначала отключите его.",
+        )
 
-    account.username = canonical_username
-    account.rating_type = rating_info.get("rating_type")
-    account.rating = rating_info.get("rating")
-    account.rating_scale = rating_info.get("scale")
-    account.games = int(rating_info.get("games") or 0)
-    account.rating_deviation = rating_info.get("rd")
-    account.provisional = bool(rating_info.get("provisional", False))
-    account.rating_usable = bool(rating_info.get("usable", False))
-    # Без OAuth подтверждение владения невозможно.
-    account.verified = False
-    account.profile_snapshot = payload
-    account.updated_at = now
-    if account.linked_at is None:
-        account.linked_at = now
+    rating_info = apply_public_profile(account, payload)
+    if not account.verified:
+        account.external_user_id = None
+        account.verified_at = None
+        account.last_verified_at = None
+        account.verification_status = VERIFICATION_LINKED
+        account.verification_method = None
+        account.verification_expires_at = None
+        account.verification_failure_reason = None
 
     await db.commit()
     await db.refresh(account)
-
     return {
         "ok": True,
         "account": _public_account(account),
         "profile": payload,
         "assessment_rating": rating_info,
-        "ownership_verified": False,
-        "notice": "Аккаунт привязан по публичному профилю. Владение аккаунтом не подтверждено OAuth.",
+        "ownership_verified": account.ownership_verified,
+        "notice": (
+            "Аккаунт подтверждён OAuth."
+            if account.ownership_verified
+            else "Профиль добавлен, но владение аккаунтом ещё не подтверждено."
+        ),
     }
+
+
+@router.post("/api/chess-profile/sync/{platform}")
+async def sync_chess_account(
+    platform: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    platform = _normalize_platform(platform)
+    account = await db.scalar(
+        select(UserChessAccount).where(
+            UserChessAccount.user_id == user.id,
+            UserChessAccount.platform == platform,
+        )
+    )
+    if account is None:
+        raise HTTPException(status_code=404, detail="Шахматный аккаунт не подключён")
+
+    payload, status = await run_in_threadpool(_fetch_profile, platform, account.username)
+    if status != 200:
+        raise HTTPException(status_code=status, detail=payload.get("error") or "Не удалось обновить профиль")
+    apply_public_profile(account, payload)
+    apply_trusted_rating_to_user(user, account)
+    await db.commit()
+    await db.refresh(account)
+    return {"ok": True, "account": _public_account(account)}
+
+
+@router.get("/api/chess-profile/verifications/{platform}")
+async def chess_account_verification_history(
+    platform: str,
+    limit: int = Query(default=20, ge=1, le=100),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    platform = _normalize_platform(platform)
+    rows = (
+        await db.scalars(
+            select(ChessAccountVerification)
+            .where(
+                ChessAccountVerification.user_id == user.id,
+                ChessAccountVerification.platform == platform,
+            )
+            .order_by(ChessAccountVerification.id.desc())
+            .limit(limit)
+        )
+    ).all()
+    return {"items": [_public_verification(row) for row in rows]}
 
 
 @router.delete("/api/chess-profile/link/{platform}")
@@ -389,6 +556,24 @@ async def unlink_chess_account(
     )
     if account is None:
         return {"ok": True, "deleted": False}
+
+    now = _now()
+    db.add(
+        ChessAccountVerification(
+            chess_account_id=account.id,
+            user_id=user.id,
+            platform=platform,
+            method=VERIFICATION_METHOD_USER_ACTION,
+            status=VERIFICATION_REVOKED,
+            expected_username=account.username,
+            external_username=account.username,
+            external_user_id=account.external_user_id,
+            started_at=now,
+            completed_at=now,
+            details={"reason": "user_unlinked_account"},
+        )
+    )
+    await db.flush()
     await db.delete(account)
     await db.commit()
     return {"ok": True, "deleted": True}
