@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<script>history.replaceState(null, "", "/puzzles");localStorage.setItem("gigachess_access", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIzIiwibG9naW4iOiJsZWFybmVyXzdmOTc1MjY5Iiwicm9sZSI6ImxlYXJuZXIiLCJhZG1pbiI6ZmFsc2UsInR2IjowLCJ0eXBlIjoiYWNjZXNzIiwiaWF0IjoxNzkzMjkyMTk2LCJleHAiOjE3OTMzNzg1OTZ9.mMgMK3MRIP-1VodQwaWfmEkVHEDfteGI8k-hJvVOkow");localStorage.setItem("gigachess_refresh", "");localStorage.setItem("gigachess_user", "{\"id\": 3, \"login\": \"learner_7f975269\", \"elo\": 1321, \"role\": \"learner\"}");localStorage.setItem("sfedu_theme", "dark");</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GIGACHESS</title>
+    <link rel="icon" type="image/png" href="/—Pngtree—crown icon_4479655.png">
+    <script>
+      // Тема ставится до первой отрисовки, чтобы не мелькал светлый фон.
+      (function () {
+        var theme = "dark";
+        try {
+          var saved = localStorage.getItem("sfedu_theme");
+          if (saved === "dark" || saved === "light") theme = saved;
+        } catch (e) {}
+        document.documentElement.setAttribute("data-theme", theme);
+      })();
+    </script>
+  <script type="module" crossorigin src="/assets/index-PwmBRIgX.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-Dofcilfb.css">
+</head>
+<body>
+    <div id="root"></div>
+
+<script>
+function m() {
+  const q = (s) => document.querySelector(s);
+  const r = (el) => el ? el.getBoundingClientRect() : null;
+  const box = (el) => { const b = r(el); return b ? {x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.width), h: Math.round(b.height), bottom: Math.round(b.bottom)} : null; };
+  return {
+    vw: innerWidth, vh: innerHeight,
+    layout: box(q('.puzzles-layout')),
+    info: box(q('.puzzle-info-panel')),
+    boardSection: box(q('.puzzle-board-section')),
+    boardWrap: box(q('.puzzle-board-wrapper')),
+    chat: box(q('.puzzle-chat-section')),
+    footer: box(q('.site-footer')),
+    shell: q('.puzzles-page-shell') ? {h: q('.puzzles-page-shell').clientHeight, scroll: q('.puzzles-page-shell').scrollHeight} : null,
+    scrollY: Math.round(scrollY),
+    infoKids: Array.from(q('.puzzle-info-panel').children).map(el => ({c: el.className || el.tagName, h: Math.round(el.getBoundingClientRect().height)})),
+  };
+}
+setTimeout(() => {
+  fetch('http://127.0.0.1:8097/measure?name=' + "kids", {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(m())
+  });
+}, 2000);
+</script>
+
+<img src="http://127.0.0.1:8097/hold?ms=5000" width="1" height="1" alt="" style="position:fixed;left:0;top:0;opacity:0">
+</body>
+</html>

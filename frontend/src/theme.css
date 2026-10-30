@@ -351,10 +351,6 @@
   color: var(--sf-ink);
 }
 
-:root[data-theme="dark"] .side-pick-note {
-  color: var(--sf-muted-2);
-}
-
 /* Иконка бота нарисована тёмной: в тёмной теме подменяем её светлой
    версией. Фильтр не подходит, он перекрашивал бы и золотое кольцо. */
 :root[data-theme="dark"] .bot-avatar img,
@@ -432,7 +428,7 @@
 
 :root[data-theme="dark"] .main-area > .chat-section,
 :root[data-theme="dark"] .puzzle-chat-section {
-  border-color: var(--sf-line);
+  border-color: var(--sf-line-strong);
   background: linear-gradient(145deg, rgba(9, 22, 26, 0.94), rgba(6, 15, 18, 0.9));
   box-shadow: 0 20px 52px rgba(0, 0, 0, 0.32);
 }
@@ -446,12 +442,6 @@
 :root[data-theme="dark"] .main-area > .chat-section .chat-title-block h2,
 :root[data-theme="dark"] .puzzle-chat-section .chat-title-block h2 {
   color: var(--sf-ink-strong);
-}
-
-:root[data-theme="dark"] .chat-subtitle,
-:root[data-theme="dark"] .main-area > .chat-section .chat-subtitle,
-:root[data-theme="dark"] .puzzle-chat-section .chat-subtitle {
-  color: var(--sf-gold);
 }
 
 :root[data-theme="dark"] .status-bar,
@@ -471,10 +461,16 @@
 }
 
 :root[data-theme="dark"] .chat-avatar img,
+:root[data-theme="dark"] .chat-avatar-glyph,
 :root[data-theme="dark"] .chat-strip-avatar {
   background: rgba(246, 244, 239, 0.08);
   border-color: var(--sf-line-strong);
   box-shadow: none;
+}
+
+:root[data-theme="dark"] .chat-avatar-glyph,
+:root[data-theme="dark"] .chat-strip-avatar-glyph {
+  color: var(--sf-green);
 }
 
 :root[data-theme="dark"] .chat-strip,
@@ -835,6 +831,64 @@
 :root[data-theme="dark"] .training-course-progress__head strong,
 :root[data-theme="dark"] .training-module-progress__head strong {
   color: var(--sf-gold);
+}
+
+/* Карточка уровня в шапке обучения: плотная тёмная поверхность,
+   золотой блик сверху и светящийся рейтинг. */
+:root[data-theme="dark"] .training-hero .rating-band-progress {
+  border-color: rgba(213, 180, 118, 0.34);
+  background:
+    radial-gradient(130% 160% at 50% -35%, rgba(213, 180, 118, 0.18), transparent 62%),
+    linear-gradient(150deg, rgba(16, 37, 37, 0.98), rgba(8, 22, 25, 0.98));
+  box-shadow:
+    0 12px 30px rgba(0, 0, 0, 0.32),
+    inset 0 1px 0 rgba(246, 244, 239, 0.07);
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .training-hero .rating-band-progress::before {
+  background: linear-gradient(90deg, transparent, rgba(213, 180, 118, 0.6), transparent);
+}
+
+:root[data-theme="dark"] .training-hero .rating-band-progress__title > span {
+  color: var(--sf-gold);
+}
+
+:root[data-theme="dark"] .training-hero .rating-band-progress__title > strong {
+  color: var(--sf-ink-strong);
+}
+
+:root[data-theme="dark"] .training-hero .rating-band-progress__rating {
+  color: var(--sf-gold-bright);
+  text-shadow: 0 0 18px rgba(213, 180, 118, 0.2);
+}
+
+:root[data-theme="dark"] .training-hero .rating-band-progress__rating small {
+  color: var(--sf-muted-2);
+}
+
+:root[data-theme="dark"] .training-hero .rating-band-progress__track {
+  background: rgba(246, 244, 239, 0.08);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+
+:root[data-theme="dark"] .training-hero .rating-band-progress__track > span {
+  background: linear-gradient(90deg, #3c7c52, #82c795);
+  box-shadow: 0 0 12px rgba(116, 190, 138, 0.35);
+}
+
+:root[data-theme="dark"] .training-hero .rating-band-progress__track > span::after {
+  border-color: rgba(255, 253, 248, 0.65);
+  background: radial-gradient(circle at 35% 30%, #f7e3b8, #d5b476 58%, #a07c36);
+  box-shadow: 0 0 10px rgba(213, 180, 118, 0.45);
+}
+
+:root[data-theme="dark"] .training-hero .rating-band-progress__caption {
+  color: var(--sf-muted);
+}
+
+:root[data-theme="dark"] .training-hero .rating-band-progress__points {
+  color: var(--sf-gold-bright);
 }
 
 :root[data-theme="dark"] .training-theory-panel,

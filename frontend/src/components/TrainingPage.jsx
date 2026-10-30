@@ -967,11 +967,12 @@ export default function TrainingPage({ user, onRegister }) {
                     </span>
                   )}
 
-                  <span className="training-module-meta">
-                    {module.enabled
-                      ? `${module.lesson_count} уроков · ${module.task_count} заданий`
-                      : "Скоро"}
-                  </span>
+                  {/* Счётчик уроков и заданий дублировал строку прогресса
+                      выше, поэтому плашку с ним убрали. Для ещё не
+                      открытых модулей оставляем статус «Скоро». */}
+                  {!module.enabled && (
+                    <span className="training-module-meta">Скоро</span>
+                  )}
                 </span>
               </button>
             );

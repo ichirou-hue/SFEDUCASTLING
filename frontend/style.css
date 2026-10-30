@@ -322,7 +322,10 @@ body {
 }
 
 .board-section {
-  flex: 1 1 auto; /* Р”РѕСЃРєР° Р·Р°РЅРёРјР°РµС‚ РІСЋ СЃРІРѕР±РѕРґРЅСѓСЋ СЃРµСЂРµРґРёРЅСѓ */
+  /* flex-basis: 0 — колонка доски не зависит от собственного содержимого:
+     она просто забирает всё место, оставшееся от истории, шкалы и чата.
+     Иначе размер доски и ширина чата влияли друг на друга по кругу. */
+  flex: 1 1 0;
   min-width: 320px;
   display: flex;
   align-items: center;
@@ -456,12 +459,6 @@ body {
   color: #333;
 }
 
-.side-pick-note {
-  font-family: "Inter", sans-serif;
-  font-size: 11px;
-  color: #837053;
-}
-
 @keyframes gameoverFadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -526,9 +523,10 @@ body {
   margin: 0 12px;
   order: 1;
   align-self: flex-start;
-  /* Сдвиг к середине просвета между историей и доской (замеряет
-     EvalBar.jsx). transform, а не margin: раскладка строки не меняется. */
-  transform: translateX(var(--eval-shift, 0px));
+  /* Сдвиг к середине просвета между историей и доской и по вертикали —
+     напротив доски, а не карточки (замеряет EvalBar.jsx). transform,
+     а не margin: раскладка строки не меняется. */
+  transform: translate(var(--eval-shift, 0px), var(--eval-shift-y, 0px));
   box-shadow:
     0 3px 10px rgba(74, 50, 32, 0.2),
     inset 0 0 0 1px rgba(255, 255, 255, 0.12);
@@ -757,7 +755,12 @@ body {
    как у панели истории. Кант тоньше, чем у бумажных карточек, чтобы панель
    не выглядела тяжёлой. */
 .chat-section {
-  flex: 1 1 520px;
+  /* Ширина чата задаётся окном и не зависит от доски. Иначе получается
+     замкнутый круг: размер доски меняет свободное место в строке, из-за
+     этого меняется ширина чата, а по ширине чата снова считается доска.
+     Из-за этого при первом рендере доска оставалась маленькой, пока чат
+     не свернуть и не развернуть. */
+  flex: 0 1 clamp(380px, 30vw, 580px);
   min-width: 320px;
   max-width: 760px;
   height: min(680px, 100%);
@@ -780,6 +783,16 @@ body {
 
   /* Скруглённые углы: содержимое не должно вылезать за рамку. */
   overflow: hidden;
+}
+
+/* История и чат выравниваются по высоте карточки доски. Высоту карточки
+   измеряет Chessboard и кладёт в --play-panel-height: она зависит от
+   размера доски и появляющихся внутри карточки панелей. */
+.main-area > .move-history-panel,
+.main-area > .chat-section {
+  height: var(--play-panel-height, min(680px, 100%));
+  min-height: 0;
+  max-height: var(--play-panel-height, 680px);
 }
 
 /* --- Свёрнутый чат --- */
@@ -870,6 +883,19 @@ body {
   object-fit: contain;
 }
 
+/* Маскот-конь из модуля обучения вместо иконки робота. */
+.chat-strip-avatar-glyph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: 22px;
+  line-height: 1;
+  color: #4f935c;
+  transform: rotate(-8deg);
+}
+
 .chat-strip-chevron {
   font-size: 18px;
   line-height: 1;
@@ -930,6 +956,26 @@ body {
   box-shadow: 0 1px 4px rgba(74, 50, 32, 0.12);
 }
 
+/* Маскот-конь из модуля обучения вместо иконки робота. */
+.chat-avatar-glyph {
+  width: 52px;
+  height: 52px;
+  box-sizing: border-box;
+  padding: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 253, 248, 0.95);
+  border: 2px solid rgba(180, 135, 44, 0.5);
+  box-shadow: 0 1px 4px rgba(74, 50, 32, 0.12);
+  font-size: 34px;
+  line-height: 1;
+  color: #4f935c;
+  transform: rotate(-8deg);
+}
+
 .chat-title-block {
   display: flex;
   flex-direction: column;
@@ -948,17 +994,10 @@ body {
    теперь сразу название ассистента - в масштабе заголовков соседних
    панелей (см. .history-title). */
 .chat-title-block h2.chat-panel-title {
-  font-size: clamp(20px, 1.8vw, 32px);
+  font-size: clamp(18px, 1.5vw, 30px);
   font-weight: normal;
   line-height: 1.1;
   text-transform: none;
-}
-
-.chat-subtitle {
-  font-family: "Calypso", serif;
-  font-size: 20px;
-  color: #79b180;
-  margin-top: 4px;
 }
 
 /* Кнопка сворачивания в шапке: неброская бумажная шайба с золотым
@@ -1236,7 +1275,7 @@ body {
 /* ========================================= */
 .move-history-panel {
   flex-shrink: 0;
-  width: 260px;
+  width: 240px;
   height: min(680px, 100%);
   min-height: min(360px, 100%);
   max-height: 680px;
@@ -2537,9 +2576,12 @@ body {
 
 .puzzles-layout {
   /* Жёсткие 3 колонки: инфо | доска | чат. Чат всегда справа и никогда
-     не переносится вниз — переполнение чинилось именно переносом. */
+     не переносится вниз — переполнение чинилось именно переносом.
+     Левую панель сделали шире, а чат уже: так текст в панели меньше
+     переносится, она становится ниже и вся раскладка помещается по
+     высоте экрана без прокрутки. */
   display: grid;
-  grid-template-columns: 230px minmax(0, 1fr) minmax(320px, 620px);
+  grid-template-columns: 280px minmax(0, 1fr) minmax(300px, 480px);
   gap: 16px;
   align-items: start;
   align-content: start;
@@ -2561,7 +2603,7 @@ body {
    играбельной. */
 @media (max-width: 1440px) {
   .puzzles-layout {
-    grid-template-columns: 230px minmax(0, 1fr) minmax(300px, 420px);
+    grid-template-columns: 280px minmax(0, 1fr) minmax(300px, 420px);
   }
 }
 
@@ -2587,18 +2629,20 @@ body {
 /* ========================================= */
 .puzzle-info-panel {
   flex-shrink: 0;
-  width: 230px;
+  width: 280px;
   border-radius: 30px;
   border: 3px solid rgba(180, 135, 44, 0.85);
   background: rgba(255, 255, 255, 0.87);
   box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.25);
-  padding: 24px 20px;
+  padding: 20px 18px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: 12px;
+  /* Плотнее, чем на других страницах: панель должна уместиться по
+     высоте вместе с доской и чатом. */
+  gap: 8px;
 }
 
 .puzzle-theme-label {
@@ -2938,12 +2982,16 @@ body {
   height: 44px;
 }
 
-.puzzle-chat-section .chat-title-block h2 {
-  font-size: 27px;
+.puzzle-chat-section .chat-avatar-glyph {
+  width: 44px;
+  height: 44px;
+  font-size: 29px;
 }
 
-.puzzle-chat-section .chat-subtitle {
-  font-size: 16px;
+.puzzle-chat-section .chat-title-block h2 {
+  /* Как на игровом экране: заголовок сжимается на узкой панели,
+     чтобы «Шахматный ассистент» оставался в одну строку. */
+  font-size: clamp(18px, 1.5vw, 27px);
 }
 
 .puzzle-chat-section .chat-messages {
@@ -2968,7 +3016,7 @@ body {
    (48px) плюс отступ 24px, а освободившаяся ширина уходит доске -
    ровно как на главной странице. */
 .puzzles-layout--chat-collapsed {
-  grid-template-columns: 230px minmax(0, 1fr) 72px;
+  grid-template-columns: 280px minmax(0, 1fr) 72px;
 }
 
 /* Узкий экран: раскладка в одну колонку, свёрнутый чат не должен
@@ -3005,11 +3053,13 @@ body {
     height 340ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Матовый стеклянный чат на игровом экране и в задачах. */
+/* Матовый стеклянный чат на игровом экране и в задачах.
+   Рамка — как у панели истории и карточки доски: та же золотая
+   окантовка и скругление, чтобы все блоки читались как один набор. */
 .main-area > .chat-section,
 .puzzle-chat-section {
-  border: 1px solid rgba(255, 255, 255, 0.58);
-  border-radius: 16px;
+  border: 3px solid rgba(180, 135, 44, 0.85);
+  border-radius: 30px;
   background: linear-gradient(
     145deg,
     rgba(248, 249, 244, 0.82),
@@ -3029,11 +3079,6 @@ body {
 .main-area > .chat-section .chat-title-block h2,
 .puzzle-chat-section .chat-title-block h2 {
   color: #24362e;
-}
-
-.main-area > .chat-section .chat-subtitle,
-.puzzle-chat-section .chat-subtitle {
-  color: #55794c;
 }
 
 .main-area > .chat-section .status-bar {
@@ -3199,18 +3244,111 @@ body {
 }
 
 .training-hero .rating-band-progress {
+  position: relative;
   align-self: center;
+  width: min(100%, 470px);
+  padding: 16px 20px 15px;
+  border-color: rgba(160, 124, 54, 0.3);
+  border-radius: 18px;
+  background:
+    radial-gradient(120% 150% at 50% -30%, rgba(201, 169, 110, 0.16), transparent 62%),
+    linear-gradient(150deg, rgba(255, 255, 255, 0.96), rgba(248, 243, 232, 0.92));
+  box-shadow:
+    0 10px 26px rgba(48, 65, 52, 0.09),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
   text-align: center;
+}
+
+/* Тонкий золотой блик по верхнему краю карточки. */
+.training-hero .rating-band-progress::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 18%;
+  left: 18%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(201, 169, 110, 0.75), transparent);
+  pointer-events: none;
 }
 
 .training-hero .rating-band-progress__header {
   justify-content: center;
-  gap: 28px;
+  gap: 32px;
 }
 
 .training-hero .rating-band-progress__title,
 .training-hero .rating-band-progress__rating {
   align-items: center;
+}
+
+.training-hero .rating-band-progress__title > span {
+  color: #9a783b;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  opacity: 1;
+}
+
+.training-hero .rating-band-progress__title > strong {
+  font-family: "Calypso", serif;
+  font-size: 21px;
+  font-weight: normal;
+  letter-spacing: 0.01em;
+  color: #2f5c36;
+}
+
+.training-hero .rating-band-progress__rating {
+  font-size: 24px;
+  line-height: 1.1;
+  color: #2f5c36;
+}
+
+.training-hero .rating-band-progress__rating small {
+  color: #7b857d;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 1;
+}
+
+.training-hero .rating-band-progress__track {
+  height: 10px;
+  margin: 14px 0 9px;
+  overflow: visible;
+  background: rgba(54, 89, 66, 0.14);
+  box-shadow: inset 0 1px 2px rgba(32, 51, 45, 0.16);
+}
+
+.training-hero .rating-band-progress__track > span {
+  position: relative;
+  background: linear-gradient(90deg, #3f7a51, #74b184);
+  box-shadow: 0 1px 4px rgba(63, 122, 81, 0.28);
+}
+
+/* Золотой наконечник показывает, где сейчас рейтинг. */
+.training-hero .rating-band-progress__track > span::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 0;
+  width: 13px;
+  height: 13px;
+  transform: translate(50%, -50%);
+  border: 1px solid rgba(255, 253, 248, 0.85);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #f6e2b6, #c9a96e 58%, #9a783b);
+  box-shadow: 0 1px 5px rgba(74, 50, 32, 0.35);
+}
+
+.training-hero .rating-band-progress__caption {
+  color: #5f7067;
+  font-size: 12px;
+  opacity: 1;
+}
+
+.training-hero .rating-band-progress__points {
+  color: #8a6a2c;
+  font-weight: 600;
 }
 
 .training-hero .training-course-progress {
@@ -3320,7 +3458,9 @@ body {
   font-size: 13px;
   line-height: 1.45;
   color: #666;
-  text-align: center;
+  /* Как и заголовок и счётчики, описание прижато к левому краю:
+     иначе внутри одной карточки текст выглядит разъехавшимся. */
+  text-align: left;
 }
 
 .training-module-meta {

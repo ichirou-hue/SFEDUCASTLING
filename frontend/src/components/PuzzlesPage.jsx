@@ -393,8 +393,8 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
       // Свёрнутый чат занимает 48px полосы + 24px отступа, остальное
       // достаётся доске (см. .puzzles-layout--chat-collapsed).
       const isMobile = window.matchMedia("(max-width: 760px)").matches;
-      const infoW = isMobile ? 0 : 230;
-      const chatReserve = chatCollapsed ? 64 : 560;
+      const infoW = isMobile ? 0 : 280;
+      const chatReserve = chatCollapsed ? 64 : 480;
       const hGaps = isMobile ? 48 : 64; // gaps + паддинги + скроллбар
       const layoutEl = document.querySelector(".puzzles-layout");
       const availW = isMobile
@@ -959,11 +959,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
         <div className="puzzle-theme-icon">{themeInfo.icon}</div>
 
         <div className="puzzle-instruction">
-          Найдите
-          <br />
-          лучший ход в
-          <br />
-          позиции
+          Найдите лучший ход в позиции
         </div>
 
         {currentPuzzle && (
@@ -977,9 +973,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
         </div>
 
         <div className="puzzle-moves-left-label">
-          Осталось
-          <br />
-          найти ходов:
+          Осталось найти ходов:
         </div>
         <div className="puzzle-moves-left-count">{movesLeft}</div>
 
@@ -1204,11 +1198,10 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
         <div className="puzzle-chat-section" ref={chatPanelRef}>
           <div className="chat-header">
             <div className="chat-avatar">
-              <img src="/bot-icon.svg" alt="Ассистент" />
+              <span className="chat-avatar-glyph" aria-hidden="true">♘</span>
             </div>
             <div className="chat-title-block">
-              <h2>ЧАТ ПО ЗАДАЧЕ</h2>
-              <span className="chat-subtitle">Шахматный ассистент</span>
+              <h2 className="chat-panel-title">Шахматный гуру</h2>
             </div>
             <button
               type="button"

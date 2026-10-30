@@ -26,6 +26,16 @@
   --lt-green: #3f7a51;
   --lt-input: rgba(255, 255, 255, 0.9);
   --lt-shadow: 0 14px 38px rgba(48, 65, 52, 0.1);
+
+  /* Единая фоновая дымка светлой темы: прохладный серый переходит
+     в медовый. Одна и та же на всех вкладках; полупрозрачная, поэтому
+     сюжетные изображения остаются видны. */
+  --lt-page-veil: linear-gradient(
+    118deg,
+    rgba(213, 219, 218, 0.78) 0%,
+    rgba(221, 210, 187, 0.66) 52%,
+    rgba(232, 194, 126, 0.78) 100%
+  );
 }
 
 :root[data-theme="light"] ::selection {
@@ -105,19 +115,19 @@
   color: var(--lt-ink);
   background-color: #f2ecdf;
   background-image:
-    linear-gradient(180deg, rgba(248, 244, 235, 0.72), rgba(240, 234, 221, 0.8)),
+    var(--lt-page-veil),
     url("/marble-bg.jpg");
   background-size: cover;
   background-position: center;
   background-attachment: fixed;
 }
 
-/* Сцену оставляем, но укрываем тёплой дымкой: она даёт лёгкую текстуру,
-   не превращая главную в тёмную страницу. */
+/* Сцену оставляем, но укрываем серо-медовой дымкой: она даёт лёгкую
+   текстуру, не превращая главную в тёмную страницу. */
 :root[data-theme="light"] .home-hero::before {
   background-image:
-    linear-gradient(180deg, rgba(250, 247, 239, 0.58) 0%, rgba(250, 247, 239, 0.72) 48%, rgba(246, 241, 231, 0.9) 100%),
-    linear-gradient(90deg, rgba(250, 247, 239, 0.68) 0%, rgba(250, 247, 239, 0.24) 46%, rgba(250, 247, 239, 0.48) 100%),
+    var(--lt-page-veil),
+    linear-gradient(180deg, rgba(236, 214, 176, 0) 62%, rgba(236, 211, 169, 0.45) 100%),
     url("/home-clouds-emerald.png");
   background-position: center, center, center 48%;
   background-size: cover;
@@ -231,39 +241,39 @@
 
 :root[data-theme="light"] .main-page-scroll {
   background-image:
-    linear-gradient(110deg, rgba(248, 244, 235, 0.8), rgba(248, 244, 235, 0.64) 58%, rgba(242, 237, 226, 0.86)),
+    var(--lt-page-veil),
     url("/backgrounds/play-king.webp");
 }
 
 :root[data-theme="light"] .puzzles-page,
 :root[data-theme="light"] .puzzles-page-shell {
   background-image:
-    linear-gradient(110deg, rgba(248, 244, 235, 0.8), rgba(248, 244, 235, 0.64) 56%, rgba(242, 237, 226, 0.86)),
+    var(--lt-page-veil),
     url("/backgrounds/puzzles-queen.webp");
 }
 
 :root[data-theme="light"] .training-page,
 :root[data-theme="light"] .training-page.level-test-background {
   background-image:
-    linear-gradient(110deg, rgba(248, 244, 235, 0.8), rgba(248, 244, 235, 0.64) 58%, rgba(242, 237, 226, 0.86)),
+    var(--lt-page-veil),
     url("/backgrounds/training-rook.webp");
 }
 
 :root[data-theme="light"] .user-profile-page {
   background-image:
-    linear-gradient(110deg, rgba(248, 244, 235, 0.8), rgba(248, 244, 235, 0.64) 55%, rgba(242, 237, 226, 0.86)),
+    var(--lt-page-veil),
     url("/backgrounds/profile-bishop.webp");
 }
 
 :root[data-theme="light"] .level-test-page {
   background-image:
-    linear-gradient(110deg, rgba(248, 244, 235, 0.8), rgba(248, 244, 235, 0.64) 58%, rgba(242, 237, 226, 0.86)),
+    var(--lt-page-veil),
     url("/backgrounds/level-test-crown.webp");
 }
 
 :root[data-theme="light"] .admin-page {
   background-image:
-    linear-gradient(110deg, rgba(248, 244, 235, 0.8), rgba(248, 244, 235, 0.64) 58%, rgba(242, 237, 226, 0.86)),
+    var(--lt-page-veil),
     url("/backgrounds/admin-rook.webp");
 }
 

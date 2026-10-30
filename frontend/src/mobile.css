@@ -492,6 +492,12 @@
     height: 40px;
   }
 
+  .main-area .chat-avatar-glyph {
+    width: 40px;
+    height: 40px;
+    font-size: 26px;
+  }
+
   .main-area .chat-title-block h2.chat-panel-title {
     font-size: 19px;
   }
@@ -649,10 +655,6 @@
 
   .puzzle-chat-section .chat-title-block h2 {
     font-size: 18px;
-  }
-
-  .puzzle-chat-section .chat-subtitle {
-    font-size: 12px;
   }
 
   .puzzle-chat-section .chat-messages,

@@ -201,6 +201,8 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
     if (!boardBoxRef.current) return;
 
     const el = boardBoxRef.current;
+    const wrapper = el.closest(".board-wrapper");
+    const mainEl = document.querySelector(".main-area");
 
     const report = () => {
       if (typeof onStateChange === "function") {
@@ -209,12 +211,26 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
           boardHeight: el.offsetHeight,
         }));
       }
+
+      /*
+       * История и чат должны быть той же высоты, что и карточка доски.
+       * Высота карточки зависит от размера доски и внутренних панелей,
+       * поэтому передаём её в CSS через переменную, а не дублируем
+       * в правилах.
+       */
+      if (mainEl && wrapper) {
+        mainEl.style.setProperty(
+          "--play-panel-height",
+          `${Math.round(wrapper.getBoundingClientRect().height)}px`,
+        );
+      }
     };
 
     report();
 
     const ro = new ResizeObserver(report);
     ro.observe(el);
+    if (wrapper) ro.observe(wrapper);
 
     return () => ro.disconnect();
   }, [onStateChange]);
@@ -225,32 +241,43 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
   const updateBoardSize = useCallback(() => {
     const isMobile = window.matchMedia("(max-width: 760px)").matches;
     const isStacked = window.matchMedia("(max-width: 1150px)").matches;
-    const evalW = 62;      // шкала 38px + поля по 12px (см. .eval-bar)
-    const sideW = 260;     // панель истории (фикс. ширина в CSS)
-    const gapW = 24;       // отступы между панелями
 
     /*
-     * Чат можно свернуть в узкую полосу - тогда его ширина достаётся
-     * доске. Свёрнутая полоса не тянется (flex: 0 0 48px), поэтому
-     * резерв считаем точно: 48px полосы + 24px отступа справа +
-     * 66px хрома колонки доски (паддинги 14+14 и рамка с паддингами
-     * карточки 38), иначе ряд вылез бы за окно.
+     * Ширину берём у самой колонки доски, а не вычитаем чат из окна.
+     * Колонка забирает всё место, оставшееся от истории, шкалы и чата,
+     * и её ширина не зависит от размера доски (flex-basis: 0 в CSS).
+     * Поэтому первый замер сразу совпадает с итоговой раскладкой и доска
+     * не ждёт, пока чат свернут и развернут.
      */
-    const boardChromeW = isMobile ? 22 : 66; // карточка (22 mobile / 38 desktop) + desktop column padding
+    const boardChromeW = isMobile ? 22 : 66; // карточка (22 mobile / 38 desktop) + паддинги колонки
     const mainEl = document.querySelector(".main-area");
+    const boardSectionEl = document.querySelector(".board-section");
     const chatEl = document.querySelector(".chat-section");
-    const chatStyle = chatEl ? window.getComputedStyle(chatEl) : null;
-    const chatReserve = chatEl
-      ? chatEl.getBoundingClientRect().width +
-        parseFloat(chatStyle.marginLeft || 0) +
-        parseFloat(chatStyle.marginRight || 0)
-      : chatCollapsed
-        ? 72
-        : 544;
     const containerW = mainEl?.clientWidth || window.innerWidth;
+
+    /*
+     * Пока чат едет, его текущая ширина ещё не итоговая. Берём целевую
+     * из инлайнового width (его ставит ChatPanel) и переносим разницу на
+     * колонку доски: так доска сразу получает финальный размер и плавно
+     * переезжает вместе с чатом, без скачка в конце анимации.
+     */
+    let chatTargetW = chatEl ? chatEl.getBoundingClientRect().width : 0;
+    if (chatEl?.classList.contains("chat-section--sliding")) {
+      const inlineW = parseFloat(chatEl.style.width);
+      if (inlineW > 0) {
+        chatTargetW = chatEl.classList.contains("chat-section--collapsed")
+          ? 48
+          : inlineW;
+      }
+    }
+
+    const sectionW = boardSectionEl
+      ? boardSectionEl.clientWidth +
+        (chatEl ? chatEl.getBoundingClientRect().width - chatTargetW : 0)
+      : containerW;
     const availW = isStacked
       ? containerW - boardChromeW
-      : containerW - evalW - sideW - gapW * 3 - chatReserve - boardChromeW;
+      : sectionW - boardChromeW;
 
     /*
      * Высота — замером живых элементов, а не гаданием по window:
@@ -276,8 +303,9 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
         : 0;
 
     // Минимум — панель противника + кнопки + ФЕН-панель + рамка
-    // с паддингами, когда карточки сравнения ещё нет.
-    const chromeH = Math.max(150, measuredChrome);
+    // с паддингами, когда карточки сравнения ещё нет. Реальный хром
+    // карточки — около 100px, поэтому не занижаем доску лишними 50px.
+    const chromeH = Math.max(104, measuredChrome);
 
     const availH =
       (mainEl?.clientHeight || window.innerHeight) - chromeH - 12;
@@ -285,8 +313,8 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
     const size = Math.floor(Math.min(availW, availH));
 
     const maxBoardWidth = isMobile ? 720 : isStacked ? 860 : 1150;
-    setBoardWidth(Math.max(isMobile ? 240 : 360, Math.min(size, maxBoardWidth)));
-  }, [chatCollapsed]);
+    setBoardWidth(Math.max(isMobile ? 240 : 260, Math.min(size, maxBoardWidth)));
+  }, []);
 
   useEffect(() => {
     updateBoardSize();
@@ -294,19 +322,21 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
     window.addEventListener("resize", updateBoardSize);
 
     /*
-     * Топбар, футер и подгрузка шрифтов меняют высоту колонки уже
-     * после первого замера — пересчитываем по её изменению.
-     * Петли нет: высота .main-area не зависит от размера доски.
+     * Топбар, футер, подгрузка шрифтов и анимация чата меняют ширину
+     * или высоту колонки уже после первого замера — пересчитываем по
+     * изменению .main-area и самой колонки доски. Петли нет: ширина
+     * колонки задана флексом и от размера доски не зависит.
      */
     const mainEl = document.querySelector(".main-area");
+    const boardSectionEl = document.querySelector(".board-section");
     let observer;
 
     if (mainEl && typeof ResizeObserver !== "undefined") {
       observer = new ResizeObserver(() => {
         /*
          * Пока чат анимируется, колонка пересчитывается каждый кадр,
-         * и замер высоты в этот момент врёт. Новый размер уже посчитал
-         * эффект выше (по смене chatCollapsed), здесь он не нужен.
+         * и замеры в этот момент врут. Окончательный размер посчитает
+         * таймер ниже, когда анимация закончится.
          */
         if (document.querySelector(".chat-section--sliding")) {
           return;
@@ -315,16 +345,21 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
         updateBoardSize();
       });
       observer.observe(mainEl);
+      if (boardSectionEl) observer.observe(boardSectionEl);
     }
+
+    // Чат едет 340 мс; после этого раскладка устоялась.
+    const settleTimer = window.setTimeout(updateBoardSize, 380);
 
     return () => {
       window.removeEventListener("resize", updateBoardSize);
+      window.clearTimeout(settleTimer);
 
       if (observer) {
         observer.disconnect();
       }
     };
-  }, [updateBoardSize]);
+  }, [updateBoardSize, chatCollapsed]);
 
   /*
    * Карточка сравнения появляется/меняет высоту после подсказки —
@@ -2278,9 +2313,6 @@ const fetchBestMove = useCallback(
                     <span className="side-pick-name">
                       Белые
                     </span>
-                    <span className="side-pick-note">
-                      первый ход ваш
-                    </span>
                   </button>
                   <button
                     type="button"
@@ -2294,9 +2326,6 @@ const fetchBestMove = useCallback(
                     />
                     <span className="side-pick-name">
                       Чёрные
-                    </span>
-                    <span className="side-pick-note">
-                      начнёт Maia 3
                     </span>
                   </button>
                 </div>

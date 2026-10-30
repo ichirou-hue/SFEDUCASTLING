@@ -357,10 +357,10 @@ export default function ChatPanel({
     <div className="chat-section" ref={rootRef}>
       <div className="chat-header">
         <div className="chat-avatar">
-          <img src="\bot-icon.svg" alt="Maia 3" />
+          <span className="chat-avatar-glyph" aria-hidden="true">♘</span>
         </div>
         <div className="chat-title-block">
-          <h2 className="chat-panel-title">Шахматный ассистент</h2>
+          <h2 className="chat-panel-title">Шахматный гуру</h2>
         </div>
         <button
           type="button"
