@@ -1,7 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import { linkChessAccount, saveOnboarding } from "../api.js";
+import {
+  fetchLinkedChessAccounts,
+  fetchOAuthProviders,
+  linkChessAccount,
+  saveOnboarding,
+} from "../api.js";
 import { formatApiError } from "../apiErrors.js";
 import "./OnboardingModal.css";
+import ChessAccountVerificationPanel from "./ChessAccountVerificationPanel.jsx";
 
 // Дословно из «Анкеты оценки уровня игры», раздел 1 / приложение Д.1.
 // Ключи — те же коды, что уходит на бэкенд (тексты могут меняться, коды — нет).
@@ -100,6 +106,34 @@ export default function OnboardingModal({ isOpen, onClose, onDone }) {
   const [linking, setLinking] = useState(false);
   const [linkError, setLinkError] = useState("");
   const [linked, setLinked] = useState(null);
+  const [oauthProviders, setOauthProviders] = useState(null);
+
+  // Если аккаунт уже был добавлен при регистрации или в профиле, показываем
+  // его сразу. OAuth-возможности нужны для кнопки подтверждения владения.
+  useEffect(() => {
+    if (!isOpen) return;
+    let cancelled = false;
+    Promise.allSettled([fetchOAuthProviders(), fetchLinkedChessAccounts()]).then(
+      ([providers, accounts]) => {
+        if (cancelled) return;
+        if (providers.status === "fulfilled") setOauthProviders(providers.value);
+        if (accounts.status === "fulfilled") {
+          const account = accounts.value?.items?.[0] || null;
+          if (account) {
+            setLinked({ account });
+            setA((prev) => ({
+              ...prev,
+              useQ2: true,
+              q2: { platform: account.platform, login: account.username },
+            }));
+          }
+        }
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen]);
 
   // Хуки перетаскивания Q5 — строго до раннего return ниже:
   // условные хуки ломают порядок вызовов React и роняют модалку.
@@ -429,10 +463,31 @@ export default function OnboardingModal({ isOpen, onClose, onDone }) {
                       </p>
                     )}
                     <p className="onb-linked-note onb-linked-note--dim">
-                      Мягкая привязка по публичному профилю: без OAuth владение
-                      аккаунтом не подтверждено.
+                      {linked.account.rating_trusted
+                        ? "Владение аккаунтом подтверждено. Этот рейтинг считается доверенным."
+                        : "Профиль найден, но владение ещё не подтверждено. До OAuth рейтинг не повышает стартовую оценку."}
                     </p>
                   </div>
+                )}
+
+                {linked?.account && (
+                  <ChessAccountVerificationPanel
+                    account={linked.account}
+                    oauthProviders={oauthProviders}
+                    compact
+                    onChanged={(account) => {
+                      if (account) {
+                        setLinked({ account });
+                        setA((prev) => ({
+                          ...prev,
+                          q2: { platform: account.platform, login: account.username },
+                        }));
+                      } else {
+                        setLinked(null);
+                      }
+                    }}
+                    onError={setLinkError}
+                  />
                 )}
               </div>
             )}

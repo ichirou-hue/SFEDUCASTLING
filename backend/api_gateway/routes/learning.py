@@ -14,7 +14,7 @@ from sqlalchemy import distinct, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api_gateway import state
-from backend.api_gateway.dependecies import get_current_user, get_optional_current_user
+from backend.api_gateway.dependecies import get_current_user
 from backend.api_gateway.models import PuzzleAnswerRequest
 from backend.db.session import get_db
 from backend.models.game import Game
@@ -767,7 +767,10 @@ async def get_adaptive_puzzles(
 
 
 @router.post("/api/learning/puzzle/check")
-def puzzle_check(req: PuzzleAnswerRequest):
+def puzzle_check(
+    req: PuzzleAnswerRequest,
+    _user: User = Depends(get_current_user),
+):
     """Проверка отдельного тренировочного паззла с показом решения."""
     puzzle = _puzzle_lookup().get(req.puzzle_id)
     if puzzle is None:
@@ -860,7 +863,10 @@ def _is_preview_user(user: User | None) -> bool:
 async def _preview_today_attempted(
     db: AsyncSession, user_id: int
 ) -> tuple[Any, set[str]]:
-    """Дата на стороне БД и множество задач, решённых пользователем СЕГОДНЯ.
+    """Дата на стороне БД и множество ПРАВИЛЬНО решённых сегодня задач.
+
+    Дневной лимит расходуют только решённые задачи: неверные ходы не
+    отнимают попытку, поэтому незавершённая задача остаётся доступной.
 
     День считаем так же, как и лимит — ``date(created_at) = current_date()``,
     чтобы сброс совпадал с часовым поясом, в котором пишется ``created_at``.
@@ -870,6 +876,7 @@ async def _preview_today_attempted(
         await db.scalars(
             select(distinct(PuzzleAttempt.puzzle_id)).where(
                 PuzzleAttempt.user_id == user_id,
+                PuzzleAttempt.correct.is_(True),
                 func.date(PuzzleAttempt.created_at) == func.current_date(),
             )
         )
@@ -935,8 +942,7 @@ def _preview_payload(
 async def get_puzzles(
     count: int = Query(default=20, ge=1, le=100),
     topic: str | None = None,
-    rating_min: int | None = Query(default=None, ge=0, le=10000),
-    user: User | None = Depends(get_optional_current_user),
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Возвращает набор задач с полными решениями для тренировочной страницы.
@@ -949,9 +955,8 @@ async def get_puzzles(
 
     Пока пользователь не прошёл анкету, ему доступен только пробный набор:
     не больше трёх задач в день с рейтингом до 700 (см. ``_preview_payload``).
-    Гость и прошедший анкету получают обычную выборку: гость — равномерно по
-    корзинам, авторизованный — ТОЛЬКО свою текущую корзину с потолком
-    «рейтинг + 200».
+    Прошедший анкету получает обычную выборку: ТОЛЬКО свою текущую корзину
+    с потолком «рейтинг + 200». Без регистрации задачи недоступны.
 
     Отличие от level-test/start: включает поле moves (ходы решения).
     Задачи, где после решения игрок оказывается матован, исключаются.
@@ -970,11 +975,6 @@ async def get_puzzles(
         valid_puzzles = [
             p for p in valid_puzzles if _puzzle_matches_course_topic(p, normalized_topic)
         ]
-    if rating_min is not None:
-        valid_puzzles = [
-            p for p in valid_puzzles if int(p.get("rating") or 0) >= rating_min
-        ]
-
     # Пробный доступ до анкеты: не больше 3 лёгких задач в день.
     if _is_preview_user(user):
         today, attempted = await _preview_today_attempted(db, user.id)
@@ -990,9 +990,7 @@ async def get_puzzles(
         )
 
     rating, rating_source = rating_for_selection(
-        user.elo if user else None,
-        user.rating_estimate if user else None,
-        user.prior_band if user else None,
+        user.elo, user.rating_estimate, user.prior_band
     )
     personalization: dict[str, Any] = {
         "source": rating_source if normalized_topic is None else None,

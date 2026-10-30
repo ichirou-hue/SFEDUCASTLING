@@ -7,6 +7,7 @@ import {
   linkChessAccount,
   unlinkChessAccount,
 } from "../api.js";
+import ChessAccountsSection from "./ChessAccountsSection.jsx";
 import ProgressWidget from "./ProgressWidget.jsx";
 import RatingBandProgress from "./RatingBandProgress.jsx";
 import UserRecordsWidget from "./UserRecordsWidget.jsx";
@@ -282,6 +283,8 @@ export default function UserProfilePage({ user, onUserChange }) {
           </div>
 
           {error && <div className="user-profile-warning">{error}</div>}
+
+          <ChessAccountsSection user={profile} embedded />
         </div>
       </section>
 
@@ -299,7 +302,6 @@ export default function UserProfilePage({ user, onUserChange }) {
         <RatingBandProgress userId={profile?.id ?? user?.id} />
       </section>
 
-      <LinkedAccountsSection />
 
       <section className="user-profile-progress-section">
         <div className="user-profile-section-heading">

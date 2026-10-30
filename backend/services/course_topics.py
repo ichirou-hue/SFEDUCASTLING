@@ -59,11 +59,29 @@ COURSE_TOPIC_META: dict[str, dict[str, Any]] = {
             "attraction",
             "sacrifice",
             "doubleCheck",
+            "hangingPiece",
+            "capturingDefender",
+            "discoveredAttack",
+            "discoveredCheck",
+            "deflection",
+            "intermezzo",
+            "clearance",
+            "trappedPiece",
         },
     },
     "openings": {
         "title": "Дебюты",
         "themes": {"opening"},
+    },
+    "middlegame": {
+        "title": "Миттельшпиль: стратегия",
+        "themes": {
+            "middlegame",
+            "quietMove",
+            "kingsideAttack",
+            "queensideAttack",
+            "exposedKing",
+        },
     },
 }
 
@@ -188,6 +206,14 @@ THEME_TO_PRIMARY_TOPIC: list[tuple[str, str]] = [
     ("attraction", "tactics"),
     ("sacrifice", "tactics"),
     ("doubleCheck", "tactics"),
+    ("hangingPiece", "tactics"),
+    ("capturingDefender", "tactics"),
+    ("discoveredAttack", "tactics"),
+    ("discoveredCheck", "tactics"),
+    ("deflection", "tactics"),
+    ("intermezzo", "tactics"),
+    ("clearance", "tactics"),
+    ("trappedPiece", "tactics"),
     ("opening", "openings"),
     ("exposedKing", "king-safety"),
     ("kingsideAttack", "king-safety"),
@@ -195,6 +221,9 @@ THEME_TO_PRIMARY_TOPIC: list[tuple[str, str]] = [
     ("endgame", "endgames"),
     ("opposition", "endgames"),
     ("passedPawn", "endgames"),
+    ("middlegame", "middlegame"),
+    ("quietMove", "middlegame"),
+    ("queensideAttack", "middlegame"),
 ]
 
 

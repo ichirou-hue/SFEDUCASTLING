@@ -523,3 +523,84 @@
     font-size: 12px;
   }
 }
+
+/* === Подключение внешнего шахматного аккаунта ============================ */
+.onb-connect-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.onb-link-secondary,
+.onb-link-oauth {
+  border-radius: 10px;
+  padding: 9px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, opacity 0.15s;
+}
+.onb-link-secondary {
+  border: 1px solid #d9c79e;
+  background: #fff;
+  color: #66583c;
+}
+.onb-link-oauth {
+  border: 1px solid #7aa57e;
+  background: #83b787;
+  color: #fff;
+}
+.onb-link-secondary:hover:not(:disabled),
+.onb-link-oauth:hover:not(:disabled) {
+  border-color: #b88a3e;
+}
+.onb-link-secondary:disabled,
+.onb-link-oauth:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.onb-linked-account {
+  padding: 13px;
+  border-radius: 11px;
+  border: 1px solid #d8e5d7;
+  background: #fff;
+}
+.onb-linked-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: #354a38;
+  font-size: 14px;
+}
+.onb-verified {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #f1eee7;
+  color: #7a705e;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.onb-verified--yes {
+  background: #e5f3e7;
+  color: #397044;
+}
+.onb-linked-rating {
+  margin-top: 7px;
+  font-size: 13px;
+  color: #687268;
+}
+.onb-linked-warning,
+.onb-provider-note {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #8b6d35;
+}
+.onb-linked-account .onb-link-secondary {
+  margin-top: 10px;
+}
+.onb-error--inline {
+  margin-top: 10px;
+}
