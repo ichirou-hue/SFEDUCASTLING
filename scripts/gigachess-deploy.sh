@@ -19,7 +19,7 @@ cleanup_staging() {
 trap cleanup_staging EXIT
 readonly previous="$(readlink -f "$root/current" || true)"
 test -s "$archive"
-install -d -o deploy -g deploy -m 0750 "$releases"
+install -d -o deploy -g deploy -m 0755 "$releases"
 install -d -o root -g root -m 0700 "$backup_dir"
 
 # Back up every PostgreSQL database before migrations; never print credentials.
@@ -28,7 +28,7 @@ chmod 0600 "$backup_dir/postgres-$timestamp.sql.gz"
 
 if [[ ! -d "$release" ]]; then
   staging="$releases/.${sha}.staging.$$"
-  install -d -o deploy -g deploy -m 0750 "$staging"
+  install -d -o deploy -g deploy -m 0755 "$staging"
   tar -xzf "$archive" -C "$staging" --no-same-owner
   ln -s "$root/.env" "$staging/.env"
   ln -s "$root/venv" "$staging/venv"
@@ -38,6 +38,7 @@ else
   test -f "$release/backend/app.py"
   test -L "$release/.env"
 fi
+chmod 0755 "$release"
 
 if ! (cd "$release" && "$root/venv/bin/alembic" upgrade head); then
   echo "Migration failed; code was not switched. Backup: $backup_dir/postgres-$timestamp.sql.gz" >&2
