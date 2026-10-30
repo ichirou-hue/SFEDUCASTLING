@@ -12,6 +12,11 @@ readonly releases="$root/releases"
 readonly release="$releases/$sha"
 readonly backup_dir=/var/backups/gigachess
 readonly timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
+staging=""
+cleanup_staging() {
+  if [[ -n "$staging" && -d "$staging" ]]; then rm -rf -- "$staging"; fi
+}
+trap cleanup_staging EXIT
 readonly previous="$(readlink -f "$root/current" || true)"
 test -s "$archive"
 install -d -o deploy -g deploy -m 0750 "$releases"
@@ -21,13 +26,18 @@ install -d -o root -g root -m 0700 "$backup_dir"
 runuser -u postgres -- pg_dumpall --clean --if-exists | gzip -9 > "$backup_dir/postgres-$timestamp.sql.gz"
 chmod 0600 "$backup_dir/postgres-$timestamp.sql.gz"
 
-staging="$releases/.${sha}.staging.$$"
-rm -rf -- "$staging"
-install -d -o deploy -g deploy -m 0750 "$staging"
-tar -xzf "$archive" -C "$staging" --no-same-owner
-ln -s "$root/.env" "$staging/.env"
-ln -s "$root/venv" "$staging/venv"
-mv "$staging" "$release"
+if [[ ! -d "$release" ]]; then
+  staging="$releases/.${sha}.staging.$$"
+  install -d -o deploy -g deploy -m 0750 "$staging"
+  tar -xzf "$archive" -C "$staging" --no-same-owner
+  ln -s "$root/.env" "$staging/.env"
+  ln -s "$root/venv" "$staging/venv"
+  mv "$staging" "$release"
+  staging=""
+else
+  test -f "$release/backend/app.py"
+  test -L "$release/.env"
+fi
 
 if ! (cd "$release" && "$root/venv/bin/alembic" upgrade head); then
   echo "Migration failed; code was not switched. Backup: $backup_dir/postgres-$timestamp.sql.gz" >&2

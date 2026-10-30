@@ -34,6 +34,7 @@ from backend.api_gateway.routes.learning import router as learning_router
 from backend.api_gateway.routes.training import router as training_router
 from backend.api_gateway.routes.admin import router as admin_router
 from backend.api_gateway.routes.health import router as health_router
+from backend.api_gateway.routes.gigacoins import router as gigacoins_router
 
 app = FastAPI(title="SFEDUCASTLING API")
 
@@ -61,6 +62,7 @@ app.include_router(learning_router)
 app.include_router(training_router)
 app.include_router(admin_router)
 app.include_router(health_router)
+app.include_router(gigacoins_router)
 
 class SPAStaticFiles(StaticFiles):
     """StaticFiles с SPA-fallback: при 404 отдаёт index.html.

@@ -56,7 +56,7 @@ export default function RatingBandProgress({ compact = false, userId = null }) {
         </div>
         <div className="rating-band-progress__rating">
           {progress.rating_available ? progress.rating.toLocaleString("ru-RU") : "—"}
-          <small>{progress.provisional ? "предварительно" : "рейтинг"}</small>
+          <small>рейтинг</small>
         </div>
       </div>
 
@@ -78,7 +78,10 @@ export default function RatingBandProgress({ compact = false, userId = null }) {
           "Достигнут максимальный рейтинговый уровень"
         ) : (
           <>
-            До уровня «{next.title}»: осталось {ratingPoints(progress.points_to_next)}
+            До уровня «{next.title}»: осталось{" "}
+            <strong className="rating-band-progress__points">
+              {ratingPoints(progress.points_to_next)}
+            </strong>
           </>
         )}
       </div>

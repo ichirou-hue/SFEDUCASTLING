@@ -1,0 +1,47 @@
+.gigacoin-shop-page {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  margin: 0;
+  padding: 34px 0 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #79b180 transparent;
+}
+
+.gigacoin-shop-page > .gigacoin-shop,
+.gigacoin-shop-page > .site-footer,
+.gigacoin-shop-page__back {
+  width: min(1120px, calc(100% - 40px));
+  flex-shrink: 0;
+}
+
+.gigacoin-shop-page__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #e2c68e;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.gigacoin-shop-page__back:hover,
+.gigacoin-shop-page__back:focus-visible { color: #f6e2b5; }
+.gigacoin-shop-page__back span { font-size: 18px; line-height: 1; }
+.gigacoin-shop-page > .site-footer { margin-top: auto; }
+
+.gigacoin-shop__error-box { display: grid; justify-items: start; gap: 10px; }
+.gigacoin-shop__retry { min-height: 36px; padding: 0 14px; border: 1px solid rgba(213, 180, 118, .38); border-radius: 10px; color: #e8d6ad; background: rgba(213, 180, 118, .09); font: inherit; cursor: pointer; }
+.gigacoin-shop__retry:hover { background: rgba(213, 180, 118, .18); }
+
+@media (max-width: 560px) {
+  .gigacoin-shop-page { padding: 22px 0 32px; gap: 12px; }
+  .gigacoin-shop-page > .gigacoin-shop,
+  .gigacoin-shop-page > .site-footer,
+  .gigacoin-shop-page__back { width: calc(100% - 24px); }
+}

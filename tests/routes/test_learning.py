@@ -11,10 +11,17 @@ from sqlalchemy import delete, select
 
 from backend.app import app
 from backend.db.session import async_session_factory
+from backend.models.gigacoin_event import GigacoinEvent
 from backend.models.level_test import LevelTest
 from backend.models.puzzle_attempt import PuzzleAttempt
 from backend.models.user import User
-from backend.models.user_chess_account import UserChessAccount
+from backend.models.user_activity_day import UserActivityDay
+from backend.models.user_cosmetic import UserCosmetic
+from backend.models.user_chess_account import (
+    ChessAccountVerification,
+    UserChessAccount,
+    VERIFICATION_VERIFIED,
+)
 
 client = TestClient(app)
 
@@ -122,6 +129,16 @@ def cleanup():
                 ).all()
             )
             if user_ids:
+                # Explicitly clear user-owned rows so the fixture stays isolated
+                # on SQLite, where foreign-key cascades are disabled by default.
+                await db.execute(delete(GigacoinEvent).where(GigacoinEvent.user_id.in_(user_ids)))
+                await db.execute(delete(UserCosmetic).where(UserCosmetic.user_id.in_(user_ids)))
+                await db.execute(delete(UserActivityDay).where(UserActivityDay.user_id.in_(user_ids)))
+                await db.execute(
+                    delete(ChessAccountVerification).where(
+                        ChessAccountVerification.user_id.in_(user_ids)
+                    )
+                )
                 await db.execute(
                     delete(LevelTest).where(LevelTest.user_id.in_(user_ids))
                 )
@@ -159,8 +176,8 @@ def _authed_user(cleanup) -> str:
 def _authed_user_with_rating(cleanup, rating: int) -> str:
     """Пользователь с привязанным внешним рейтингом.
 
-    Только привязка (rating_usable=True) снимает ограничение самооценки 800,
-    поэтому стартовая оценка берётся из внешнего рейтинга.
+    Только подтверждённая привязка (verified=True, verification_status=verified,
+    rating_usable=True) снимает ограничение самооценки 800.
     """
     login = cleanup(f"lvlrated_{uuid.uuid4().hex[:8]}")
     r = client.post(
@@ -182,6 +199,8 @@ def _authed_user_with_rating(cleanup, rating: int) -> str:
                     rating_scale="lichess_blitz",
                     games=200,
                     rating_usable=True,
+                    verified=True,
+                    verification_status=VERIFICATION_VERIFIED,
                 )
             )
             await db.commit()
@@ -243,6 +262,73 @@ def _start_test(token: str) -> tuple[int, list[str]]:
     assert resp.status_code == 200, resp.text
     data = resp.json()
     return data["test_id"], [q["id"] for q in data["questions"]]
+
+
+class TestGigaCoinLearningRewards:
+    def test_puzzle_reward_is_added_once(self, cleanup):
+        token, _ = _registered_user(cleanup)
+        with patch(MATCH_ANCHOR, NEW_PUZZLES):
+            first = client.post(
+                "/api/learning/puzzle/attempt",
+                json={"puzzle_id": "b5", "correct": True, "player_moves": ["b1b8"]},
+                headers=_headers(token),
+            )
+            second = client.post(
+                "/api/learning/puzzle/attempt",
+                json={"puzzle_id": "b5", "correct": True, "player_moves": ["b1b8"]},
+                headers=_headers(token),
+            )
+        assert first.status_code == second.status_code == 200
+        assert first.json()["gigacoins_earned"] == 2  # rating 1290
+        assert first.json()["gigacoins_balance"] == 2
+        assert second.json()["gigacoins_earned"] == 0
+        assert second.json()["gigacoins_balance"] == 2
+
+    def test_onboarding_rewards_once_even_when_resubmitted(self, cleanup):
+        token, _ = _registered_user(cleanup)
+        first = client.post(
+            "/api/auth/onboarding", json=ONBOARDING, headers=_headers(token)
+        )
+        second = client.post(
+            "/api/auth/onboarding", json=ONBOARDING, headers=_headers(token)
+        )
+        assert first.status_code == second.status_code == 200
+        assert first.json()["gigacoins_earned"] == 5
+        assert first.json()["gigacoins_balance"] == 5
+        assert second.json()["gigacoins_earned"] == 0
+        assert second.json()["gigacoins_balance"] == 5
+
+    def test_initial_level_test_rewards_once(self, cleanup):
+        token, _ = _registered_user(cleanup)
+        onboarding = client.post(
+            "/api/auth/onboarding", json=ONBOARDING, headers=_headers(token)
+        )
+        assert onboarding.status_code == 200
+
+        with patch(MATCH_ANCHOR, NEW_PUZZLES):
+            test_id, question_ids = _start_test(token)
+            payload = {
+                "test_id": test_id,
+                "answers": [
+                    {"puzzle_id": puzzle_id, "correct": False}
+                    for puzzle_id in question_ids
+                ],
+            }
+            first = client.post(
+                "/api/learning/level-test/submit",
+                json=payload,
+                headers=_headers(token),
+            )
+            second = client.post(
+                "/api/learning/level-test/submit",
+                json=payload,
+                headers=_headers(token),
+            )
+        assert first.status_code == second.status_code == 200
+        assert first.json()["gigacoins_earned"] == 10
+        assert first.json()["gigacoins_balance"] == 15
+        assert second.json()["gigacoins_earned"] == 0
+        assert second.json()["gigacoins_balance"] == 15
 
 
 class TestLevelTestStart:

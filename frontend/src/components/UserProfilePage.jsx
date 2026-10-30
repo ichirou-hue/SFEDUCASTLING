@@ -189,6 +189,10 @@ export default function UserProfilePage({ user, onUserChange }) {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    if (user) setProfile(user);
+  }, [user]);
+
+  useEffect(() => {
     let cancelled = false;
 
     async function loadProfile() {
@@ -229,8 +233,8 @@ export default function UserProfilePage({ user, onUserChange }) {
 
   return (
     <main className="user-profile-page">
-      <section className="user-profile-card">
-        <div className="user-profile-avatar" aria-hidden="true">
+      <section className={`user-profile-card user-profile-card--accent-${profile?.equipped_profile_accent || "default"}`}>
+        <div className={`user-profile-avatar user-profile-avatar--${profile?.equipped_avatar_frame || "default"}`} aria-hidden="true">
           {profile?.is_admin ? "♛" : "♟"}
         </div>
 
@@ -258,6 +262,15 @@ export default function UserProfilePage({ user, onUserChange }) {
               <span>В системе с</span>
               <strong>{formatDate(profile?.created_at)}</strong>
             </div>
+            <button
+              type="button"
+              className="user-profile-stat user-profile-stat--coins user-profile-stat--link"
+              onClick={() => navigate("/gigacoins")}
+              aria-label="Открыть магазин GigaCoin"
+            >
+              <span>Баланс GigaCoin</span>
+              <strong>{Number(profile?.gigacoins || 0).toLocaleString("ru-RU")}</strong>
+            </button>
           </div>
 
           <div className="user-profile-actions">

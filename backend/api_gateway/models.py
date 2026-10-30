@@ -191,7 +191,7 @@ class FinishGameRequest(BaseModel):
             партию с корректными именами белых/чёрных (игрок vs AI).
     """
 
-    moves: list[str] = []
+    moves: list[str] = Field(default_factory=list, max_length=600)
     user_id: int | None = None
     elo: int | None = None
     engine: str = "maia3"

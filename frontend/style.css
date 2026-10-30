@@ -3857,3 +3857,41 @@ body {
 .oauth-callback-card a {
   color: #2f6b3a;
 }
+
+.training-due-empty {
+  padding: 0 16px 16px;
+  color: #66746b;
+  font-size: 13px;
+}
+
+@media (max-width: 1150px) {
+  .training-page--grid-with-due {
+    grid-template-columns: minmax(0, 1fr);
+    transition: none;
+  }
+
+  .training-due-rail {
+    position: static;
+    grid-column: 1;
+    grid-row: 2;
+    max-height: none;
+  }
+
+  .training-due-rail--collapsed .training-due-toggle {
+    width: 100%;
+    justify-content: flex-start;
+    padding: 11px 14px;
+  }
+
+  .training-due-rail--collapsed .training-due-toggle-label {
+    display: block;
+  }
+
+  .training-due-panel {
+    max-height: 60vh;
+  }
+
+  .training-due-list {
+    max-height: calc(60vh - 110px);
+  }
+}

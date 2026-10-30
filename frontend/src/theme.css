@@ -1,0 +1,1951 @@
+/* =========================================================================
+   ТЁМНАЯ ТЕМА (основная)
+   -------------------------------------------------------------------------
+   Все правила включаются только при data-theme="dark" на <html>.
+   Светлая тема — это исходные стили без этого файла, поэтому её вид
+   не меняется.
+
+   Палитра повторяет карточку «Личные рекорды»: тёмный бирюзово-зелёный
+   градиент, золотые рамки и светлый текст.
+   ========================================================================= */
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --sf-surface: linear-gradient(145deg, rgba(7, 18, 22, 0.97), rgba(10, 25, 27, 0.96));
+  --sf-surface-raised: linear-gradient(145deg, rgba(12, 28, 32, 0.96), rgba(14, 33, 35, 0.94));
+  --sf-surface-flat: rgba(8, 20, 23, 0.94);
+  --sf-soft: rgba(246, 244, 239, 0.05);
+  --sf-soft-2: rgba(246, 244, 239, 0.08);
+  --sf-line: rgba(213, 180, 118, 0.28);
+  --sf-line-strong: rgba(213, 180, 118, 0.5);
+  --sf-ink: #f6f4ef;
+  --sf-ink-strong: #fffdf8;
+  --sf-muted: rgba(246, 244, 239, 0.7);
+  --sf-muted-2: rgba(246, 244, 239, 0.52);
+  --sf-gold: #d5b476;
+  --sf-gold-bright: #e9cd97;
+  --sf-gold-soft: rgba(213, 180, 118, 0.1);
+  --sf-green: #9bd0a6;
+  --sf-green-soft: rgba(102, 180, 128, 0.14);
+  --sf-blue: #9ac7df;
+  --sf-input: rgba(4, 11, 12, 0.55);
+  --sf-error: #e8a094;
+  --sf-error-soft: rgba(220, 120, 100, 0.14);
+}
+
+:root[data-theme="dark"] body {
+  background-color: #071116;
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] ::selection {
+  background: rgba(213, 180, 118, 0.32);
+  color: var(--sf-ink-strong);
+}
+
+/* --- Общий футер ------------------------------------------------------- */
+
+:root[data-theme="dark"] .site-footer {
+  border-top-color: rgba(213, 180, 118, 0.24);
+  background: rgba(4, 11, 12, 0.6);
+  color: var(--sf-muted-2);
+}
+
+:root[data-theme="dark"] .site-footer-brand {
+  color: var(--sf-muted);
+}
+
+:root[data-theme="dark"] .site-footer-link {
+  color: var(--sf-gold);
+}
+
+:root[data-theme="dark"] .site-footer-link:hover {
+  color: var(--sf-gold-bright);
+}
+
+/* =========================================================================
+   ИГРА
+   ========================================================================= */
+
+/* Панель истории ходов — та же карточка, что «Личные рекорды». */
+:root[data-theme="dark"] .move-history-panel {
+  border-color: var(--sf-line-strong);
+  background: var(--sf-surface);
+  box-shadow: 0 20px 52px rgba(0, 0, 0, 0.3);
+}
+
+/* Панель уровней Maia стоит под историей ходов и должна выглядеть
+   частью того же набора: та же тёмная поверхность и золото. */
+:root[data-theme="dark"] .maia-level-progress {
+  border-color: var(--sf-line);
+  border-left-color: var(--sf-gold);
+  background: var(--sf-surface-raised);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.26);
+}
+
+:root[data-theme="dark"] .maia-level-progress-title {
+  color: var(--sf-gold);
+}
+
+:root[data-theme="dark"] .maia-level-progress-title span {
+  color: var(--sf-muted);
+}
+
+:root[data-theme="dark"] .maia-level-chip {
+  border-color: var(--sf-line);
+  background: var(--sf-soft);
+  color: var(--sf-muted);
+}
+
+:root[data-theme="dark"] .maia-level-chip:hover {
+  border-color: var(--sf-gold);
+  color: var(--sf-ink-strong);
+}
+
+:root[data-theme="dark"] .maia-level-chip.is-earned {
+  border-color: var(--sf-line-strong);
+  background: var(--sf-gold-soft);
+  color: var(--sf-gold);
+}
+
+:root[data-theme="dark"] .maia-level-chip.is-current {
+  border-color: var(--sf-gold);
+  background: var(--sf-soft-2);
+  box-shadow: inset 0 0 0 1px rgba(213, 180, 118, 0.42);
+  color: var(--sf-ink-strong);
+}
+
+:root[data-theme="dark"] .maia-level-chip.is-current.is-earned {
+  background: rgba(213, 180, 118, 0.2);
+}
+
+:root[data-theme="dark"] .history-title {
+  color: var(--sf-ink-strong);
+}
+
+:root[data-theme="dark"] .title-separator::after {
+  box-shadow: 0 0 0 3px rgba(7, 18, 22, 0.94);
+}
+
+:root[data-theme="dark"] .move-pair,
+:root[data-theme="dark"] .move-pair .num,
+:root[data-theme="dark"] .num {
+  color: var(--sf-muted);
+}
+
+:root[data-theme="dark"] .move-pair span:hover {
+  background: var(--sf-soft-2);
+}
+
+:root[data-theme="dark"] .move-pair.active {
+  background-color: rgba(213, 180, 118, 0.16);
+  color: var(--sf-ink-strong);
+}
+
+/* Жетон игрока: слева свой зелёный тон, справа — нейтральный тёмный. */
+:root[data-theme="dark"] .player-info {
+  background: linear-gradient(
+    90deg,
+    rgba(102, 180, 128, 0.22) 0%,
+    rgba(102, 180, 128, 0.08) 45%,
+    rgba(246, 244, 239, 0.05) 55%,
+    rgba(246, 244, 239, 0.05) 100%
+  );
+  border-color: var(--sf-line);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+:root[data-theme="dark"] .vs-text {
+  background: rgba(246, 244, 239, 0.07);
+  border-color: var(--sf-line-strong);
+  box-shadow: none;
+  color: var(--sf-gold);
+}
+
+:root[data-theme="dark"] .move-history-panel .player-name,
+:root[data-theme="dark"] .move-history-panel .bot-name {
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .move-history-panel .rating-label,
+:root[data-theme="dark"] .move-history-panel .player-rating,
+:root[data-theme="dark"] .move-history-panel .bot-rating {
+  color: var(--sf-gold);
+}
+
+:root[data-theme="dark"] .nav-controls button {
+  background: var(--sf-soft);
+  border-color: var(--sf-line);
+  color: var(--sf-muted);
+}
+
+/* Стрелки истории ходов: золотые пиктограммы на тёмной подложке,
+   чтобы не сливались с панелью. */
+:root[data-theme="dark"] .arrow-btn rect {
+  fill: rgba(213, 180, 118, 0.14);
+}
+
+:root[data-theme="dark"] .arrow-btn path {
+  fill: var(--sf-gold);
+}
+
+:root[data-theme="dark"] .arrow-btn:hover rect {
+  fill: rgba(213, 180, 118, 0.26);
+  fill-opacity: 1;
+}
+
+:root[data-theme="dark"] .arrow-btn:hover path {
+  fill: var(--sf-gold-bright);
+}
+
+:root[data-theme="dark"] .move-counter {
+  color: var(--sf-gold);
+}
+
+/* Доска в тёмной раме: сам рисунок клеток не трогаем. */
+:root[data-theme="dark"] .board-wrapper,
+:root[data-theme="dark"] .puzzle-board-wrapper,
+:root[data-theme="dark"] .training-board-wrapper,
+:root[data-theme="dark"] .level-test-board-wrap {
+  border-color: var(--sf-line-strong);
+  background: var(--sf-surface-flat);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.28);
+}
+
+:root[data-theme="dark"] .board-wrapper .player-name,
+:root[data-theme="dark"] .board-wrapper .bot-name {
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .board-wrapper .rating-label,
+:root[data-theme="dark"] .board-wrapper .player-rating,
+:root[data-theme="dark"] .board-wrapper .bot-rating {
+  color: var(--sf-gold);
+}
+
+:root[data-theme="dark"] .material-display {
+  background: rgba(213, 180, 118, 0.9);
+}
+
+:root[data-theme="dark"] .material-diff {
+  color: #141a16;
+}
+
+:root[data-theme="dark"] .btn-position,
+:root[data-theme="dark"] .ctrl-btn,
+:root[data-theme="dark"] .puzzle-ctrl-btn--solution,
+:root[data-theme="dark"] .puzzle-ctrl-btn--hint,
+:root[data-theme="dark"] .gameover-btn,
+:root[data-theme="dark"] .training-primary-btn,
+:root[data-theme="dark"] .training-next-btn,
+:root[data-theme="dark"] .level-test-primary-btn,
+:root[data-theme="dark"] .user-profile-level-test-btn,
+:root[data-theme="dark"] .user-profile-account-form button,
+:root[data-theme="dark"] .admin-btn--primary,
+:root[data-theme="dark"] .modal-submit,
+:root[data-theme="dark"] .auth-submit,
+:root[data-theme="dark"] .auth-import-btn,
+:root[data-theme="dark"] .prg-submit,
+:root[data-theme="dark"] .onb-submit,
+:root[data-theme="dark"] .mini-profile__theme-btn--active {
+  border-color: var(--sf-gold);
+  background: var(--sf-gold);
+  color: #141a16;
+}
+
+:root[data-theme="dark"] .btn-position:hover,
+:root[data-theme="dark"] .btn-position[aria-expanded="true"],
+:root[data-theme="dark"] .ctrl-btn:hover,
+:root[data-theme="dark"] .puzzle-ctrl-btn--solution:hover:not(:disabled),
+:root[data-theme="dark"] .puzzle-ctrl-btn--hint:hover,
+:root[data-theme="dark"] .gameover-btn:hover,
+:root[data-theme="dark"] .training-primary-btn:hover,
+:root[data-theme="dark"] .training-next-btn:hover,
+:root[data-theme="dark"] .level-test-primary-btn:hover,
+:root[data-theme="dark"] .user-profile-level-test-btn:hover,
+:root[data-theme="dark"] .user-profile-account-form button:hover:not(:disabled),
+:root[data-theme="dark"] .admin-btn--primary:hover:not(:disabled),
+:root[data-theme="dark"] .modal-submit:hover,
+:root[data-theme="dark"] .auth-submit:hover,
+:root[data-theme="dark"] .auth-import-btn:hover:not(:disabled),
+:root[data-theme="dark"] .prg-submit:hover,
+:root[data-theme="dark"] .onb-submit:hover:not(:disabled) {
+  background: var(--sf-gold-bright);
+  border-color: var(--sf-gold-bright);
+}
+
+/* Вторичные кнопки: прозрачные, с золотым кантом. */
+:root[data-theme="dark"] .training-back-btn,
+:root[data-theme="dark"] .training-secondary-btn,
+:root[data-theme="dark"] .level-test-secondary-btn,
+:root[data-theme="dark"] .level-test-skip-btn,
+:root[data-theme="dark"] .puzzle-nav-btn,
+:root[data-theme="dark"] .admin-btn {
+  border-color: var(--sf-line);
+  background: var(--sf-soft);
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .training-back-btn:hover,
+:root[data-theme="dark"] .training-secondary-btn:hover,
+:root[data-theme="dark"] .level-test-secondary-btn:hover,
+:root[data-theme="dark"] .level-test-skip-btn:hover,
+:root[data-theme="dark"] .puzzle-nav-btn:hover:not(:disabled),
+:root[data-theme="dark"] .admin-btn:hover:not(:disabled) {
+  border-color: var(--sf-line-strong);
+  background: var(--sf-soft-2);
+}
+
+/* Меню «Позиция». */
+:root[data-theme="dark"] .position-menu__panel {
+  border-color: var(--sf-line);
+  background: var(--sf-surface-raised);
+  box-shadow: 0 24px 54px rgba(0, 0, 0, 0.5);
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .position-menu__title {
+  color: var(--sf-ink-strong);
+}
+
+:root[data-theme="dark"] .position-menu__label {
+  color: var(--sf-gold);
+}
+
+:root[data-theme="dark"] .position-menu__input,
+:root[data-theme="dark"] .position-menu__textarea {
+  border-color: var(--sf-line);
+  background: var(--sf-input);
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .position-menu__input:focus,
+:root[data-theme="dark"] .position-menu__textarea:focus {
+  border-color: var(--sf-gold);
+  box-shadow: 0 0 0 2px rgba(213, 180, 118, 0.18);
+}
+
+:root[data-theme="dark"] .position-menu__action {
+  background: var(--sf-gold);
+  color: #141a16;
+}
+
+:root[data-theme="dark"] .position-menu__action:hover {
+  background: var(--sf-gold-bright);
+}
+
+:root[data-theme="dark"] .position-menu__action--ghost {
+  border-color: var(--sf-line);
+  background: transparent;
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .position-menu__action--ghost:hover {
+  border-color: var(--sf-line-strong);
+  background: var(--sf-soft-2);
+}
+
+:root[data-theme="dark"] .position-menu__hint {
+  color: var(--sf-muted-2);
+}
+
+:root[data-theme="dark"] .position-menu__status {
+  color: var(--sf-green);
+}
+
+:root[data-theme="dark"] .position-menu__status--error {
+  color: var(--sf-error);
+}
+
+/* Оверлеи итога партии и выбора стороны. */
+:root[data-theme="dark"] .gameover-card {
+  border-color: var(--sf-line-strong);
+  background: var(--sf-surface-raised);
+  box-shadow: 0 22px 54px rgba(0, 0, 0, 0.55);
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .gameover-card--win {
+  border-color: rgba(141, 199, 155, 0.6);
+}
+
+:root[data-theme="dark"] .gameover-card--loss {
+  border-color: rgba(190, 106, 88, 0.6);
+}
+
+:root[data-theme="dark"] .gameover-title {
+  color: var(--sf-ink-strong);
+}
+
+:root[data-theme="dark"] .gameover-reason {
+  color: var(--sf-muted);
+}
+
+:root[data-theme="dark"] .side-pick {
+  border-color: var(--sf-line);
+  background: rgba(246, 244, 239, 0.05);
+}
+
+:root[data-theme="dark"] .side-pick:hover {
+  border-color: var(--sf-line-strong);
+  background: rgba(213, 180, 118, 0.1);
+}
+
+:root[data-theme="dark"] .side-pick-name {
+  color: var(--sf-ink);
+}
+
+/* Иконка бота нарисована тёмной: в тёмной теме подменяем её светлой
+   версией. Фильтр не подходит, он перекрашивал бы и золотое кольцо. */
+:root[data-theme="dark"] .bot-avatar img,
+:root[data-theme="dark"] .chat-avatar img,
+:root[data-theme="dark"] .chat-strip-avatar img {
+  background: rgba(246, 244, 239, 0.08);
+  content: url("/bot-icon-light.svg");
+}
+
+/* =========================================================================
+   ШКАЛА ОЦЕНКИ ПОЗИЦИИ
+   -------------------------------------------------------------------------
+   Капсула из двух материалов: глубокий изумруд с мрамором и тёплый
+   пергамент. Половины всегда резко различаются по цвету, в том числе
+   при игре чёрными, когда доска развёрнута и они меняются местами.
+   ========================================================================= */
+
+:root[data-theme="dark"] .eval-bar {
+  border-color: rgba(213, 180, 118, 0.66);
+  background:
+    linear-gradient(180deg, rgba(35, 68, 49, 0.97) 0%, rgba(19, 42, 28, 0.98) 58%, rgba(11, 26, 17, 1) 100%),
+    url("/textures/green-marble.png");
+  background-size: cover;
+  box-shadow:
+    0 5px 16px rgba(0, 0, 0, 0.4),
+    inset 0 0 0 1px rgba(246, 244, 239, 0.07),
+    inset 0 2px 10px rgba(0, 0, 0, 0.32);
+}
+
+/* Развёрнутая доска: сверху - сторона белых, поэтому капсула бумажная,
+   а мрамор уходит в нижнюю заливку. */
+:root[data-theme="dark"] .eval-bar--bottom-black {
+  background: linear-gradient(180deg, #f6eeda 0%, #eadfc5 68%, #d9caa8 100%);
+  box-shadow:
+    0 5px 16px rgba(0, 0, 0, 0.4),
+    inset 0 0 0 1px rgba(255, 253, 247, 0.5),
+    inset 0 2px 8px rgba(74, 50, 32, 0.14);
+}
+
+/* Нижняя половина при игре белыми: тёплый пергамент. */
+:root[data-theme="dark"] .eval-bar .eval-bar-fill {
+  background: linear-gradient(180deg, #faf3e4 0%, #eee2ca 66%, #ddcead 100%);
+  border-top-color: rgba(213, 180, 118, 0.95);
+  box-shadow: 0 -3px 9px rgba(0, 0, 0, 0.3);
+}
+
+/* Нижняя половина при игре чёрными: тёмный изумруд с мрамором.
+   Правило идёт после светлой заливки и перекрывает её. */
+:root[data-theme="dark"] .eval-bar--bottom-black .eval-bar-fill {
+  background:
+    linear-gradient(180deg, rgba(35, 68, 49, 0.97) 0%, rgba(19, 42, 28, 0.98) 58%, rgba(11, 26, 17, 1) 100%),
+    url("/textures/green-marble.png");
+  background-size: cover;
+  border-top-color: rgba(213, 180, 118, 0.95);
+  box-shadow: 0 -3px 9px rgba(0, 0, 0, 0.24);
+}
+
+/* Цифра перевеса: на пергаменте тёмная плашка, на мраморе светлая. */
+:root[data-theme="dark"] .eval-bar-label {
+  background: rgba(8, 20, 24, 0.94);
+  border-color: rgba(213, 180, 118, 0.6);
+  color: #e8d5a8;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.38);
+}
+
+:root[data-theme="dark"] .eval-bar--bottom-black .eval-bar-label {
+  background: rgba(250, 247, 240, 0.95);
+  border-color: rgba(213, 180, 118, 0.7);
+  color: #1f3d2a;
+}
+
+/* =========================================================================
+   ЧАТ (игра и задачи)
+   ========================================================================= */
+
+:root[data-theme="dark"] .main-area > .chat-section,
+:root[data-theme="dark"] .puzzle-chat-section {
+  border-color: var(--sf-line-strong);
+  background: linear-gradient(145deg, rgba(9, 22, 26, 0.94), rgba(6, 15, 18, 0.9));
+  box-shadow: 0 20px 52px rgba(0, 0, 0, 0.32);
+}
+
+:root[data-theme="dark"] .chat-header,
+:root[data-theme="dark"] .chat-input-area {
+  border-color: rgba(213, 180, 118, 0.16);
+}
+
+:root[data-theme="dark"] .chat-title-block h2,
+:root[data-theme="dark"] .main-area > .chat-section .chat-title-block h2,
+:root[data-theme="dark"] .puzzle-chat-section .chat-title-block h2 {
+  color: var(--sf-ink-strong);
+}
+
+:root[data-theme="dark"] .status-bar,
+:root[data-theme="dark"] .main-area > .chat-section .status-bar {
+  color: var(--sf-muted-2);
+}
+
+:root[data-theme="dark"] .chat-collapse-btn {
+  border-color: var(--sf-line);
+  background: var(--sf-soft);
+  color: var(--sf-gold);
+}
+
+:root[data-theme="dark"] .chat-collapse-btn:hover {
+  border-color: var(--sf-line-strong);
+  background: var(--sf-soft-2);
+}
+
+:root[data-theme="dark"] .chat-avatar img,
+:root[data-theme="dark"] .chat-avatar-glyph,
+:root[data-theme="dark"] .chat-strip-avatar {
+  background: rgba(246, 244, 239, 0.08);
+  border-color: var(--sf-line-strong);
+  box-shadow: none;
+}
+
+:root[data-theme="dark"] .chat-avatar-glyph,
+:root[data-theme="dark"] .chat-strip-avatar-glyph {
+  color: var(--sf-green);
+}
+
+:root[data-theme="dark"] .chat-strip,
+:root[data-theme="dark"] .chat-strip-chevron,
+:root[data-theme="dark"] .chat-strip-title {
+  color: var(--sf-gold);
+}
+
+:root[data-theme="dark"] .chat-strip:hover {
+  background: var(--sf-soft);
+}
+
+:root[data-theme="dark"] .chat-msg .msg-body,
+:root[data-theme="dark"] .main-area > .chat-section .chat-msg .msg-body,
+:root[data-theme="dark"] .puzzle-chat-section .chat-msg .msg-body {
+  border-color: var(--sf-line);
+  background: rgba(246, 244, 239, 0.06);
+  color: var(--sf-ink);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+}
+
+:root[data-theme="dark"] .chat-msg.user .msg-body,
+:root[data-theme="dark"] .main-area > .chat-section .chat-msg.user .msg-body,
+:root[data-theme="dark"] .puzzle-chat-section .chat-msg.user .msg-body {
+  border-color: rgba(141, 199, 155, 0.28);
+  background: linear-gradient(180deg, rgba(102, 180, 128, 0.22), rgba(102, 180, 128, 0.12));
+  color: var(--sf-ink-strong);
+}
+
+:root[data-theme="dark"] .chat-msg .msg-avatar {
+  border-color: var(--sf-line);
+  background: rgba(246, 244, 239, 0.08);
+  color: var(--sf-green);
+}
+
+:root[data-theme="dark"] .chat-msg .msg-avatar:not(.msg-avatar--ai) {
+  border-color: rgba(141, 199, 155, 0.3);
+  background: rgba(102, 180, 128, 0.2);
+}
+
+:root[data-theme="dark"] .chat-input-area input,
+:root[data-theme="dark"] .main-area > .chat-section .chat-input-area input,
+:root[data-theme="dark"] .puzzle-chat-section .chat-input-area input {
+  border-color: var(--sf-line);
+  background: var(--sf-input);
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .chat-input-area input:focus,
+:root[data-theme="dark"] .main-area > .chat-section .chat-input-area input:focus,
+:root[data-theme="dark"] .puzzle-chat-section .chat-input-area input:focus {
+  border-color: var(--sf-gold);
+  background: rgba(4, 11, 12, 0.8);
+  box-shadow: 0 0 0 3px rgba(213, 180, 118, 0.14);
+}
+
+:root[data-theme="dark"] .chat-input-area input::placeholder {
+  color: var(--sf-muted-2);
+}
+
+:root[data-theme="dark"] .chat-input-area button,
+:root[data-theme="dark"] .main-area > .chat-section .chat-input-area button,
+:root[data-theme="dark"] .puzzle-chat-section .chat-input-area button {
+  background: var(--sf-gold);
+  color: #141a16;
+}
+
+:root[data-theme="dark"] .chat-input-area button:hover:not(:disabled),
+:root[data-theme="dark"] .main-area > .chat-section .chat-input-area button:hover,
+:root[data-theme="dark"] .puzzle-chat-section .chat-input-area button:hover {
+  background: var(--sf-gold-bright);
+}
+
+:root[data-theme="dark"] .chat-opening-btn {
+  border-color: var(--sf-line);
+  background: var(--sf-soft);
+  color: var(--sf-gold);
+}
+
+:root[data-theme="dark"] .chat-opening-btn:hover:not(:disabled) {
+  border-color: var(--sf-line-strong);
+  background: var(--sf-soft-2);
+  box-shadow: none;
+}
+
+/* =========================================================================
+   ЗАДАЧИ
+   ========================================================================= */
+
+:root[data-theme="dark"] .puzzle-info-panel {
+  border-color: var(--sf-line-strong);
+  background: var(--sf-surface);
+  box-shadow: 0 20px 52px rgba(0, 0, 0, 0.3);
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .puzzle-theme-label,
+:root[data-theme="dark"] .puzzle-moves-left-label,
+:root[data-theme="dark"] .puzzle-streak-label,
+:root[data-theme="dark"] .puzzle-nav-index,
+:root[data-theme="dark"] .puzzle-rating,
+:root[data-theme="dark"] .puzzle-streak-best {
+  color: var(--sf-muted-2);
+}
+
+:root[data-theme="dark"] .puzzle-theme-name,
+:root[data-theme="dark"] .puzzle-side {
+  color: var(--sf-gold);
+}
+
+:root[data-theme="dark"] .puzzle-theme-icon,
+:root[data-theme="dark"] .puzzle-moves-left-count,
+:root[data-theme="dark"] .puzzle-streak-value {
+  color: var(--sf-blue);
+}
+
+:root[data-theme="dark"] .puzzle-streak-value--hot {
+  color: #e8b07a;
+}
+
+:root[data-theme="dark"] .puzzle-streak-rewards {
+  color: var(--sf-muted-2);
+}
+
+:root[data-theme="dark"] .puzzle-instruction {
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .puzzle-turn-indicator {
+  border-color: var(--sf-line);
+  background: var(--sf-soft);
+  color: var(--sf-blue);
+}
+
+:root[data-theme="dark"] .puzzle-solved-text,
+:root[data-theme="dark"] .puzzle-solved-streak {
+  color: var(--sf-green);
+}
+
+:root[data-theme="dark"] .puzzle-solved-hint {
+  color: var(--sf-muted);
+}
+
+:root[data-theme="dark"] .puzzle-result--success {
+  border-color: rgba(141, 199, 155, 0.4);
+  background: rgba(102, 180, 128, 0.16);
+  color: var(--sf-green);
+}
+
+:root[data-theme="dark"] .puzzle-result--error {
+  border-color: rgba(190, 106, 88, 0.4);
+  background: var(--sf-error-soft);
+  color: var(--sf-error);
+}
+
+:root[data-theme="dark"] .puzzle-result--hint {
+  border-color: var(--sf-line);
+  background: var(--sf-gold-soft);
+  color: var(--sf-gold-bright);
+}
+
+:root[data-theme="dark"] .puzzles-loading,
+:root[data-theme="dark"] .puzzles-error {
+  color: var(--sf-muted);
+}
+
+/* =========================================================================
+   ОБУЧЕНИЕ
+   ========================================================================= */
+
+:root[data-theme="dark"] .training-page,
+:root[data-theme="dark"] .level-test-page {
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .training-register-wall,
+:root[data-theme="dark"] .training-hero,
+:root[data-theme="dark"] .training-module-header {
+  border-color: var(--sf-line-strong);
+  background: var(--sf-surface);
+  box-shadow: 0 20px 52px rgba(0, 0, 0, 0.3);
+}
+
+:root[data-theme="dark"] .training-kicker {
+  color: var(--sf-gold);
+}
+
+:root[data-theme="dark"] .training-hero h1,
+:root[data-theme="dark"] .training-module-header h1 {
+  color: var(--sf-ink-strong);
+}
+
+:root[data-theme="dark"] .training-register-wall p,
+:root[data-theme="dark"] .training-hero p,
+:root[data-theme="dark"] .training-module-header p {
+  color: var(--sf-muted);
+}
+
+:root[data-theme="dark"] .training-module-node {
+  border-color: rgba(141, 199, 155, 0.3);
+  background: linear-gradient(145deg, rgba(10, 26, 28, 0.96), rgba(12, 30, 31, 0.94));
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.26);
+}
+
+:root[data-theme="dark"] .training-module-node:hover:not(:disabled) {
+  border-color: rgba(141, 199, 155, 0.6);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.34);
+}
+
+:root[data-theme="dark"] .training-module-node-icon,
+:root[data-theme="dark"] .training-module-header-icon {
+  color: var(--sf-blue);
+}
+
+:root[data-theme="dark"] .training-module-node-title {
+  color: var(--sf-ink-strong);
+}
+
+:root[data-theme="dark"] .training-module-node-description {
+  color: var(--sf-muted);
+}
+
+:root[data-theme="dark"] .training-module-meta {
+  background: var(--sf-gold-soft);
+  color: var(--sf-gold);
+}
+
+:root[data-theme="dark"] .training-module-header-icon {
+  background: var(--sf-green-soft);
+}
+
+:root[data-theme="dark"] .training-knight-hop {
+  border-color: var(--sf-line-strong);
+  background: var(--sf-surface-raised);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.36);
+}
+
+:root[data-theme="dark"] .training-knight-glyph {
+  color: var(--sf-green);
+}
+
+:root[data-theme="dark"] .training-path-node {
+  border-color: var(--sf-line);
+  background: var(--sf-surface-raised);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.24);
+}
+
+/* Тёплый блик при наведении. Фон карточки остаётся плотным, поэтому
+   она не «проваливается» в прозрачность, а мягко подсвечивается. */
+:root[data-theme="dark"] .training-path-node::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    radial-gradient(120% 150% at 18% 0%, rgba(213, 180, 118, 0.2), transparent 58%),
+    linear-gradient(135deg, rgba(213, 180, 118, 0.08), transparent 62%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+/* Контент выше блика. */
+:root[data-theme="dark"] .training-path-node > * {
+  position: relative;
+  z-index: 1;
+}
+
+:root[data-theme="dark"] .training-path-node:hover::after {
+  opacity: 1;
+}
+
+:root[data-theme="dark"] .training-path-node:hover {
+  transform: translateY(-3px);
+  border-color: rgba(213, 180, 118, 0.52);
+  box-shadow:
+    0 18px 40px rgba(0, 0, 0, 0.36),
+    0 0 0 1px rgba(213, 180, 118, 0.1),
+    0 0 24px rgba(213, 180, 118, 0.08);
+}
+
+:root[data-theme="dark"] .training-path-circle {
+  transition:
+    transform 0.26s cubic-bezier(0.2, 0.8, 0.3, 1),
+    border-color 0.26s ease,
+    background-color 0.26s ease;
+}
+
+:root[data-theme="dark"] .training-path-node:hover .training-path-circle {
+  transform: scale(1.07);
+}
+
+:root[data-theme="dark"] .training-path-title {
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .training-path-meta {
+  color: var(--sf-muted-2);
+}
+
+/* Кружки уроков: не начатый — приглушённый, пройденный — зелёный,
+   текущий — золотой (как и раньше, только в тёмной палитре). */
+:root[data-theme="dark"] .training-path-circle {
+  border-color: rgba(246, 244, 239, 0.18);
+  background: rgba(246, 244, 239, 0.08);
+  color: var(--sf-muted);
+}
+
+:root[data-theme="dark"] .training-path-node--done .training-path-circle {
+  border-color: rgba(141, 199, 155, 0.6);
+  background: rgba(102, 180, 128, 0.6);
+  color: var(--sf-ink-strong);
+}
+
+:root[data-theme="dark"] .training-path-node--current {
+  border-color: var(--sf-line-strong);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
+}
+
+:root[data-theme="dark"] .training-path-node--current .training-path-circle {
+  border-color: var(--sf-gold);
+  background: var(--sf-gold);
+  color: #141a16;
+}
+
+:root[data-theme="dark"] .training-progress-dot {
+  border-color: var(--sf-line);
+  background: var(--sf-soft);
+  color: var(--sf-muted);
+}
+
+:root[data-theme="dark"] .training-progress-nav {
+  border-color: var(--sf-line);
+  background: var(--sf-soft);
+  color: var(--sf-blue);
+}
+
+:root[data-theme="dark"] .training-progress-dot--active,
+:root[data-theme="dark"] .training-progress-dot--solved {
+  border-color: rgba(141, 199, 155, 0.6);
+  background: rgba(102, 180, 128, 0.4);
+  color: var(--sf-ink-strong);
+}
+
+:root[data-theme="dark"] .training-progress-dot--locked {
+  border-color: rgba(246, 244, 239, 0.14);
+  background: rgba(246, 244, 239, 0.04);
+  color: var(--sf-muted-2);
+}
+
+:root[data-theme="dark"] .training-progress-bar {
+  background: rgba(246, 244, 239, 0.1);
+}
+
+:root[data-theme="dark"] .training-theory-navigation,
+:root[data-theme="dark"] .training-course-progress__head,
+:root[data-theme="dark"] .training-module-progress__head {
+  color: var(--sf-muted);
+}
+
+:root[data-theme="dark"] .training-course-progress__head strong,
+:root[data-theme="dark"] .training-module-progress__head strong {
+  color: var(--sf-gold);
+}
+
+/* Карточка уровня в шапке обучения: плотная тёмная поверхность,
+   золотой блик сверху и светящийся рейтинг. */
+:root[data-theme="dark"] .training-hero .rating-band-progress {
+  border-color: rgba(213, 180, 118, 0.34);
+  background:
+    radial-gradient(130% 160% at 50% -35%, rgba(213, 180, 118, 0.18), transparent 62%),
+    linear-gradient(150deg, rgba(16, 37, 37, 0.98), rgba(8, 22, 25, 0.98));
+  box-shadow:
+    0 12px 30px rgba(0, 0, 0, 0.32),
+    inset 0 1px 0 rgba(246, 244, 239, 0.07);
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .training-hero .rating-band-progress::before {
+  background: linear-gradient(90deg, transparent, rgba(213, 180, 118, 0.6), transparent);
+}
+
+:root[data-theme="dark"] .training-hero .rating-band-progress__title > span {
+  color: var(--sf-gold);
+}
+
+:root[data-theme="dark"] .training-hero .rating-band-progress__title > strong {
+  color: var(--sf-ink-strong);
+}
+
+:root[data-theme="dark"] .training-hero .rating-band-progress__rating {
+  color: var(--sf-gold-bright);
+  text-shadow: 0 0 18px rgba(213, 180, 118, 0.2);
+}
+
+:root[data-theme="dark"] .training-hero .rating-band-progress__rating small {
+  color: var(--sf-muted-2);
+}
+
+:root[data-theme="dark"] .training-hero .rating-band-progress__track {
+  background: rgba(246, 244, 239, 0.08);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+
+:root[data-theme="dark"] .training-hero .rating-band-progress__track > span {
+  background: linear-gradient(90deg, #3c7c52, #82c795);
+  box-shadow: 0 0 12px rgba(116, 190, 138, 0.35);
+}
+
+:root[data-theme="dark"] .training-hero .rating-band-progress__track > span::after {
+  border-color: rgba(255, 253, 248, 0.65);
+  background: radial-gradient(circle at 35% 30%, #f7e3b8, #d5b476 58%, #a07c36);
+  box-shadow: 0 0 10px rgba(213, 180, 118, 0.45);
+}
+
+:root[data-theme="dark"] .training-hero .rating-band-progress__caption {
+  color: var(--sf-muted);
+}
+
+:root[data-theme="dark"] .training-hero .rating-band-progress__points {
+  color: var(--sf-gold-bright);
+}
+
+:root[data-theme="dark"] .training-theory-panel,
+:root[data-theme="dark"] .training-task-panel {
+  border-color: var(--sf-line);
+  background: var(--sf-surface);
+  box-shadow: 0 20px 52px rgba(0, 0, 0, 0.3);
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .training-theory-panel h2,
+:root[data-theme="dark"] .training-task-panel h2 {
+  color: var(--sf-ink-strong);
+}
+
+:root[data-theme="dark"] .training-theory-panel p,
+:root[data-theme="dark"] .training-task-instruction,
+:root[data-theme="dark"] .training-result p {
+  color: var(--sf-muted);
+}
+
+:root[data-theme="dark"] .training-task-type {
+  background: rgba(154, 199, 223, 0.12);
+  color: var(--sf-blue);
+}
+
+:root[data-theme="dark"] .training-selected-summary,
+:root[data-theme="dark"] .training-help-text,
+:root[data-theme="dark"] .training-checking {
+  background: var(--sf-green-soft);
+  color: var(--sf-muted);
+}
+
+:root[data-theme="dark"] .training-selected-list {
+  color: var(--sf-green);
+}
+
+:root[data-theme="dark"] .training-result--success {
+  border-color: rgba(141, 199, 155, 0.45);
+  background: rgba(102, 180, 128, 0.16);
+  color: var(--sf-green);
+}
+
+:root[data-theme="dark"] .training-result--error {
+  border-color: rgba(190, 106, 88, 0.45);
+  background: var(--sf-error-soft);
+  color: var(--sf-error);
+}
+
+:root[data-theme="dark"] .training-lesson-complete {
+  background: rgba(102, 180, 128, 0.16);
+  color: var(--sf-green);
+}
+
+:root[data-theme="dark"] .training-global-error {
+  border-color: rgba(190, 106, 88, 0.4);
+  background: var(--sf-error-soft);
+  color: var(--sf-error);
+}
+
+:root[data-theme="dark"] .training-empty,
+:root[data-theme="dark"] .training-loading {
+  color: var(--sf-muted);
+}
+
+:root[data-theme="dark"] .training-option-btn {
+  border-color: var(--sf-line);
+  background: var(--sf-soft);
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .training-option-btn:hover:not(:disabled) {
+  border-color: rgba(141, 199, 155, 0.5);
+  background: var(--sf-green-soft);
+}
+
+:root[data-theme="dark"] .training-option-btn--selected {
+  border-color: rgba(141, 199, 155, 0.65);
+  background: rgba(102, 180, 128, 0.22);
+  box-shadow: inset 0 0 0 1px rgba(141, 199, 155, 0.28);
+  color: var(--sf-ink-strong);
+}
+
+/* Блок «Повторить сегодня». */
+:root[data-theme="dark"] .training-due-toggle {
+  border-color: var(--sf-line);
+  background: var(--sf-surface-raised);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .training-due-toggle:hover {
+  border-color: var(--sf-line-strong);
+  background: rgba(213, 180, 118, 0.08);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.34);
+}
+
+:root[data-theme="dark"] .training-due-toggle-count {
+  background: var(--sf-gold);
+  color: #141a16;
+}
+
+:root[data-theme="dark"] .training-due-toggle-chevron {
+  color: var(--sf-gold);
+}
+
+:root[data-theme="dark"] .training-due-panel {
+  border-color: var(--sf-line);
+  background: var(--sf-surface-raised);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.4);
+}
+
+:root[data-theme="dark"] .training-due-heading strong {
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .training-due-heading span,
+:root[data-theme="dark"] .training-due-empty {
+  color: var(--sf-muted-2);
+}
+
+:root[data-theme="dark"] .training-due-card {
+  border-color: var(--sf-line);
+  background: var(--sf-soft);
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .training-due-card:hover {
+  border-color: var(--sf-line-strong);
+  background: rgba(213, 180, 118, 0.1);
+}
+
+/* Подсказки и кросс-ссылки внутри обучения. */
+:root[data-theme="dark"] .training-hint-box {
+  border-color: rgba(141, 199, 155, 0.3);
+  background: var(--sf-green-soft);
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .learning-crosslink,
+:root[data-theme="dark"] .learning-topic-filter {
+  border-color: var(--sf-line);
+  background: var(--sf-soft);
+  color: var(--sf-blue);
+}
+
+:root[data-theme="dark"] .learning-crosslink:hover {
+  border-color: var(--sf-line-strong);
+  background: var(--sf-soft-2);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28);
+}
+
+:root[data-theme="dark"] .learning-topic-filter button {
+  color: var(--sf-blue);
+}
+
+:root[data-theme="dark"] .learning-topic-filter--adaptive {
+  border-color: var(--sf-line);
+  background: var(--sf-gold-soft);
+  color: var(--sf-gold-bright);
+}
+
+/* =========================================================================
+   ПРОФИЛЬ
+   ========================================================================= */
+
+:root[data-theme="dark"] .user-profile-page {
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .user-profile-card,
+:root[data-theme="dark"] .user-profile-rating-section,
+:root[data-theme="dark"] .user-profile-progress-section,
+:root[data-theme="dark"] .user-profile-section,
+:root[data-theme="dark"] .user-profile-empty {
+  border-color: var(--sf-line);
+  background: var(--sf-surface);
+  box-shadow: 0 20px 52px rgba(0, 0, 0, 0.28);
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .user-profile-kicker {
+  color: var(--sf-gold);
+}
+
+:root[data-theme="dark"] .user-profile-avatar {
+  border-color: var(--sf-line);
+  background: var(--sf-soft);
+}
+
+:root[data-theme="dark"] .user-profile-badge {
+  border: 1px solid var(--sf-line);
+  background: var(--sf-gold-soft);
+  color: var(--sf-gold);
+}
+
+:root[data-theme="dark"] .user-profile-stat {
+  border-color: rgba(246, 244, 239, 0.1);
+  background: var(--sf-soft);
+}
+
+:root[data-theme="dark"] .user-profile-stat strong {
+  color: var(--sf-ink-strong);
+}
+
+:root[data-theme="dark"] .user-profile-stat--coins {
+  border-color: var(--sf-line);
+  background: linear-gradient(135deg, rgba(213, 180, 118, 0.14), rgba(213, 180, 118, 0.05));
+}
+
+:root[data-theme="dark"] .user-profile-stat--coins strong {
+  color: var(--sf-gold);
+}
+
+:root[data-theme="dark"] .user-profile-muted {
+  color: var(--sf-muted-2);
+}
+
+:root[data-theme="dark"] .user-profile-warning {
+  color: var(--sf-error);
+}
+
+:root[data-theme="dark"] .user-profile-warning--ok {
+  border-color: rgba(141, 199, 155, 0.3);
+  background: var(--sf-green-soft);
+  color: var(--sf-green);
+}
+
+:root[data-theme="dark"] .user-profile-account {
+  border-color: var(--sf-line);
+  background: var(--sf-soft);
+}
+
+:root[data-theme="dark"] .user-profile-account-form select,
+:root[data-theme="dark"] .user-profile-account-form input {
+  border-color: var(--sf-line);
+  background: var(--sf-input);
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .user-profile-account-form select:focus,
+:root[data-theme="dark"] .user-profile-account-form input:focus {
+  border-color: var(--sf-gold);
+}
+
+:root[data-theme="dark"] .user-profile-account-remove,
+:root[data-theme="dark"] .admin-btn--danger {
+  border-color: rgba(190, 106, 88, 0.4);
+  background: var(--sf-error-soft);
+  color: var(--sf-error);
+}
+
+:root[data-theme="dark"] .user-profile-account-remove:hover:not(:disabled),
+:root[data-theme="dark"] .admin-btn--danger:hover:not(:disabled) {
+  background: rgba(220, 120, 100, 0.22);
+}
+
+/* =========================================================================
+   АДМИНКА
+   ========================================================================= */
+
+:root[data-theme="dark"] .admin-page {
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .admin-card,
+:root[data-theme="dark"] .admin-empty,
+:root[data-theme="dark"] .admin-users-panel,
+:root[data-theme="dark"] .admin-summary {
+  border-color: var(--sf-line);
+  background: var(--sf-surface);
+  box-shadow: 0 20px 52px rgba(0, 0, 0, 0.28);
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .admin-kicker {
+  color: var(--sf-gold);
+}
+
+:root[data-theme="dark"] .admin-warning {
+  border-color: rgba(190, 106, 88, 0.35);
+  background: var(--sf-error-soft);
+  color: var(--sf-error);
+}
+
+:root[data-theme="dark"] .admin-notice--success {
+  border-color: rgba(141, 199, 155, 0.3);
+  background: var(--sf-green-soft);
+  color: var(--sf-green);
+}
+
+:root[data-theme="dark"] .admin-search,
+:root[data-theme="dark"] .admin-select {
+  border-color: var(--sf-line);
+  background: var(--sf-input);
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .admin-search:focus,
+:root[data-theme="dark"] .admin-select:focus {
+  border-color: var(--sf-gold);
+}
+
+:root[data-theme="dark"] .admin-user {
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .admin-user:hover {
+  background: var(--sf-soft);
+}
+
+:root[data-theme="dark"] .admin-user--active {
+  border-color: var(--sf-line);
+  background: var(--sf-gold-soft);
+}
+
+:root[data-theme="dark"] .admin-user__avatar,
+:root[data-theme="dark"] .admin-user-profile-avatar {
+  border-color: var(--sf-line);
+  background: var(--sf-soft);
+}
+
+:root[data-theme="dark"] .admin-badge {
+  border: 1px solid var(--sf-line);
+  background: var(--sf-gold-soft);
+  color: var(--sf-gold);
+}
+
+:root[data-theme="dark"] .admin-stat {
+  border-color: rgba(246, 244, 239, 0.1);
+  background: var(--sf-soft);
+}
+
+:root[data-theme="dark"] .admin-topic-chip {
+  border-color: rgba(141, 199, 155, 0.28);
+  background: var(--sf-green-soft);
+  color: var(--sf-green);
+}
+
+:root[data-theme="dark"] .admin-topics-title {
+  color: var(--sf-muted);
+}
+
+:root[data-theme="dark"] .admin-topics-title--weak {
+  color: var(--sf-error);
+}
+
+:root[data-theme="dark"] .admin-topic-chip--weak {
+  border-color: rgba(190, 106, 88, 0.3);
+  background: var(--sf-error-soft);
+  color: var(--sf-error);
+}
+
+/* =========================================================================
+   ТЕСТ УРОВНЯ
+   ========================================================================= */
+
+:root[data-theme="dark"] .level-test-page h1 {
+  color: var(--sf-ink-strong);
+}
+
+:root[data-theme="dark"] .level-test-kicker {
+  color: var(--sf-gold);
+}
+
+:root[data-theme="dark"] .level-test-intro-card,
+:root[data-theme="dark"] .level-test-result-card,
+:root[data-theme="dark"] .level-test-loading-card,
+:root[data-theme="dark"] .level-test-side-card {
+  border: 1px solid var(--sf-line);
+  background: var(--sf-surface);
+  box-shadow: 0 20px 52px rgba(0, 0, 0, 0.3);
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .level-test-rules > div,
+:root[data-theme="dark"] .level-test-turn {
+  border: 1px solid rgba(246, 244, 239, 0.08);
+  background: var(--sf-soft);
+  color: var(--sf-muted);
+}
+
+:root[data-theme="dark"] .level-test-turn strong {
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .level-test-note,
+:root[data-theme="dark"] .level-test-privacy-note,
+:root[data-theme="dark"] .level-test-side-number {
+  color: var(--sf-muted-2);
+}
+
+:root[data-theme="dark"] .level-test-personalization,
+:root[data-theme="dark"] .level-test-rating-value,
+:root[data-theme="dark"] .level-test-counter,
+:root[data-theme="dark"] .level-test-total-score strong {
+  color: var(--sf-gold);
+}
+
+:root[data-theme="dark"] .level-test-progress-track {
+  background: rgba(246, 244, 239, 0.1);
+}
+
+:root[data-theme="dark"] .level-test-progress-fill {
+  background: linear-gradient(90deg, #4f935c, #8db56f);
+}
+
+:root[data-theme="dark"] .level-test-error {
+  background: var(--sf-error-soft);
+  color: var(--sf-error);
+}
+
+:root[data-theme="dark"] .level-test-feedback--success {
+  background: rgba(102, 180, 128, 0.16);
+  color: var(--sf-green);
+}
+
+:root[data-theme="dark"] .level-test-feedback--error {
+  background: var(--sf-error-soft);
+  color: var(--sf-error);
+}
+
+:root[data-theme="dark"] .level-test-feedback--strong {
+  background: var(--sf-gold-soft);
+  color: var(--sf-gold-bright);
+}
+
+:root[data-theme="dark"] .level-test-feedback--checking {
+  background: rgba(154, 199, 223, 0.12);
+  color: var(--sf-blue);
+}
+
+:root[data-theme="dark"] .level-test-breakdown-row {
+  background: var(--sf-soft);
+}
+
+:root[data-theme="dark"] .level-test-breakdown-row span {
+  color: var(--sf-muted-2);
+}
+
+:root[data-theme="dark"] .level-test-promotion-modal {
+  border: 1px solid var(--sf-line);
+  background: var(--sf-surface-raised);
+  color: var(--sf-ink);
+}
+
+/* =========================================================================
+   ВИДЖЕТЫ ПРОГРЕССА
+   ========================================================================= */
+
+:root[data-theme="dark"] .progress-widget {
+  border-color: var(--sf-line);
+  background: var(--sf-surface);
+  box-shadow: 0 20px 52px rgba(0, 0, 0, 0.28);
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .progress-widget--error {
+  color: var(--sf-error);
+}
+
+:root[data-theme="dark"] .progress-widget__kicker,
+:root[data-theme="dark"] .progress-widget__topics-title {
+  color: var(--sf-gold);
+}
+
+:root[data-theme="dark"] .progress-widget__streak {
+  background: var(--sf-gold-soft);
+}
+
+:root[data-theme="dark"] .progress-track-card {
+  border-color: rgba(246, 244, 239, 0.1);
+  background: var(--sf-soft);
+}
+
+:root[data-theme="dark"] .progress-meter,
+:root[data-theme="dark"] .progress-topic__bar {
+  background: rgba(246, 244, 239, 0.1);
+}
+
+:root[data-theme="dark"] .progress-widget__topics {
+  border-top-color: rgba(213, 180, 118, 0.16);
+}
+
+:root[data-theme="dark"] .progress-widget__adaptive {
+  border-color: var(--sf-line);
+  background: var(--sf-gold-soft);
+}
+
+:root[data-theme="dark"] .progress-widget__adaptive button {
+  border-color: var(--sf-line);
+  background: var(--sf-soft);
+  color: var(--sf-blue);
+}
+
+:root[data-theme="dark"] .progress-widget__adaptive button:hover {
+  background: var(--sf-soft-2);
+}
+
+:root[data-theme="dark"] .phase-accuracy {
+  --phase-ink: #f6f4ef;
+  --phase-muted: rgba(246, 244, 239, 0.62);
+  border-color: var(--sf-line);
+  background:
+    radial-gradient(ellipse at 88% 8%, rgba(102, 180, 128, 0.12), transparent 35%),
+    linear-gradient(145deg, rgba(7, 18, 22, 0.97), rgba(10, 25, 27, 0.96));
+  box-shadow: 0 20px 52px rgba(0, 0, 0, 0.28);
+}
+
+:root[data-theme="dark"] .phase-accuracy--loading {
+  background: linear-gradient(
+    100deg,
+    rgba(9, 22, 26, 0.96) 30%,
+    rgba(16, 36, 38, 0.96) 50%,
+    rgba(9, 22, 26, 0.96) 70%
+  );
+}
+
+:root[data-theme="dark"] .phase-accuracy--message button {
+  border-color: var(--sf-line);
+  background: var(--sf-soft);
+  color: var(--sf-gold);
+}
+
+:root[data-theme="dark"] .phase-accuracy__games {
+  border-color: rgba(246, 244, 239, 0.1);
+  background: var(--sf-soft);
+  color: var(--sf-muted);
+}
+
+:root[data-theme="dark"] .phase-accuracy__insight {
+  border-color: rgba(141, 199, 155, 0.2);
+  background: linear-gradient(90deg, rgba(102, 180, 128, 0.12), rgba(246, 244, 239, 0.03));
+  color: var(--sf-muted);
+}
+
+:root[data-theme="dark"] .phase-accuracy__insight-icon {
+  color: var(--sf-green);
+}
+
+:root[data-theme="dark"] .phase-accuracy__summary-item {
+  border-color: rgba(246, 244, 239, 0.1);
+  background: var(--sf-soft);
+}
+
+:root[data-theme="dark"] .phase-accuracy__summary-item:hover,
+:root[data-theme="dark"] .phase-accuracy__summary-item.is-selected {
+  border-color: var(--sf-line-strong);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.26);
+}
+
+:root[data-theme="dark"] .phase-accuracy__summary-item span,
+:root[data-theme="dark"] .phase-accuracy__summary-item small,
+:root[data-theme="dark"] .phase-accuracy__details-heading span,
+:root[data-theme="dark"] .phase-accuracy__footnote {
+  color: var(--sf-muted-2);
+}
+
+:root[data-theme="dark"] .phase-accuracy__summary-item strong,
+:root[data-theme="dark"] .phase-accuracy__details-heading strong {
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .phase-accuracy__details {
+  background: rgba(246, 244, 239, 0.05);
+}
+
+:root[data-theme="dark"] .phase-accuracy__error--soft {
+  background: var(--sf-gold-soft);
+  color: var(--sf-gold-bright);
+}
+
+:root[data-theme="dark"] .phase-accuracy__error--medium,
+:root[data-theme="dark"] .phase-accuracy__error--strong {
+  background: var(--sf-error-soft);
+  color: var(--sf-error);
+}
+
+:root[data-theme="dark"] .rating-band-progress {
+  border-color: var(--sf-line);
+  background: var(--sf-soft);
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .rating-band-progress__track {
+  background: rgba(246, 244, 239, 0.1);
+}
+
+/* =========================================================================
+   МОДАЛЬНЫЕ ОКНА: ВХОД, РЕГИСТРАЦИЯ, АНКЕТА, ЗАГЛУШКИ
+   ========================================================================= */
+
+:root[data-theme="dark"] .auth-overlay,
+:root[data-theme="dark"] .onb-overlay,
+:root[data-theme="dark"] .prg-overlay,
+:root[data-theme="dark"] .modal-overlay {
+  background: rgba(3, 8, 9, 0.72);
+}
+
+:root[data-theme="dark"] .auth-card,
+:root[data-theme="dark"] .modal-content,
+:root[data-theme="dark"] .onb-card,
+:root[data-theme="dark"] .prg-card {
+  border: 1px solid var(--sf-line);
+  background: linear-gradient(145deg, rgba(8, 20, 24, 0.98), rgba(10, 25, 27, 0.97));
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.55);
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .auth-side--brand {
+  border-color: rgba(213, 180, 118, 0.24);
+  background: linear-gradient(160deg, rgba(213, 180, 118, 0.12), rgba(102, 180, 128, 0.08));
+}
+
+:root[data-theme="dark"] .auth-brand-icon,
+:root[data-theme="dark"] .prg-brand-icon,
+:root[data-theme="dark"] .onb-brand-icon {
+  color: var(--sf-gold);
+}
+
+:root[data-theme="dark"] .auth-brand-name,
+:root[data-theme="dark"] .prg-brand-name,
+:root[data-theme="dark"] .onb-brand-name,
+:root[data-theme="dark"] .auth-title,
+:root[data-theme="dark"] .modal-title,
+:root[data-theme="dark"] .onb-title,
+:root[data-theme="dark"] .prg-title,
+:root[data-theme="dark"] .modal-icon {
+  color: var(--sf-ink-strong);
+}
+
+:root[data-theme="dark"] .auth-subtitle,
+:root[data-theme="dark"] .modal-subtitle,
+:root[data-theme="dark"] .onb-subtitle,
+:root[data-theme="dark"] .prg-text,
+:root[data-theme="dark"] .modal-footer,
+:root[data-theme="dark"] .auth-footer {
+  color: var(--sf-muted);
+}
+
+:root[data-theme="dark"] .modal-close,
+:root[data-theme="dark"] .auth-close,
+:root[data-theme="dark"] .onb-close,
+:root[data-theme="dark"] .onb-skip,
+:root[data-theme="dark"] .ppg-later {
+  color: var(--sf-muted);
+}
+
+:root[data-theme="dark"] .modal-close:hover,
+:root[data-theme="dark"] .auth-close:hover,
+:root[data-theme="dark"] .onb-close:hover,
+:root[data-theme="dark"] .onb-skip:hover,
+:root[data-theme="dark"] .ppg-later:hover {
+  color: var(--sf-ink-strong);
+}
+
+:root[data-theme="dark"] .auth-close {
+  border-color: var(--sf-line);
+  background: var(--sf-soft);
+}
+
+:root[data-theme="dark"] .auth-close:hover {
+  background: var(--sf-soft-2);
+}
+
+:root[data-theme="dark"] .modal-divider,
+:root[data-theme="dark"] .onb-divider {
+  background: var(--sf-gold);
+}
+
+:root[data-theme="dark"] .modal-label,
+:root[data-theme="dark"] .auth-label-text,
+:root[data-theme="dark"] .onb-row-label,
+:root[data-theme="dark"] .modal-footer,
+:root[data-theme="dark"] .auth-footer {
+  color: var(--sf-muted);
+}
+
+:root[data-theme="dark"] .modal-footer a,
+:root[data-theme="dark"] .auth-footer a,
+:root[data-theme="dark"] .auth-reg-doc {
+  color: var(--sf-gold);
+}
+
+:root[data-theme="dark"] .modal-footer a:hover,
+:root[data-theme="dark"] .auth-footer a:hover,
+:root[data-theme="dark"] .auth-reg-doc:hover {
+  color: var(--sf-gold-bright);
+}
+
+:root[data-theme="dark"] .auth-section {
+  border-color: rgba(213, 180, 118, 0.18);
+  background: var(--sf-soft);
+}
+
+:root[data-theme="dark"] .auth-section-label {
+  color: var(--sf-gold);
+}
+
+:root[data-theme="dark"] .auth-optional,
+:root[data-theme="dark"] .onb-optional,
+:root[data-theme="dark"] .auth-provider,
+:root[data-theme="dark"] .onb-check,
+:root[data-theme="dark"] .onb-rank-label {
+  color: var(--sf-muted);
+}
+
+:root[data-theme="dark"] .auth-provider {
+  border-color: var(--sf-line);
+  background: var(--sf-soft);
+}
+
+:root[data-theme="dark"] .auth-provider:hover {
+  border-color: var(--sf-line-strong);
+  background: var(--sf-soft-2);
+}
+
+:root[data-theme="dark"] .auth-provider.active {
+  border-color: var(--sf-gold);
+  background: var(--sf-gold);
+  color: #141a16;
+}
+
+:root[data-theme="dark"] .modal-input-wrapper,
+:root[data-theme="dark"] .auth-input-wrapper,
+:root[data-theme="dark"] .auth-import-input,
+:root[data-theme="dark"] .auth-input,
+:root[data-theme="dark"] .modal-input,
+:root[data-theme="dark"] .onb-input,
+:root[data-theme="dark"] .onb-consent .onb-input {
+  border-color: var(--sf-line);
+  background: var(--sf-input);
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .auth-input-wrapper:focus-within,
+:root[data-theme="dark"] .auth-import-input:focus,
+:root[data-theme="dark"] .modal-input-wrapper:focus-within,
+:root[data-theme="dark"] .onb-input:focus {
+  border-color: var(--sf-gold);
+}
+
+:root[data-theme="dark"] .auth-input::placeholder {
+  color: var(--sf-muted-2);
+}
+
+:root[data-theme="dark"] .auth-input-icon,
+:root[data-theme="dark"] .modal-input-icon,
+:root[data-theme="dark"] .auth-eye {
+  color: var(--sf-muted-2);
+}
+
+:root[data-theme="dark"] .auth-eye:hover {
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .auth-profile-card {
+  border-color: var(--sf-line);
+  background: var(--sf-soft);
+  box-shadow: none;
+}
+
+:root[data-theme="dark"] .auth-profile-img {
+  border-color: var(--sf-line-strong);
+  background: var(--sf-soft-2);
+}
+
+:root[data-theme="dark"] .auth-profile-name,
+:root[data-theme="dark"] .auth-profile-stats b {
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .auth-profile-sub,
+:root[data-theme="dark"] .auth-perf-label,
+:root[data-theme="dark"] .auth-profile-stats {
+  color: var(--sf-muted-2);
+}
+
+:root[data-theme="dark"] .auth-perf {
+  border-color: rgba(141, 199, 155, 0.22);
+  background: var(--sf-green-soft);
+}
+
+:root[data-theme="dark"] .auth-perf-value {
+  color: var(--sf-green);
+}
+
+:root[data-theme="dark"] .auth-profile-title {
+  background: rgba(102, 180, 128, 0.5);
+  color: var(--sf-ink-strong);
+}
+
+/* Онбординг. */
+:root[data-theme="dark"] .onb-q,
+:root[data-theme="dark"] .onb-footer {
+  border-color: rgba(213, 180, 118, 0.16);
+}
+
+:root[data-theme="dark"] .onb-q-title {
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .onb-option,
+:root[data-theme="dark"] .onb-pill,
+:root[data-theme="dark"] .onb-rank-item,
+:root[data-theme="dark"] .onb-rank-btn {
+  border-color: var(--sf-line);
+  background: var(--sf-soft);
+  color: var(--sf-muted);
+}
+
+:root[data-theme="dark"] .onb-option:hover:not(:disabled),
+:root[data-theme="dark"] .onb-pill:hover,
+:root[data-theme="dark"] .onb-rank-btn:hover:not(:disabled) {
+  border-color: var(--sf-gold);
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .onb-option--active {
+  border-color: var(--sf-gold);
+  background: var(--sf-gold-soft);
+  color: var(--sf-ink-strong);
+}
+
+:root[data-theme="dark"] .onb-option-mark {
+  border-color: var(--sf-muted-2);
+}
+
+:root[data-theme="dark"] .onb-option--active .onb-option-mark {
+  border-color: var(--sf-gold);
+  background: var(--sf-gold);
+  box-shadow: inset 0 0 0 2px #0a191b;
+}
+
+:root[data-theme="dark"] .onb-pill--active,
+:root[data-theme="dark"] .onb-rank-pos {
+  border-color: var(--sf-gold);
+  background: var(--sf-gold);
+  color: #141a16;
+}
+
+:root[data-theme="dark"] .onb-q2 {
+  border-color: var(--sf-line);
+  background: rgba(246, 244, 239, 0.04);
+}
+
+:root[data-theme="dark"] .onb-consent {
+  border-color: var(--sf-line);
+  background: var(--sf-gold-soft);
+}
+
+:root[data-theme="dark"] .onb-error,
+:root[data-theme="dark"] .onb-link-error {
+  border-color: rgba(190, 106, 88, 0.35);
+  background: var(--sf-error-soft);
+  color: var(--sf-error);
+}
+
+:root[data-theme="dark"] .onb-link-btn {
+  border-color: rgba(141, 199, 155, 0.4);
+  background: var(--sf-green-soft);
+  color: var(--sf-green);
+}
+
+:root[data-theme="dark"] .onb-linked--ok {
+  border-color: rgba(141, 199, 155, 0.4);
+  background: var(--sf-green-soft);
+  color: var(--sf-green);
+}
+
+:root[data-theme="dark"] .onb-linked--warn {
+  border-color: var(--sf-line);
+  background: var(--sf-gold-soft);
+  color: var(--sf-gold-bright);
+}
+
+/* =========================================================================
+   ПОПОВЕР ПРОФИЛЯ И ПЕРЕКЛЮЧАТЕЛЬ ТЕМЫ
+   ========================================================================= */
+
+:root[data-theme="dark"] .mini-profile__popover {
+  border-color: var(--sf-line);
+  background: linear-gradient(145deg, rgba(8, 20, 24, 0.99), rgba(10, 25, 27, 0.98));
+  box-shadow: 0 24px 54px rgba(0, 0, 0, 0.5);
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .mini-profile__arrow {
+  border-color: var(--sf-line);
+  background: #08161a;
+}
+
+:root[data-theme="dark"] .mini-profile__heading {
+  border-bottom-color: rgba(213, 180, 118, 0.16);
+}
+
+:root[data-theme="dark"] .mini-profile__avatar {
+  border-color: var(--sf-line);
+  background: var(--sf-soft);
+}
+
+:root[data-theme="dark"] .mini-profile__identity span,
+:root[data-theme="dark"] .mini-profile__row span {
+  color: var(--sf-muted-2);
+  opacity: 1;
+}
+
+:root[data-theme="dark"] .mini-profile__identity strong,
+:root[data-theme="dark"] .mini-profile__row strong {
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .mini-profile__footer,
+:root[data-theme="dark"] .mini-profile__theme {
+  border-top-color: rgba(213, 180, 118, 0.16);
+}
+
+:root[data-theme="dark"] .mini-profile__details-link {
+  color: var(--sf-gold);
+}
+
+:root[data-theme="dark"] .mini-profile__logout {
+  border-color: var(--sf-line);
+  background: var(--sf-soft);
+  color: var(--sf-gold);
+}
+
+:root[data-theme="dark"] .mini-profile__logout:hover,
+:root[data-theme="dark"] .mini-profile__logout:focus-visible {
+  border-color: var(--sf-line-strong);
+  background: var(--sf-soft-2);
+}
+
+:root[data-theme="dark"] .mini-profile__message {
+  color: var(--sf-muted);
+  opacity: 1;
+}
+
+:root[data-theme="dark"] .mini-profile__message--error,
+:root[data-theme="dark"] .mini-profile__message--warning {
+  color: var(--sf-error);
+}
+
+:root[data-theme="dark"] .mini-profile__theme-options {
+  background: rgba(246, 244, 239, 0.06);
+}
+
+:root[data-theme="dark"] .mini-profile__theme-btn {
+  color: var(--sf-muted);
+}
+
+:root[data-theme="dark"] .mini-profile__theme-btn:hover {
+  background: var(--sf-soft-2);
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .mini-profile__theme-btn--active {
+  background: var(--sf-gold);
+  color: #141a16;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
+}
+
+/* =========================================================================
+   МЕЛОЧИ: БОКОВОЕ МЕНЮ, СКРОЛЛБАРЫ
+   ========================================================================= */
+
+:root[data-theme="dark"] .sidebar {
+  border-right-color: var(--sf-line);
+  background: rgba(8, 20, 24, 0.97);
+  box-shadow: 6px 0 30px rgba(0, 0, 0, 0.45);
+}
+
+:root[data-theme="dark"] .sidebar-header {
+  border-bottom-color: rgba(213, 180, 118, 0.2);
+}
+
+:root[data-theme="dark"] .sidebar-title,
+:root[data-theme="dark"] .sidebar-link {
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .sidebar-close {
+  color: var(--sf-muted);
+}
+
+:root[data-theme="dark"] .sidebar-link:hover {
+  background: var(--sf-soft-2);
+}
+
+:root[data-theme="dark"] .sidebar-link--active {
+  background: var(--sf-gold-soft);
+  color: var(--sf-gold);
+}
+
+:root[data-theme="dark"] .hamburger-btn {
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .hamburger-btn:hover {
+  background: var(--sf-soft-2);
+}
+
+:root[data-theme="dark"] .main-page-scroll,
+:root[data-theme="dark"] .puzzles-page-shell,
+:root[data-theme="dark"] .training-page,
+:root[data-theme="dark"] .user-profile-page,
+:root[data-theme="dark"] .gigacoin-shop-page,
+:root[data-theme="dark"] .level-test-page,
+:root[data-theme="dark"] .admin-page {
+  scrollbar-color: rgba(213, 180, 118, 0.35) transparent;
+}

@@ -84,6 +84,8 @@ jobs:
             --exclude=frontend/node_modules --exclude=.env \
             --exclude='*.db' --exclude='*.db-*' \
             --exclude=outputs --exclude=dataset --exclude=old_data \
+            --exclude=ml/synthesis_pipeline/data \
+            --exclude=dataset.jsonl --exclude=dataset_readable.json \
             .
 
       - name: Upload commit-pinned bundle

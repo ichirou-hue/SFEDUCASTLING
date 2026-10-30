@@ -18,8 +18,13 @@ from backend.api_gateway.dependecies import get_current_user
 from backend.api_gateway.models import PuzzleAnswerRequest
 from backend.db.session import get_db
 from backend.models.game import Game
+from backend.models.gigacoin_event import GigacoinEvent
 from backend.models.level_test import LevelTest
 from backend.models.puzzle_attempt import PuzzleAttempt
+from backend.models.training_attempt import TrainingAttempt
+from backend.models.training_lesson import TrainingLesson
+from backend.models.training_module import TrainingModule
+from backend.models.training_task import TrainingTask
 from backend.models.user import ROLE_ADMIN, User
 from backend.models.user_chess_account import UserChessAccount
 from backend.services.adaptive_logic import select_adaptive_puzzles
@@ -54,6 +59,12 @@ from backend.services.dynamic_difficulty import (
 from backend.services.difficulty_logic import difficulty_for_rating
 from backend.services.phase_accuracy import load_user_phase_accuracy
 from backend.services.user_records import build_user_records
+from backend.services.gigacoin_service import (
+    LEVEL_TEST_REWARD,
+    PUZZLE_STREAK_REWARDS,
+    award_gigacoins,
+    puzzle_reward,
+)
 
 router = APIRouter(tags=["learning"])
 
@@ -91,6 +102,7 @@ class LevelTestSkipRequest(BaseModel):
 class PuzzleAttemptRequest(BaseModel):
     puzzle_id: str = Field(min_length=1, max_length=64)
     correct: bool
+    player_moves: list[str] = Field(default_factory=list, max_length=50)
 
 
 class LevelTestSubmitAnswer(BaseModel):
@@ -417,6 +429,11 @@ async def level_test_submit(
         raise HTTPException(status_code=404, detail="Тест не найден")
 
     if test.status == "submitted":
+        gigacoins_earned = await award_gigacoins(
+            db, user, "level_test", "initial-assessment", LEVEL_TEST_REWARD
+        )
+        if gigacoins_earned:
+            await db.commit()
         return {
             "ok": True,
             "test_id": test.id,
@@ -427,6 +444,8 @@ async def level_test_submit(
             "result": (test.score or {}).get("result"),
             "feedback": (test.score or {}).get("feedback", []),
             "already_submitted": True,
+            "gigacoins_earned": gigacoins_earned,
+            "gigacoins_balance": int(user.gigacoins or 0),
         }
 
     expected_ids = [str(x) for x in (test.question_ids or [])]
@@ -505,6 +524,9 @@ async def level_test_submit(
     test.band = int(group["id"])
     test.status = "submitted"
     test.submitted_at = datetime.now(UTC)
+    gigacoins_earned = await award_gigacoins(
+        db, locked_user, "level_test", "initial-assessment", LEVEL_TEST_REWARD
+    )
     await db.commit()
 
     return {
@@ -517,6 +539,8 @@ async def level_test_submit(
         "result": score["result"],
         "feedback": feedback,
         "already_submitted": False,
+        "gigacoins_earned": gigacoins_earned,
+        "gigacoins_balance": int(locked_user.gigacoins or 0),
     }
 
 
@@ -528,12 +552,14 @@ async def record_puzzle_attempt(
 ):
     """Сохраняет попытку обычного тактического пазла для прогресса.
 
-    Тренировочная страница сейчас воспроизводит полное решение на клиенте,
-    поэтому A4 фиксирует уже известный клиенту итог попытки. puzzle_id при
-    этом обязательно проверяется по загруженной базе задач.
+    Рейтинг и последовательность ожидаемых ходов берутся из загруженной базы;
+    клиент должен передать именно последовательность ходов игрока из решения.
     """
     if not state.puzzle_base:
         raise HTTPException(status_code=503, detail="База паззлов не загружена")
+    user = await db.scalar(select(User).where(User.id == user.id).with_for_update())
+    if user is None:
+        raise HTTPException(status_code=401, detail="Пользователь не найден")
 
     puzzle_lookup = {
         str(p.get("id")): p for p in state.puzzle_base.get("puzzles", [])
@@ -541,6 +567,12 @@ async def record_puzzle_attempt(
     puzzle = puzzle_lookup.get(req.puzzle_id)
     if puzzle is None:
         raise HTTPException(status_code=404, detail="Задача не найдена")
+    if req.correct:
+        solution_moves = [move.lower() for move in str(puzzle.get("moves") or "").split()]
+        expected_player_moves = solution_moves[::2]
+        submitted_player_moves = [str(move).strip().lower() for move in req.player_moves]
+        if not expected_player_moves or submitted_player_moves != expected_player_moves:
+            raise HTTPException(status_code=422, detail="Ходы не подтверждают решение задачи")
 
     # До сохранения новой попытки лениво инициализируем B2 по уже накопленной
     # истории. Так первая новая попытка меняет difficulty ровно на один шаг.
@@ -551,12 +583,47 @@ async def record_puzzle_attempt(
         player_rating=effective_player_rating(user),
     )
 
+    already_solved = await db.scalar(select(PuzzleAttempt.id).where(
+        PuzzleAttempt.user_id == user.id,
+        PuzzleAttempt.puzzle_id == req.puzzle_id,
+        PuzzleAttempt.correct.is_(True),
+    ).limit(1)) is not None
+
     attempt = PuzzleAttempt(
         user_id=user.id,
         puzzle_id=req.puzzle_id,
         correct=req.correct,
     )
     db.add(attempt)
+    await db.flush()
+    coins_due = puzzle_reward(puzzle.get("rating")) if req.correct and not already_solved else 0
+    coins_earned = 0
+    base_coins_earned = 0
+    if not req.correct:
+        user.puzzle_streak = 0
+    elif not already_solved:
+        user.puzzle_streak = int(user.puzzle_streak or 0) + 1
+
+    if coins_due:
+        coins_earned = await award_gigacoins(
+            db, user, "puzzle", req.puzzle_id, coins_due
+        )
+        base_coins_earned = int(await db.scalar(select(GigacoinEvent.amount).where(
+            GigacoinEvent.user_id == user.id,
+            GigacoinEvent.reason == "puzzle",
+            GigacoinEvent.ref == req.puzzle_id,
+        )) or 0)
+    else:
+        # Даже неверная попытка является учебной активностью для дневной серии.
+        coins_earned = await award_gigacoins(db, user, "puzzle_activity", str(attempt.id), 0)
+
+    streak_bonus = 0
+    streak_reward = PUZZLE_STREAK_REWARDS.get(int(user.puzzle_streak or 0))
+    if streak_reward and req.correct and not already_solved:
+        streak_bonus = await award_gigacoins(
+            db, user, "puzzle_streak", str(attempt.id), streak_reward
+        )
+        coins_earned += streak_bonus
     await db.commit()
     await db.refresh(attempt)
 
@@ -576,6 +643,12 @@ async def record_puzzle_attempt(
         "correct": attempt.correct,
         "topic": topic_slug,
         "difficulty_update": difficulty_update,
+        "gigacoins_earned": coins_earned,
+        "gigacoins_capped": coins_due > base_coins_earned,
+        "gigacoins_balance": int(user.gigacoins or 0),
+        "already_solved": already_solved,
+        "puzzle_streak": int(user.puzzle_streak or 0),
+        "puzzle_streak_bonus": streak_bonus,
     }
 
 
