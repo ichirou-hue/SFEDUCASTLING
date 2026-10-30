@@ -66,7 +66,7 @@ jobs:
           set -euo pipefail
           run_id="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow CI --branch main --commit "$SHA" --status success --limit 1 --json databaseId --jq '.[0].databaseId')"
           test -n "$run_id" && test "$run_id" != null
-          gh run download "$run_id" --name "sfeducasling-$SHA" --dir bundle
+          gh run download "$run_id" --repo "$GITHUB_REPOSITORY" --name "sfeducasling-$SHA" --dir bundle
 
       - name: Verify artifact is present
         env:
