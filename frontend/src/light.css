@@ -234,6 +234,7 @@
 :root[data-theme="light"] .puzzles-page-shell,
 :root[data-theme="light"] .training-page,
 :root[data-theme="light"] .user-profile-page,
+:root[data-theme="light"] .gigacoin-shop-page,
 :root[data-theme="light"] .level-test-page,
 :root[data-theme="light"] .admin-page {
   background-color: #f2ecdf;
@@ -259,7 +260,8 @@
     url("/backgrounds/training-rook.webp");
 }
 
-:root[data-theme="light"] .user-profile-page {
+:root[data-theme="light"] .user-profile-page,
+:root[data-theme="light"] .gigacoin-shop-page {
   background-image:
     var(--lt-page-veil),
     url("/backgrounds/profile-bishop.webp");
@@ -485,4 +487,99 @@
     color: var(--lt-gold-strong);
     background: rgba(169, 133, 63, 0.14);
   }
+}
+
+/* =========================================================================
+   МАГАЗИН GIGACOIN
+   -------------------------------------------------------------------------
+   Карточка магазина в тёмной теме — глубокий изумруд, в светлой — та же
+   тёплая бумага, что и остальные панели. Без этого блока светлая тема
+   показывала бы тёмную карточку посреди светлой страницы.
+   ========================================================================= */
+
+:root[data-theme="light"] .gigacoin-shop-page__back {
+  color: var(--lt-gold-strong);
+}
+
+:root[data-theme="light"] .gigacoin-shop-page__back:hover,
+:root[data-theme="light"] .gigacoin-shop-page__back:focus-visible {
+  color: #5f4718;
+}
+
+:root[data-theme="light"] .gigacoin-shop {
+  border-color: var(--lt-line-gold);
+  background: var(--lt-surface);
+  box-shadow: var(--lt-shadow);
+  color: var(--lt-ink);
+}
+
+:root[data-theme="light"] .gigacoin-shop__header h2,
+:root[data-theme="light"] .gigacoin-shop__copy h4 {
+  color: var(--lt-ink-strong);
+}
+
+:root[data-theme="light"] .gigacoin-shop__header p,
+:root[data-theme="light"] .gigacoin-shop__message,
+:root[data-theme="light"] .gigacoin-shop__copy p,
+:root[data-theme="light"] .gigacoin-shop__balance span {
+  color: var(--lt-muted);
+}
+
+:root[data-theme="light"] .gigacoin-shop__balance {
+  border-color: var(--lt-line-gold);
+  background: var(--lt-gold-soft);
+}
+
+:root[data-theme="light"] .gigacoin-shop__balance strong,
+:root[data-theme="light"] .gigacoin-shop__price {
+  color: var(--lt-gold-strong);
+}
+
+:root[data-theme="light"] .gigacoin-shop__group h3 {
+  color: var(--lt-ink);
+}
+
+:root[data-theme="light"] .gigacoin-shop__item {
+  border-color: var(--lt-line);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+:root[data-theme="light"] .gigacoin-shop__preview {
+  border-color: var(--lt-line-gold);
+  background: var(--lt-gold-soft);
+  color: var(--lt-gold-strong);
+}
+
+:root[data-theme="light"] .gigacoin-shop__avatar {
+  border-color: var(--lt-gold);
+  background: #fffdf8;
+  color: var(--lt-ink-strong);
+}
+
+:root[data-theme="light"] .gigacoin-shop__item button {
+  border-color: var(--lt-line-gold);
+  background: var(--lt-gold-soft);
+  color: var(--lt-gold-strong);
+}
+
+:root[data-theme="light"] .gigacoin-shop__item button:hover:not(:disabled) {
+  background: rgba(169, 133, 63, 0.2);
+}
+
+:root[data-theme="light"] .gigacoin-shop__notice {
+  color: var(--lt-green);
+}
+
+:root[data-theme="light"] .gigacoin-shop__error {
+  color: #b3543a;
+}
+
+:root[data-theme="light"] .gigacoin-shop__retry {
+  border-color: var(--lt-line-gold);
+  background: var(--lt-gold-soft);
+  color: var(--lt-gold-strong);
+}
+
+:root[data-theme="light"] .gigacoin-shop__retry:hover {
+  background: rgba(169, 133, 63, 0.2);
 }

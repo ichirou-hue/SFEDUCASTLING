@@ -251,6 +251,7 @@
 .puzzles-page-shell,
 .training-page,
 .user-profile-page,
+.gigacoin-shop-page,
 .level-test-page,
 .admin-page {
   background-color:#0b1b20;
@@ -273,6 +274,9 @@
   background-image:linear-gradient(110deg,#07111691,#07111649 58%,#07111675),url("/backgrounds/level-test-crown.webp")
 }
 .user-profile-page {
+  background-image:linear-gradient(110deg,#07111678,#07111630 55%,#0711165c),url("/backgrounds/profile-bishop.webp")
+}
+.gigacoin-shop-page {
   background-image:linear-gradient(110deg,#07111678,#07111630 55%,#0711165c),url("/backgrounds/profile-bishop.webp")
 }
 .level-test-page {

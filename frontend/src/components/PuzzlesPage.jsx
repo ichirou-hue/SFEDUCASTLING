@@ -202,12 +202,40 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
   const [movesLeft, setMovesLeft] = useState(0);
   const [solvedCount, setSolvedCount] = useState(0);
   /*
-   * Серия подряд правильно решённых задач (конвенция chess.com):
-   * решение без ошибок - +1, любая неверная ставка обнуляет серию.
-   * bestStreak - рекорд текущей сессии страницы.
+   * Серия живёт в sessionStorage, чтобы переживать размонтирование страницы
+   * при переходе в другой раздел. Неверный ход по-прежнему прерывает её.
    */
-  const [streak, setStreak] = useState(0);
-  const [bestStreak, setBestStreak] = useState(0);
+  const [streak, setStreak] = useState(() => {
+    if (Number.isFinite(Number(user?.puzzle_streak))) return Number(user.puzzle_streak);
+    try {
+      const saved = Number(sessionStorage.getItem("gigachess:puzzle-streak") || 0);
+      return Number.isFinite(saved) && saved > 0 ? saved : 0;
+    } catch {
+      return 0;
+    }
+  });
+  const [bestStreak, setBestStreak] = useState(() => {
+    try {
+      const saved = Number(sessionStorage.getItem("gigachess:puzzle-best-streak") || 0);
+      return Number.isFinite(saved) && saved > 0 ? saved : 0;
+    } catch {
+      return 0;
+    }
+  });
+
+  const persistPuzzleStreak = (nextStreak, nextBestStreak) => {
+    try {
+      // Пишем синхронно в момент изменения, чтобы быстрый переход по разделам
+      // не успел размонтировать страницу до сохранения эффекта React.
+      sessionStorage.setItem("gigachess:puzzle-streak", String(nextStreak));
+      sessionStorage.setItem(
+        "gigachess:puzzle-best-streak",
+        String(nextBestStreak),
+      );
+    } catch {
+      // Если хранилище недоступно, серия живёт до ухода со страницы.
+    }
+  };
   const [hintArrow, setHintArrow] = useState(null);
   const [boardArrows, setBoardArrows] = useState([]);
   const [boardOrientation, setBoardOrientation] = useState("white");
@@ -375,6 +403,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
 
   const gameRef = useRef(new Chess());
   const solutionMovesRef = useRef([]);
+  const playerMovesRef = useRef([]);
   const solutionIndexRef = useRef(0);
   const puzzlesRef = useRef([]);
   const loadSeqRef = useRef(0);
@@ -472,6 +501,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
 
       const moves = (puzzle.moves || "").trim().split(/\s+/).filter(Boolean);
       solutionMovesRef.current = moves;
+      playerMovesRef.current = [];
       solutionIndexRef.current = 0;
       setMovesLeft(countPlayerMoves(puzzle.moves));
     },
@@ -483,9 +513,6 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
     setLoading(true);
     setError(null);
     setSolvedCount(0);
-    // Новый набор задач - серия начинается заново.
-    setStreak(0);
-    setBestStreak(0);
     setAdaptiveMeta(null);
     setPreviewInfo(null);
 
@@ -606,15 +633,25 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
   const savePuzzleProgress = useCallback(
     (correct) => {
       if (!currentPuzzle?.id || !getAccessToken()) return;
-      recordPuzzleAttempt(currentPuzzle.id, correct)
-        .then(() => {
+      recordPuzzleAttempt(
+        currentPuzzle.id,
+        correct,
+        correct ? playerMovesRef.current : [],
+      )
+        .then((data) => {
+          if (Number.isFinite(Number(data?.puzzle_streak))) {
+            const serverStreak = Number(data.puzzle_streak);
+            setStreak(serverStreak);
+            setBestStreak((best) => Math.max(best, serverStreak));
+            persistPuzzleStreak(serverStreak, Math.max(bestStreak, serverStreak));
+          }
           window.dispatchEvent(new Event("sfedu-progress-updated"));
         })
         .catch(() => {
           // Ошибка статистики не должна мешать решению самой задачи.
         });
     },
-    [currentPuzzle?.id],
+    [currentPuzzle?.id, bestStreak],
   );
 
   const handleMove = useCallback(
@@ -646,6 +683,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
           promotion: promo,
         });
         if (!move) return false;
+        playerMovesRef.current.push(`${move.from}${move.to}${move.promotion || ""}`.toLowerCase());
 
         setFen(game.fen());
         setLastMove({ from: sourceSquare, to: targetSquare });
@@ -665,8 +703,10 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
           // Серия растёт: задача решена без неверных ставок
           // (ошибка в ветке ниже уже обнулила счётчик).
           const nextStreak = streak + 1;
+          const nextBestStreak = Math.max(bestStreak, nextStreak);
+          persistPuzzleStreak(nextStreak, nextBestStreak);
           setStreak(nextStreak);
-          setBestStreak((b) => Math.max(b, nextStreak));
+          setBestStreak(nextBestStreak);
           setPuzzleSolved(true);
           savePuzzleProgress(true);
           return true;
@@ -724,11 +764,12 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
           text: "Неверный ход. Попробуйте ещё раз.",
         });
       }
+      persistPuzzleStreak(0, bestStreak);
       setStreak(0);
       savePuzzleProgress(false);
       return false;
     },
-    [waitingForOpponent, showSolution, showRegGate, previewGate, isLastPreviewPuzzle, user, savePuzzleProgress, streak],
+    [waitingForOpponent, showSolution, showRegGate, previewGate, isLastPreviewPuzzle, user, savePuzzleProgress, streak, bestStreak],
   );
 
   const onSquareClick = useCallback(
@@ -1001,6 +1042,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
               рекорд сессии: {bestStreak}
             </div>
           )}
+          <div className="puzzle-streak-rewards">Награды за серию: 5 · +3, 10 · +5, 20 · +10, 30 · +15 GigaCoin</div>
         </div>
 
         {adaptiveMode && hasRealProfile && (

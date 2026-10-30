@@ -398,6 +398,17 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
      */
     finishSentRef.current = true;
 
+    if (g.isCheckmate() && g.turn() !== playerColor && typeof onStateChange === "function") {
+      onStateChange((prev) => ({
+        ...prev,
+        maiaVictory: {
+          id: `${gameGenRef.current}-${Date.now()}`,
+          elo,
+          userId: getCurrentUserId(),
+        },
+      }));
+    }
+
     let result = "*";
     let status = "game_over";
 
@@ -469,7 +480,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
       status,
       playerColor,
     }).catch(() => {});
-  }, [moveHistory, elo, playerColor]);
+  }, [moveHistory, elo, playerColor, onStateChange]);
 
   /*
    * Пересчитываем FEN позиции по истории SAN.
@@ -1432,11 +1443,17 @@ const fetchBestMove = useCallback(
    */
   const processPlayerMove = useCallback(
     (sourceSquare, targetSquare) => {
-      const move = game.move({
-        from: sourceSquare,
-        to: targetSquare,
-        promotion: "q",
-      });
+      let move;
+      try {
+        move = game.move({
+          from: sourceSquare,
+          to: targetSquare,
+          promotion: "q",
+        });
+      } catch {
+        // Illegal drops are normal input; chess.js throws instead of returning null.
+        return false;
+      }
 
       if (move === null) {
         return false;
@@ -1699,12 +1716,30 @@ const fetchBestMove = useCallback(
       return true;
     }, []);
 
+  const setMaiaLevel = useCallback(
+    (level) => {
+      const nextElo = Math.max(
+        800,
+        Math.min(2600, Math.round(Number(level) / 100) * 100),
+      );
+      setElo(nextElo);
+      setStockfishArrow(null);
+      setMaiaArrow(null);
+      setCompareData(null);
+      if (typeof onStateChange === "function") {
+        onStateChange((prev) => ({ ...prev, maiaRating: nextElo }));
+      }
+    },
+    [onStateChange],
+  );
+
   /*
    * Публичные методы компонента.
    */
   useImperativeHandle(ref, () => ({
     onNavigate,
     handleNewGame,
+    setMaiaLevel,
     getFen: () => gameRef.current.fen(),
     // Меню «Позиция»: загрузка FEN и экспорт партии в PGN.
     loadFen: handleLoadFen,
@@ -2015,36 +2050,11 @@ const fetchBestMove = useCallback(
 
           <input
             type="range"
-            min="1000"
+            min="800"
             max="2600"
             step="100"
             value={elo}
-            onChange={(e) => {
-              const newElo = parseInt(
-                e.target.value,
-                10,
-              );
-
-              setElo(newElo);
-
-              /*
-               * При изменении Elo старое сравнение
-               * Maia3 больше не актуально.
-               */
-              setStockfishArrow(null);
-              setMaiaArrow(null);
-              setCompareData(null);
-
-              if (
-                typeof onStateChange ===
-                "function"
-              ) {
-                onStateChange((prev) => ({
-                  ...prev,
-                  maiaRating: newElo,
-                }));
-              }
-            }}
+            onChange={(e) => setMaiaLevel(parseInt(e.target.value, 10))}
             style={{
               width: 100,
               accentColor: "#C9A96E",

@@ -81,7 +81,7 @@ async def test_award_is_idempotent_and_puzzle_rewards_have_their_own_cap(db):
     assert await award_gigacoins(session, user, "maia_game", "game-2", 3, now=now) == 0
     assert user.gigacoins == DAILY_CAP
     event_count = await session.scalar(select(func.count(GigacoinEvent.id)))
-    assert event_count == 21
+    assert event_count == 22  # 21 reward ledger rows + one daily activity marker.
 
 
 @pytest.mark.asyncio

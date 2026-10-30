@@ -23,6 +23,7 @@ from backend.models.user import User
 from backend.services.gigacoin_service import (
     TRAINING_FIRST_CORRECT,
     TRAINING_REPEAT,
+    active_day_streak,
     award_gigacoins,
     moscow_today,
 )
@@ -144,7 +145,9 @@ async def training_progress(
     user: User = Depends(get_current_user),
 ):
     """Прогресс текущего пользователя по учебному курсу."""
-    return await get_training_progress(db, user.id)
+    progress = await get_training_progress(db, user.id)
+    progress["streak"] = await active_day_streak(db, user.id)
+    return progress
 
 
 @router.get("/due")
@@ -345,6 +348,11 @@ async def check_task(
                 gigacoins_earned += await award_gigacoins(
                     db, user, "module_complete", str(module.id), 10
                 )
+        await db.commit()
+    else:
+        gigacoins_earned += await award_gigacoins(
+            db, user, "training_activity", str(attempt.id), 0
+        )
         await db.commit()
 
     return {

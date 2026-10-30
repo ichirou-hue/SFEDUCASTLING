@@ -243,12 +243,12 @@ class TestGigaCoinLearningRewards:
         with patch(MATCH_ANCHOR, NEW_PUZZLES):
             first = client.post(
                 "/api/learning/puzzle/attempt",
-                json={"puzzle_id": "b5", "correct": True},
+                json={"puzzle_id": "b5", "correct": True, "player_moves": ["b1b8"]},
                 headers=_headers(token),
             )
             second = client.post(
                 "/api/learning/puzzle/attempt",
-                json={"puzzle_id": "b5", "correct": True},
+                json={"puzzle_id": "b5", "correct": True, "player_moves": ["b1b8"]},
                 headers=_headers(token),
             )
         assert first.status_code == second.status_code == 200

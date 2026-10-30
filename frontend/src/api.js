@@ -234,6 +234,21 @@ export async function saveOnboarding(answers) {
   return user;
 }
 
+export async function fetchGigacoinShop() {
+  const { data } = await api.get("/api/gigacoins/shop");
+  return data;
+}
+
+export async function purchaseGigacoinCosmetic(cosmeticId) {
+  const { data } = await api.post("/api/gigacoins/shop/purchase", { cosmetic_id: cosmeticId });
+  return data;
+}
+
+export async function equipGigacoinCosmetic(cosmeticId) {
+  const { data } = await api.post("/api/gigacoins/shop/equip", { cosmetic_id: cosmeticId });
+  return data;
+}
+
 // === Админ-панель: пользователи, профиль, статистика, роли ===
 
 export async function fetchAdminUsers() {
@@ -331,6 +346,11 @@ export async function finishGame({ moves, elo, engine, result, status, playerCol
   return data;
 }
 
+export async function fetchMaiaAchievements() {
+  const { data } = await api.get("/api/game/maia-achievements");
+  return Array.isArray(data?.levels) ? data.levels : [];
+}
+
 export async function fetchRandomOpening() {
   const { data } = await api.get("/api/knowledge/random-opening");
   return data;
@@ -393,12 +413,18 @@ export async function checkPuzzle(puzzleId, move) {
   return data;
 }
 
-export async function recordPuzzleAttempt(puzzleId, correct) {
+export async function recordPuzzleAttempt(puzzleId, correct, playerMoves = []) {
   const { data } = await api.post("/api/learning/puzzle/attempt", {
     puzzle_id: puzzleId,
     correct,
+    player_moves: playerMoves,
   });
   announceGigacoinReward(data);
+  if (typeof window !== "undefined" && Number.isFinite(Number(data?.puzzle_streak))) {
+    window.dispatchEvent(new CustomEvent("sfedu-puzzle-streak-updated", {
+      detail: { streak: Number(data.puzzle_streak) },
+    }));
+  }
   return data;
 }
 

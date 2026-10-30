@@ -120,12 +120,15 @@ export default function ProgressWidget() {
   return (
     <section className="progress-widget" aria-label="Общий прогресс обучения">
       <div className="progress-widget__header">
-        <div className="progress-widget__streak" title="Серия учебных дней">
-          <span className="progress-widget__streak-icon">🔥</span>
-          <span>
-            <strong>{training?.streak ?? 0}</strong>
-            <small>дн. подряд</small>
-          </span>
+        <div className="progress-widget__streak-info">
+          <div className="progress-widget__streak" title="Серия учебных дней">
+            <span className="progress-widget__streak-icon">🔥</span>
+            <span>
+              <strong>{training?.streak ?? 0}</strong>
+              <small>дн. подряд</small>
+            </span>
+          </div>
+          <p className="progress-widget__streak-reward">За каждые 7 активных дней подряд: +10 GigaCoin</p>
         </div>
       </div>
 
