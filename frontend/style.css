@@ -2759,6 +2759,56 @@ body {
   color: #888;
 }
 
+/* Короткие экраны (ноутбуки): панель задачи поджимается, чтобы вместе
+   с доской и чатом помещаться по высоте без прокрутки. Ширина панели
+   при этом остаётся увеличенной, поэтому текст переносится меньше. */
+@media (max-height: 800px) and (min-width: 1151px) {
+  .puzzles-layout {
+    padding-bottom: 8px;
+  }
+
+  .puzzle-info-panel {
+    padding: 16px;
+    gap: 6px;
+  }
+
+  .puzzle-theme-icon {
+    font-size: 52px;
+    margin: 4px 0;
+  }
+
+  .puzzle-instruction {
+    font-size: 18px;
+    line-height: 1.2;
+    margin: 4px 0;
+  }
+
+  .puzzle-moves-left-label {
+    margin-top: 8px;
+  }
+
+  .puzzle-moves-left-count {
+    font-size: 40px;
+  }
+
+  .puzzle-rating {
+    margin-top: 4px;
+  }
+
+  .puzzle-streak-value {
+    font-size: 28px;
+  }
+
+  .puzzle-nav-buttons {
+    margin-top: 8px;
+  }
+
+  .puzzle-info-panel .learning-topic-filter,
+  .puzzle-info-panel .learning-crosslink--compact {
+    margin-top: 8px;
+  }
+}
+
 /* Строчка серии в оверлее "Задача решена!". */
 .puzzle-solved-streak {
   margin-top: 6px;
