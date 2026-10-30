@@ -1046,3 +1046,76 @@
     flex-basis: 18px;
   }
 }
+
+/* Keep the two-column registration content inside narrow mobile viewports. */
+@media (max-width: 760px) {
+  .auth-overlay {
+    align-items: flex-start;
+    padding: calc(env(safe-area-inset-top, 0px) + 12px) 12px
+      calc(env(safe-area-inset-bottom, 0px) + 24px);
+  }
+
+  .auth-card {
+    width: 100%;
+    max-width: 520px;
+    min-width: 0;
+    min-height: 0;
+    margin: auto;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .auth-side {
+    min-width: 0;
+    padding: 24px 18px;
+  }
+
+  .auth-section,
+  .auth-fields,
+  .auth-side--brand,
+  .auth-side--form {
+    min-width: 0;
+  }
+
+  .auth-section-head {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .auth-providers {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .auth-provider {
+    min-width: 0;
+    gap: 6px;
+    padding: 10px 6px;
+    font-size: 14px;
+    white-space: nowrap;
+  }
+
+  .auth-import-row {
+    display: grid;
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .auth-import-input {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .auth-import-btn {
+    padding: 10px 12px;
+    font-size: 15px;
+  }
+
+  .auth-profile-card {
+    min-width: 0;
+  }
+
+  .auth-perfs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
