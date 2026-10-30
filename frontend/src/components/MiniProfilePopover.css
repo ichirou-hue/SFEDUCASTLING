@@ -120,6 +120,54 @@
   white-space: nowrap;
 }
 
+/* Переключатель темы: сегментированный, в ширину поповера. */
+.mini-profile__theme {
+  display: grid;
+  gap: 7px;
+  padding: 10px 0 2px;
+  border-top: 1px solid rgba(71, 112, 85, 0.12);
+}
+
+.mini-profile__theme-label {
+  font-size: 11px;
+  opacity: 0.64;
+}
+
+.mini-profile__theme-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 11px;
+  background: rgba(71, 112, 85, 0.09);
+}
+
+.mini-profile__theme-btn {
+  padding: 7px 6px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #35553a;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  transition:
+    background 0.16s ease,
+    color 0.16s ease;
+}
+
+.mini-profile__theme-btn:hover {
+  background: rgba(131, 183, 135, 0.18);
+}
+
+.mini-profile__theme-btn--active {
+  background: #fff;
+  color: #315d47;
+  box-shadow: 0 1px 3px rgba(25, 52, 43, 0.14);
+}
+
 .mini-profile__details-link {
   display: block;
   color: #315d47;
@@ -191,7 +239,7 @@
   font-size: 11px;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 760px) {
   .mini-profile__popover {
     display: none;
   }

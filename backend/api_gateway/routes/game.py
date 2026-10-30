@@ -1,11 +1,16 @@
 """Игровые endpoint'ы: легальные ходы, выполнение хода, ход AI."""
 
+import hashlib
 import random
 
 import chess
-from fastapi import APIRouter, BackgroundTasks, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from sqlalchemy import and_, or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from backend.api_gateway.dependecies import get_optional_current_user
+from backend.db.session import get_db
 from backend.api_gateway.models import (
     CapturedMaterialRequest,
     CompareMovesRequest,
@@ -24,6 +29,13 @@ from backend.api_gateway.state import (
     stockfish_lock,
 )
 from backend.services.game_recorder import record_game
+from backend.services.gigacoin_service import (
+    MAIA_DRAW_COINS,
+    MAIA_FAIR_GAP,
+    MAIA_WIN_COINS,
+    award_gigacoins,
+)
+from backend.models.game import Game
 from backend.models.user import User
 
 router = APIRouter(tags=["game"])
@@ -39,6 +51,7 @@ LEVELS = [
     {"level": 7, "name": "Гроссмейстер", "elo": 2600, "engine": "maia3"},
     {"level": 8, "name": "Максимум (Stockfish)", "elo": 3600, "engine": "stockfish"},
 ]
+MAIA_PROGRESS_LEVELS = tuple(range(800, 2601, 100))
 
 # Ценность фигур (в пешках) для подсчёта съеденного материала.
 PIECE_VALUES = {
@@ -447,11 +460,89 @@ def compare_moves(req: CompareMovesRequest):
     }
 
 
+def _replay_maia_result(
+    req: FinishGameRequest, allowed_levels, minimum_moves: int = 8
+) -> str | None:
+    """Replay the submitted game and trust only an actual terminal result."""
+    if req.engine != "maia3" or req.elo not in allowed_levels:
+        return None
+    if len(req.moves) < minimum_moves:
+        return None
+    board = chess.Board()
+    for token in req.moves:
+        if board.is_game_over(claim_draw=True):
+            return None
+        try:
+            move = chess.Move.from_uci(token)
+        except ValueError:
+            return None
+        if move not in board.legal_moves:
+            return None
+        board.push(move)
+    if not board.is_game_over(claim_draw=True):
+        return None
+    actual_result = board.result(claim_draw=True)
+    return actual_result if actual_result == req.result else None
+
+
+def _verified_maia_result(req: FinishGameRequest) -> str | None:
+    return _replay_maia_result(req, MAIA_WIN_COINS)
+
+
+def _verified_maia_achievement(req: FinishGameRequest) -> str | None:
+    return _replay_maia_result(req, MAIA_PROGRESS_LEVELS, minimum_moves=1)
+
+
+@router.get("/api/game/maia-achievements")
+async def maia_achievements(
+    user: User | None = Depends(get_optional_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return Maia levels where this user has a verified checkmate win."""
+    if user is None:
+        return {"levels": []}
+
+    games = await db.scalars(
+        select(Game)
+        .options(selectinload(Game.moves))
+        .where(
+            Game.user_id == user.id,
+            Game.engine == "maia3",
+            Game.status == "checkmate",
+            Game.elo.in_(MAIA_PROGRESS_LEVELS),
+            or_(
+                and_(Game.white == "player", Game.result == "1-0"),
+                and_(Game.black == "player", Game.result == "0-1"),
+            ),
+        )
+        .order_by(Game.id)
+    )
+
+    achieved = set()
+    for game in games:
+        player_color = "w" if game.white == "player" else "b"
+        request = FinishGameRequest(
+            moves=[move.uci for move in game.moves],
+            elo=game.elo,
+            engine=game.engine,
+            result=game.result,
+            status=game.status,
+            player_color=player_color,
+        )
+        verified = _verified_maia_achievement(request)
+        player_result = "1-0" if player_color == "w" else "0-1"
+        if verified == player_result:
+            achieved.add(game.elo)
+
+    return {"levels": sorted(achieved)}
+
+
 @router.post("/api/game/finish")
-def finish_game(
+async def finish_game(
     req: FinishGameRequest,
     background_tasks: BackgroundTasks,
     user: User | None = Depends(get_optional_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
     """Сохраняет завершённую партию в БД с классификацией ходов.
 
@@ -463,6 +554,23 @@ def finish_game(
         white, black = "AI", "player"
     else:
         white, black = "player", "AI"
+
+    coins_earned = 0
+    if user is not None:
+        verified_result = _verified_maia_result(req)
+        if verified_result is not None:
+            ref_payload = f"{req.engine}:{req.elo}:{req.player_color}:{','.join(req.moves)}:{verified_result}"
+            ref = hashlib.sha256(ref_payload.encode("utf-8")).hexdigest()
+            coins_earned = await award_gigacoins(db, user, "game_activity", ref, 0)
+        player_won = verified_result == ("1-0" if req.player_color == "w" else "0-1")
+        player_drew = verified_result == "1/2-1/2"
+        player_rating = int(user.elo or user.rating_estimate or 1000)
+        fair_level = req.elo is not None and req.elo + MAIA_FAIR_GAP >= player_rating
+        requested_coins = MAIA_WIN_COINS.get(req.elo, 0) if player_won else MAIA_DRAW_COINS if player_drew else 0
+        if requested_coins and fair_level:
+            coins_earned += await award_gigacoins(db, user, "maia_game", ref, requested_coins)
+        if verified_result is not None:
+            await db.commit()
 
     background_tasks.add_task(
         record_game,
@@ -476,7 +584,12 @@ def finish_game(
         white=white,
         black=black,
     )
-    return {"ok": True, "status": "scheduled"}
+    return {
+        "ok": True,
+        "status": "scheduled",
+        "gigacoins_earned": coins_earned,
+        "gigacoins_balance": int(user.gigacoins or 0) if user else 0,
+    }
 
 
 @router.post("/api/game/new")

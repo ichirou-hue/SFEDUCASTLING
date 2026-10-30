@@ -1,0 +1,364 @@
+.top-bar {
+  min-height:64px;
+  padding:4px clamp(16px,3vw,42px);
+  gap:24px;
+  background:#080a09;
+  border-bottom:1px solid rgba(201,169,110,.28);
+  box-shadow:0 8px 30px #0003;
+  backdrop-filter:none
+}
+.top-bar::after {
+  display:none
+}
+.top-bar-left {
+  flex:0 0 auto
+}
+.gigachess-logo {
+  height:42px;
+  filter:brightness(0) saturate(100%) invert(77%) sepia(25%) saturate(575%) hue-rotate(2deg) brightness(88%) contrast(84%)
+}
+.top-nav {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:clamp(14px,2.8vw,38px);
+  flex:1
+}
+.top-nav-link {
+  color:#ffffffb8;
+  font:600 12px/1 Inter,sans-serif;
+  letter-spacing:.11em;
+  text-decoration:none;
+  text-transform:uppercase;
+  white-space:nowrap;
+  transition:color .16s
+}
+.top-nav-link:hover,.top-nav-link--active {
+  color:#d5b476
+}
+.user-box {
+  flex:0 0 auto
+}
+.top-bar .reg-btn {
+  border:1px solid #c9a96eb3;
+  color:#d8bd88;
+  background:transparent;
+  font:600 12px/1 Inter,sans-serif;
+  letter-spacing:.04em;
+  padding:10px 17px
+}
+.top-bar .reg-btn:hover {
+  color:#10110e;
+  background:#d5b476
+}
+.top-bar .reg-btn--ghost {
+  border-color:#ffffff47;
+  color:#eee9df
+}
+.top-bar .reg-btn--ghost:hover {
+  color:#10110e;
+  border-color:#d5b476
+}
+.top-bar .user-name {
+  color:#eee9df
+}
+.home-page {
+  flex:1;
+  min-height:0;
+  overflow-y:auto;
+  display:flex;
+  flex-direction:column;
+  color:#f6f4ef;
+  background:linear-gradient(180deg,#18343d,#0d191d)
+}
+.home-hero {
+  position:relative;
+  isolation:isolate;
+  display:grid;
+  flex:1 0 auto;
+  grid-template-columns:minmax(0,1.15fr) minmax(290px,.75fr);
+  align-items:start;
+  gap:clamp(24px,4vw,64px);
+  width:min(1320px,calc(100% - 48px));
+  min-height:min(720px,calc(100vh - 112px));
+  margin:0 auto;
+  padding:36px 0 34px
+}
+.home-hero::before {
+  content:"";
+  position:absolute;
+  z-index:-1;
+  top:0;
+  bottom:0;
+  left:50%;
+  width:100vw;
+  transform:translateX(-50%);
+  background-image:linear-gradient(90deg,#071116a6 0%,#07111669 46%,#07111680 100%),linear-gradient(0deg,#07111666 0%,#07111608 48%,#07111638 100%),url("/home-clouds-emerald.png");
+  background-position:center,center,center 48%;
+  background-size:cover;
+  background-repeat:no-repeat
+}
+.home-hero-copy {
+  position:relative;
+  width:100%;
+  max-width:540px;
+  padding:clamp(22px,2.2vw,32px);
+  border:1px solid #ffffff30;
+  border-left:3px solid #d5b476;
+  background:linear-gradient(135deg,#081418e8,#081418bf);
+  box-shadow:0 20px 55px #06101266;
+  backdrop-filter:blur(5px)
+}
+.home-hero h1 {
+  margin-top:0;
+  color:#fbfaf6;
+  font:500 clamp(48px,4.5vw,72px)/.98 Inter,sans-serif;
+  letter-spacing:-.065em
+}
+.home-title-line {
+  white-space:nowrap
+}
+.home-hero h1 em {
+  color:#d5b476;
+  font:400 1.08em/1 "Cormorant Garamond",Georgia,serif;
+  letter-spacing:-.025em
+}
+.home-lead {
+  max-width:470px;
+  margin-top:18px;
+  color:#f6f4efc7;
+  font:400 15px/1.7 Inter,sans-serif
+}
+.home-actions {
+  display:flex;
+  flex-wrap:wrap;
+  gap:12px;
+  margin-top:23px
+}
+.home-primary,.home-secondary {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:22px;
+  min-height:48px;
+  padding:0 21px;
+  border:1px solid #d5b476;
+  border-radius:3px;
+  font:600 13px/1 Inter,sans-serif;
+  text-decoration:none;
+  cursor:pointer;
+  transition:transform .16s,background .16s
+}
+.home-primary {
+  color:#161a16;
+  background:#d5b476
+}
+.home-secondary {
+  color:#f6f4ef;
+  background:#080c0c29
+}
+.home-primary:hover,.home-secondary:hover {
+  transform:translateY(-2px)
+}
+.home-secondary:hover {
+  background:#d5b47624
+}
+.home-proof {
+  display:flex;
+  align-items:center;
+  gap:11px;
+  margin-top:28px;
+  color:#f6f4ef9e;
+  font:500 11px/1.5 Inter,sans-serif;
+  letter-spacing:.04em
+}
+.home-proof-mark {
+  color:#d5b476;
+  font-size:21px
+}
+.home-hero-aside {
+  justify-self:end;
+  width:min(100%,510px);
+  padding:0;
+  border:0;
+  border-radius:12px;
+  background:transparent;
+  box-shadow:none;
+  backdrop-filter:none
+}
+.home-stats-guest {
+  display:flex;
+  align-items:flex-start;
+  gap:14px;
+  padding:22px;
+  border:1px solid rgba(213,180,118,.28);
+  border-radius:12px;
+  color:#f6f4ef;
+  background:linear-gradient(145deg,#071216ed,#0a191be8);
+  box-shadow:0 24px 70px #0003
+}
+.home-stats-guest__mark {
+  display:grid;
+  width:44px;
+  height:44px;
+  flex:0 0 44px;
+  place-items:center;
+  border:1px solid rgba(213,180,118,.34);
+  border-radius:12px;
+  color:#d5b476;
+  font-size:25px;
+  background:rgba(213,180,118,.08)
+}
+.home-stats-guest .user-profile-kicker {
+  color:#d5b476
+}
+.home-stats-guest h2 {
+  margin:5px 0 8px;
+  color:#fbfaf6;
+  font:500 20px/1.2 Inter,sans-serif
+}
+.home-stats-guest p {
+  color:#f6f4efb8;
+  font:400 12px/1.55 Inter,sans-serif
+}
+.home-stats-guest__button {
+  display:inline-flex;
+  min-height:40px;
+  align-items:center;
+  gap:10px;
+  margin-top:14px;
+  padding:0 14px;
+  border:1px solid #d5b476;
+  border-radius:4px;
+  color:#161a16;
+  background:#d5b476;
+  font:600 11px Inter,sans-serif;
+  cursor:pointer
+}
+.home-page .site-footer {
+  color:#f6f4ef7a;
+  border-color:#ffffff1f;
+  background:#040a0a29
+}
+.home-page .site-footer-link {
+  color:#d5b476
+}
+
+/* У каждой рабочей страницы своя сцена; все игровые и учебные элементы
+   остаются поверх фона без изменений. */
+.main-page-scroll,
+.puzzles-page,
+.puzzles-page-shell,
+.training-page,
+.user-profile-page,
+.gigacoin-shop-page,
+.level-test-page,
+.admin-page {
+  background-color:#0b1b20;
+  background-repeat:no-repeat;
+  background-size:cover;
+  background-position:center;
+  background-attachment:fixed
+}
+.main-page-scroll {
+  background-image:linear-gradient(110deg,#07111699,#07111652 58%,#07111680),url("/backgrounds/play-king.webp")
+}
+.puzzles-page,
+.puzzles-page-shell {
+  background-image:linear-gradient(110deg,#0711168c,#0711164d 56%,#07111675),url("/backgrounds/puzzles-queen.webp")
+}
+.training-page {
+  background-image:linear-gradient(110deg,#07111691,#07111649 58%,#07111675),url("/backgrounds/training-rook.webp")
+}
+.training-page.level-test-background {
+  background-image:linear-gradient(110deg,#07111691,#07111649 58%,#07111675),url("/backgrounds/level-test-crown.webp")
+}
+.user-profile-page {
+  background-image:linear-gradient(110deg,#07111678,#07111630 55%,#0711165c),url("/backgrounds/profile-bishop.webp")
+}
+.gigacoin-shop-page {
+  background-image:linear-gradient(110deg,#07111678,#07111630 55%,#0711165c),url("/backgrounds/profile-bishop.webp")
+}
+.level-test-page {
+  background-image:linear-gradient(110deg,#07111691,#07111649 58%,#07111675),url("/backgrounds/level-test-crown.webp")
+}
+.admin-page {
+  background-image:linear-gradient(110deg,#07111691,#07111649 58%,#07111675),url("/backgrounds/admin-rook.webp")
+}
+@media(max-width:820px) {
+  .top-bar {
+  gap:12px
+}
+.top-nav {
+  gap:14px
+}
+.top-nav-link {
+  font-size:10px;
+  letter-spacing:.06em
+}
+.home-hero {
+  grid-template-columns:minmax(0,1fr) minmax(220px,.75fr);
+  width:calc(100% - 32px);
+  gap:18px;
+  padding:24px 0
+}
+
+}
+@media(max-width:640px) {
+  .top-bar {
+  min-height:60px;
+  flex-wrap:wrap;
+  justify-content:space-between;
+  padding:5px 12px 8px
+}
+.gigachess-logo {
+  height:32px;
+  max-width:38vw
+}
+.top-nav {
+  order:3;
+  flex:1 0 100%;
+  justify-content:space-between;
+  gap:8px;
+  overflow-x:auto;
+  padding:7px 2px 3px
+}
+.top-nav-link {
+  font-size:9px
+}
+.top-bar .reg-btn {
+  padding:8px 10px;
+  font-size:10px
+}
+.user-box {
+  gap:5px
+}
+.home-hero {
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
+  width:calc(100% - 36px);
+  min-height:auto;
+  gap:36px;
+  padding:58px 0 40px
+}
+.home-hero::before {
+  background-image:linear-gradient(180deg,#07111670 0%,#07111640 45%,#071116b3 100%),url("/home-clouds-emerald.png");
+  background-position:center,22% 22%;
+  background-size:cover,auto 690px;
+  background-repeat:no-repeat;
+  background-color:#18343d
+}
+.home-hero h1 {
+  font-size:clamp(38px,10.5vw,52px)
+}
+.home-lead {
+  font-size:14px
+}
+.home-proof {
+  margin-top:27px
+}
+.home-hero-aside {
+  padding:0
+}
+}

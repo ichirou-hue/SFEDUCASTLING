@@ -11,7 +11,13 @@ function safeNumber(value, fallback = 0) {
   return Number.isFinite(Number(value)) ? Number(value) : fallback;
 }
 
-export default function MiniProfilePopover({ user, onUserChange, onLogout }) {
+export default function MiniProfilePopover({
+  user,
+  theme = "dark",
+  onThemeChange,
+  onUserChange,
+  onLogout,
+}) {
   const [open, setOpen] = useState(false);
   const [profile, setProfile] = useState(user || null);
   const [training, setTraining] = useState(null);
@@ -182,6 +188,37 @@ export default function MiniProfilePopover({ user, onUserChange, onLogout }) {
             )}
           </>
         )}
+
+        {/* Переключатель темы: тёмная основная, светлая — прежнее оформление. */}
+        <div
+          className="mini-profile__theme"
+          role="group"
+          aria-label="Тема оформления"
+        >
+          <span className="mini-profile__theme-label">Тема</span>
+          <div className="mini-profile__theme-options">
+            <button
+              type="button"
+              className={`mini-profile__theme-btn${
+                theme !== "light" ? " mini-profile__theme-btn--active" : ""
+              }`}
+              aria-pressed={theme !== "light"}
+              onClick={() => onThemeChange?.("dark")}
+            >
+              Тёмная
+            </button>
+            <button
+              type="button"
+              className={`mini-profile__theme-btn${
+                theme === "light" ? " mini-profile__theme-btn--active" : ""
+              }`}
+              aria-pressed={theme === "light"}
+              onClick={() => onThemeChange?.("light")}
+            >
+              Светлая
+            </button>
+          </div>
+        </div>
 
         {/* Низ меню: переход в профиль и выход из аккаунта. Выход
             доступен всегда, даже если прогресс не загрузился. */}

@@ -27,7 +27,9 @@ export default function EvalBar({ diff = 0, flipped, height }) {
     : "Материальный перевес: 0";
 
   /*
-   * Шкала стоит посередине между панелью истории и левым краем доски.
+   * Шкала стоит посередине между панелью истории и левым краем доски
+   * и по вертикали — ровно напротив доски, а не карточки целиком:
+   * сверху в карточке есть панель противника, снизу — кнопки.
    * Свободное место в строке зависит от ширины окна и от того, свёрнут
    * ли чат (доска внутри своей колонки центрируется), поэтому позицию
    * считаем по живым замерам. Двигаем через transform: раскладку строки
@@ -43,11 +45,29 @@ export default function EvalBar({ diff = 0, flipped, height }) {
     const measure = () => {
       const sectionRect = section.getBoundingClientRect();
       const cardRect = card.getBoundingClientRect();
-      const shift = Math.max(
+
+      // Сдвиг по горизонтали: середина просвета между историей и доской.
+      const shiftX = Math.max(
         0,
         Math.round((cardRect.left - sectionRect.left) / 2)
       );
-      bar.style.setProperty("--eval-shift", `${shift}px`);
+
+      /*
+       * Сдвиг по вертикали: шкала той же высоты, что и доска, поэтому
+       * достаточно опустить её до верхнего края доски — тогда середины
+       * совпадут. Положение доски внутри карточки берём у самой доски.
+       * Текущий transform вычитаем, чтобы замер не зависел от него.
+       */
+      const board = card.querySelector('div[style*="perspective"]');
+      const currentY =
+        parseFloat(bar.style.getPropertyValue("--eval-shift-y")) || 0;
+      const barTop = bar.getBoundingClientRect().top - currentY;
+      const shiftY = board
+        ? Math.round(board.getBoundingClientRect().top - barTop)
+        : 0;
+
+      bar.style.setProperty("--eval-shift", `${shiftX}px`);
+      bar.style.setProperty("--eval-shift-y", `${shiftY}px`);
     };
 
     /*
@@ -66,6 +86,7 @@ export default function EvalBar({ diff = 0, flipped, height }) {
       observer.disconnect();
       window.removeEventListener("resize", measure);
       bar.style.removeProperty("--eval-shift");
+      bar.style.removeProperty("--eval-shift-y");
     };
   }, []);
 
@@ -75,7 +96,7 @@ export default function EvalBar({ diff = 0, flipped, height }) {
       className={`eval-bar${
         flipped ? " eval-bar--bottom-black" : ""
       }`}
-      style={{ height: height || undefined }}
+      style={{ height: height || undefined, "--eval-fill": `${fillPct}%` }}
       title={title}
       aria-label={title}
       role="img"

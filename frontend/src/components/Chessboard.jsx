@@ -9,7 +9,6 @@ import {
 } from "react";
 import { Chessboard as ReactChessboard } from "react-chessboard";
 import { Chess } from "chess.js";
-import FenBar from "./FenBar.jsx";
 
 import {
   fetchMaiaMove,
@@ -202,6 +201,8 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
     if (!boardBoxRef.current) return;
 
     const el = boardBoxRef.current;
+    const wrapper = el.closest(".board-wrapper");
+    const mainEl = document.querySelector(".main-area");
 
     const report = () => {
       if (typeof onStateChange === "function") {
@@ -210,12 +211,26 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
           boardHeight: el.offsetHeight,
         }));
       }
+
+      /*
+       * История и чат должны быть той же высоты, что и карточка доски.
+       * Высота карточки зависит от размера доски и внутренних панелей,
+       * поэтому передаём её в CSS через переменную, а не дублируем
+       * в правилах.
+       */
+      if (mainEl && wrapper) {
+        mainEl.style.setProperty(
+          "--play-panel-height",
+          `${Math.round(wrapper.getBoundingClientRect().height)}px`,
+        );
+      }
     };
 
     report();
 
     const ro = new ResizeObserver(report);
     ro.observe(el);
+    if (wrapper) ro.observe(wrapper);
 
     return () => ro.disconnect();
   }, [onStateChange]);
@@ -224,22 +239,45 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
    * Размер доски.
    */
   const updateBoardSize = useCallback(() => {
-    const evalW = 62;      // шкала 38px + поля по 12px (см. .eval-bar)
-    const sideW = 260;     // панель истории (фикс. ширина в CSS)
-    const gapW = 24;       // отступы между панелями
-    const sideMargin = 24; // левый отступ от края
+    const isMobile = window.matchMedia("(max-width: 760px)").matches;
+    const isStacked = window.matchMedia("(max-width: 1150px)").matches;
 
     /*
-     * Чат можно свернуть в узкую полосу - тогда его ширина достаётся
-     * доске. Свёрнутая полоса не тянется (flex: 0 0 48px), поэтому
-     * резерв считаем точно: 48px полосы + 24px отступа справа +
-     * 66px хрома колонки доски (паддинги 14+14 и рамка с паддингами
-     * карточки 38), иначе ряд вылез бы за окно.
+     * Ширину берём у самой колонки доски, а не вычитаем чат из окна.
+     * Колонка забирает всё место, оставшееся от истории, шкалы и чата,
+     * и её ширина не зависит от размера доски (flex-basis: 0 в CSS).
+     * Поэтому первый замер сразу совпадает с итоговой раскладкой и доска
+     * не ждёт, пока чат свернут и развернут.
      */
-    const chatReserve = chatCollapsed ? 138 : 520;
+    const boardChromeW = isMobile ? 22 : 66; // карточка (22 mobile / 38 desktop) + паддинги колонки
+    const mainEl = document.querySelector(".main-area");
+    const boardSectionEl = document.querySelector(".board-section");
+    const chatEl = document.querySelector(".chat-section");
+    const containerW = mainEl?.clientWidth || window.innerWidth;
 
-    const availW =
-      window.innerWidth - evalW - sideW - gapW * 3 - chatReserve - sideMargin;
+    /*
+     * Пока чат едет, его текущая ширина ещё не итоговая. Берём целевую
+     * из инлайнового width (его ставит ChatPanel) и переносим разницу на
+     * колонку доски: так доска сразу получает финальный размер и плавно
+     * переезжает вместе с чатом, без скачка в конце анимации.
+     */
+    let chatTargetW = chatEl ? chatEl.getBoundingClientRect().width : 0;
+    if (chatEl?.classList.contains("chat-section--sliding")) {
+      const inlineW = parseFloat(chatEl.style.width);
+      if (inlineW > 0) {
+        chatTargetW = chatEl.classList.contains("chat-section--collapsed")
+          ? 48
+          : inlineW;
+      }
+    }
+
+    const sectionW = boardSectionEl
+      ? boardSectionEl.clientWidth +
+        (chatEl ? chatEl.getBoundingClientRect().width - chatTargetW : 0)
+      : containerW;
+    const availW = isStacked
+      ? containerW - boardChromeW
+      : sectionW - boardChromeW;
 
     /*
      * Высота — замером живых элементов, а не гаданием по window:
@@ -254,7 +292,6 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
      * чем места, карточка сжимается по высоте колонки и offsetHeight
      * перестаёт отражать реальную высоту содержимого.
      */
-    const mainEl = document.querySelector(".main-area");
     const boardBox = boardBoxRef.current;
     const wrapper = boardBox
       ? boardBox.closest(".board-wrapper")
@@ -266,16 +303,18 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
         : 0;
 
     // Минимум — панель противника + кнопки + ФЕН-панель + рамка
-    // с паддингами, когда карточки сравнения ещё нет.
-    const chromeH = Math.max(150, measuredChrome);
+    // с паддингами, когда карточки сравнения ещё нет. Реальный хром
+    // карточки — около 100px, поэтому не занижаем доску лишними 50px.
+    const chromeH = Math.max(104, measuredChrome);
 
     const availH =
       (mainEl?.clientHeight || window.innerHeight) - chromeH - 12;
 
     const size = Math.floor(Math.min(availW, availH));
 
-    setBoardWidth(Math.max(360, Math.min(size, 1150)));
-  }, [chatCollapsed]);
+    const maxBoardWidth = isMobile ? 720 : isStacked ? 860 : 1150;
+    setBoardWidth(Math.max(isMobile ? 240 : 260, Math.min(size, maxBoardWidth)));
+  }, []);
 
   useEffect(() => {
     updateBoardSize();
@@ -283,19 +322,21 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
     window.addEventListener("resize", updateBoardSize);
 
     /*
-     * Топбар, футер и подгрузка шрифтов меняют высоту колонки уже
-     * после первого замера — пересчитываем по её изменению.
-     * Петли нет: высота .main-area не зависит от размера доски.
+     * Топбар, футер, подгрузка шрифтов и анимация чата меняют ширину
+     * или высоту колонки уже после первого замера — пересчитываем по
+     * изменению .main-area и самой колонки доски. Петли нет: ширина
+     * колонки задана флексом и от размера доски не зависит.
      */
     const mainEl = document.querySelector(".main-area");
+    const boardSectionEl = document.querySelector(".board-section");
     let observer;
 
     if (mainEl && typeof ResizeObserver !== "undefined") {
       observer = new ResizeObserver(() => {
         /*
          * Пока чат анимируется, колонка пересчитывается каждый кадр,
-         * и замер высоты в этот момент врёт. Новый размер уже посчитал
-         * эффект выше (по смене chatCollapsed), здесь он не нужен.
+         * и замеры в этот момент врут. Окончательный размер посчитает
+         * таймер ниже, когда анимация закончится.
          */
         if (document.querySelector(".chat-section--sliding")) {
           return;
@@ -304,16 +345,21 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
         updateBoardSize();
       });
       observer.observe(mainEl);
+      if (boardSectionEl) observer.observe(boardSectionEl);
     }
+
+    // Чат едет 340 мс; после этого раскладка устоялась.
+    const settleTimer = window.setTimeout(updateBoardSize, 380);
 
     return () => {
       window.removeEventListener("resize", updateBoardSize);
+      window.clearTimeout(settleTimer);
 
       if (observer) {
         observer.disconnect();
       }
     };
-  }, [updateBoardSize]);
+  }, [updateBoardSize, chatCollapsed]);
 
   /*
    * Карточка сравнения появляется/меняет высоту после подсказки —
@@ -351,6 +397,17 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
      * раз, чтобы он не всплывал снова, если игрок его закрыл.
      */
     finishSentRef.current = true;
+
+    if (g.isCheckmate() && g.turn() !== playerColor && typeof onStateChange === "function") {
+      onStateChange((prev) => ({
+        ...prev,
+        maiaVictory: {
+          id: `${gameGenRef.current}-${Date.now()}`,
+          elo,
+          userId: getCurrentUserId(),
+        },
+      }));
+    }
 
     let result = "*";
     let status = "game_over";
@@ -421,8 +478,9 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
       engine: "maia3",
       result,
       status,
+      playerColor,
     }).catch(() => {});
-  }, [moveHistory, elo, playerColor]);
+  }, [moveHistory, elo, playerColor, onStateChange]);
 
   /*
    * Пересчитываем FEN позиции по истории SAN.
@@ -724,9 +782,11 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
             turn: game.turn(),
           }));
         }
+        return true;
       } catch (error) {
+        // Сообщение покажет меню «Позиция», откуда загружают FEN.
         console.error("Неверный FEN:", error);
-        alert("Ошибка: Неверный формат FEN-строки!");
+        return false;
       }
     },
     [game, onStateChange],
@@ -1383,11 +1443,17 @@ const fetchBestMove = useCallback(
    */
   const processPlayerMove = useCallback(
     (sourceSquare, targetSquare) => {
-      const move = game.move({
-        from: sourceSquare,
-        to: targetSquare,
-        promotion: "q",
-      });
+      let move;
+      try {
+        move = game.move({
+          from: sourceSquare,
+          to: targetSquare,
+          promotion: "q",
+        });
+      } catch {
+        // Illegal drops are normal input; chess.js throws instead of returning null.
+        return false;
+      }
 
       if (move === null) {
         return false;
@@ -1650,14 +1716,40 @@ const fetchBestMove = useCallback(
       return true;
     }, []);
 
+  const setMaiaLevel = useCallback(
+    (level) => {
+      const nextElo = Math.max(
+        800,
+        Math.min(2600, Math.round(Number(level) / 100) * 100),
+      );
+      setElo(nextElo);
+      setStockfishArrow(null);
+      setMaiaArrow(null);
+      setCompareData(null);
+      if (typeof onStateChange === "function") {
+        onStateChange((prev) => ({ ...prev, maiaRating: nextElo }));
+      }
+    },
+    [onStateChange],
+  );
+
   /*
    * Публичные методы компонента.
    */
   useImperativeHandle(ref, () => ({
     onNavigate,
     handleNewGame,
+    setMaiaLevel,
     getFen: () => gameRef.current.fen(),
-    handleLoadFen,
+    // Меню «Позиция»: загрузка FEN и экспорт партии в PGN.
+    loadFen: handleLoadFen,
+    getPgn: () => {
+      try {
+        return gameRef.current.pgn();
+      } catch {
+        return "";
+      }
+    },
     // Кнопка «Подсказка» живёт в ChatPanel — дёргает анализ через ref.
     requestBestMove: () => fetchBestMove(),
   }));
@@ -1958,36 +2050,11 @@ const fetchBestMove = useCallback(
 
           <input
             type="range"
-            min="1000"
+            min="800"
             max="2600"
             step="100"
             value={elo}
-            onChange={(e) => {
-              const newElo = parseInt(
-                e.target.value,
-                10,
-              );
-
-              setElo(newElo);
-
-              /*
-               * При изменении Elo старое сравнение
-               * Maia3 больше не актуально.
-               */
-              setStockfishArrow(null);
-              setMaiaArrow(null);
-              setCompareData(null);
-
-              if (
-                typeof onStateChange ===
-                "function"
-              ) {
-                onStateChange((prev) => ({
-                  ...prev,
-                  maiaRating: newElo,
-                }));
-              }
-            }}
+            onChange={(e) => setMaiaLevel(parseInt(e.target.value, 10))}
             style={{
               width: 100,
               accentColor: "#C9A96E",
@@ -2256,9 +2323,6 @@ const fetchBestMove = useCallback(
                     <span className="side-pick-name">
                       Белые
                     </span>
-                    <span className="side-pick-note">
-                      первый ход ваш
-                    </span>
                   </button>
                   <button
                     type="button"
@@ -2272,9 +2336,6 @@ const fetchBestMove = useCallback(
                     />
                     <span className="side-pick-name">
                       Чёрные
-                    </span>
-                    <span className="side-pick-note">
-                      начнёт Maia 3
                     </span>
                   </button>
                 </div>
@@ -2448,11 +2509,6 @@ const fetchBestMove = useCallback(
             )}
           </div>
         )}
-
-        <FenBar
-          fen={fen}
-          onLoadFen={handleLoadFen}
-        />
       </div>
     </div>
   );

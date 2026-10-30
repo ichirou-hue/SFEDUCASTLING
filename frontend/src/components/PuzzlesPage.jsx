@@ -202,12 +202,40 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
   const [movesLeft, setMovesLeft] = useState(0);
   const [solvedCount, setSolvedCount] = useState(0);
   /*
-   * Серия подряд правильно решённых задач (конвенция chess.com):
-   * решение без ошибок - +1, любая неверная ставка обнуляет серию.
-   * bestStreak - рекорд текущей сессии страницы.
+   * Серия живёт в sessionStorage, чтобы переживать размонтирование страницы
+   * при переходе в другой раздел. Неверный ход по-прежнему прерывает её.
    */
-  const [streak, setStreak] = useState(0);
-  const [bestStreak, setBestStreak] = useState(0);
+  const [streak, setStreak] = useState(() => {
+    if (Number.isFinite(Number(user?.puzzle_streak))) return Number(user.puzzle_streak);
+    try {
+      const saved = Number(sessionStorage.getItem("gigachess:puzzle-streak") || 0);
+      return Number.isFinite(saved) && saved > 0 ? saved : 0;
+    } catch {
+      return 0;
+    }
+  });
+  const [bestStreak, setBestStreak] = useState(() => {
+    try {
+      const saved = Number(sessionStorage.getItem("gigachess:puzzle-best-streak") || 0);
+      return Number.isFinite(saved) && saved > 0 ? saved : 0;
+    } catch {
+      return 0;
+    }
+  });
+
+  const persistPuzzleStreak = (nextStreak, nextBestStreak) => {
+    try {
+      // Пишем синхронно в момент изменения, чтобы быстрый переход по разделам
+      // не успел размонтировать страницу до сохранения эффекта React.
+      sessionStorage.setItem("gigachess:puzzle-streak", String(nextStreak));
+      sessionStorage.setItem(
+        "gigachess:puzzle-best-streak",
+        String(nextBestStreak),
+      );
+    } catch {
+      // Если хранилище недоступно, серия живёт до ухода со страницы.
+    }
+  };
   const [hintArrow, setHintArrow] = useState(null);
   const [boardArrows, setBoardArrows] = useState([]);
   const [boardOrientation, setBoardOrientation] = useState("white");
@@ -375,6 +403,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
 
   const gameRef = useRef(new Chess());
   const solutionMovesRef = useRef([]);
+  const playerMovesRef = useRef([]);
   const solutionIndexRef = useRef(0);
   const puzzlesRef = useRef([]);
   // Уникальные задачи, решённые за текущую загрузку страницы. Повторное
@@ -395,16 +424,26 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
       // Ширина — по формуле от окна (колонки грида фиксированы).
       // Свёрнутый чат занимает 48px полосы + 24px отступа, остальное
       // достаётся доске (см. .puzzles-layout--chat-collapsed).
-      const infoW = 230;
-      const chatReserve = chatCollapsed ? 64 : 560;
-      const hGaps = 64; // gaps + паддинги + скроллбар
-      const availW = window.innerWidth - infoW - chatReserve - hGaps;
-      // Высота — замер живого контейнера (исключает топбар и хром
-      // браузера), минус всё под доской: рамка 30 + кнопки ~110 + отступы.
+      const isMobile = window.matchMedia("(max-width: 760px)").matches;
+      const infoW = isMobile ? 0 : 280;
+      const chatReserve = chatCollapsed ? 64 : 480;
+      const hGaps = isMobile ? 48 : 64; // gaps + паддинги + скроллбар
       const layoutEl = document.querySelector(".puzzles-layout");
+      const availW = isMobile
+        ? (layoutEl?.clientWidth || window.innerWidth) - hGaps
+        : window.innerWidth - infoW - chatReserve - hGaps;
+      // Высота — видимая область страницы (без топбара и футера), а не
+      // высота самой раскладки: она теперь растягивается по содержимому,
+      // и замер её clientHeight дал бы петлю (доска растит саму себя).
       const belowBoard = 175;
-      const layoutH = layoutEl?.clientHeight || window.innerHeight;
-      const availH = layoutH - belowBoard;
+      const shellEl = document.querySelector(".puzzles-page-shell");
+      const footerEl = document.querySelector(
+        ".puzzles-page-shell > .site-footer"
+      );
+      const viewH = shellEl
+        ? shellEl.clientHeight - (footerEl?.offsetHeight || 0)
+        : window.innerHeight;
+      const availH = viewH - belowBoard;
       // Страховка от переполнения колонки: доска никогда не шире
       // реальной ширины своей грид-колонки минус рамка обёртки (38px).
       // Иначе доска залезает на инфо-панель и чат (так и было).
@@ -415,15 +454,16 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
        */
       const targetCol = boardColTargetRef.current;
       boardColTargetRef.current = 0;
+      const boardChrome = isMobile ? 22 : 38;
       const colW = targetCol
-        ? targetCol - 38
+        ? targetCol - boardChrome
         : colEl
-          ? colEl.clientWidth - 38
+          ? colEl.clientWidth - boardChrome
           : Infinity;
       const size = Math.floor(
-        Math.min(Math.max(availW, 280), Math.max(availH, 280), colW),
+        Math.min(Math.max(availW, isMobile ? 240 : 280), Math.max(availH, 280), colW),
       );
-      setBoardWidth(Math.max(320, Math.min(size, 780)));
+      setBoardWidth(Math.max(isMobile ? 240 : 320, Math.min(size, 780)));
     };
     updateSize();
     window.addEventListener("resize", updateSize);
@@ -464,6 +504,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
 
       const moves = (puzzle.moves || "").trim().split(/\s+/).filter(Boolean);
       solutionMovesRef.current = moves;
+      playerMovesRef.current = [];
       solutionIndexRef.current = 0;
       setMovesLeft(countPlayerMoves(puzzle.moves));
     },
@@ -605,15 +646,25 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
   const savePuzzleProgress = useCallback(
     (correct) => {
       if (!currentPuzzle?.id || !getAccessToken()) return;
-      recordPuzzleAttempt(currentPuzzle.id, correct)
-        .then(() => {
+      recordPuzzleAttempt(
+        currentPuzzle.id,
+        correct,
+        correct ? playerMovesRef.current : [],
+      )
+        .then((data) => {
+          if (Number.isFinite(Number(data?.puzzle_streak))) {
+            const serverStreak = Number(data.puzzle_streak);
+            setStreak(serverStreak);
+            setBestStreak((best) => Math.max(best, serverStreak));
+            persistPuzzleStreak(serverStreak, Math.max(bestStreak, serverStreak));
+          }
           window.dispatchEvent(new Event("sfedu-progress-updated"));
         })
         .catch(() => {
           // Ошибка статистики не должна мешать решению самой задачи.
         });
     },
-    [currentPuzzle?.id],
+    [currentPuzzle?.id, bestStreak],
   );
 
   const handleMove = useCallback(
@@ -645,6 +696,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
           promotion: promo,
         });
         if (!move) return false;
+        playerMovesRef.current.push(`${move.from}${move.to}${move.promotion || ""}`.toLowerCase());
 
         setFen(game.fen());
         setLastMove({ from: sourceSquare, to: targetSquare });
@@ -667,8 +719,10 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
           // Серия растёт: задача решена без неверных ставок
           // (ошибка в ветке ниже уже обнулила счётчик).
           const nextStreak = streak + 1;
+          const nextBestStreak = Math.max(bestStreak, nextStreak);
+          persistPuzzleStreak(nextStreak, nextBestStreak);
           setStreak(nextStreak);
-          setBestStreak((b) => Math.max(b, nextStreak));
+          setBestStreak(nextBestStreak);
           setPuzzleSolved(true);
           savePuzzleProgress(true);
           return true;
@@ -726,6 +780,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
           text: "Неверный ход. Попробуйте ещё раз.",
         });
       }
+      persistPuzzleStreak(0, bestStreak);
       setStreak(0);
       savePuzzleProgress(false);
       return false;
@@ -736,10 +791,12 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
       showRegGate,
       previewGate,
       isPreviewGatePuzzle,
+      isLastPreviewPuzzle,
       currentPuzzle?.id,
       user,
       savePuzzleProgress,
       streak,
+      bestStreak,
     ],
   );
 
@@ -970,11 +1027,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
         <div className="puzzle-theme-icon">{themeInfo.icon}</div>
 
         <div className="puzzle-instruction">
-          Найдите
-          <br />
-          лучший ход в
-          <br />
-          позиции
+          Найдите лучший ход в позиции
         </div>
 
         {currentPuzzle && (
@@ -988,9 +1041,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
         </div>
 
         <div className="puzzle-moves-left-label">
-          Осталось
-          <br />
-          найти ходов:
+          Осталось найти ходов:
         </div>
         <div className="puzzle-moves-left-count">{movesLeft}</div>
 
@@ -1018,6 +1069,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
               рекорд сессии: {bestStreak}
             </div>
           )}
+          <div className="puzzle-streak-rewards">Награды за серию: 5 · +3, 10 · +5, 20 · +10, 30 · +15 GigaCoin</div>
         </div>
 
         {adaptiveMode && hasRealProfile && (
@@ -1215,11 +1267,10 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
         <div className="puzzle-chat-section" ref={chatPanelRef}>
           <div className="chat-header">
             <div className="chat-avatar">
-              <img src="/bot-icon.svg" alt="Ассистент" />
+              <span className="chat-avatar-glyph" aria-hidden="true">♘</span>
             </div>
             <div className="chat-title-block">
-              <h2>ЧАТ ПО ЗАДАЧЕ</h2>
-              <span className="chat-subtitle">Шахматный ассистент</span>
+              <h2 className="chat-panel-title">Шахматный гуру</h2>
             </div>
             <button
               type="button"
