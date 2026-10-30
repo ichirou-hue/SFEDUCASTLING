@@ -791,7 +791,6 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
       showRegGate,
       previewGate,
       isPreviewGatePuzzle,
-      isLastPreviewPuzzle,
       currentPuzzle?.id,
       user,
       savePuzzleProgress,
