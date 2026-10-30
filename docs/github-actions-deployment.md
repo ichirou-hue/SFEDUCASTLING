@@ -6,7 +6,7 @@ The production workflow accepts only a successful CI run caused by a push to `ma
 
 ## Server readiness
 
-The latest repository record identifies the production host as Ubuntu `gigachess`, app path `/srv/SFEDUCASTLING`, service `gigachess.service`, loopback port `8005`, and deploy account `deploy`. Preserve the server-side `.env` and virtual environment. The latest recorded setup says Python 3.14.10 is installed at `/srv/SFEDUCASTLING/venv314`, while systemd still uses the old Python 3.12.3 environment. Confirm systemd is switched to the validated runtime, health checks pass, and a backup restore has been tested before enabling deployment.
+The latest repository record identifies the production host as Ubuntu `gigachess`, app path `/srv/SFEDUCASTLING`, service `gigachess.service`, loopback port `8005`, and deploy account `deploy`. Preserve the server-side `.env` and virtual environment. The latest recorded setup says Python 3.14.10 is installed at `/srv/SFEDUCASTLING/venv314`, while systemd still uses the old Python 3.12.3 environment. Configure Nginx to serve `/srv/SFEDUCASTLING/current/frontend/dist`; the `releases` directory and active release root must be searchable by Nginx (mode `0755`), while the shared `.env` must remain private (mode `0600`). Confirm systemd is switched to the validated runtime, health checks pass, and a backup restore has been tested before enabling deployment.
 
 Install `scripts/gigachess-deploy.sh` as root-owned `/usr/local/sbin/gigachess-deploy` (`root:root`, mode `0750`). The deploy account must have only this sudo permission:
 
