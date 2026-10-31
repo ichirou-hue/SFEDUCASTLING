@@ -84,12 +84,21 @@ function MainPage({ user }) {
    * уходит доске (см. updateBoardSize в Chessboard.jsx).
    */
   const [chatCollapsed, setChatCollapsed] = useState(false);
+  const [mobileGamePanel, setMobileGamePanel] = useState(null);
+
+  const toggleMobileGamePanel = (panel) => {
+    const nextPanel = mobileGamePanel === panel ? null : panel;
+    setMobileGamePanel(nextPanel);
+    setChatCollapsed(nextPanel !== "chat");
+  };
 
   return (
     // Своя скролл-колонка: футер в потоке контента (внизу при проскролле),
     // а не зафиксированной полосой поверх страницы.
     <div className="main-page-scroll">
-      <div className="main-area">
+      <div
+        className={`main-area${mobileGamePanel ? ` main-area--mobile-${mobileGamePanel}` : ""}`}
+      >
         <div className="game-history-column">
           <MoveHistory
             moveHistory={boardState.moveHistory}
@@ -129,8 +138,29 @@ function MainPage({ user }) {
           isComparing={boardState.isComparing}
           onAnalyze={() => boardRef.current?.requestBestMove?.()}
           collapsed={chatCollapsed}
-          onToggleCollapsed={() => setChatCollapsed((v) => !v)}
+          onToggleCollapsed={() => {
+            setChatCollapsed(true);
+            setMobileGamePanel(null);
+          }}
         />
+        <div className="mobile-game-dock" role="group" aria-label="Панели игры">
+          <button
+            type="button"
+            className={mobileGamePanel === "history" ? "is-active" : ""}
+            aria-pressed={mobileGamePanel === "history"}
+            onClick={() => toggleMobileGamePanel("history")}
+          >
+            <span aria-hidden="true">♟</span> Ходы
+          </button>
+          <button
+            type="button"
+            className={mobileGamePanel === "chat" ? "is-active" : ""}
+            aria-pressed={mobileGamePanel === "chat"}
+            onClick={() => toggleMobileGamePanel("chat")}
+          >
+            <span aria-hidden="true">▤</span> Чат
+          </button>
+        </div>
       </div>
       <SiteFooter />
     </div>
