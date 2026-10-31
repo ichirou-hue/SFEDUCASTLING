@@ -1949,3 +1949,36 @@
 :root[data-theme="dark"] .admin-page {
   scrollbar-color: rgba(213, 180, 118, 0.35) transparent;
 }
+
+/* The embedded chess accounts section sits on the dark profile surface. */
+:root[data-theme="dark"] .chess-accounts-section--embedded {
+  border-top-color: var(--sf-line);
+}
+
+:root[data-theme="dark"] .chess-accounts-section--embedded .chess-accounts-section__icon {
+  border-color: var(--sf-line);
+  background: var(--sf-surface-raised);
+  color: var(--sf-gold);
+}
+
+:root[data-theme="dark"] .chess-accounts-section--embedded .chess-accounts-section__kicker {
+  color: var(--sf-gold);
+}
+
+:root[data-theme="dark"] .chess-accounts-section--embedded .chess-accounts-section__head h2 {
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .chess-accounts-section--embedded .chess-accounts-section__head p {
+  color: var(--sf-muted);
+}
+
+:root[data-theme="dark"] .chess-accounts-section--embedded .chess-accounts-section__summary {
+  border-color: var(--sf-line);
+  background: var(--sf-surface-raised);
+  color: var(--sf-muted);
+}
+
+:root[data-theme="dark"] .chess-accounts-section--embedded .chess-accounts-section__summary strong {
+  color: var(--sf-gold);
+}
