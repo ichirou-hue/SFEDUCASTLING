@@ -832,7 +832,14 @@
 
   /* Training path and lesson flow */
   .training-page {
+    height: calc(100dvh - 58px - env(safe-area-inset-top, 0px));
+    min-height: calc(100dvh - 58px - env(safe-area-inset-top, 0px));
+    max-height: calc(100dvh - 58px - env(safe-area-inset-top, 0px));
+    flex: 0 0 auto;
     overflow-y: auto;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
     padding: 16px 12px calc(92px + env(safe-area-inset-bottom, 0px));
   }
 
