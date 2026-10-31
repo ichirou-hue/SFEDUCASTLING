@@ -1,0 +1,201 @@
+/* --- Нижние кнопки панели истории: меню «Позиция» --- */
+.action-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.position-menu {
+  position: relative;
+  width: 100%;
+}
+
+.btn-position {
+  width: 100%;
+  height: 52px;
+  gap: 10px;
+  border-radius: 30px;
+  background: #83b787;
+  border: none;
+  font-family: "Calypso", serif;
+  font-size: 24px;
+  color: #333;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 0 auto;
+  transition: background 0.2s;
+}
+
+.btn-position:hover,
+.btn-position[aria-expanded="true"] {
+  background: #76a87a;
+}
+
+.btn-position__chevron {
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 7px solid currentColor;
+  opacity: 0.5;
+  transition: transform 0.2s;
+}
+
+.btn-position[aria-expanded="true"] .btn-position__chevron {
+  transform: rotate(180deg);
+}
+
+/* Всплывающее меню импорта/экспорта: открывается над кнопкой. */
+.position-menu__panel {
+  position: absolute;
+  z-index: 60;
+  bottom: calc(100% + 10px);
+  left: 0;
+  width: 372px;
+  max-width: calc(100vw - 32px);
+  box-sizing: border-box;
+  padding: 16px 18px 14px;
+  border: 1px solid rgba(180, 135, 44, 0.55);
+  border-radius: 20px;
+  background: #f7f6f0;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  color: #20332d;
+  text-align: left;
+  font-family: "Inter", sans-serif;
+}
+
+.position-menu__title {
+  margin: 0;
+  font-family: "Calypso", serif;
+  font-size: 20px;
+  font-weight: normal;
+  letter-spacing: 0.02em;
+}
+
+.position-menu__group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.position-menu__label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #71847b;
+}
+
+.position-menu__row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.position-menu__input,
+.position-menu__textarea {
+  flex: 1;
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid #c2974d;
+  border-radius: 8px;
+  background: #fffdf7;
+  color: #333;
+  font: 11px/1.45 "Consolas", "Courier New", monospace;
+  outline: none;
+}
+
+.position-menu__textarea {
+  resize: vertical;
+  min-height: 48px;
+}
+
+.position-menu__input:focus,
+.position-menu__textarea:focus {
+  border-color: #a97f33;
+  box-shadow: 0 0 0 2px rgba(194, 151, 77, 0.18);
+}
+
+.position-menu__action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 9px 12px;
+  border: none;
+  border-radius: 8px;
+  background: #83b787;
+  color: #1f2b24;
+  font: 600 12px/1.1 "Inter", sans-serif;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.position-menu__action:hover {
+  background: #76a87a;
+}
+
+.position-menu__action--ghost {
+  background: transparent;
+  border: 1px solid rgba(111, 143, 116, 0.55);
+  color: #35553a;
+}
+
+.position-menu__action--ghost:hover {
+  background: rgba(131, 183, 135, 0.18);
+}
+
+.position-menu__row .position-menu__action {
+  flex: 1 1 0;
+}
+
+.position-menu__hint {
+  font-size: 11px;
+  color: #7a8a82;
+}
+
+.position-menu__file {
+  display: none;
+}
+
+.position-menu__backdrop {
+  display: none;
+}
+
+.position-menu__status {
+  min-height: 14px;
+  font-size: 11px;
+  line-height: 14px;
+  color: #2f5c36;
+}
+
+.position-menu__status--error {
+  color: #b3543a;
+}
+
+@media (max-width: 760px) {
+  /* На телефоне меню удобнее листом у нижнего края, а не над кнопкой. */
+  .position-menu__backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 59;
+    display: block;
+    background: rgba(4, 10, 10, 0.42);
+  }
+
+  .position-menu__panel {
+    position: fixed;
+    right: 12px;
+    bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+    left: 12px;
+    width: auto;
+    max-width: none;
+    max-height: calc(100vh - 140px);
+    overflow-y: auto;
+  }
+}

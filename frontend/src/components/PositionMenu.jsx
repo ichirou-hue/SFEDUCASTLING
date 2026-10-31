@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Chess } from "chess.js";
+import "./PositionMenu.css";
 
 const NOTICE_TIMEOUT = 2600;
 
