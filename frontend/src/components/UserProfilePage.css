@@ -26,6 +26,12 @@
   flex-shrink: 0;
 }
 
+.user-profile-page > .site-footer {
+  width: 100%;
+  margin-left: 0;
+  margin-right: 0;
+}
+
 .user-profile-page::-webkit-scrollbar {
   width: 8px;
 }
@@ -204,6 +210,10 @@
   .user-profile-page {
     width: calc(100% - 24px);
     margin-top: 16px;
+  }
+
+  .user-profile-page > .site-footer {
+    width: calc(100% + 24px);
   }
 
   .user-profile-card,
