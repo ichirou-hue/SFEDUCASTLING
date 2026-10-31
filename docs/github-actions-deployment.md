@@ -6,7 +6,9 @@ The production workflow accepts only a successful CI run caused by a push to `ma
 
 ## Server readiness
 
-The latest repository record identifies the production host as Ubuntu `gigachess`, app path `/srv/SFEDUCASTLING`, service `gigachess.service`, loopback port `8005`, and deploy account `deploy`. Preserve the server-side `.env` and virtual environment. The latest recorded setup says Python 3.14.10 is installed at `/srv/SFEDUCASTLING/venv314`, while systemd still uses the old Python 3.12.3 environment. Configure Nginx to serve `/srv/SFEDUCASTLING/current/frontend/dist`; the `releases` directory and active release root must be searchable by Nginx (mode `0755`), while the shared `.env` must remain private (mode `0600`). Confirm systemd is switched to the validated runtime, health checks pass, and a backup restore has been tested before enabling deployment.
+The production service uses `/srv/SFEDUCASTLING/venv/bin/python` (Python 3.14.10), with `/srv/SFEDUCASTLING/current` as its working directory and deploy as its user. The deploy helper reuses this shared venv and does not install application dependencies; `requirements-ci.txt` intentionally omits ML runtime packages. Maia3 therefore needs one-time provisioning in that venv after a fresh server setup or venv rebuild. Run `bash /srv/SFEDUCASTLING/current/scripts/provision-maia3-runtime.sh` as deploy: it installs CPU PyTorch, NumPy and Hugging Face Hub, then caches the 5M Maia3 checkpoint under the service account. `backend/api_gateway/state.py` launches the checked-out Maia3 submodule from its source directory, so the editable package install is not needed. Keep the `.env` private (mode `0600`), and preserve the shared venv across releases.
+
+Configure Nginx to serve `/srv/SFEDUCASTLING/current/frontend/dist`; the `releases` directory and active release root must be searchable by Nginx (mode `0755`). Confirm systemd, health checks, and a backup restore before enabling deployment.
 
 Install `scripts/gigachess-deploy.sh` as root-owned `/usr/local/sbin/gigachess-deploy` (`root:root`, mode `0750`). The deploy account must have only this sudo permission:
 

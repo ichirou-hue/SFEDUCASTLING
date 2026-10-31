@@ -130,6 +130,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
   const [sidePickerOpen, setSidePickerOpen] = useState(true);
 
   const [isAiThinking, setIsAiThinking] = useState(false);
+  const [maiaError, setMaiaError] = useState("");
 
   const [lastMove, setLastMove] = useState(null);
 
@@ -670,6 +671,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
     setLegalMovesForSelected([]);
 
     setIsAiThinking(false);
+    setMaiaError("");
     setIsComparing(false);
 
     setEvalScore(null);
@@ -756,6 +758,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
         setLegalMovesForSelected([]);
 
         setIsAiThinking(false);
+        setMaiaError("");
         setIsComparing(false);
 
         setEvalScore(null);
@@ -1225,6 +1228,7 @@ const fetchBestMove = useCallback(
     const gen = gameGenRef.current;
 
     setIsAiThinking(true);
+    setMaiaError("");
 
     /*
      * Пока Maia делает ход, старые стрелки сравнения убираем.
@@ -1273,7 +1277,7 @@ const fetchBestMove = useCallback(
       if (gen !== gameGenRef.current) return;
 
       if (data.error) {
-        setIsAiThinking(false);
+        setMaiaError(data.error);
         return;
       }
 
@@ -1282,6 +1286,11 @@ const fetchBestMove = useCallback(
         to: data.to,
         promotion: "q",
       });
+
+      if (!move) {
+        setMaiaError("Maia3 вернула нелегальный ход. Позиция не изменена.");
+        return;
+      }
 
       if (move) {
         const currentFen = game.fen();
@@ -1322,59 +1331,19 @@ const fetchBestMove = useCallback(
       }
     } catch (err) {
       console.error("Maia3 ошибка:", err);
-
-      /*
-       * Fallback — случайный легальный ход.
-       */
-      const legalMoves = game.moves({
-        verbose: true,
-      });
-
-      if (legalMoves.length > 0) {
-        const pick =
-          legalMoves[
-            Math.floor(
-              Math.random() * legalMoves.length,
-            )
-          ];
-
-        game.move(pick);
-
-        const currentFen = game.fen();
-
-        setFen(currentFen);
-
-        setLastMove({
-          from: pick.from,
-          to: pick.to,
-        });
-
-        buildMoveHistory(pick.san);
-        takeSnapshot();
-        updateStatus();
-
-        playMoveSound();
-
-        if (typeof onStateChange === "function") {
-          onStateChange((prev) => ({
-            ...prev,
-            fen: currentFen,
-            moveHistory: [
-              ...(prev.moveHistory || []),
-              pick.san,
-            ],
-            positionSnapshots: [
-              ...(prev.positionSnapshots || []),
-              currentFen,
-            ],
-            viewIndex: -1,
-            turn: game.turn(),
-          }));
-        }
+      const detail = err?.response?.data?.detail;
+      if (gen === gameGenRef.current) {
+        setMaiaError(
+          typeof detail === "string"
+            ? detail
+            : "Maia3 сейчас недоступна. Ход не был выполнен.",
+        );
+      }
+    } finally {
+      if (gen === gameGenRef.current) {
+        setIsAiThinking(false);
       }
     }
-
-    setIsAiThinking(false);
   }, [
     game,
     elo,
@@ -2078,6 +2047,19 @@ const fetchBestMove = useCallback(
             }
           />
         </div>
+
+        {maiaError && (
+          <div className="maia-engine-error" role="alert">
+            <span>{maiaError}</span>
+            <button
+              type="button"
+              onClick={() => makeAiMove()}
+              disabled={isAiThinking}
+            >
+              Повторить
+            </button>
+          </div>
+        )}
 
         {/* =====================================================
             Доска

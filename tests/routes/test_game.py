@@ -1,5 +1,6 @@
 """Тесты игровых endpoint'ов: /api/legal-moves, /api/move, /api/stockfish-move."""
 
+import chess
 import pytest
 from fastapi.testclient import TestClient
 from backend.app import app
@@ -90,7 +91,11 @@ class TestAiMove:
         data = resp.json()
         assert data.get("error") == "Партия окончена"
 
-    def test_valid_request(self):
+    def test_valid_request(self, monkeypatch):
+        monkeypatch.setattr(
+            "backend.api_gateway.routes.game._stockfish_move",
+            lambda board: chess.Move.from_uci("e2e4"),
+        )
         resp = client.post("/api/stockfish-move", json={"fen": START_FEN, "elo": 1500, "engine": "stockfish"})
         assert resp.status_code == 200
         data = resp.json()
@@ -99,6 +104,23 @@ class TestAiMove:
         assert "from" in data
         assert "to" in data
         assert data.get("engine") == "stockfish"
+
+    def test_unavailable_maia_does_not_fall_back_to_stockfish(self, monkeypatch):
+        monkeypatch.setattr(
+            "backend.api_gateway.routes.game._maia3_move",
+            lambda req, board: None,
+        )
+        monkeypatch.setattr(
+            "backend.api_gateway.routes.game._stockfish_move",
+            lambda board: pytest.fail("Maia3 must not be replaced by Stockfish"),
+        )
+
+        resp = client.post(
+            "/api/maia-move",
+            json={"fen": START_FEN, "elo": 1500, "engine": "maia3"},
+        )
+
+        assert resp.status_code == 503
 
     def test_levels_list(self):
         resp = client.get("/api/levels")

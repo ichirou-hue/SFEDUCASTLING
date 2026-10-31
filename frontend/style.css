@@ -677,6 +677,41 @@ body {
   letter-spacing: 0.5px;
 }
 
+.maia-engine-error {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 6px 0 8px;
+  padding: 9px 12px;
+  border: 1px solid rgba(190, 106, 88, 0.5);
+  border-radius: 10px;
+  background: rgba(91, 35, 31, 0.88);
+  color: #ffe3dc;
+  font: 12px/1.4 "Inter", Arial, sans-serif;
+}
+
+.maia-engine-error button {
+  flex: 0 0 auto;
+  padding: 6px 12px;
+  border: 1px solid rgba(255, 227, 220, 0.42);
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.maia-engine-error button:hover:not(:disabled) {
+  background: rgba(255, 227, 220, 0.12);
+}
+
+.maia-engine-error button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
 .controls-row {
   display: flex;
   align-items: center;

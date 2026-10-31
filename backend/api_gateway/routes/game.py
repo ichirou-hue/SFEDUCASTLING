@@ -1,7 +1,6 @@
 """Игровые endpoint'ы: легальные ходы, выполнение хода, ход AI."""
 
 import hashlib
-import random
 
 import chess
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
@@ -180,9 +179,8 @@ def stockfish_analysis(req: FenRequest):
 def ai_move(req: FenRequest):
     """Получает ход от AI.
 
-    По умолчанию ходит Maia3 — играет как человек заданного Elo
-    (req.elo + req.moves для истории партии). Если запрошен engine="stockfish"
-    или Maia3 недоступна — ход делает Stockfish на максимальной силе.
+    Maia3 играет как человек заданного Elo (req.elo + req.moves для истории).
+    Если выбранный движок недоступен, ход не подменяется другим движком.
     """
     board = chess.Board(req.fen)
     if board.is_game_over():
@@ -190,15 +188,19 @@ def ai_move(req: FenRequest):
 
     if req.engine == "maia3":
         move = _maia3_move(req, board)
+        if move is None:
+            raise HTTPException(
+                status_code=503,
+                detail="Maia3 сейчас недоступна; ход не был выполнен.",
+            )
     else:
         move = _stockfish_move(board)
-
-    if move is None:
-        print("[AI] Primary engine не вернул ход — fallback на Stockfish")
-        move = _stockfish_move(board)
-
-    if move is None:
-        move = random.choice(list(board.legal_moves))
+        if move is None:
+            print("[AI] Stockfish не вернул ход; запрос отклонён")
+            raise HTTPException(
+                status_code=503,
+                detail="Stockfish сейчас недоступен; ход не был выполнен.",
+            )
 
     san = board.san(move)
     from_name = chess.square_name(move.from_square)
@@ -240,8 +242,8 @@ def _maia3_move(req: FenRequest, board: chess.Board) -> chess.Move | None:
     """Ход Maia3: человекоподобная игра на уровне req.elo."""
     engine = get_maia3()
     if engine is None:
-        print("[Maia3] Недоступна — fallback на Stockfish")
-        return _stockfish_move(board)
+        print("[Maia3] Недоступна; ход не выполнен")
+        return None
     try:
         import chess.engine
 
@@ -274,16 +276,14 @@ def _maia3_move(req: FenRequest, board: chess.Board) -> chess.Move | None:
         if move is not None and move in board.legal_moves:
             return move
         if move is not None:
-            print(f"[Maia3] Ход {move} не легален в текущей позиции, fallback")
-            return _stockfish_move(board)
+            print(f"[Maia3] Ход {move} не легален в текущей позиции")
     except Exception as e:
         print(f"[Maia3] Ошибка хода: {e}")
         try:
             engine.configure({"Elo": 1500, "SelfElo": 1500, "OppoElo": 1500, "Temperature": 1.0})
         except Exception:
             pass
-        print("[Maia3] Fallback на Stockfish после ошибки")
-        return _stockfish_move(board)
+        return None
     return None
 
 
@@ -386,7 +386,7 @@ def _stockfish_move(board: chess.Board) -> chess.Move | None:
             print(f"[Stockfish] Ошибка хода: {e}")
             reset_stockfish()
     else:
-        print("[AI] Stockfish недоступен, случайный ход")
+        print("[AI] Stockfish недоступен")
     return None
 
 
