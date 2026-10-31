@@ -345,7 +345,7 @@
 .home-hero::before {
   background-image:linear-gradient(180deg,#07111670 0%,#07111640 45%,#071116b3 100%),url("/home-clouds-emerald.png");
   background-position:center,22% 22%;
-  background-size:cover,auto 690px;
+  background-size:cover,cover;
   background-repeat:no-repeat;
   background-color:#18343d
 }
