@@ -348,6 +348,7 @@
   }
 
   .site-footer {
+    display: none;
     position: relative;
     left: 50%;
     width: 100vw;
@@ -375,6 +376,7 @@
   }
 
   .user-profile-page > .site-footer {
+    display: flex;
     width: 100vw;
     max-width: 100vw;
   }
