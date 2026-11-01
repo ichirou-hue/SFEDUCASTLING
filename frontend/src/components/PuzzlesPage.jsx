@@ -329,7 +329,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
        и анимировать ширину нечего: состояние переключается сразу. */
     if (
       typeof window.matchMedia === "function" &&
-      window.matchMedia("(max-width: 1150px)").matches
+      window.matchMedia("(max-width: 1450px)").matches
     ) {
       interruptedColRef.current = 0;
       return undefined;

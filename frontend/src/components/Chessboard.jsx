@@ -303,18 +303,21 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
 
     const measuredChrome =
       wrapper && boardBox
-        ? wrapper.scrollHeight - boardBox.offsetHeight
+        ? wrapper.getBoundingClientRect().height -
+          boardBox.getBoundingClientRect().height
         : 0;
 
     // Минимум — панель противника + кнопки + ФЕН-панель + рамка
     // с паддингами, когда карточки сравнения ещё нет. Реальный хром
     // карточки — около 100px, поэтому не занижаем доску лишними 50px.
-    const chromeH = Math.max(104, measuredChrome);
+    const chromeH = measuredChrome > 0 ? measuredChrome : 104;
+    const pageViewport = mainEl?.parentElement;
+    const availableHeight = pageViewport
+      ? pageViewport.clientHeight - 22
+      : (mainEl?.clientHeight || window.innerHeight) - 12;
+    const availH = availableHeight - chromeH;
 
-    const availH =
-      (mainEl?.clientHeight || window.innerHeight) - chromeH - 12;
-
-    const size = Math.floor(Math.min(availW, availH));
+    const size = Math.round(Math.min(availW, availH));
 
     const maxBoardWidth = isMobile ? 720 : isStacked ? 860 : 1150;
     setBoardWidth(Math.max(isMobile ? 240 : 260, Math.min(size, maxBoardWidth)));
