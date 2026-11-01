@@ -2498,7 +2498,7 @@ body {
   flex: 1;
   flex-direction: column;
   min-height: 0;
-  overflow: hidden;
+  overflow-y: auto;
 }
 
 .puzzles-loading,
@@ -2522,10 +2522,16 @@ body {
   max-width: 100%;
   margin: 0;
   box-sizing: border-box;
-  flex: 1;
+  flex: 0 0 auto;
   min-height: 0;
-  overflow-y: auto;
+  overflow: visible;
   padding: 10px 24px 16px;
+}
+
+@media (min-width: 1451px) {
+  .puzzles-layout {
+    grid-auto-rows: var(--puzzle-board-row-height, auto);
+  }
 }
 
 /* На средних экранах (ноутбук 1280) чат не должен забирать максимум:
@@ -2537,6 +2543,7 @@ body {
   }
   .puzzle-info-panel {
     width: 100%;
+    max-height: none;
   }
 }
 
@@ -2557,6 +2564,9 @@ body {
   align-items: center;
   text-align: center;
   gap: 12px;
+  max-height: 100%;
+  overflow-y: auto;
+  scrollbar-width: thin;
 }
 
 .puzzle-theme-label {
@@ -2871,11 +2881,11 @@ body {
      невысоких окнах поле ввода уезжает под экран:
      100vh - шапка 80 - отступ сверху 10 - снизу 16 - футер 32. */
   height: auto;
-  max-height: calc(100vh - 138px);
+  max-height: none;
   min-height: 0;
   align-self: stretch;
   box-sizing: border-box;
-  margin-right: 24px;
+  margin-right: 0;
   border-radius: 30px;
   z-index: 1;
   /* Та же лёгкая белая вуаль, что и у чата на главной. */
@@ -2929,7 +2939,7 @@ body {
    (48px) плюс отступ 24px, а освободившаяся ширина уходит доске -
    ровно как на главной странице. */
 .puzzles-layout--chat-collapsed {
-  grid-template-columns: 230px minmax(0, 1fr) 72px;
+  grid-template-columns: minmax(210px, 250px) minmax(0, 1fr) 48px;
 }
 
 /* Узкий экран: раскладка в одну колонку, свёрнутый чат не должен

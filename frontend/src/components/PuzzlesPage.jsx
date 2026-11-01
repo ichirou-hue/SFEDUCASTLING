@@ -277,6 +277,32 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
   // пока колонки ещё едут.
   const boardColTargetRef = useRef(0);
 
+  useLayoutEffect(() => {
+    const layout = layoutRef.current;
+    const boardSection = layout?.querySelector(".puzzle-board-section");
+    const board = boardSection?.querySelector(".puzzle-board-wrapper");
+    const controls = boardSection?.querySelector(".puzzle-controls");
+
+    if (!layout || !boardSection || !board || !controls) return undefined;
+
+    const measureRow = () => {
+      const boardHeight = board.getBoundingClientRect().height;
+      const controlsHeight = controls.getBoundingClientRect().height;
+      const gap = parseFloat(getComputedStyle(boardSection).rowGap) || 0;
+      layout.style.setProperty(
+        "--puzzle-board-row-height",
+        `${Math.ceil(boardHeight + controlsHeight + gap)}px`,
+      );
+    };
+
+    measureRow();
+    const observer = new ResizeObserver(measureRow);
+    observer.observe(board);
+    observer.observe(controls);
+
+    return () => observer.disconnect();
+  }, [loading, boardWidth]);
+
   useEffect(() => {
     const layout = layoutRef.current;
     const chat = chatPanelRef.current;
@@ -336,11 +362,11 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
     }
 
     const targetCol = chatCollapsed
-      ? 72
-      : chat.getBoundingClientRect().width + 24;
+      ? 48
+      : chat.getBoundingClientRect().width;
     const fromCol =
       interruptedColRef.current ||
-      (chatCollapsed ? naturalColRef.current : 72);
+      (chatCollapsed ? naturalColRef.current : 48);
 
     interruptedColRef.current = 0;
 
@@ -382,7 +408,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
       layout.classList.add("puzzles-layout--chat-reveal");
 
       if (!chatCollapsed) {
-        naturalColRef.current = chat.getBoundingClientRect().width + 24;
+        naturalColRef.current = chat.getBoundingClientRect().width;
       }
 
       window.setTimeout(() => {
@@ -394,7 +420,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
 
     return () => {
       if (animation.playState === "running") {
-        interruptedColRef.current = chat.getBoundingClientRect().width + 24;
+        interruptedColRef.current = chat.getBoundingClientRect().width;
       }
 
       animation.cancel();
