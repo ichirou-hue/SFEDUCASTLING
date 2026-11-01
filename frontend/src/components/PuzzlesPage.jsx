@@ -622,17 +622,10 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
   // выставляется по тому же признаку в loadPuzzle.
   const sideToMove = currentPuzzle?.fen?.split(" ")?.[1] === "b" ? "b" : "w";
 
-  // Показываем персонализацию, только когда профиль настоящий с обеих
-  // сторон: есть подтверждённые попытками слабые И сильные темы.
-  // Без истории бэкенд присылает фабрикат (см. rank_topic_profile).
-  const observedWeakTopics = (adaptiveMeta?.weakTopics || []).filter(
-    (topic) => topic.observed || (topic.attempts || 0) > 0,
-  );
-  const observedStrongTopics = (adaptiveMeta?.strongTopics || []).filter(
-    (topic) => topic.observed || (topic.attempts || 0) > 0,
-  );
-  const hasRealProfile =
-    observedWeakTopics.length > 0 && observedStrongTopics.length > 0;
+  const showModeSwitcher =
+    Boolean(user && getAccessToken()) &&
+    !requestedTopicSlug &&
+    ratingMin === null;
   const relatedCourseTopic =
     getCourseTopicMeta(currentPuzzle?.adaptive_topic) ||
     requestedTopic ||
@@ -1047,88 +1040,100 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
         }`}
       >
       <div className="puzzle-info-panel">
-        <div className="puzzle-theme-label">Тема задачи:</div>
-        <div className="puzzle-theme-name">{themeInfo.label}</div>
-        <div className="puzzle-theme-icon">{themeInfo.icon}</div>
-
-        <div className="puzzle-instruction">
-          Найдите лучший ход в позиции
-        </div>
-
-        {currentPuzzle && (
-          <div className="puzzle-turn-indicator">
-            Ход {currentPuzzle.fen.split(" ")[1] === "b" ? "чёрных" : "белых"}
+        <div className="puzzle-info-heading">
+          <div className="puzzle-info-heading-copy">
+            <span className="puzzle-theme-label">ТЕМА ЗАДАЧИ</span>
+            <h2 className="puzzle-theme-name">{themeInfo.label}</h2>
           </div>
-        )}
-        <div className="puzzle-side">
-          <span className={`puzzle-side-dot puzzle-side-dot--${sideToMove}`} aria-hidden="true" />
-          Играете за {sideToMove === "b" ? "чёрных" : "белых"}
+          <span className="puzzle-theme-icon" aria-hidden="true">{themeInfo.icon}</span>
         </div>
 
-        <div className="puzzle-moves-left-label">
-          Осталось найти ходов:
-        </div>
-        <div className="puzzle-moves-left-count">{movesLeft}</div>
+        <div className="puzzle-instruction">Найдите лучший ход</div>
 
-        {currentPuzzle && (
-          <div className="puzzle-rating">
-            Рейтинг: {currentPuzzle.rating}
-          </div>
-        )}
-
-        {/*
-         * Серия подряд правильно решённых задач. Показываем всегда
-         * (в том числе ноль), чтобы блок не прыгал при обнулении.
-         */}
-        <div className="puzzle-streak">
-          <div className="puzzle-streak-label">Серия:</div>
-          <div
-            className={`puzzle-streak-value ${
-              streak > 0 ? "puzzle-streak-value--hot" : ""
-            }`}
+        <div className="puzzle-nav-buttons" aria-label="Навигация по задачам">
+          <button
+            type="button"
+            className="puzzle-nav-btn"
+            onClick={handlePrevPuzzle}
+            disabled={currentIndex === 0}
+            aria-label="Предыдущая задача"
           >
-            🔥 {streak}
-          </div>
-          {bestStreak > 0 && (
-            <div className="puzzle-streak-best">
-              рекорд сессии: {bestStreak}
+            ←
+          </button>
+          <span className="puzzle-nav-index">
+            {currentIndex + 1} <span>/</span> {puzzles.length}
+          </span>
+          <button
+            type="button"
+            className="puzzle-nav-btn"
+            onClick={handleNextPuzzle}
+            disabled={currentIndex >= puzzles.length - 1}
+            aria-label="Следующая задача"
+          >
+            →
+          </button>
+        </div>
+
+        <div className="puzzle-turn-indicator">
+          Ваш ход за {sideToMove === "b" ? "чёрных" : "белых"}
+        </div>
+
+        <div className="puzzle-moves-summary">
+          <span>Осталось ходов</span>
+          <strong className="puzzle-moves-left-count">{movesLeft}</strong>
+        </div>
+
+        <div className="puzzle-quick-stats">
+          {currentPuzzle && (
+            <div className="puzzle-quick-stat">
+              <span>Рейтинг задачи</span>
+              <strong>{currentPuzzle.rating}</strong>
             </div>
           )}
-          <div className="puzzle-streak-rewards">Награды за серию: 5 · +3, 10 · +5, 20 · +10, 30 · +15 GigaCoin</div>
+          <div className="puzzle-quick-stat">
+            <span>Серия</span>
+            <strong className={streak > 0 ? "puzzle-streak-value--hot" : ""}>
+              🔥 {streak}
+            </strong>
+          </div>
         </div>
 
-        {adaptiveMode && hasRealProfile && (
-          <div className="learning-topic-filter learning-topic-filter--adaptive">
-            Персональная тренировка
-            {adaptiveMeta?.playerLevel && (
-              <strong>
-                {adaptiveMeta.playerLevel.provisional ? "Предварительный уровень" : "Уровень"}: {adaptiveMeta.playerLevel.title}
-              </strong>
-            )}
-            {currentPuzzle?.adaptive_difficulty != null && (
-              <span className="adaptive-topic-list">
-                Целевая сложность: {currentPuzzle.adaptive_difficulty} из 3
-                {currentPuzzle.difficulty_match === false && " · задача вне целевого диапазона"}
-              </span>
-            )}
-            <strong>Подбор по уровню и темам</strong>
-            {adaptiveMeta?.weakTopics?.length > 0 && (
-              <div className="adaptive-topic-list">
-                Слабые: {adaptiveMeta.weakTopics.map((topic) => topic.title).join(", ")}
-              </div>
-            )}
-            <button type="button" onClick={() => navigate("/puzzles?mode=all")}>
-              Обычный режим
-            </button>
-          </div>
+        {bestStreak > 0 && (
+          <div className="puzzle-streak-best">Рекорд серии: {bestStreak}</div>
         )}
 
-        {adaptiveMode && !hasRealProfile && (
-          <div className="learning-topic-filter learning-topic-filter--adaptive">
-            <button type="button" onClick={() => navigate("/puzzles")}>
-              Обычный режим
+        <details className="puzzle-rewards-details">
+          <summary>Награды за серию</summary>
+          <p>5 задач: +3 · 10: +5 · 20: +10 · 30: +15 GigaCoin</p>
+        </details>
+
+        {showModeSwitcher && (
+          <section className="puzzle-mode-card" aria-label="Режим задач">
+            <div className="puzzle-mode-card-heading">
+              <span>Режим</span>
+              <strong>{adaptiveMode ? "Персональный подбор" : "Общий набор"}</strong>
+            </div>
+            <p>
+              Персональный подбор учитывает уровень и результаты по темам.
+              Общий набор предлагает задачи без этой адаптации.
+            </p>
+            {adaptiveMode && adaptiveMeta?.playerLevel && (
+              <div className="puzzle-mode-level">
+                {adaptiveMeta.playerLevel.provisional ? "Предварительный уровень" : "Ваш уровень"}: {adaptiveMeta.playerLevel.title}
+              </div>
+            )}
+            {adaptiveMode && currentPuzzle?.adaptive_difficulty != null && (
+              <div className="puzzle-mode-difficulty">
+                Сложность {currentPuzzle.adaptive_difficulty} из 3
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => navigate(adaptiveMode ? "/puzzles?mode=all" : "/puzzles")}
+            >
+              {adaptiveMode ? "Перейти к общему набору" : "Включить персональный подбор"}
             </button>
-          </div>
+          </section>
         )}
 
         {!adaptiveMode && requestedTopic && (
@@ -1138,7 +1143,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
               {requestedTopic.icon} {requestedTopic.title}
             </strong>
             <button type="button" onClick={() => navigate("/puzzles?mode=all")}>
-              Показать все пазлы
+              Все задачи
             </button>
           </div>
         )}
@@ -1148,7 +1153,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
             Подбор по рейтингу
             <strong>От {ratingMin}</strong>
             <button type="button" onClick={() => navigate("/puzzles?mode=all")}>
-              Показать все пазлы
+              Все задачи
             </button>
           </div>
         )}
@@ -1167,25 +1172,6 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
           </button>
         )}
 
-        <div className="puzzle-nav-buttons">
-          <button
-            className="puzzle-nav-btn"
-            onClick={handlePrevPuzzle}
-            disabled={currentIndex === 0}
-          >
-            ←
-          </button>
-          <span className="puzzle-nav-index">
-            {currentIndex + 1} / {puzzles.length}
-          </span>
-          <button
-            className="puzzle-nav-btn"
-            onClick={handleNextPuzzle}
-            disabled={currentIndex >= puzzles.length - 1}
-          >
-            →
-          </button>
-        </div>
       </div>
 
       <div className="puzzle-board-section">
