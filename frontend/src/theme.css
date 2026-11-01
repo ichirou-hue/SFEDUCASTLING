@@ -738,13 +738,21 @@
   background: rgba(213, 180, 118, .25);
 }
 
-:root[data-theme="dark"] .puzzle-solved-text,
+:root[data-theme="dark"] .puzzle-solved-copy {
+  border-color: var(--sf-line-strong);
+  background: rgba(7, 20, 22, .97);
+}
+
+:root[data-theme="dark"] .puzzle-solved-text {
+  color: var(--sf-ink-strong);
+}
+
 :root[data-theme="dark"] .puzzle-solved-streak {
-  color: var(--sf-green);
+  color: #ffbd74;
 }
 
 :root[data-theme="dark"] .puzzle-solved-hint {
-  color: var(--sf-muted);
+  color: var(--sf-ink);
 }
 
 :root[data-theme="dark"] .puzzle-result--success {

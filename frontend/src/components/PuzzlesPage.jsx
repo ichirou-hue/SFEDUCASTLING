@@ -1330,17 +1330,19 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
           {puzzleSolved && (
             <div className="puzzle-solved-overlay">
               <div className="puzzle-solved-checkmark">✓</div>
-              <div className="puzzle-solved-text">Задача решена!</div>
-              {streak > 0 && (
-                <div className="puzzle-solved-streak">
-                  🔥 Серия: {streak}
-                </div>
-              )}
-              {currentIndex < puzzles.length - 1 && (
-                <div className="puzzle-solved-hint">
-                  Следующая задача откроется автоматически…
-                </div>
-              )}
+              <div className="puzzle-solved-copy">
+                <div className="puzzle-solved-text">Задача решена!</div>
+                {streak > 0 && (
+                  <div className="puzzle-solved-streak">
+                    🔥 Серия: {streak}
+                  </div>
+                )}
+                {currentIndex < puzzles.length - 1 && (
+                  <div className="puzzle-solved-hint">
+                    Следующая задача откроется автоматически…
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>

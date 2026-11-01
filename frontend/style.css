@@ -3024,11 +3024,13 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: rgba(131, 183, 135, 0.25);
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
+  gap: 14px;
+  padding: 16px;
+  background: rgba(3, 12, 14, 0.62);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   border-radius: 12px;
-  z-index: 10;
+  z-index: 20;
   animation: puzzleSolvedFadeIn 0.3s ease;
 }
 
@@ -3048,19 +3050,33 @@ body {
 }
 
 .puzzle-solved-text {
-  margin-top: 12px;
-  font-family: "Calypso", serif;
-  font-size: 22px;
-  color: #2f5c36;
-  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.6);
+  color: #fff8e9;
+  font: 700 clamp(17px, 4vw, 22px)/1.25 Inter, sans-serif;
+  text-shadow: none;
+}
+
+.puzzle-solved-copy {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  width: min(100%, 420px);
+  padding: 14px 18px;
+  border: 1px solid rgba(213, 180, 118, .72);
+  border-radius: 16px;
+  background: rgba(7, 20, 22, .96);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, .42);
+  text-align: center;
+}
+
+.puzzle-solved-streak {
+  color: #ffbd74;
+  font: 700 14px/1.3 Inter, sans-serif;
 }
 
 /* Подсказка об автопереключении под «Задача решена!». */
 .puzzle-solved-hint {
-  margin-top: 8px;
-  font-size: 13px;
-  color: #4a7a4f;
-  opacity: 0.85;
+  color: #d1d9d5;
+  font: 500 12px/1.4 Inter, sans-serif;
 }
 
 .puzzle-result {
