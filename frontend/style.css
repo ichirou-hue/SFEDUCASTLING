@@ -1359,12 +1359,15 @@ textarea {
 .chat-input-area input {
   flex: 1;
   min-width: 0;
+  height: 48px;
+  box-sizing: border-box;
   background: rgba(255, 253, 248, 0.85);
   border: 2px solid rgba(180, 135, 44, 0.3);
   border-radius: 16px;
-  padding: 10px 16px;
+  padding: 0 16px;
   color: #333;
   font-size: 14px;
+  line-height: 1.25;
   font-family: var(--font-ui);
   outline: none;
   transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
@@ -1383,14 +1386,19 @@ textarea {
 /* Кнопка «Отправить» в палитре «Импорт» / «Загрузить». */
 .chat-input-area button {
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 48px;
+  box-sizing: border-box;
   background: #83b787;
   border: none;
   border-radius: 16px;
-  padding: 10px 20px;
+  padding: 0 20px;
   color: #2b3d2c;
   font-family: var(--font-ui);
   font-size: 17px;
-  line-height: 1.35;
+  line-height: 1.2;
   cursor: pointer;
   transition: background 0.2s;
 }

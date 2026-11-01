@@ -678,14 +678,16 @@
   }
 
   .main-area .chat-input-area input {
+    height: 44px;
     min-height: 44px;
-    padding: 9px 12px;
+    padding: 0 12px;
   }
 
   .main-area .chat-input-area button {
     min-width: 46px;
+    height: 44px;
     min-height: 44px;
-    padding: 8px 12px;
+    padding: 0 12px;
   }
 
   /* Keep mobile game tools in the page flow below the board so they never
@@ -934,7 +936,15 @@
   }
 
   .puzzle-chat-section .chat-input-area input {
+    height: 44px;
     min-height: 44px;
+    padding: 0 12px;
+  }
+
+  .puzzle-chat-section .chat-input-area button {
+    height: 44px;
+    min-height: 44px;
+    padding: 0 12px;
   }
 
   /* Training path and lesson flow */
