@@ -2705,6 +2705,8 @@ body {
   font-weight: normal;
   line-height: 1;
   font-variant-numeric: lining-nums;
+  /* Оптическая коррекция: видимая часть знака в Calypso выше line box. */
+  transform: translateY(7px);
 }
 
 .puzzle-quick-stats {
