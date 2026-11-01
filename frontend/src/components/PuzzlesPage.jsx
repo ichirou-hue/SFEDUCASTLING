@@ -193,6 +193,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
   const [boardWidth, setBoardWidth] = useState(520);
 
   const [fen, setFen] = useState("");
+  const [pendingPromotion, setPendingPromotion] = useState(null);
   const [lastMove, setLastMove] = useState(null);
   const [selectedSquare, setSelectedSquare] = useState(null);
   const [legalMovesForSelected, setLegalMovesForSelected] = useState([]);
@@ -512,6 +513,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
       const game = new Chess(puzzle.fen);
       gameRef.current = game;
       setFen(game.fen());
+      setPendingPromotion(null);
       setSelectedSquare(null);
       setLegalMovesForSelected([]);
       setWaitingForOpponent(false);
@@ -677,16 +679,40 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
   );
 
   const handleMove = useCallback(
-    (sourceSquare, targetSquare) => {
+    (sourceSquare, targetSquare, promotionChoice = null) => {
       if (waitingForOpponent || showSolution || showRegGate || previewGate) return false;
+
+      const game = gameRef.current;
+      const movingPiece = game.get(sourceSquare);
+      const isPromotion = Boolean(
+        movingPiece?.type === "p" &&
+        game.moves({ square: sourceSquare, verbose: true }).some(
+          (move) => move.to === targetSquare && move.promotion,
+        ),
+      );
+      if (isPromotion && !promotionChoice) {
+        setPendingPromotion({
+          sourceSquare,
+          targetSquare,
+          color: movingPiece.color,
+        });
+        setSelectedSquare(null);
+        setLegalMovesForSelected([]);
+        return true;
+      }
 
       const expectedMove = solutionMovesRef.current[solutionIndexRef.current];
       if (!expectedMove) return false;
 
       const expectedCore = expectedMove.substring(0, 4);
       const moveCore = sourceSquare + targetSquare;
+      const selectedPromotion = isPromotion ? promotionChoice || "q" : null;
+      const expectedPromotion = expectedMove[4] || "q";
+      const moveMatches =
+        moveCore === expectedCore &&
+        (!isPromotion || selectedPromotion === expectedPromotion);
 
-      if (moveCore === expectedCore) {
+      if (moveMatches) {
         // Третья решённая за сегодня задача: не даём дорешить без анкеты.
         // Вместо завершающего (решающего) хода показываем окно с анкетой.
         if (
@@ -697,8 +723,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
           return true;
         }
 
-        const game = gameRef.current;
-        const promo = expectedMove.length > 4 ? expectedMove[4] : "q";
+        const promo = isPromotion ? selectedPromotion : "q";
         const move = game.move({
           from: sourceSquare,
           to: targetSquare,
@@ -778,7 +803,18 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
 
       // Ошибка рвёт серию: счётчик обнуляется, а если серия была,
       // сообщаем об этом в сообщении над кнопками.
-      if (streak > 0) {
+      if (isPromotion && promotionChoice) {
+        const selectedName = {
+          q: "ферзь",
+          r: "ладья",
+          b: "слон",
+          n: "конь",
+        }[promotionChoice] || "выбранная фигура";
+        setResultMessage({
+          type: "error",
+          text: `Превращение в ${selectedName} не решает задачу. Попробуйте другой вариант.`,
+        });
+      } else if (streak > 0) {
         setResultMessage({
           type: "error",
           text: `Неверный ход. Серия из ${streak} прервана.`,
@@ -806,6 +842,37 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
       streak,
       bestStreak,
     ],
+  );
+
+  const handleBoardPieceDrop = useCallback(
+    (sourceSquare, targetSquare) => {
+      const game = gameRef.current;
+      const piece = game.get(sourceSquare);
+      const isPromotion = Boolean(
+        piece?.type === "p" &&
+        game.moves({ square: sourceSquare, verbose: true }).some(
+          (move) => move.to === targetSquare && move.promotion,
+        ),
+      );
+      if (isPromotion) {
+        setPendingPromotion({ sourceSquare, targetSquare, color: piece.color });
+        setSelectedSquare(null);
+        setLegalMovesForSelected([]);
+        return false;
+      }
+      return handleMove(sourceSquare, targetSquare);
+    },
+    [handleMove],
+  );
+
+  const handlePromotionChoice = useCallback(
+    (piece) => {
+      if (!pendingPromotion) return;
+      const { sourceSquare, targetSquare } = pendingPromotion;
+      setPendingPromotion(null);
+      handleMove(sourceSquare, targetSquare, piece);
+    },
+    [handleMove, pendingPromotion],
   );
 
   const onSquareClick = useCallback(
@@ -1176,11 +1243,13 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
           <ReactChessboard
             id={boardId}
             position={fen}
-            onPieceDrop={handleMove}
+            onPieceDrop={handleBoardPieceDrop}
+            onPromotionCheck={() => false}
             onSquareClick={onSquareClick}
             boardWidth={boardWidth}
             animationDuration={200}
             boardOrientation={boardOrientation}
+            showPromotionDialog={false}
             showBoardNotation={true}
             customNotationStyle={{
               fontSize: "12px",
@@ -1217,6 +1286,47 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
             }}
             customSquareStyles={customSquareStyles}
           />
+          {pendingPromotion && (
+            <div className="puzzle-promotion-overlay">
+              <section
+                className="puzzle-promotion-dialog"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="puzzle-promotion-title"
+              >
+                <h2 id="puzzle-promotion-title">Во что превратить пешку?</h2>
+                <p>Выберите фигуру, которой хотите продолжить решение.</p>
+                <div className="puzzle-promotion-options">
+                  {[
+                    ["q", "Ферзь"],
+                    ["r", "Ладья"],
+                    ["b", "Слон"],
+                    ["n", "Конь"],
+                  ].map(([piece, label]) => (
+                    <button
+                      type="button"
+                      key={piece}
+                      onClick={() => handlePromotionChoice(piece)}
+                      aria-label={`Превратить пешку в фигуру: ${label.toLowerCase()}`}
+                    >
+                      <img
+                        src={PIECE_IMAGES[`${pendingPromotion.color}${piece.toUpperCase()}`]}
+                        alt=""
+                      />
+                      <span>{label}</span>
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  className="puzzle-promotion-cancel"
+                  onClick={() => setPendingPromotion(null)}
+                >
+                  Отмена
+                </button>
+              </section>
+            </div>
+          )}
           {puzzleSolved && (
             <div className="puzzle-solved-overlay">
               <div className="puzzle-solved-checkmark">✓</div>
