@@ -2097,7 +2097,7 @@ const fetchBestMove = useCallback(
             customNotationStyle={{
               fontSize: "12px",
               fontFamily:
-                "Cormorant Garamond, Georgia, serif",
+                "Inter, sans-serif",
               fontWeight: "500",
               color: "#4a3220",
             }}
@@ -2435,7 +2435,7 @@ const fetchBestMove = useCallback(
               background:
                 "rgba(255,255,255,0.75)",
               fontFamily:
-                "Cormorant Garamond, Georgia, serif",
+                "Inter, sans-serif",
               fontSize: "15px",
               lineHeight: 1.5,
             }}

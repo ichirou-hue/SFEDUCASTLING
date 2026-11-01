@@ -519,7 +519,7 @@ export default function LevelTestPage({ onCompleted = null, autoStart = false, o
                 showBoardNotation={true}
                 customNotationStyle={{
                   fontSize: "12px",
-                  fontFamily: "Cormorant Garamond, Georgia, serif",
+                  fontFamily: "Inter, sans-serif",
                   fontWeight: "500",
                   color: "#4a3220",
                 }}

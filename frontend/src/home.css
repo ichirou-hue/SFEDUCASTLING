@@ -120,7 +120,7 @@
 }
 .home-hero h1 em {
   color:#d5b476;
-  font:400 1.08em/1 "Cormorant Garamond",Georgia,serif;
+  font:700 1.08em/1 var(--font-ui);
   letter-spacing:-.025em
 }
 .home-lead {
