@@ -121,16 +121,10 @@ function MainPage({ user }) {
             onSelectLevel={(level) => boardRef.current?.setMaiaLevel?.(level)}
           />
         </div>
-        <EvalBar
-          diff={boardState.materialDiff}
-          flipped={boardState.boardFlipped}
-          height={boardState.boardHeight}
-        />
-        <ChessboardComponent
-          ref={boardRef}
-          onStateChange={setBoardState}
-          chatCollapsed={chatCollapsed}
-        />
+        <div className="board-stage">
+          <EvalBar diff={boardState.materialDiff} flipped={boardState.boardFlipped} height={boardState.boardHeight} />
+          <ChessboardComponent ref={boardRef} onStateChange={setBoardState} chatCollapsed={chatCollapsed} />
+        </div>
         <ChatPanel
           hintMessage={boardState.hintMessage}
           currentFen={boardState.fen}

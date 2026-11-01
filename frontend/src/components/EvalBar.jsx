@@ -37,21 +37,11 @@ export default function EvalBar({ diff = 0, flipped, height }) {
    */
   useEffect(() => {
     const bar = barRef.current;
-    const section = document.querySelector(".board-section");
     const card = document.querySelector(".board-wrapper");
 
-    if (!bar || !section || !card) return undefined;
+    if (!bar || !card) return undefined;
 
     const measure = () => {
-      const sectionRect = section.getBoundingClientRect();
-      const cardRect = card.getBoundingClientRect();
-
-      // Сдвиг по горизонтали: середина просвета между историей и доской.
-      const shiftX = Math.max(
-        0,
-        Math.round((cardRect.left - sectionRect.left) / 2)
-      );
-
       /*
        * Сдвиг по вертикали: шкала той же высоты, что и доска, поэтому
        * достаточно опустить её до верхнего края доски — тогда середины
@@ -66,7 +56,6 @@ export default function EvalBar({ diff = 0, flipped, height }) {
         ? Math.round(board.getBoundingClientRect().top - barTop)
         : 0;
 
-      bar.style.setProperty("--eval-shift", `${shiftX}px`);
       bar.style.setProperty("--eval-shift-y", `${shiftY}px`);
     };
 
@@ -78,14 +67,14 @@ export default function EvalBar({ diff = 0, flipped, height }) {
     measure();
 
     const observer = new ResizeObserver(measure);
-    observer.observe(section);
     observer.observe(card);
+    const stage = document.querySelector(".board-stage");
+    if (stage) observer.observe(stage);
     window.addEventListener("resize", measure);
 
     return () => {
       observer.disconnect();
       window.removeEventListener("resize", measure);
-      bar.style.removeProperty("--eval-shift");
       bar.style.removeProperty("--eval-shift-y");
     };
   }, []);

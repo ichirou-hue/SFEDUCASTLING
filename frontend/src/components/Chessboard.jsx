@@ -253,6 +253,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
     const boardChromeW = isMobile ? 22 : 66; // карточка (22 mobile / 38 desktop) + паддинги колонки
     const mainEl = document.querySelector(".main-area");
     const boardSectionEl = document.querySelector(".board-section");
+    const boardStageEl = document.querySelector(".board-stage");
     const chatEl = document.querySelector(".chat-section");
     const containerW = mainEl?.clientWidth || window.innerWidth;
 
@@ -272,13 +273,15 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
       }
     }
 
-    const sectionW = boardSectionEl
-      ? boardSectionEl.clientWidth +
+    const sizingArea = isStacked ? boardSectionEl : boardStageEl;
+    const sectionW = sizingArea
+      ? sizingArea.clientWidth +
         (chatEl ? chatEl.getBoundingClientRect().width - chatTargetW : 0)
       : containerW;
+    const evalAndGapW = isStacked ? 0 : 38 + 12;
     const availW = isStacked
       ? containerW - boardChromeW
-      : sectionW - boardChromeW;
+      : sectionW - boardChromeW - evalAndGapW;
 
     /*
      * Высота — замером живых элементов, а не гаданием по window:
@@ -330,6 +333,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
      */
     const mainEl = document.querySelector(".main-area");
     const boardSectionEl = document.querySelector(".board-section");
+    const boardStageEl = document.querySelector(".board-stage");
     let observer;
 
     if (mainEl && typeof ResizeObserver !== "undefined") {
@@ -346,7 +350,8 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
         updateBoardSize();
       });
       observer.observe(mainEl);
-      if (boardSectionEl) observer.observe(boardSectionEl);
+      if (boardStageEl) observer.observe(boardStageEl);
+      else if (boardSectionEl) observer.observe(boardSectionEl);
     }
 
     // Чат едет 340 мс; после этого раскладка устоялась.

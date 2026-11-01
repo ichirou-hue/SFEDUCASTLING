@@ -5,6 +5,7 @@
 }
 
 @media (max-width: 1150px) and (min-width: 761px) {
+  .board-stage { display: contents; }
   .main-area {
     display: grid;
     flex: 0 0 auto;
@@ -20,7 +21,7 @@
     padding-bottom: 0;
   }
 
-  .main-area > .eval-bar {
+  .main-area .eval-bar {
     grid-area: evaluation;
     width: auto;
     height: 10px !important;
@@ -46,7 +47,7 @@
     display: none;
   }
 
-  .main-area > .board-section {
+  .main-area .board-section {
     grid-area: board;
     min-width: 0;
     padding: 0;
@@ -117,6 +118,7 @@
 }
 
 @media (max-width: 760px) {
+  .board-stage { display: contents; }
   :root {
     -webkit-tap-highlight-color: transparent;
   }
@@ -458,7 +460,7 @@
     padding-bottom: 0;
   }
 
-  .main-area > .eval-bar {
+  .main-area .eval-bar {
     grid-area: evaluation;
     width: auto;
     height: 9px !important;
@@ -486,7 +488,7 @@
     display: none;
   }
 
-  .main-area > .board-section {
+  .main-area .board-section {
     grid-area: board;
     width: 100%;
     min-width: 0;

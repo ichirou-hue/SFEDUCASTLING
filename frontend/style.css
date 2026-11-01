@@ -384,12 +384,22 @@ body {
 }
 
 .board-section {
-  flex: 1 1 auto; /* Р”РѕСЃРєР° Р·Р°РЅРёРјР°РµС‚ РІСЋ СЃРІРѕР±РѕРґРЅСѓСЋ СЃРµСЂРµРґРёРЅСѓ */
-  min-width: 320px;
+  flex: 0 0 auto;
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 14px;
+  padding: 0;
+  order: 2;
+}
+
+.board-stage {
+  display: flex;
+  flex: 1 1 560px;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
   order: 2;
 }
 
@@ -585,12 +595,12 @@ body {
   border: 2px solid rgba(180, 135, 44, 0.85);
   /* 38 + 12·2 = 62px - тот же след, что учитывает расчёт доски
      (evalW в Chessboard.jsx). */
-  margin: 0 12px;
+  margin: 0;
   order: 1;
   align-self: center;
   /* Сдвиг к середине просвета между историей и доской (замеряет
      EvalBar.jsx). transform, а не margin: раскладка строки не меняется. */
-  transform: translateX(var(--eval-shift, 0px));
+  transform: translateY(var(--eval-shift-y, 0px));
   box-shadow:
     0 3px 10px rgba(74, 50, 32, 0.2),
     inset 0 0 0 1px rgba(255, 255, 255, 0.12);
