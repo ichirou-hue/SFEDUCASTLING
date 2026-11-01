@@ -2604,9 +2604,9 @@ body {
   width: 40px;
   height: 40px;
   place-items: center;
-  border: 1px solid rgba(34, 90, 115, .16);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, .58);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   font-size: 28px;
   color: #225a73;
   line-height: 1;
@@ -2619,12 +2619,28 @@ body {
 
 .puzzle-turn-indicator {
   align-self: flex-start;
-  padding: 5px 10px;
+  display: grid;
+  gap: 3px;
+  padding: 8px 11px;
   border: 1px solid rgba(34, 90, 115, 0.16);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.75);
   color: #225a73;
-  font: 700 11px/1.2 Inter, sans-serif;
+  font: 700 12px/1.2 Inter, sans-serif;
+  cursor: default;
+}
+
+.puzzle-turn-indicator-main {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.puzzle-turn-indicator-help {
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
 }
 
 .puzzle-moves-summary {
@@ -2667,12 +2683,12 @@ body {
 .puzzle-quick-stat span,
 .puzzle-streak-best {
   color: #77817b;
-  font: 500 10px/1.3 Inter, sans-serif;
+  font: 600 11px/1.3 Inter, sans-serif;
 }
 
 .puzzle-quick-stat strong {
   color: #34483e;
-  font: 700 13px/1.2 Inter, sans-serif;
+  font: 700 21px/1.15 Inter, sans-serif;
   font-variant-numeric: tabular-nums;
 }
 
@@ -2720,26 +2736,26 @@ body {
 
 .puzzle-mode-card-heading strong {
   color: #34483e;
-  font: 700 13px/1.25 Inter, sans-serif;
+  font: 700 15px/1.25 Inter, sans-serif;
 }
 
 .puzzle-mode-card p,
 .puzzle-mode-level,
 .puzzle-mode-difficulty {
   color: #68736c;
-  font: 500 10px/1.4 Inter, sans-serif;
+  font: 500 12px/1.4 Inter, sans-serif;
 }
 
 .puzzle-mode-card button {
   width: 100%;
-  min-height: 36px;
-  padding: 7px 9px;
+  min-height: 42px;
+  padding: 8px 10px;
   border: 1px solid rgba(180, 135, 44, .4);
   border-radius: 10px;
   background: rgba(255, 255, 255, .72);
   color: #594519;
   cursor: pointer;
-  font: 700 10px/1.25 Inter, sans-serif;
+  font: 700 12px/1.25 Inter, sans-serif;
 }
 
 .puzzle-mode-card button:hover {

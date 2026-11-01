@@ -1074,8 +1074,13 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
           </button>
         </div>
 
-        <div className="puzzle-turn-indicator">
-          Ваш ход за {sideToMove === "b" ? "чёрных" : "белых"}
+        <div className={`puzzle-turn-indicator puzzle-turn-indicator--${sideToMove}`} role="status" aria-live="polite">
+          <span className="puzzle-turn-indicator-main">
+            Ваш ход · {sideToMove === "b" ? "чёрные" : "белые"}
+          </span>
+          <span className="puzzle-turn-indicator-help">
+            Найдите ход за {sideToMove === "b" ? "чёрных" : "белых"}
+          </span>
         </div>
 
         <div className="puzzle-moves-summary">

@@ -645,9 +645,77 @@
 }
 
 :root[data-theme="dark"] .puzzle-turn-indicator {
-  border-color: var(--sf-line);
-  background: var(--sf-soft);
+  border-color: rgba(154, 199, 223, .38);
+  background: rgba(154, 199, 223, .1);
   color: var(--sf-blue);
+}
+
+:root[data-theme="dark"] .puzzle-info-panel {
+  background: var(--sf-surface);
+  border-color: var(--sf-line-strong);
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .puzzle-theme-label,
+:root[data-theme="dark"] .puzzle-quick-stat span,
+:root[data-theme="dark"] .puzzle-streak-best,
+:root[data-theme="dark"] .puzzle-rewards-details,
+:root[data-theme="dark"] .puzzle-mode-card p,
+:root[data-theme="dark"] .puzzle-mode-level,
+:root[data-theme="dark"] .puzzle-mode-difficulty {
+  color: var(--sf-muted);
+}
+
+:root[data-theme="dark"] .puzzle-theme-name,
+:root[data-theme="dark"] .puzzle-mode-card-heading strong {
+  color: var(--sf-gold-bright);
+}
+
+:root[data-theme="dark"] .puzzle-theme-icon {
+  color: var(--sf-blue);
+  background: transparent;
+}
+
+:root[data-theme="dark"] .puzzle-instruction {
+  color: var(--sf-ink-strong);
+}
+
+:root[data-theme="dark"] .puzzle-turn-indicator-help {
+  color: var(--sf-muted);
+}
+
+:root[data-theme="dark"] .puzzle-moves-summary,
+:root[data-theme="dark"] .puzzle-quick-stat {
+  border-color: var(--sf-line);
+  background: var(--sf-soft-2);
+  color: var(--sf-muted);
+}
+
+:root[data-theme="dark"] .puzzle-quick-stat strong {
+  color: var(--sf-ink-strong);
+}
+
+:root[data-theme="dark"] .puzzle-quick-stat strong.puzzle-streak-value--hot {
+  color: #ffbd74;
+}
+
+:root[data-theme="dark"] .puzzle-mode-card {
+  border-color: var(--sf-line-strong);
+  background: rgba(213, 180, 118, .09);
+}
+
+:root[data-theme="dark"] .puzzle-mode-card-heading span {
+  color: var(--sf-gold);
+}
+
+:root[data-theme="dark"] .puzzle-mode-card button {
+  border-color: rgba(213, 180, 118, .6);
+  background: rgba(213, 180, 118, .17);
+  color: var(--sf-gold-bright);
+}
+
+:root[data-theme="dark"] .puzzle-mode-card button:hover {
+  background: rgba(213, 180, 118, .25);
 }
 
 :root[data-theme="dark"] .puzzle-solved-text,
