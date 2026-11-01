@@ -134,7 +134,7 @@ export default function ChatPanel({
       return undefined;
     }
 
-    if (window.matchMedia("(max-width: 1150px)").matches) {
+    if (window.matchMedia("(max-width: 1450px)").matches) {
       el.classList.remove("chat-section--sliding", "chat-section--reveal");
       el.style.flex = "";
       el.style.width = "";

@@ -241,7 +241,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
    */
   const updateBoardSize = useCallback(() => {
     const isMobile = window.matchMedia("(max-width: 760px)").matches;
-    const isStacked = window.matchMedia("(max-width: 1150px)").matches;
+    const isStacked = window.matchMedia("(max-width: 1450px)").matches;
 
     /*
      * Ширину берём у самой колонки доски, а не вычитаем чат из окна.

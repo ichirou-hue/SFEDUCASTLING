@@ -4,7 +4,7 @@
   display: none;
 }
 
-@media (max-width: 1150px) and (min-width: 761px) {
+@media (max-width: 1450px) and (min-width: 761px) {
   .board-stage { display: contents; }
   .main-area {
     display: grid;
@@ -22,6 +22,7 @@
   }
 
   .main-area .eval-bar {
+    align-self: stretch;
     grid-area: evaluation;
     width: auto;
     height: 10px !important;
@@ -461,6 +462,7 @@
   }
 
   .main-area .eval-bar {
+    align-self: stretch;
     grid-area: evaluation;
     width: auto;
     height: 9px !important;

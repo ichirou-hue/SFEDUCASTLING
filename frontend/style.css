@@ -28,12 +28,15 @@ body {
   background-color: #e8f5e9;
 }
 .main-area {
-  display: flex;
-  justify-content: flex-start;
+  display: grid;
+  grid-template-columns: minmax(220px, 260px) minmax(0, 1fr) minmax(320px, min(28vw, 520px));
+  grid-template-areas: "history board chat";
+  justify-content: stretch;
   align-items: stretch;
   gap: 24px;
   width: auto;
-  margin: 10px 0 0 24px;
+  margin: 10px 24px 0;
+  transition: grid-template-columns 340ms cubic-bezier(0.4, 0, 0.2, 1);
   /* Воздух между контентом и футером (футер прибит к низу). */
   padding-bottom: 12px;
   flex: 1;
@@ -47,15 +50,16 @@ body {
 
 /* The history and Maia progress share one fixed-width desktop column. */
 .game-history-column {
-  align-self: flex-start;
+  align-self: stretch;
   display: flex;
-  flex: 0 0 260px;
+  flex: initial;
   flex-direction: column;
   gap: 12px;
-  height: min(680px, calc(100vh - 190px));
-  min-height: 360px;
+  height: auto;
+  min-height: 0;
   order: 1;
-  width: 260px;
+  width: auto;
+  grid-area: history;
 }
 
 .game-history-column > .move-history-panel {
@@ -388,6 +392,7 @@ body {
 }
 
 .board-section {
+  align-self: start;
   flex: 0 0 auto;
   min-width: 0;
   display: flex;
@@ -401,10 +406,11 @@ body {
   display: flex;
   flex: 1 1 560px;
   min-width: 0;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   gap: 12px;
   order: 2;
+  grid-area: board;
 }
 
 .board-wrapper {
@@ -601,7 +607,7 @@ body {
      (evalW в Chessboard.jsx). */
   margin: 0;
   order: 1;
-  align-self: center;
+  align-self: flex-start;
   /* Сдвиг к середине просвета между историей и доской (замеряет
      EvalBar.jsx). transform, а не margin: раскладка строки не меняется. */
   transform: translateY(var(--eval-shift-y, 0px));
@@ -927,15 +933,15 @@ body {
    как у панели истории. Кант тоньше, чем у бумажных карточек, чтобы панель
    не выглядела тяжёлой. */
 .chat-section {
-  flex: 1 1 520px;
-  min-width: 320px;
-  max-width: 760px;
+  flex: initial;
+  min-width: 0;
+  max-width: none;
 
   height: auto;
   align-self: stretch;
 
   /* Симметрично левой панели - такой же отступ от края окна. */
-  margin: 0 24px 0 0;
+  margin: 0;
 
   border-radius: 30px;
   border: 2px solid rgba(180, 135, 44, 0.7);
@@ -948,6 +954,7 @@ body {
   display: flex;
   flex-direction: column;
   order: 3;
+  grid-area: chat;
 
   /* Скруглённые углы: содержимое не должно вылезать за рамку. */
   overflow: hidden;
@@ -958,9 +965,14 @@ body {
    скругление, но ширина 48px, и вся полоса - кнопка разворота.
    Освободившуюся ширину забирает доска (см. updateBoardSize). */
 .chat-section--collapsed {
-  flex: 0 0 48px;
-  min-width: 48px;
-  max-width: 48px;
+  min-width: 0;
+  width: 100%;
+}
+
+@media (min-width: 1451px) {
+  .main-area:has(.chat-section--collapsed) {
+    grid-template-columns: minmax(220px, 260px) minmax(0, 1fr) 48px;
+  }
 }
 
 /* Пока панель едет по ширине (см. ChatPanel.jsx), содержимое скрыто:
