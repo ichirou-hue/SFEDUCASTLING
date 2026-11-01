@@ -1127,6 +1127,21 @@ textarea {
   box-shadow: 0 1px 4px rgba(74, 50, 32, 0.12);
 }
 
+.chat-avatar-glyph {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  box-sizing: border-box;
+  border: 1px solid rgba(34, 90, 115, 0.2);
+  border-radius: 12px;
+  background: rgba(34, 90, 115, 0.08);
+  color: #4f8564;
+  font-family: "Segoe UI Symbol", "Noto Sans Symbols 2", serif;
+  font-size: 32px;
+  line-height: 1;
+}
+
 .chat-title-block {
   display: flex;
   flex-direction: column;
@@ -2725,8 +2740,6 @@ textarea {
   font-weight: normal;
   line-height: 1;
   font-variant-numeric: lining-nums;
-  /* Оптическая коррекция: видимая часть цифры выше центра line box. */
-  transform: translateY(7px);
 }
 
 .puzzle-quick-stats {
