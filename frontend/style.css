@@ -1,7 +1,16 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap");
 
+@font-face {
+  font-family: "Calypso";
+  src: url("/Calypso.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --font-ui: "Inter", "Segoe UI", system-ui, sans-serif;
+  --font-display: "Calypso", Georgia, serif;
 }
 
 * {
@@ -1124,7 +1133,7 @@ textarea {
 }
 
 .chat-title-block h2 {
-  font-family: var(--font-ui);
+  font-family: var(--font-display);
   font-size: 36px;
   color: #333;
   margin: 0;
@@ -1136,6 +1145,7 @@ textarea {
    теперь сразу название ассистента - в масштабе заголовков соседних
    панелей (см. .history-title). */
 .chat-title-block h2.chat-panel-title {
+  font-family: var(--font-display);
   font-size: clamp(20px, 1.8vw, 32px);
   font-weight: normal;
   line-height: 1.1;
@@ -1645,7 +1655,12 @@ textarea {
   padding: 10px;
 }
 .history-title {
-  font-family: var(--font-ui);
+  display: flex;
+  align-self: stretch;
+  justify-content: center;
+  width: 100%;
+  box-sizing: border-box;
+  font-family: var(--font-display);
   font-size: clamp(20px, 1.8vw, 32px); /* РЎРґРµР»Р°Р»Рё С€СЂРёС„С‚ РЅРµРјРЅРѕРіРѕ РјРµРЅСЊС€Рµ */
   font-weight: normal;
   white-space: nowrap; /* РџСЂРёРЅСѓРґРёС‚РµР»СЊРЅРѕ РІС‹СЃС‚СЂР°РёРІР°РµРј С‚РµРєСЃС‚ СЃС‚СЂРѕРіРѕ РІ РѕРґРЅСѓ СЃС‚СЂРѕРєСѓ */
@@ -2598,7 +2613,7 @@ textarea {
 
 .puzzle-theme-name {
   margin-top: 4px;
-  font-family: var(--font-ui);
+  font-family: var(--font-display);
   font-size: 20px;
   color: #2f5c36;
   font-weight: normal;
@@ -3339,7 +3354,7 @@ textarea {
 .training-hero h1,
 .training-module-header h1 {
   margin: 3px 0 8px;
-  font-family: var(--font-ui);
+  font-family: var(--font-display);
   font-size: 36px;
   font-weight: normal;
   color: #2f5c36;
