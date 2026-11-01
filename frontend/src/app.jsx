@@ -133,7 +133,7 @@ function MainPage({ user }) {
           onAnalyze={() => boardRef.current?.requestBestMove?.()}
           collapsed={chatCollapsed}
           onToggleCollapsed={() => {
-            setChatCollapsed(true);
+            setChatCollapsed((collapsed) => !collapsed);
             setMobileGamePanel(null);
           }}
         />

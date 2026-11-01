@@ -41,6 +41,10 @@ body {
   box-sizing: border-box;
 }
 
+.mobile-game-dock {
+  display: none;
+}
+
 /* The history and Maia progress share one fixed-width desktop column. */
 .game-history-column {
   align-self: flex-start;
