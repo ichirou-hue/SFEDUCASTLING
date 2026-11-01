@@ -684,8 +684,16 @@
   color: var(--sf-muted);
 }
 
-:root[data-theme="dark"] .puzzle-turn-indicator-side {
-  box-shadow: 0 0 0 4px rgba(154, 199, 223, .14);
+:root[data-theme="dark"] .puzzle-turn-indicator--w .puzzle-turn-indicator-side {
+  border-color: #b9d8e8;
+  background: #fffdf7;
+  box-shadow: 0 0 0 4px rgba(154, 199, 223, .24);
+}
+
+:root[data-theme="dark"] .puzzle-turn-indicator--b .puzzle-turn-indicator-side {
+  border-color: var(--sf-gold-bright);
+  background: #111a1b;
+  box-shadow: 0 0 0 4px rgba(213, 180, 118, .24);
 }
 
 :root[data-theme="dark"] .puzzle-moves-summary,

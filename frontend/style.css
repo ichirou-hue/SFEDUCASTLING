@@ -2638,12 +2638,23 @@ body {
 .puzzle-turn-indicator-side {
   grid-column: 1;
   grid-row: 1 / span 2;
-  width: 9px;
-  height: 9px;
-  border: 1px solid currentColor;
+  width: 16px;
+  height: 16px;
+  border: 2px solid currentColor;
   border-radius: 50%;
   background: currentColor;
-  box-shadow: 0 0 0 4px rgba(34, 90, 115, .1);
+}
+
+.puzzle-turn-indicator--w .puzzle-turn-indicator-side {
+  border-color: #88b9d0;
+  background: #fffdf7;
+  box-shadow: 0 0 0 4px rgba(136, 185, 208, .2);
+}
+
+.puzzle-turn-indicator--b .puzzle-turn-indicator-side {
+  border-color: #c8a75f;
+  background: #152121;
+  box-shadow: 0 0 0 4px rgba(200, 167, 95, .2);
 }
 
 .puzzle-turn-indicator-main {
