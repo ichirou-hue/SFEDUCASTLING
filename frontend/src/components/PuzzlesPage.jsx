@@ -206,7 +206,6 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
    * при переходе в другой раздел. Неверный ход по-прежнему прерывает её.
    */
   const [streak, setStreak] = useState(() => {
-    if (Number.isFinite(Number(user?.puzzle_streak))) return Number(user.puzzle_streak);
     try {
       const saved = Number(sessionStorage.getItem("gigachess:puzzle-streak") || 0);
       return Number.isFinite(saved) && saved > 0 ? saved : 0;
@@ -542,9 +541,6 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
     setLoading(true);
     setError(null);
     setSolvedCount(0);
-    // Новый набор задач - серия начинается заново.
-    setStreak(0);
-    setBestStreak(0);
     solvedPuzzleIdsRef.current = new Set();
     setAdaptiveMeta(null);
     setPreviewInfo(null);
@@ -670,20 +666,14 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
         correct,
         correct ? playerMovesRef.current : [],
       )
-        .then((data) => {
-          if (Number.isFinite(Number(data?.puzzle_streak))) {
-            const serverStreak = Number(data.puzzle_streak);
-            setStreak(serverStreak);
-            setBestStreak((best) => Math.max(best, serverStreak));
-            persistPuzzleStreak(serverStreak, Math.max(bestStreak, serverStreak));
-          }
+        .then(() => {
           window.dispatchEvent(new Event("sfedu-progress-updated"));
         })
         .catch(() => {
           // Ошибка статистики не должна мешать решению самой задачи.
         });
     },
-    [currentPuzzle?.id, bestStreak],
+    [currentPuzzle?.id],
   );
 
   const handleMove = useCallback(
@@ -1075,11 +1065,12 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
         </div>
 
         <div className={`puzzle-turn-indicator puzzle-turn-indicator--${sideToMove}`} role="status" aria-live="polite">
+          <span className="puzzle-turn-indicator-side" aria-hidden="true" />
           <span className="puzzle-turn-indicator-main">
-            Ваш ход · {sideToMove === "b" ? "чёрные" : "белые"}
+            Ход {sideToMove === "b" ? "чёрных" : "белых"}
           </span>
           <span className="puzzle-turn-indicator-help">
-            Найдите ход за {sideToMove === "b" ? "чёрных" : "белых"}
+            Найдите лучший ход за {sideToMove === "b" ? "чёрных" : "белых"}
           </span>
         </div>
 
@@ -1096,10 +1087,11 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
             </div>
           )}
           <div className="puzzle-quick-stat">
-            <span>Серия</span>
+            <span>Текущая серия</span>
             <strong className={streak > 0 ? "puzzle-streak-value--hot" : ""}>
               🔥 {streak}
             </strong>
+            <small className="puzzle-quick-stat-hint">решено подряд</small>
           </div>
         </div>
 

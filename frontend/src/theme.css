@@ -684,10 +684,22 @@
   color: var(--sf-muted);
 }
 
+:root[data-theme="dark"] .puzzle-turn-indicator-side {
+  box-shadow: 0 0 0 4px rgba(154, 199, 223, .14);
+}
+
 :root[data-theme="dark"] .puzzle-moves-summary,
 :root[data-theme="dark"] .puzzle-quick-stat {
   border-color: var(--sf-line);
   background: var(--sf-soft-2);
+  color: var(--sf-muted);
+}
+
+:root[data-theme="dark"] .puzzle-moves-left-count {
+  color: var(--sf-blue);
+}
+
+:root[data-theme="dark"] .puzzle-quick-stat-hint {
   color: var(--sf-muted);
 }
 
