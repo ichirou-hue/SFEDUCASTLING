@@ -2071,6 +2071,7 @@ const fetchBestMove = useCallback(
         ====================================================== */}
         <div
           ref={boardBoxRef}
+          className="eval-board-surface"
           style={{
             position: "relative",
             display: "inline-block",

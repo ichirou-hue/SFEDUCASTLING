@@ -26,36 +26,22 @@ export default function EvalBar({ diff = 0, flipped, height }) {
     ? `Материальный перевес: ${label}`
     : "Материальный перевес: 0";
 
-  /*
-   * Шкала стоит посередине между панелью истории и левым краем доски
-   * и по вертикали — ровно напротив доски, а не карточки целиком:
-   * сверху в карточке есть панель противника, снизу — кнопки.
-   * Свободное место в строке зависит от ширины окна и от того, свёрнут
-   * ли чат (доска внутри своей колонки центрируется), поэтому позицию
-   * считаем по живым замерам. Двигаем через transform: раскладку строки
-   * это не меняет, и замеры не «плывут» от собственного сдвига.
-   */
+  /* Keep the bar locked to the playable board, independent of card chrome. */
   useEffect(() => {
     const bar = barRef.current;
     const card = document.querySelector(".board-wrapper");
+    const board = document.querySelector(".eval-board-surface");
 
-    if (!bar || !card) return undefined;
+    if (!bar || !card || !board) return undefined;
 
     const measure = () => {
-      /*
-       * Сдвиг по вертикали: шкала той же высоты, что и доска, поэтому
-       * достаточно опустить её до верхнего края доски — тогда середины
-       * совпадут. Положение доски внутри карточки берём у самой доски.
-       * Текущий transform вычитаем, чтобы замер не зависел от него.
-       */
-      const board = card.querySelector('div[style*="perspective"]');
+      const boardRect = board.getBoundingClientRect();
       const currentY =
         parseFloat(bar.style.getPropertyValue("--eval-shift-y")) || 0;
       const barTop = bar.getBoundingClientRect().top - currentY;
-      const shiftY = board
-        ? Math.round(board.getBoundingClientRect().top - barTop)
-        : 0;
+      const shiftY = Math.round(boardRect.top - barTop);
 
+      bar.style.height = `${Math.round(boardRect.height)}px`;
       bar.style.setProperty("--eval-shift-y", `${shiftY}px`);
     };
 
@@ -68,6 +54,7 @@ export default function EvalBar({ diff = 0, flipped, height }) {
 
     const observer = new ResizeObserver(measure);
     observer.observe(card);
+    observer.observe(board);
     const stage = document.querySelector(".board-stage");
     if (stage) observer.observe(stage);
     window.addEventListener("resize", measure);
@@ -75,6 +62,7 @@ export default function EvalBar({ diff = 0, flipped, height }) {
     return () => {
       observer.disconnect();
       window.removeEventListener("resize", measure);
+      bar.style.height = "";
       bar.style.removeProperty("--eval-shift-y");
     };
   }, []);

@@ -31,7 +31,7 @@
     transform: none;
   }
 
-  .main-area > .eval-bar .eval-bar-fill {
+  .main-area .eval-bar .eval-bar-fill {
     top: 0;
     right: auto;
     bottom: auto;
@@ -43,7 +43,7 @@
     border-right: 2px solid rgba(180, 135, 44, 0.9);
   }
 
-  .main-area > .eval-bar .eval-bar-label {
+  .main-area .eval-bar .eval-bar-label {
     display: none;
   }
 
@@ -471,7 +471,7 @@
     transform: none;
   }
 
-  .main-area > .eval-bar .eval-bar-fill {
+  .main-area .eval-bar .eval-bar-fill {
     top: 0;
     right: auto;
     bottom: auto;
@@ -484,7 +484,7 @@
     transition: width 0.45s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
-  .main-area > .eval-bar .eval-bar-label {
+  .main-area .eval-bar .eval-bar-label {
     display: none;
   }
 
