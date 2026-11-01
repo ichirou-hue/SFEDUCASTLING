@@ -2552,6 +2552,8 @@ body {
 /* ========================================= */
 .puzzle-info-panel {
   flex-shrink: 0;
+  min-width: 0;
+  min-height: 0;
   width: 230px;
   border-radius: 30px;
   border: 3px solid rgba(180, 135, 44, 0.85);
@@ -2565,7 +2567,8 @@ body {
   text-align: center;
   gap: 10px;
   max-height: 100%;
-  overflow: visible;
+  overflow-x: hidden;
+  overflow-y: auto;
   justify-content: flex-start;
 }
 
@@ -2759,7 +2762,10 @@ body {
 
 .puzzle-mode-card {
   display: grid;
+  flex: 0 0 auto;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   gap: 7px;
   margin-top: auto;
   padding: 12px;
@@ -2794,6 +2800,7 @@ body {
 
 .puzzle-mode-card button {
   width: 100%;
+  min-width: 0;
   min-height: 42px;
   padding: 8px 10px;
   border: 1px solid rgba(180, 135, 44, .4);
