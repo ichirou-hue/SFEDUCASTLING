@@ -565,19 +565,34 @@ export async function fetchAdaptivePuzzles(count = 20) {
 
 // === Учебная подсистема ===
 
+function normalizeTrainingText(value) {
+  if (typeof value === "string") {
+    return value.replace(/[\u2012\u2013\u2014\u2015]/g, "-");
+  }
+  if (Array.isArray(value)) {
+    return value.map(normalizeTrainingText);
+  }
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [key, normalizeTrainingText(item)]),
+    );
+  }
+  return value;
+}
+
 export async function fetchTrainingModules() {
   const { data } = await api.get("/api/training/modules");
-  return data;
+  return normalizeTrainingText(data);
 }
 
 export async function fetchTrainingModule(slug) {
   const { data } = await api.get(`/api/training/modules/${slug}`);
-  return data;
+  return normalizeTrainingText(data);
 }
 
 export async function fetchTrainingLesson(lessonId) {
   const { data } = await api.get(`/api/training/lessons/${lessonId}`);
-  return data;
+  return normalizeTrainingText(data);
 }
 
 export async function checkTrainingTask(
@@ -591,19 +606,20 @@ export async function checkTrainingTask(
     hints_used: hintsUsed,
     response_time_ms: responseTimeMs,
   });
-  announceGigacoinReward(data);
-  return data;
+  const normalized = normalizeTrainingText(data);
+  announceGigacoinReward(normalized);
+  return normalized;
 }
 
 
 export async function fetchTrainingProgress() {
   const { data } = await api.get("/api/training/progress");
-  return data;
+  return normalizeTrainingText(data);
 }
 
 export async function fetchTrainingDue(limit = 20) {
   const { data } = await api.get("/api/training/due", { params: { limit } });
-  return data;
+  return normalizeTrainingText(data);
 }
 
 // === База знаний: дебюты ===

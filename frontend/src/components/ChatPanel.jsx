@@ -41,7 +41,8 @@ function buildHintArrows(hintMessage) {
 }
 
 function escapeHtml(str) {
-  return str
+  return String(str ?? "")
+    .replace(/[\u2012\u2013\u2014\u2015]/g, "-")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")

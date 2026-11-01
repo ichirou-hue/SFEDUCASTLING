@@ -37,9 +37,9 @@ function formatRange(start, end) {
     .format(endDate)
     .replace(".", "");
   if (startDate.getMonth() === endDate.getMonth()) {
-    return `${startDate.getDate()}–${endDate.getDate()} ${month}`;
+    return `${startDate.getDate()}-${endDate.getDate()} ${month}`;
   }
-  return `${formatDay(start)} – ${formatDay(end)}`;
+  return `${formatDay(start)} - ${formatDay(end)}`;
 }
 
 function dayNumber(value) {
@@ -196,7 +196,7 @@ export default function UserRecordsWidget({ variant = "profile" }) {
         <MetricCard
           icon="♛"
           label="Лучший результат недели"
-          value={records.weekly_best_opponent_elo != null ? `${records.weekly_best_opponent_elo}` : "—"}
+          value={records.weekly_best_opponent_elo != null ? `${records.weekly_best_opponent_elo}` : "-"}
           detail={records.weekly_best_opponent_elo != null ? "ELO побеждённого бота" : "победи бота, чтобы установить рекорд"}
           accent="gold"
         />

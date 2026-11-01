@@ -229,7 +229,7 @@ function HomePage({ user, onRegister, onOpenOnboarding }) {
               <span className="home-stats-guest__mark" aria-hidden="true">♞</span>
               <div>
                 <div className="user-profile-kicker">Твой прогресс</div>
-                <h2>Твои партии и рекорды — в одном месте</h2>
+                <h2>Твои партии и рекорды - в одном месте</h2>
                 <p>Создай аккаунт, чтобы сохранять результаты и видеть настоящую статистику.</p>
                 <button type="button" className="home-stats-guest__button" onClick={onRegister}>
                   Создать аккаунт <span aria-hidden="true">↗</span>
