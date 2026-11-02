@@ -71,8 +71,8 @@
   max-width: 650px;
   margin: 5px 0 0;
   color: rgba(32, 51, 45, 0.66);
-  font-size: 12px;
-  line-height: 1.45;
+  font-size: 14px;
+  line-height: 1.5;
 }
 
 .chess-accounts-section__summary {
@@ -146,11 +146,11 @@
 .chess-account-add {
   display: grid;
   grid-template-columns: minmax(170px, 0.34fr) minmax(0, 1fr);
-  gap: 14px;
+  gap: 16px;
   align-items: center;
-  padding: 13px 14px;
+  padding: 16px 18px;
   border: 1px solid rgba(71, 112, 85, 0.13);
-  border-radius: 14px;
+  border-radius: 16px;
   background: #f8faf8;
 }
 
@@ -164,10 +164,10 @@
 .chess-account-add__mark {
   display: grid;
   place-items: center;
-  flex: 0 0 36px;
-  width: 36px;
-  height: 36px;
-  border-radius: 11px;
+  flex: 0 0 42px;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
   background: #fff;
   border: 1px solid rgba(71, 112, 85, 0.14);
   color: #31583f;
@@ -190,14 +190,31 @@
 
 .chess-account-add__provider-text strong {
   color: #20332d;
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.2;
 }
 
 .chess-account-add__provider-text span {
-  margin-top: 3px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  margin-top: 6px;
+  padding: 4px 8px;
+  border: 1px solid rgba(71, 112, 85, 0.16);
+  border-radius: 999px;
+  background: #eef5ef;
   color: rgba(32, 51, 45, 0.54);
-  font-size: 11px;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.chess-account-add__provider-text span::before {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #b58a3c;
+  content: "";
 }
 
 .chess-account-add__controls {
@@ -206,25 +223,26 @@
 
 .chess-account-add__row {
   display: flex;
-  gap: 7px;
+  align-items: center;
+  gap: 9px;
 }
 
 .chess-account-add input {
   flex: 1 1 auto;
   min-width: 0;
-  height: 36px;
-  padding: 0 11px;
+  height: 42px;
+  padding: 0 13px;
   border: 1px solid rgba(34, 90, 115, 0.18);
-  border-radius: 10px;
+  border-radius: 12px;
   outline: none;
   background: #fff;
   color: #20332d;
   font: inherit;
-  font-size: 12px;
+  font-size: 14px;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-.chess-account-add input::placeholder { color: #8c9992; }
+.chess-account-add input::placeholder { color: #6f7d76; }
 
 .chess-account-add input:focus {
   border-color: rgba(71, 112, 85, 0.54);
@@ -238,20 +256,20 @@
 }
 
 .chess-account-add button:disabled {
-  opacity: 0.48;
+  opacity: 0.66;
   cursor: default;
 }
 
 .chess-account-add__link-btn {
   flex: 0 0 auto;
-  height: 36px;
-  padding: 0 14px;
+  height: 42px;
+  padding: 0 16px;
   border: 1px solid rgba(71, 112, 85, 0.28);
-  border-radius: 10px;
+  border-radius: 12px;
   background: #fff;
   color: #3e654e;
-  font-size: 12px;
-  font-weight: 650;
+  font-size: 14px;
+  font-weight: 700;
 }
 
 .chess-account-add__link-btn:hover:not(:disabled) {
@@ -262,24 +280,29 @@
 .chess-account-add__oauth {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   width: auto;
-  margin-top: 7px;
-  padding: 0;
-  border: 0;
-  background: transparent;
+  margin-top: 9px;
+  padding: 7px 11px;
+  border: 1px solid rgba(71, 112, 85, 0.2);
+  border-radius: 999px;
+  background: #eef5ef;
   color: #47705a;
-  font-size: 11px;
-  font-weight: 650;
+  font-size: 13px;
+  font-weight: 700;
 }
 
-.chess-account-add__oauth:hover:not(:disabled) { color: #2f5740; }
+.chess-account-add__oauth:hover:not(:disabled) {
+  border-color: rgba(71, 112, 85, 0.42);
+  background: #e4efe6;
+  color: #2f5740;
+}
 
 .chess-account-add__oauth > span {
   display: grid;
   place-items: center;
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   border-radius: 6px;
   background: #eef5ef;
   font-size: 10px;
@@ -287,20 +310,24 @@
 
 .chess-account-add__note {
   display: flex;
-  align-items: flex-start;
-  gap: 6px;
-  margin-top: 7px;
+  align-items: center;
+  gap: 8px;
+  margin-top: 9px;
+  padding: 8px 10px;
+  border: 1px solid rgba(138, 112, 64, 0.16);
+  border-radius: 11px;
+  background: #f7f3e9;
   color: rgba(32, 51, 45, 0.58);
-  font-size: 10.5px;
-  line-height: 1.4;
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .chess-account-add__note > span {
   display: grid;
   place-items: center;
-  flex: 0 0 17px;
-  width: 17px;
-  height: 17px;
+  flex: 0 0 20px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   background: #f2eee4;
   color: #8a7040;
@@ -325,6 +352,8 @@
     font-size: 19px;
   }
   .chess-accounts-section__summary { margin-left: 43px; }
-  .chess-account-add__row { flex-direction: column; }
+  .chess-account-add { padding: 14px; }
+  .chess-account-add__row { flex-direction: column; align-items: stretch; }
+  .chess-account-add input,
   .chess-account-add__link-btn { width: 100%; }
 }

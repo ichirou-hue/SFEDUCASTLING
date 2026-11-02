@@ -2078,3 +2078,97 @@
 :root[data-theme="dark"] .chess-accounts-section--embedded .chess-accounts-section__summary strong {
   color: var(--sf-gold);
 }
+
+:root[data-theme="dark"] .chess-accounts-section .chess-account-add {
+  border-color: var(--sf-line);
+  background: var(--sf-surface-raised);
+  box-shadow: inset 0 1px 0 rgba(246, 244, 239, 0.035);
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .chess-account-add__mark {
+  border-color: rgba(155, 208, 166, 0.24);
+  background: var(--sf-green-soft);
+  color: var(--sf-green);
+}
+
+:root[data-theme="dark"] .chess-account-add__mark--chesscom {
+  border-color: var(--sf-line);
+  background: var(--sf-gold-soft);
+  color: #e1cd8c;
+}
+
+:root[data-theme="dark"] .chess-account-add__provider-text strong {
+  color: var(--sf-ink-strong);
+}
+
+:root[data-theme="dark"] .chess-account-add__provider-text span {
+  border-color: var(--sf-line);
+  background: var(--sf-soft);
+  color: var(--sf-muted);
+}
+
+:root[data-theme="dark"] .chess-account-add__provider-text span::before {
+  background: var(--sf-gold);
+}
+
+:root[data-theme="dark"] .chess-account-add input {
+  border-color: var(--sf-line-strong);
+  background: var(--sf-input);
+  color: var(--sf-ink-strong);
+}
+
+:root[data-theme="dark"] .chess-account-add input::placeholder {
+  color: var(--sf-muted-2);
+}
+
+:root[data-theme="dark"] .chess-account-add input:focus {
+  border-color: var(--sf-gold);
+  box-shadow: 0 0 0 3px rgba(213, 180, 118, 0.15);
+}
+
+:root[data-theme="dark"] .chess-account-add__link-btn {
+  border-color: var(--sf-gold);
+  background: var(--sf-gold);
+  color: #17221d;
+}
+
+:root[data-theme="dark"] .chess-account-add__link-btn:hover:not(:disabled) {
+  border-color: var(--sf-gold-bright);
+  background: var(--sf-gold-bright);
+}
+
+:root[data-theme="dark"] .chess-account-add__link-btn:disabled {
+  border-color: var(--sf-line);
+  background: var(--sf-soft-2);
+  color: var(--sf-muted);
+  opacity: 1;
+}
+
+:root[data-theme="dark"] .chess-account-add__oauth {
+  border-color: rgba(155, 208, 166, 0.28);
+  background: var(--sf-green-soft);
+  color: var(--sf-green);
+}
+
+:root[data-theme="dark"] .chess-account-add__oauth:hover:not(:disabled) {
+  border-color: rgba(155, 208, 166, 0.48);
+  background: rgba(102, 180, 128, 0.22);
+  color: #b9e4c1;
+}
+
+:root[data-theme="dark"] .chess-account-add__oauth > span {
+  background: rgba(155, 208, 166, 0.16);
+  color: var(--sf-green);
+}
+
+:root[data-theme="dark"] .chess-account-add__note {
+  border-color: var(--sf-line);
+  background: var(--sf-gold-soft);
+  color: var(--sf-muted);
+}
+
+:root[data-theme="dark"] .chess-account-add__note > span {
+  background: rgba(213, 180, 118, 0.16);
+  color: var(--sf-gold-bright);
+}
