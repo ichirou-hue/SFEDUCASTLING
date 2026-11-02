@@ -27,13 +27,16 @@ export default function EvalBar({ diff = 0, flipped, height }) {
     : "Материальный перевес: 0";
 
   /*
-   * Шкала стоит посередине между панелью истории и левым краем доски
-   * и по вертикали — ровно напротив доски, а не карточки целиком:
-   * сверху в карточке есть панель противника, снизу — кнопки.
-   * Свободное место в строке зависит от ширины окна и от того, свёрнут
-   * ли чат (доска внутри своей колонки центрируется), поэтому позицию
-   * считаем по живым замерам. Двигаем через transform: раскладку строки
-   * это не меняет, и замеры не «плывут» от собственного сдвига.
+   * Шкала держится рядом с левым краем доски, а по вертикали — ровно
+   * напротив доски, а не карточки целиком: сверху в карточке есть
+   * панель противника, снизу — кнопки.
+   *
+   * Горизонтальный зазор до доски постоянный: flex-gap строки,
+   * margin-right шкалы и левый padding колонки доски. Когда чат
+   * сворачивается, доска уезжает вправо, и шкала едет вместе с ней,
+   * а не остаётся посередине освободившегося просвета. Позицию
+   * считаем по живым замерам и двигаем через transform: раскладку
+   * строки это не меняет, и замеры не «плывут» от собственного сдвига.
    */
   useEffect(() => {
     const bar = barRef.current;
@@ -43,13 +46,31 @@ export default function EvalBar({ diff = 0, flipped, height }) {
     if (!bar || !section || !card) return undefined;
 
     const measure = () => {
-      const sectionRect = section.getBoundingClientRect();
       const cardRect = card.getBoundingClientRect();
 
-      // Сдвиг по горизонтали: середина просвета между историей и доской.
+      /*
+       * Натуральный правый край шкалы: текущий rect включает transform,
+       * поэтому вычитаем уже применённый сдвиг.
+       */
+      const currentX =
+        parseFloat(bar.style.getPropertyValue("--eval-shift")) || 0;
+      const naturalRight = bar.getBoundingClientRect().right - currentX;
+
+      const mainStyles = getComputedStyle(section.parentElement);
+      const barStyles = getComputedStyle(bar);
+      const sectionStyles = getComputedStyle(section);
+
+      const clearance =
+        (parseFloat(mainStyles.columnGap) ||
+          parseFloat(mainStyles.gap) ||
+          0) +
+        (parseFloat(barStyles.marginRight) || 0) +
+        (parseFloat(sectionStyles.paddingLeft) || 0);
+
+      // Сдвиг по горизонтали: постоянный зазор до левого края доски.
       const shiftX = Math.max(
         0,
-        Math.round((cardRect.left - sectionRect.left) / 2)
+        Math.round(cardRect.left - naturalRight - clearance)
       );
 
       /*

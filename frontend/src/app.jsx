@@ -77,6 +77,8 @@ function MainPage({ user }) {
     maiaVictory: null,
     hintMessage: null,
     isComparing: false,
+    sidePickerOpen: true,
+    levelLocked: false,
   });
 
   /*
@@ -108,6 +110,7 @@ function MainPage({ user }) {
             maiaRating={boardState.maiaRating}
             userRating={user?.elo || undefined}
             onNavigate={(dir) => boardRef.current?.onNavigate(dir)}
+            navigationDisabled={boardState.sidePickerOpen}
             fen={boardState.fen}
             onLoadFen={(nextFen) =>
               boardRef.current?.loadFen?.(nextFen) ?? false
@@ -118,6 +121,7 @@ function MainPage({ user }) {
             userId={user?.id}
             currentLevel={boardState.maiaRating}
             lastWin={boardState.maiaVictory}
+            levelLocked={boardState.levelLocked}
             onSelectLevel={(level) => boardRef.current?.setMaiaLevel?.(level)}
           />
         </div>
@@ -139,8 +143,7 @@ function MainPage({ user }) {
           onAnalyze={() => boardRef.current?.requestBestMove?.()}
           collapsed={chatCollapsed}
           onToggleCollapsed={() => {
-            setChatCollapsed(true);
-            setMobileGamePanel(null);
+            setChatCollapsed((collapsed) => !collapsed);
           }}
         />
         <div className="mobile-game-dock" role="group" aria-label="Панели игры">

@@ -4,6 +4,13 @@
   display: none;
 }
 
+/* Кнопки «Ходы»/«Чат» нужны только на телефоне: на планшете и десктопе
+   история и чат и так стоят в обычной колонке. Без этого правила блок
+   оказывался в левом верхнем углу без оформления. */
+.mobile-game-dock {
+  display: none;
+}
+
 @media (max-width: 1150px) and (min-width: 761px) {
   .main-area {
     display: grid;
@@ -500,6 +507,15 @@
     border-radius: 18px;
   }
 
+  /* Легенда сравнения на телефоне: компактнее, чтобы вместе с доской
+     помещаться по высоте. */
+  .main-area .board-wrapper .compare-card {
+    padding: 8px 10px;
+    border-radius: 12px;
+    font-size: 13px;
+    line-height: 1.4;
+  }
+
   .main-area > .game-history-column {
     display: flex;
     grid-area: history;
@@ -738,6 +754,16 @@
     border-radius: 18px;
     background: rgba(7, 18, 22, 0.98);
     box-shadow: 0 18px 48px rgba(0, 0, 0, 0.48);
+  }
+
+  /* Свёрнутый чат на телефоне — компактная полоса, а не пустая
+     карточка на пол-экрана: высота развёрнутой панели здесь больше
+     базовой, поэтому переопределяем её отдельно. */
+  .main-area--mobile-chat > .chat-section--collapsed {
+    min-height: 58px;
+    height: 58px;
+    max-height: 58px;
+    flex: 0 0 58px;
   }
 
   .main-area--mobile-chat > .chat-section .chat-messages {

@@ -116,10 +116,32 @@ body {
   transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease, transform 0.16s ease;
 }
 
-.maia-level-chip:hover {
+.maia-level-chip:not(:disabled):hover {
   border-color: rgba(180, 135, 44, 0.72);
   color: #493914;
   transform: translateY(-1px);
+}
+
+.maia-level-chip:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* Уровень зафиксирован на партию: подсказка под заголовком вместо
+   обычного hover-подъёма чипов. */
+.maia-level-progress-title .maia-level-progress-lock {
+  display: block;
+  margin-top: 2px;
+  color: #8a7a58;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: none;
+}
+
+/* Ползунок уровня под доской: в фиксированном состоянии только
+   приглушаем, положение и размер не меняются. */
+.player-bar input[type="range"]:disabled {
+  opacity: 0.55;
 }
 
 .maia-level-chip.is-earned {
@@ -726,6 +748,58 @@ body {
   color: #94a3b8;
   padding: 6px 0;
   flex: 1;
+}
+
+/* Легенда сравнения Stockfish и Maia под доской. Раньше была собрана
+   на inline-стилях и в тёмной теме давала светлый текст на светлой
+   плашке. Теперь это обычная карточка в палитре страницы: бумажная
+   поверхность, золотая окантовка и приглушённая подпись. */
+.compare-card {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  /* Отступы и шрифт те же, что были у inline-версии: высота карточки
+     участвует в расчёте размера доски, менять её нельзя. */
+  margin-top: 10px;
+  padding: 10px 14px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.87);
+  /* Окантовка рисуется тенью, а не border: так не добавляется 2px
+     к высоте и доска не пересчитывается. */
+  box-shadow:
+    inset 0 0 0 1px rgba(180, 135, 44, 0.55),
+    0 2px 6px rgba(0, 0, 0, 0.12);
+  color: #333;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.compare-card__dot {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin-right: 7px;
+  vertical-align: middle;
+}
+
+.compare-card__dot--stockfish {
+  background: #2f8a45;
+}
+
+.compare-card__dot--maia {
+  background: #c9781c;
+}
+
+.compare-card__label {
+  color: #5f4a24;
+}
+
+.compare-card__note {
+  margin-top: 4px;
+  color: #6b6b6b;
 }
 
 .ctrl-btn {
@@ -1543,6 +1617,20 @@ body {
   text-align: right; /* Р§РµСЂРЅС‹Рµ С…РѕРґС‹ РїСЂРёР¶Р°С‚С‹ РІРїСЂР°РІРѕ (РїРѕРґ Maia 2) */
   padding-right: 15px;
 }
+
+/* Пока открыта карточка выбора стороны, ходы только читаются:
+   клики и hover-подсветка выключены, но список по-прежнему скроллится. */
+.move-list--locked .move-w,
+.move-list--locked .move-b {
+  pointer-events: none;
+  cursor: default;
+  opacity: 0.72;
+}
+
+.move-list--locked .move-w:hover,
+.move-list--locked .move-b:hover {
+  background: transparent;
+}
 /* --- РќР°РІРёРіР°С†РёСЏ СЃРѕ СЃС‚СЂРµР»РєР°РјРё --- */
 /* Р’С‹СЃС‚СЂР°РёРІР°РµРј РєРЅРѕРїРєРё Рё СЃС‡РµС‚С‡РёРє СЃС‚СЂРѕРіРѕ РїРѕ С†РµРЅС‚СЂСѓ РЅР° СЂР°РІРЅРѕРј СѓРґР°Р»РµРЅРёРё */
 .nav-row {
@@ -1575,6 +1663,19 @@ body {
 /* РќРµР±РѕР»СЊС€РѕР№ С‚СЂСЋРє: РґРµР»Р°РµРј С„РѕРЅ SVG С‡СѓС‚СЊ СЏСЂС‡Рµ РїСЂРё РЅР°РІРµРґРµРЅРёРё РјС‹С€РєРѕР№ */
 .arrow-btn:hover rect {
   fill-opacity: 0.5;
+}
+
+/* Недоступная стрелка не должна реагировать на наведение. */
+.arrow-btn:disabled {
+  cursor: default;
+}
+
+.arrow-btn:disabled:hover {
+  transform: none;
+}
+
+.arrow-btn:disabled:hover rect {
+  fill-opacity: 0.3;
 }
 
 /* --- РќРёР¶РЅРёРµ РєРЅРѕРїРєРё --- */

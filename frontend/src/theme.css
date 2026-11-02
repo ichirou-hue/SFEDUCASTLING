@@ -98,9 +98,13 @@
   color: var(--sf-muted);
 }
 
-:root[data-theme="dark"] .maia-level-chip:hover {
+:root[data-theme="dark"] .maia-level-chip:not(:disabled):hover {
   border-color: var(--sf-gold);
   color: var(--sf-ink-strong);
+}
+
+:root[data-theme="dark"] .maia-level-progress-title .maia-level-progress-lock {
+  color: var(--sf-muted-2);
 }
 
 :root[data-theme="dark"] .maia-level-chip.is-earned {
@@ -199,6 +203,16 @@
   fill: var(--sf-gold-bright);
 }
 
+/* Заблокированные стрелки истории не подсвечиваются при наведении. */
+:root[data-theme="dark"] .arrow-btn:disabled:hover rect {
+  fill: rgba(213, 180, 118, 0.14);
+  fill-opacity: 1;
+}
+
+:root[data-theme="dark"] .arrow-btn:disabled:hover path {
+  fill: var(--sf-gold);
+}
+
 :root[data-theme="dark"] .move-counter {
   color: var(--sf-gold);
 }
@@ -216,6 +230,34 @@
 :root[data-theme="dark"] .board-wrapper .player-name,
 :root[data-theme="dark"] .board-wrapper .bot-name {
   color: var(--sf-ink);
+}
+
+/* Легенда сравнения ходов под доской: та же тёмная поверхность и
+   золотая окантовка, что у истории ходов и карточки уровней Maia. */
+:root[data-theme="dark"] .compare-card {
+  background: var(--sf-surface-raised);
+  box-shadow:
+    inset 0 0 0 1px var(--sf-line-strong),
+    0 12px 30px rgba(0, 0, 0, 0.26);
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .compare-card__label {
+  color: var(--sf-gold);
+}
+
+:root[data-theme="dark"] .compare-card__note {
+  color: var(--sf-muted);
+}
+
+:root[data-theme="dark"] .compare-card__dot--stockfish {
+  background: var(--sf-green);
+  box-shadow: 0 0 0 3px var(--sf-green-soft);
+}
+
+:root[data-theme="dark"] .compare-card__dot--maia {
+  background: #e8b07a;
+  box-shadow: 0 0 0 3px rgba(232, 176, 122, 0.14);
 }
 
 :root[data-theme="dark"] .board-wrapper .rating-label,

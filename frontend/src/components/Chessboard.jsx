@@ -111,6 +111,13 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
   const [turn, setTurn] = useState("w");
 
   /*
+   * Сколько ходов сделал сам игрок. Нужен для фиксации уровня Maia3:
+   * за белых это первый ход партии, за чёрных — второй (первый делает
+   * Maia3), поэтому привязываться к длине истории нельзя.
+   */
+  const [playerMovesPlayed, setPlayerMovesPlayed] = useState(0);
+
+  /*
    * Итог партии для оверлея «Победа / Поражение / Ничья»:
    * null — партия идёт, иначе { outcome: "win"|"loss"|"draw", reason }.
    * Игрок играет выбранной стороной (см. playerColor), поэтому мат при
@@ -120,6 +127,27 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
 
   const [boardFlipped, setBoardFlipped] = useState(false);
   const [elo, setElo] = useState(1500);
+
+  /*
+   * Уровень Maia3 фиксируется после первого хода игрока: за белых это
+   * первый ход партии, за чёрных — второй, после ответа Maia3. Иначе
+   * можно доиграть на 800 и перед матом поставить 2600, а победа
+   * засчитается как победа над 2600.
+   */
+  const levelLocked = playerMovesPlayed > 0;
+
+  /*
+   * Уровень, с которым реально шла партия. Запоминаем его, пока игрок
+   * ещё не сделал первый ход; на завершении партии отправляем именно
+   * это значение, а не текущее состояние слайдера.
+   */
+  const gameLevelRef = useRef(elo);
+
+  useEffect(() => {
+    if (!levelLocked) {
+      gameLevelRef.current = elo;
+    }
+  }, [levelLocked, elo]);
 
   /*
    * Сторона игрока: "w" — белые, "b" — чёрные. При открытии главной
@@ -197,6 +225,34 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
       }));
     }
   }, [boardFlipped, onStateChange]);
+
+  /*
+   * Пока открыта карточка выбора стороны, история ходов должна быть
+   * недоступна: иначе поверх «За кого играем?» можно откатить партию
+   * назад. Флаг уходит в общее состояние страницы, чтобы панель истории
+   * погасила стрелки и клики по ходам.
+   */
+  useEffect(() => {
+    if (typeof onStateChange === "function") {
+      onStateChange((prev) => ({
+        ...prev,
+        sidePickerOpen,
+      }));
+    }
+  }, [sidePickerOpen, onStateChange]);
+
+  /*
+   * Фиксация уровня Maia3 тоже живёт в общем состоянии страницы:
+   * чипы уровней отрисовываются в левой колонке, вне доски.
+   */
+  useEffect(() => {
+    if (typeof onStateChange === "function") {
+      onStateChange((prev) => ({
+        ...prev,
+        levelLocked,
+      }));
+    }
+  }, [levelLocked, onStateChange]);
 
   useEffect(() => {
     if (!boardBoxRef.current) return;
@@ -404,7 +460,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
         ...prev,
         maiaVictory: {
           id: `${gameGenRef.current}-${Date.now()}`,
-          elo,
+          elo: gameLevelRef.current ?? elo,
           userId: getCurrentUserId(),
         },
       }));
@@ -475,7 +531,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
 
     finishGame({
       moves: uciMoves,
-      elo,
+      elo: gameLevelRef.current ?? elo,
       engine: "maia3",
       result,
       status,
@@ -549,6 +605,13 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
    */
   const onNavigate = useCallback(
     (direction) => {
+      /*
+       * Под карточкой выбора стороны навигация запрещена. Это вторая
+       * линия защиты: панель истории тоже гасит кнопки, но onNavigate
+       * можно вызвать и через boardRef.
+       */
+      if (sidePickerOpen) return;
+
       const g = gameRef.current;
       const history = moveHistory;
 
@@ -639,7 +702,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
         setViewIndex(currentIndex);
       }
     },
-    [moveHistory, isViewMode, viewIndex],
+    [moveHistory, isViewMode, viewIndex, sidePickerOpen],
   );
 
   /*
@@ -660,6 +723,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
 
     setFen(startFen);
     setMoveHistory([]);
+    setPlayerMovesPlayed(0);
     setGameResult(null);
     setPositionSnapshots([startFen]);
 
@@ -721,12 +785,15 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
   /*
    * «Новая игра» сначала спрашивает сторону: меню открывается и при
    * входе на страницу, и по кнопке. Карточку итога прячем, чтобы два
-   * оверлея не накладывались друг на друга.
+   * оверлея не накладывались друг на друга. Если игрок успел отмотать
+   * партию назад, возвращаем доску к последнему ходу: под меню должна
+   * быть актуальная позиция, а не случайный просмотренный кадр.
    */
   const openSidePicker = useCallback(() => {
+    onNavigate("last");
     setGameResult(null);
     setSidePickerOpen(true);
-  }, []);
+  }, [onNavigate]);
 
   /*
    * Загрузка FEN.
@@ -747,6 +814,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
 
         setFen(validFen);
         setMoveHistory([]);
+        setPlayerMovesPlayed(0);
         setGameResult(null);
         setPositionSnapshots([validFen]);
 
@@ -1428,6 +1496,12 @@ const fetchBestMove = useCallback(
         return false;
       }
 
+      /*
+       * Игрок сделал ход: с этого момента уровень Maia3 зафиксирован
+       * до конца партии (за чёрных — начиная со второго хода партии).
+       */
+      setPlayerMovesPlayed((count) => count + 1);
+
       const currentFen = game.fen();
 
       /*
@@ -1687,6 +1761,13 @@ const fetchBestMove = useCallback(
 
   const setMaiaLevel = useCallback(
     (level) => {
+      /*
+       * Пока партия идёт, уровень зафиксирован. Проверка стоит здесь,
+       * а не только на элементах управления: так её нельзя обойти
+       * вызовом setMaiaLevel через boardRef.
+       */
+      if (levelLocked) return;
+
       const nextElo = Math.max(
         800,
         Math.min(2600, Math.round(Number(level) / 100) * 100),
@@ -1699,7 +1780,7 @@ const fetchBestMove = useCallback(
         onStateChange((prev) => ({ ...prev, maiaRating: nextElo }));
       }
     },
-    [onStateChange],
+    [onStateChange, levelLocked],
   );
 
   /*
@@ -2023,11 +2104,22 @@ const fetchBestMove = useCallback(
             max="2600"
             step="100"
             value={elo}
+            disabled={levelLocked}
+            title={
+              levelLocked
+                ? "Уровень Maia3 фиксируется после вашего первого хода"
+                : "Выберите уровень Maia3"
+            }
+            aria-label={
+              levelLocked
+                ? `Уровень Maia3: ${elo} ELO, зафиксирован на партию`
+                : `Уровень Maia3: ${elo} ELO`
+            }
             onChange={(e) => setMaiaLevel(parseInt(e.target.value, 10))}
             style={{
               width: 100,
               accentColor: "#C9A96E",
-              cursor: "pointer",
+              cursor: levelLocked ? "not-allowed" : "pointer",
             }}
           />
 
@@ -2418,72 +2510,27 @@ const fetchBestMove = useCallback(
             Легенда сравнения
         ====================================================== */}
         {compareData && (
-          <div
-            style={{
-              marginTop: "10px",
-              padding: "10px 14px",
-              borderRadius: "10px",
-              background:
-                "rgba(255,255,255,0.75)",
-              fontFamily:
-                "Cormorant Garamond, Georgia, serif",
-              fontSize: "15px",
-              lineHeight: 1.5,
-            }}
-          >
-            <div>
+          <div className="compare-card" role="status">
+            <div className="compare-card__row">
               <span
-                style={{
-                  display:
-                    "inline-block",
-                  width: "12px",
-                  height: "12px",
-                  borderRadius:
-                    "50%",
-                  background:
-                    "rgba(0, 150, 50, 0.85)",
-                  marginRight: "7px",
-                }}
+                className="compare-card__dot compare-card__dot--stockfish"
+                aria-hidden="true"
               />
-
-              <strong>
-                Stockfish:
-              </strong>{" "}
-              {compareData.stockfish?.san ||
-                "0"}
+              <strong className="compare-card__label">Stockfish:</strong>{" "}
+              {compareData.stockfish?.san || "0"}
             </div>
 
-            <div>
+            <div className="compare-card__row">
               <span
-                style={{
-                  display:
-                    "inline-block",
-                  width: "12px",
-                  height: "12px",
-                  borderRadius:
-                    "50%",
-                  background:
-                    "rgba(220, 120, 20, 0.9)",
-                  marginRight: "7px",
-                }}
+                className="compare-card__dot compare-card__dot--maia"
+                aria-hidden="true"
               />
-
-              <strong>
-                Maia3:
-              </strong>{" "}
-              {compareData.maia3?.san ||
-                "0"}{" "}
-              ({elo} ELO)
+              <strong className="compare-card__label">Maia3:</strong>{" "}
+              {compareData.maia3?.san || "0"} ({elo} ELO)
             </div>
 
-            {typeof compareData.same_move ===
-              "boolean" && (
-              <div
-                style={{
-                  marginTop: "4px",
-                  opacity: 0.75,
-                }}
-              >
+            {typeof compareData.same_move === "boolean" && (
+              <div className="compare-card__note">
                 {compareData.same_move
                   ? "Maia3 выбрала оптимальный ход Stockfish."
                   : "Maia3 выбрала другой ход - это и есть различие между оптимальной и человекоподобной игрой."}

@@ -7,6 +7,7 @@ export default function MoveHistory({
   viewIndex,
   isViewMode,
   onNavigate,
+  navigationDisabled = false,
   fen,
   onLoadFen,
   getPgn,
@@ -28,8 +29,10 @@ export default function MoveHistory({
   const currentHalfMove =
     viewIndex === -1 && !isViewMode ? safeHistory.length : viewIndex + 1;
 
-  const isPrevDisabled = safeHistory.length === 0 || viewIndex === 0;
-  const isNextDisabled = safeHistory.length === 0 || viewIndex === -1;
+  const isPrevDisabled =
+    navigationDisabled || safeHistory.length === 0 || viewIndex === 0;
+  const isNextDisabled =
+    navigationDisabled || safeHistory.length === 0 || viewIndex === -1;
 
   // НОВОЕ: Группируем плоский массив строк в красивые пары (белые/черные)
   const movePairs = [];
@@ -48,7 +51,10 @@ export default function MoveHistory({
       <div className="title-separator"></div>
 
       {/* Список ходов - сразу под заголовком, ближе к доске */}
-      <div className="move-list" ref={listRef}>
+      <div
+        className={`move-list${navigationDisabled ? " move-list--locked" : ""}`}
+        ref={listRef}
+      >
         {movePairs.map((item, index) => (
           <div key={index} className="move-pair">
             <span className="num">{item.num}.</span>
@@ -56,8 +62,15 @@ export default function MoveHistory({
             {/* Ход белых */}
             <span
               className={`move-w ${viewIndex === item.wIndex || (viewIndex === -1 && item.wIndex === safeHistory.length - 1) ? "active" : ""}`}
-              onClick={() => onNavigate(item.wIndex)}
-              style={{ cursor: "pointer" }}
+              onClick={
+                navigationDisabled
+                  ? undefined
+                  : () => onNavigate(item.wIndex)
+              }
+              aria-disabled={navigationDisabled || undefined}
+              style={{
+                cursor: navigationDisabled ? "default" : "pointer",
+              }}
             >
               {item.w}
             </span>
@@ -66,8 +79,15 @@ export default function MoveHistory({
             {item.b && (
               <span
                 className={`move-b ${viewIndex === item.bIndex || (viewIndex === -1 && item.bIndex === safeHistory.length - 1) ? "active" : ""}`}
-                onClick={() => onNavigate(item.bIndex)}
-                style={{ cursor: "pointer" }}
+                onClick={
+                  navigationDisabled
+                    ? undefined
+                    : () => onNavigate(item.bIndex)
+                }
+                aria-disabled={navigationDisabled || undefined}
+                style={{
+                  cursor: navigationDisabled ? "default" : "pointer",
+                }}
               >
                 {item.b}
               </span>
