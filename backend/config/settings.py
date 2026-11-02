@@ -90,6 +90,11 @@ class DatabaseSettings(BaseSettings):
         alias="DATABASE_URL",
     )
     echo: bool = Field(False, alias="DATABASE_ECHO")
+    # Часовой пояс сессии БД. Зафиксирован в UTC: все naive-отметки времени
+    # (timestamp without time zone) пишутся в UTC, а местный день считается
+    # в приложении (см. backend/services/local_time.py). Иначе now() в БД
+    # зависит от настроек сервера и «сегодня» в базе расходится с приложением.
+    timezone: str = Field("UTC", alias="DATABASE_TIMEZONE")
     pool_size: int = Field(5, alias="DATABASE_POOL_SIZE")
     max_overflow: int = Field(10, alias="DATABASE_MAX_OVERFLOW")
 
@@ -162,6 +167,8 @@ class Settings(BaseSettings):
     debug: bool = Field(False, alias="DEBUG")
     secret_key: str = Field("dev-key", alias="SECRET_KEY")
     frontend_dir: Path = Field(BASE_DIR / "frontend", alias="FRONTEND_DIR")
+    # Местный календарный день приложения: серия дней, дневные лимиты.
+    timezone: str = Field("Europe/Moscow", alias="TIMEZONE")
 
     server: ServerSettings = ServerSettings()
     cors: CorsSettings = CorsSettings()

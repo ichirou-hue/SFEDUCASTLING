@@ -180,10 +180,28 @@ async def compute_learning_progress(
     )
 
     accuracy = round(solved * 100 / attempted, 1) if attempted else None
+
+    # Текущая серия подряд верно решённых пазлов. Любая ошибка её обнуляет,
+    # поэтому считаем только верные попытки после самой поздней неверной.
+    last_wrong_id = await db.scalar(
+        select(func.max(PuzzleAttempt.id)).where(
+            PuzzleAttempt.user_id == user_id,
+            PuzzleAttempt.correct.is_(False),
+        )
+    )
+    streak_stmt = select(func.count(PuzzleAttempt.id)).where(
+        PuzzleAttempt.user_id == user_id,
+        PuzzleAttempt.correct.is_(True),
+    )
+    if last_wrong_id is not None:
+        streak_stmt = streak_stmt.where(PuzzleAttempt.id > last_wrong_id)
+    puzzle_streak = int(await db.scalar(streak_stmt) or 0)
+
     return {
         "attempted": attempted,
         "solved": solved,
         "attempts": total_attempts,
         "correct_attempts": correct_attempts,
         "accuracy": accuracy,
+        "puzzle_streak": puzzle_streak,
     }
