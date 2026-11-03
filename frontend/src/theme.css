@@ -1061,7 +1061,7 @@
   color: var(--sf-ink-strong);
 }
 
-/* Блок «Повторить сегодня». */
+/* Блок «Повторения». */
 :root[data-theme="dark"] .training-due-toggle {
   border-color: var(--sf-line);
   background: var(--sf-surface-raised);
@@ -1073,6 +1073,20 @@
   border-color: var(--sf-line-strong);
   background: rgba(213, 180, 118, 0.08);
   box-shadow: 0 14px 34px rgba(0, 0, 0, 0.34);
+}
+
+:root[data-theme="dark"] .training-due-toggle:focus-visible,
+:root[data-theme="dark"] .training-due-card:focus-visible {
+  outline-color: var(--sf-gold);
+}
+
+:root[data-theme="dark"] .training-due-toggle-icon {
+  background: var(--sf-gold-soft);
+  color: var(--sf-gold);
+}
+
+:root[data-theme="dark"] .training-due-toggle-hint {
+  color: var(--sf-muted-2);
 }
 
 :root[data-theme="dark"] .training-due-toggle-count {
@@ -1090,6 +1104,10 @@
   box-shadow: 0 18px 44px rgba(0, 0, 0, 0.4);
 }
 
+:root[data-theme="dark"] .training-due-heading {
+  border-bottom-color: var(--sf-line);
+}
+
 :root[data-theme="dark"] .training-due-heading strong {
   color: var(--sf-ink);
 }
@@ -1097,6 +1115,11 @@
 :root[data-theme="dark"] .training-due-heading span,
 :root[data-theme="dark"] .training-due-empty {
   color: var(--sf-muted-2);
+}
+
+:root[data-theme="dark"] .training-due-empty-icon {
+  background: var(--sf-green-soft);
+  color: var(--sf-green);
 }
 
 :root[data-theme="dark"] .training-due-card {
@@ -1108,6 +1131,14 @@
 :root[data-theme="dark"] .training-due-card:hover {
   border-color: var(--sf-line-strong);
   background: rgba(213, 180, 118, 0.1);
+}
+
+:root[data-theme="dark"] .training-due-card-due {
+  color: var(--sf-gold);
+}
+
+:root[data-theme="dark"] .training-due-card-reps {
+  color: var(--sf-muted-2);
 }
 
 /* Подсказки и кросс-ссылки внутри обучения. */
@@ -1768,6 +1799,23 @@
 :root[data-theme="dark"] .auth-profile-title {
   background: rgba(102, 180, 128, 0.5);
   color: var(--sf-ink-strong);
+}
+
+/* Шаг привязки шахматного аккаунта после регистрации. */
+:root[data-theme="dark"] .auth-link-notice--ok {
+  border-color: rgba(141, 199, 155, 0.3);
+  background: var(--sf-green-soft);
+  color: var(--sf-green);
+}
+
+:root[data-theme="dark"] .auth-link-notice--error {
+  border-color: rgba(220, 120, 100, 0.32);
+  background: var(--sf-error-soft);
+  color: var(--sf-error);
+}
+
+:root[data-theme="dark"] .auth-link-hint {
+  color: var(--sf-muted-2);
 }
 
 /* Онбординг. */

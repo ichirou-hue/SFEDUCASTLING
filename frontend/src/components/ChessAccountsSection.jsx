@@ -18,10 +18,21 @@ function errorMessage(error, fallback) {
   return (typeof detail === "string" && detail) || error?.message || fallback;
 }
 
-export default function ChessAccountsSection({ user, embedded = false }) {
+export default function ChessAccountsSection({
+  user,
+  embedded = false,
+  initialPlatform,
+  initialUsername = "",
+}) {
   const [accounts, setAccounts] = useState([]);
   const [capabilities, setCapabilities] = useState(null);
-  const [inputs, setInputs] = useState({ lichess: "", chesscom: "" });
+  // Начальные значения нужны только в модалке регистрации: если авто-привязка
+  // по нику не удалась, пользователь не вводит ник заново. В профиле пропсы
+  // не передаются, поэтому поля остаются пустыми.
+  const [inputs, setInputs] = useState(() => ({
+    lichess: initialPlatform === "lichess" ? initialUsername : "",
+    chesscom: initialPlatform === "chesscom" ? initialUsername : "",
+  }));
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
 

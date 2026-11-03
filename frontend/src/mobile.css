@@ -972,10 +972,14 @@
     padding: 16px 12px calc(92px + env(safe-area-inset-bottom, 0px));
   }
 
-  .training-page--grid,
-  .training-page--grid-with-due {
+  .training-page--course {
+    padding-bottom: calc(92px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .training-course-layout {
     grid-template-columns: minmax(0, 1fr);
     gap: 14px;
+    padding-bottom: 0;
   }
 
   .training-hero,
@@ -1079,14 +1083,21 @@
 
   .training-due-rail {
     width: 100%;
-    grid-column: 1 / -1;
-    grid-row: 2;
     position: static;
     max-height: none;
   }
 
-  .training-due-rail--collapsed .training-due-toggle {
-    min-height: 48px;
+  .training-due-toggle {
+    min-height: 56px;
+    padding: 10px 12px;
+  }
+
+  .training-due-panel {
+    max-height: none;
+  }
+
+  .training-due-list {
+    max-height: 60vh;
   }
 
   /* Profile, placement test and admin tools use the full phone width. */
@@ -1213,6 +1224,19 @@
     min-height: 0;
     margin: auto;
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .auth-card--link {
+    max-height: none;
+    padding: 26px 16px 22px;
+  }
+
+  .auth-link-panel {
+    min-width: 0;
+  }
+
+  .auth-link-actions {
+    max-width: none;
   }
 
   .auth-side {

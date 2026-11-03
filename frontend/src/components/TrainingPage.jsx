@@ -76,6 +76,19 @@ function formatTaskCount(count) {
   return `${count} заданий`;
 }
 
+function formatReviewOverdue(seconds) {
+  const days = Math.floor((Number(seconds) || 0) / 86400);
+  if (days < 1) return "сегодня";
+  const mod10 = days % 10;
+  const mod100 = days % 100;
+  let word = "дней";
+  if (mod100 < 11 || mod100 > 14) {
+    if (mod10 === 1) word = "день";
+    else if (mod10 >= 2 && mod10 <= 4) word = "дня";
+  }
+  return `просрочено на ${days} ${word}`;
+}
+
 /*
  * Тонкий прогресс-бар. Повторяет визуал .progress-meter из ProgressWidget,
  * чтобы процент прохождения выглядел одинаково в профиле и в обучении.
@@ -957,167 +970,188 @@ export default function TrainingPage({ user, onRegister }) {
 
     return (
       <div
-        className={`training-page training-page--grid training-page--grid-with-due${
-          duePanelOpen ? " training-page--due-open" : ""
-        }`}
+        className="training-page training-page--course"
         ref={pageRef}
       >
-        <main className="training-course-main">
-        <section className="training-hero">
-          <div className="training-kicker">Учебный режим</div>
-          <h1>Обучение шахматам</h1>
-          <p>
-            Изучайте особенности каждой фигуры последовательно: сначала теория,
-            затем интерактивные задания на шахматной доске.
-          </p>
-          <RatingBandProgress userId={userId} />
+        <div className="training-course-layout">
+          <main className="training-course-main">
+            <section className="training-hero">
+              <div className="training-kicker">Учебный режим</div>
+              <h1>Обучение шахматам</h1>
+              <p>
+                Изучайте особенности каждой фигуры последовательно: сначала теория,
+                затем интерактивные задания на шахматной доске.
+              </p>
+              <RatingBandProgress userId={userId} />
 
-          {course && course.total > 0 && (
-            <div className="training-course-progress">
-              <div className="training-course-progress__head">
-                <span>
-                  Пройдено модулей: {course.completed} из {course.total}
-                </span>
-                <strong>{Math.round(course.percent)}%</strong>
-              </div>
-              <ProgressBar
-                value={course.percent}
-                label={`Прогресс курса: ${Math.round(course.percent)}%`}
-              />
-            </div>
-          )}
-        </section>
-
-        {error && <div className="training-global-error">{error}</div>}
-
-        <div className="training-modules-path" ref={modulesPathRef}>
-          {modules.map((module, index) => {
-            const moduleProgress = moduleProgressBySlug.get(module.slug);
-
-            return (
-              <button
-                type="button"
-                key={module.id}
-                ref={(el) => {
-                  if (el) moduleNodeRefs.current.set(module.id, el);
-                  else moduleNodeRefs.current.delete(module.id);
-                }}
-                className={`training-module-node training-module-node--${
-                  index % 2 === 0 ? "left" : "right"
-                } ${module.enabled ? "" : "training-module-node--disabled"}`}
-                onClick={() =>
-                  navigate(`/training?module=${encodeURIComponent(module.slug)}`)
-                }
-                disabled={!module.enabled}
-              >
-                <span className="training-module-node-icon" aria-hidden="true">
-                  {MODULE_ICONS[module.slug] || "♟"}
-                </span>
-                <span className="training-module-node-main">
-                  <span className="training-module-node-title">{module.title}</span>
-                  <span className="training-module-node-description">
-                    {module.description}
-                  </span>
-
-                  {module.enabled && moduleProgress && (
-                    <span className="training-module-progress">
-                      <span className="training-module-progress__head">
-                        <span>
-                          {moduleProgress.tasks_solved} из{" "}
-                          {moduleProgress.tasks_total} заданий
-                        </span>
-                        <strong>{Math.round(moduleProgress.percent)}%</strong>
-                      </span>
-                      <ProgressBar
-                        value={moduleProgress.percent}
-                        label={`${module.title}: ${Math.round(moduleProgress.percent)}%`}
-                      />
+              {course && course.total > 0 && (
+                <div className="training-course-progress">
+                  <div className="training-course-progress__head">
+                    <span>
+                      Пройдено модулей: {course.completed} из {course.total}
                     </span>
-                  )}
-
-                  {/* Счётчик уроков и заданий дублировал строку прогресса
-                      выше, поэтому плашку с ним убрали. Для ещё не
-                      открытых модулей оставляем статус «Скоро». */}
-                  {!module.enabled && (
-                    <span className="training-module-meta">Скоро</span>
-                  )}
-                </span>
-              </button>
-            );
-          })}
-          {knightPos && (
-            <div
-              className={`training-knight-rider${
-                knightInstant ? " training-knight-rider--instant" : ""
-              }`}
-              style={{ top: knightPos.top, left: knightPos.left }}
-              aria-hidden="true"
-            >
-              <span className="training-knight-hop" key={knightHops}>
-                <span className="training-knight-glyph">♘</span>
-              </span>
-            </div>
-          )}
-        </div>
-        </main>
-
-        <aside
-          className={`training-due-rail ${
-            duePanelOpen ? "training-due-rail--open" : "training-due-rail--collapsed"
-          }`}
-          aria-label="Интервальные повторения"
-        >
-          <button
-            type="button"
-            className="training-due-toggle"
-            aria-expanded={duePanelOpen}
-            aria-controls="training-due-panel"
-            aria-label={`${duePanelOpen ? "Скрыть" : "Показать"} задания для повторения: ${dueItems.length}`}
-            title="Задания для повторения"
-            onClick={() => setDuePanelOpen((open) => !open)}
-          >
-            <span className="training-due-toggle-icon" aria-hidden="true">🔁</span>
-            <span className="training-due-toggle-label">Повторения</span>
-            <span className="training-due-toggle-count">{dueItems.length}</span>
-            <span className="training-due-toggle-chevron" aria-hidden="true">
-              {duePanelOpen ? "−" : "+"}
-            </span>
-          </button>
-
-          {duePanelOpen && (
-            <section className="training-due-panel" id="training-due-panel">
-              <div className="training-due-heading">
-                <strong>Пора повторить: {formatTaskCount(dueItems.length)}</strong>
-                <span>Повторите задания, чтобы закрепить материал.</span>
-              </div>
-              {dueItems.length > 0 ? (
-                <div className="training-due-list">
-                  {dueItems.map((item) => (
-                    <button
-                      type="button"
-                      key={item.review.id}
-                      className="training-due-card"
-                      onClick={() => openDueItem(item)}
-                    >
-                      <span className="training-due-card-main">
-                        <strong>{item.task.title}</strong>
-                        <span>
-                          {item.module.title} · {item.lesson.title}
-                        </span>
-                      </span>
-                      <span className="training-due-card-meta">
-                        повторений: {item.review.reps}
-                      </span>
-                      <span className="training-due-card-arrow" aria-hidden="true">→</span>
-                    </button>
-                  ))}
+                    <strong>{Math.round(course.percent)}%</strong>
+                  </div>
+                  <ProgressBar
+                    value={course.percent}
+                    label={`Прогресс курса: ${Math.round(course.percent)}%`}
+                  />
                 </div>
-              ) : (
-                <p className="training-due-empty">Сейчас нет заданий для повтора.</p>
               )}
             </section>
-          )}
-        </aside>
+
+            {error && <div className="training-global-error">{error}</div>}
+
+            <div className="training-modules-path" ref={modulesPathRef}>
+              {modules.map((module, index) => {
+                const moduleProgress = moduleProgressBySlug.get(module.slug);
+
+                return (
+                  <button
+                    type="button"
+                    key={module.id}
+                    ref={(el) => {
+                      if (el) moduleNodeRefs.current.set(module.id, el);
+                      else moduleNodeRefs.current.delete(module.id);
+                    }}
+                    className={`training-module-node training-module-node--${
+                      index % 2 === 0 ? "left" : "right"
+                    } ${module.enabled ? "" : "training-module-node--disabled"}`}
+                    onClick={() =>
+                      navigate(`/training?module=${encodeURIComponent(module.slug)}`)
+                    }
+                    disabled={!module.enabled}
+                  >
+                    <span className="training-module-node-icon" aria-hidden="true">
+                      {MODULE_ICONS[module.slug] || "♟"}
+                    </span>
+                    <span className="training-module-node-main">
+                      <span className="training-module-node-title">{module.title}</span>
+                      <span className="training-module-node-description">
+                        {module.description}
+                      </span>
+
+                      {module.enabled && moduleProgress && (
+                        <span className="training-module-progress">
+                          <span className="training-module-progress__head">
+                            <span>
+                              {moduleProgress.tasks_solved} из{" "}
+                              {moduleProgress.tasks_total} заданий
+                            </span>
+                            <strong>{Math.round(moduleProgress.percent)}%</strong>
+                          </span>
+                          <ProgressBar
+                            value={moduleProgress.percent}
+                            label={`${module.title}: ${Math.round(moduleProgress.percent)}%`}
+                          />
+                        </span>
+                      )}
+
+                      {/* Счётчик уроков и заданий дублировал строку прогресса
+                          выше, поэтому плашку с ним убрали. Для ещё не
+                          открытых модулей оставляем статус «Скоро». */}
+                      {!module.enabled && (
+                        <span className="training-module-meta">Скоро</span>
+                      )}
+                    </span>
+                  </button>
+                );
+              })}
+              {knightPos && (
+                <div
+                  className={`training-knight-rider${
+                    knightInstant ? " training-knight-rider--instant" : ""
+                  }`}
+                  style={{ top: knightPos.top, left: knightPos.left }}
+                  aria-hidden="true"
+                >
+                  <span className="training-knight-hop" key={knightHops}>
+                    <span className="training-knight-glyph">♘</span>
+                  </span>
+                </div>
+              )}
+            </div>
+          </main>
+
+          <aside
+            className={`training-due-rail ${
+              duePanelOpen ? "training-due-rail--open" : "training-due-rail--collapsed"
+            }`}
+            aria-label="Интервальные повторения"
+          >
+            <button
+              type="button"
+              className="training-due-toggle"
+              aria-expanded={duePanelOpen}
+              aria-controls="training-due-panel"
+              aria-label={`${duePanelOpen ? "Скрыть" : "Показать"} задания для повторения: ${dueItems.length}`}
+              title="Задания для повторения"
+              onClick={() => setDuePanelOpen((open) => !open)}
+            >
+              <span className="training-due-toggle-icon" aria-hidden="true">↻</span>
+              <span className="training-due-toggle-copy">
+                <span className="training-due-toggle-label">Повторения</span>
+                <span className="training-due-toggle-hint">
+                  {dueItems.length > 0
+                    ? `${formatTaskCount(dueItems.length)} ждут`
+                    : "всё повторено"}
+                </span>
+              </span>
+              <span className="training-due-toggle-count">{dueItems.length}</span>
+              <span className="training-due-toggle-chevron" aria-hidden="true">
+                {duePanelOpen ? "▴" : "▾"}
+              </span>
+            </button>
+
+            {duePanelOpen && (
+              <section className="training-due-panel" id="training-due-panel">
+                <div className="training-due-heading">
+                  <strong>
+                    {dueItems.length > 0 ? "Пора повторить" : "Пока нечего повторять"}
+                  </strong>
+                  <span>
+                    {dueItems.length > 0
+                      ? `${formatTaskCount(dueItems.length)} ждут повторения — это займёт пару минут.`
+                      : "Новые задания появятся здесь, когда подойдёт время. Продолжайте курс — прогресс сохраняется."}
+                  </span>
+                </div>
+                {dueItems.length > 0 ? (
+                  <div className="training-due-list">
+                    {dueItems.map((item) => (
+                      <button
+                        type="button"
+                        key={item.review.id}
+                        className="training-due-card"
+                        onClick={() => openDueItem(item)}
+                      >
+                        <span className="training-due-card-main">
+                          <strong>{item.task.title}</strong>
+                          <span>
+                            {item.module.title} · {item.lesson.title}
+                          </span>
+                        </span>
+                        <span className="training-due-card-meta">
+                          <span className="training-due-card-due">
+                            {formatReviewOverdue(item.review.overdue_seconds)}
+                          </span>
+                          <span className="training-due-card-reps">
+                            повторений: {item.review.reps}
+                          </span>
+                        </span>
+                        <span className="training-due-card-arrow" aria-hidden="true">→</span>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="training-due-empty">
+                    <span className="training-due-empty-icon" aria-hidden="true">✓</span>
+                    <p>Сейчас нет заданий для повтора.</p>
+                  </div>
+                )}
+              </section>
+            )}
+          </aside>
+        </div>
 
         <SiteFooter />
       </div>
