@@ -37,9 +37,9 @@ function formatRange(start, end) {
     .format(endDate)
     .replace(".", "");
   if (startDate.getMonth() === endDate.getMonth()) {
-    return `${startDate.getDate()}–${endDate.getDate()} ${month}`;
+    return `${startDate.getDate()}-${endDate.getDate()} ${month}`;
   }
-  return `${formatDay(start)} – ${formatDay(end)}`;
+  return `${formatDay(start)} - ${formatDay(end)}`;
 }
 
 function dayNumber(value) {
@@ -184,7 +184,6 @@ export default function UserRecordsWidget({ variant = "profile" }) {
     <section className={`user-records user-records--${variant}`} aria-labelledby={`user-records-title-${variant}`}>
       <header className="user-records__heading">
         <div>
-          <div className="user-profile-kicker">Твои достижения</div>
           <h2 id={`user-records-title-${variant}`}>Личные рекорды</h2>
         </div>
         <span className="user-records__range">
@@ -195,8 +194,8 @@ export default function UserRecordsWidget({ variant = "profile" }) {
       <div className="user-records__metrics">
         <MetricCard
           icon="♛"
-          label="Лучший результат недели"
-          value={records.weekly_best_opponent_elo != null ? `${records.weekly_best_opponent_elo}` : "—"}
+          label="Лучший результат"
+          value={records.weekly_best_opponent_elo != null ? `${records.weekly_best_opponent_elo}` : "0"}
           detail={records.weekly_best_opponent_elo != null ? "ELO побеждённого бота" : "победи бота, чтобы установить рекорд"}
           accent="gold"
         />
