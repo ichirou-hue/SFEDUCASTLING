@@ -14,13 +14,13 @@ export default function ChatCollapsedStrip({ onExpand }) {
       aria-label="Развернуть чат"
       aria-expanded={false}
     >
-      <span className="chat-strip-avatar">
-        <img src="/bot-icon.svg" alt="" />
+      <span className="chat-strip-avatar" aria-hidden="true">
+        <span className="chat-strip-avatar-glyph">♘</span>
       </span>
       <span className="chat-strip-chevron" aria-hidden="true">
         «
       </span>
-      <span className="chat-strip-title">Шахматный ассистент</span>
+      <span className="chat-strip-title">Шахматный гуру</span>
     </button>
   );
 }

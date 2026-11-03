@@ -60,6 +60,10 @@
   background: #f6f1e6;
 }
 
+.progress-widget__streak-info { display: grid; justify-items: end; gap: 4px; margin-left: auto; }
+.progress-widget__streak-info .progress-widget__streak { margin-left: 0; }
+.progress-widget__streak-reward { margin: 0; color: #65736b; font-size: 11px; text-align: right; }
+
 .progress-widget__streak-icon {
   font-size: 24px;
 }

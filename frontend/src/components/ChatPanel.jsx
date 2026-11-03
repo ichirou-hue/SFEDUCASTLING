@@ -134,6 +134,15 @@ export default function ChatPanel({
       return undefined;
     }
 
+    if (window.matchMedia("(max-width: 1150px)").matches) {
+      el.classList.remove("chat-section--sliding", "chat-section--reveal");
+      el.style.flex = "";
+      el.style.width = "";
+      el.style.minWidth = "";
+      el.style.maxWidth = "";
+      return undefined;
+    }
+
     // Первый рендер не анимируем: панель и так уже нужной ширины.
     if (firstRunRef.current) {
       firstRunRef.current = false;
@@ -348,10 +357,10 @@ export default function ChatPanel({
     <div className="chat-section" ref={rootRef}>
       <div className="chat-header">
         <div className="chat-avatar">
-          <img src="\bot-icon.svg" alt="Maia 3" />
+          <span className="chat-avatar-glyph" aria-hidden="true">♘</span>
         </div>
         <div className="chat-title-block">
-          <h2 className="chat-panel-title">Шахматный ассистент</h2>
+          <h2 className="chat-panel-title">Шахматный гуру</h2>
         </div>
         <button
           type="button"

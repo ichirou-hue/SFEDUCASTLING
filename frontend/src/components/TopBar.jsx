@@ -1,153 +1,8 @@
-import { useEffect, useRef } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
 import { logout as apiLogout } from "../api.js";
 import MiniProfilePopover from "./MiniProfilePopover.jsx";
 
-export default function TopBar({ user, onUserChange, onRegister, onMenuClick, onOpenOnboarding }) {
-  const barRef = useRef(null);
-  const logoRef = useRef(null);
-  const location = useLocation();
-
-  /*
-   * Логотип центрируем по доске, а не по всей странице.
-   *
-   * На игровых страницах доска смещена из-за боковых колонок (история ходов,
-   * шкала оценки, чат), поэтому центр страницы и центр доски не совпадают.
-   * Доска помечена атрибутом data-logo-anchor, переменная --logo-shift
-   * сдвигает логотип в шапке. Страницы без доски (профиль, админка)
-   * остаются с обычным центрированием.
-   */
-  useEffect(() => {
-    const root = document.documentElement;
-    const bar = barRef.current;
-    const logo = logoRef.current;
-
-    let anchor = null;
-    let sizeObserver = null;
-    let lastShift = null;
-    let frame = 0;
-
-    const setShift = (shift) => {
-      if (shift === lastShift) return;
-      lastShift = shift;
-      root.style.setProperty("--logo-shift", `${shift}px`);
-    };
-
-    const apply = () => {
-      if (!bar || !logo) return;
-
-      const rect = anchor?.getBoundingClientRect();
-      if (!rect || !rect.width) {
-        setShift(0);
-        return;
-      }
-
-      const barRect = bar.getBoundingClientRect();
-
-      /* offsetLeft не учитывает transform, поэтому это позиция логотипа
-         до сдвига, как её разложил грид шапки. */
-      const baseCenter = barRect.left + logo.offsetLeft + logo.offsetWidth / 2;
-      const half = logo.offsetWidth / 2;
-      let target = rect.left + rect.width / 2;
-
-      /* Логотип не должен наезжать на гамбургер и блок пользователя:
-         в узком окне доска уходит под правую группу шапки. */
-      const leftEl = bar.querySelector(".top-bar-left");
-      const rightEl = bar.querySelector(".user-box, .reg-btn");
-      const leftEnd = leftEl ? leftEl.getBoundingClientRect().right : barRect.left;
-      const rightStart = rightEl ? rightEl.getBoundingClientRect().left : barRect.right;
-      const minCenter = leftEnd + 12 + half;
-      const maxCenter = rightStart - 12 - half;
-
-      if (maxCenter >= minCenter) {
-        target = Math.min(Math.max(target, minCenter), maxCenter);
-      } else {
-        setShift(0);
-        return;
-      }
-
-      setShift(Math.round(target - baseCenter));
-    };
-
-    /* Пересчёт не чаще раза за кадр: доска меняет размер при подгонке под
-       экран, при сворачивании чата и при смене страницы.
-
-       Пока на странице что-то анимируется (сворачивание чата, изменение
-       размера доски), замеряем каждый кадр: доска едет, и логотип должен
-       ехать вместе с ней, а не прыгать в конце. Ограничение по кадрам -
-       страховка от бесконечных анимаций вроде спиннеров. */
-    let chase = 0;
-
-    const tick = () => {
-      frame = 0;
-      apply();
-
-      const running =
-        chase < 240 &&
-        typeof document.getAnimations === "function" &&
-        document.getAnimations().some((a) => a.playState === "running");
-
-      if (running) {
-        chase += 1;
-        frame = requestAnimationFrame(tick);
-      }
-    };
-
-    const schedule = () => {
-      if (frame) return;
-      chase = 0;
-      frame = requestAnimationFrame(tick);
-    };
-
-    const findAnchor = () => {
-      const next = document.querySelector("[data-logo-anchor]");
-      if (next !== anchor) {
-        anchor = next;
-        sizeObserver?.disconnect();
-        sizeObserver = null;
-        if (anchor && typeof ResizeObserver !== "undefined") {
-          sizeObserver = new ResizeObserver(schedule);
-          sizeObserver.observe(anchor);
-        }
-      }
-      schedule();
-    };
-
-    findAnchor();
-
-    const mutations = new MutationObserver(findAnchor);
-    mutations.observe(document.body, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ["class", "style"],
-    });
-    window.addEventListener("resize", findAnchor);
-
-    return () => {
-      if (frame) cancelAnimationFrame(frame);
-      mutations.disconnect();
-      sizeObserver?.disconnect();
-      window.removeEventListener("resize", findAnchor);
-      root.style.removeProperty("--logo-shift");
-    };
-  }, []);
-
-  /* Клик по логотипу открывает главную страницу. Если она уже открыта,
-     просто поднимаем содержимое наверх: переход на тот же адрес ничего
-     не перерисовывает, и клик иначе выглядел бы «мёртвым». */
-  const handleLogoClick = (event) => {
-    if (location.pathname !== "/") return;
-    event.preventDefault();
-    const reduced =
-      typeof window.matchMedia === "function" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const behavior = reduced ? "auto" : "smooth";
-    const scroller = document.querySelector(".main-page-scroll");
-    if (scroller) scroller.scrollTo({ top: 0, behavior });
-    else window.scrollTo({ top: 0, behavior });
-  };
-
+export default function TopBar({ user, theme, onThemeChange, onUserChange, onRegister, onOpenOnboarding }) {
   const handleLogout = async () => {
     try {
       await apiLogout();
@@ -158,31 +13,56 @@ export default function TopBar({ user, onUserChange, onRegister, onMenuClick, on
 
   // Плашка видна, пока анкета не заполнена.
   const needsOnboarding = Boolean(user) && !user?.onboarding_completed;
+  const navItems = [
+    { to: "/", label: "Главная", mobileLabel: "Главная", end: true, icon: "M3 10.5 12 3l9 7.5M5.5 9v11h13V9M9 20v-6h6v6" },
+    { to: "/play", label: "Игра", mobileLabel: "Игра", icon: "M7 21c-2.2 0-4-1.8-4-4 0-1.9 1.3-3.5 3-3.9V11a3 3 0 1 1 3-3h2a3 3 0 1 1 3 3v2.1c1.7.4 3 2 3 3.9 0 2.2-1.8 4-4 4H7Z" },
+    { to: "/puzzles", label: "Задачи", mobileLabel: "Задачи", icon: "M4 4h6v5a2 2 0 1 0 4 0V4h6v6h-5a2 2 0 1 0 0 4h5v6h-6v-5a2 2 0 1 0-4 0v5H4v-6h5a2 2 0 1 0 0-4H4V4Z" },
+    { to: "/training", label: "Обучение", mobileLabel: "Учёба", icon: "M3 5.5A2.5 2.5 0 0 1 5.5 3H12v17H5.5A2.5 2.5 0 0 0 3 22V5.5ZM21 5.5A2.5 2.5 0 0 0 18.5 3H12v17h6.5A2.5 2.5 0 0 1 21 22V5.5Z" },
+  ];
+  if (user?.is_admin === true || user?.role === "admin") {
+    navItems.push({ to: "/admin", label: "Администрирование", mobileLabel: "Админ", icon: "M12 3v2m0 14v2m9-9h-2M5 12H3m15.36-6.36-1.42 1.42M7.06 16.94l-1.42 1.42m12.72 0-1.42-1.42M7.06 7.06 5.64 5.64M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z" });
+  }
 
   return (
-    <div className="top-bar" ref={barRef}>
+    <div className="top-bar">
       <div className="top-bar-left">
-        <button className="hamburger-btn" onClick={onMenuClick} title="Меню">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-            <line x1="3" y1="6" x2="21" y2="6" />
-            <line x1="3" y1="12" x2="21" y2="12" />
-            <line x1="3" y1="18" x2="21" y2="18" />
-          </svg>
-        </button>
+        <Link to="/" className="logo-wrapper" aria-label="GigaChess: главная">
+          <img src="/gigachess-logo.svg" alt="GIGACHESS" className="gigachess-logo" />
+        </Link>
       </div>
-      {/* Логотип — самостоятельная центральная колонка шапки.
-          Он же ссылка на главную страницу. */}
-      <Link
-        to="/"
-        className="logo-wrapper"
-        ref={logoRef}
-        onClick={handleLogoClick}
-        title="На главную"
-      >
-        <img src="/gigachess-logo.svg" alt="GIGACHESS" className="gigachess-logo" />
-      </Link>
+      <nav className="top-nav" aria-label="Основная навигация">
+        {navItems.map((item) => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            end={item.end}
+            className={({ isActive }) =>
+              `top-nav-link ${isActive ? "top-nav-link--active" : ""}`
+            }
+          >
+            <svg className="mobile-nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d={item.icon} />
+            </svg>
+            <span className="top-nav-label">{item.label}</span>
+            <span className="top-nav-label-mobile">{item.mobileLabel}</span>
+          </NavLink>
+        ))}
+      </nav>
       {user ? (
         <div className="user-box">
+          <Link
+            to="/gigacoins"
+            className="topbar-gigacoins"
+            title="Твой баланс GigaCoin"
+            aria-label={`Баланс: ${user.gigacoins ?? 0} GigaCoin`}
+          >
+            <svg viewBox="0 0 20 20" aria-hidden="true">
+              <circle cx="10" cy="10" r="7.2" />
+              <path d="M12.3 7.5c-.4-.7-1.1-1-2.2-1-1.2 0-2 .5-2 1.4 0 2.2 4.8.8 4.8 3.3 0 1-.9 1.7-2.5 1.7-1.2 0-2.1-.4-2.6-1.2M10 4.9v1.4m0 7v1.7" />
+            </svg>
+            <strong>{Number(user.gigacoins || 0).toLocaleString("ru-RU")}</strong>
+            <small>GigaCoin</small>
+          </Link>
           {needsOnboarding && (
             <button
               className="onb-badge"
@@ -194,14 +74,16 @@ export default function TopBar({ user, onUserChange, onRegister, onMenuClick, on
           )}
           <MiniProfilePopover
             user={user}
+            theme={theme}
+            onThemeChange={onThemeChange}
             onUserChange={onUserChange}
             onLogout={handleLogout}
           />
-          {/* На узких экранах меню профиля скрыто, поэтому выход
-              остаётся компактной кнопкой в шапке (см. style.css). */}
           <button
+            type="button"
             className="reg-btn reg-btn--ghost top-bar-logout-compact"
             onClick={handleLogout}
+            aria-label="Выйти из аккаунта"
           >
             Выйти
           </button>

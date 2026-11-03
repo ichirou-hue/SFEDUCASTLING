@@ -17,6 +17,7 @@ import shutil
 import subprocess
 import sys
 import threading
+from pathlib import Path
 
 import requests
 
@@ -470,6 +471,13 @@ def get_maia3():
 
             from backend.config.settings import settings
 
+            maia3_source = Path(__file__).resolve().parents[2] / "maia3"
+            uci_module = maia3_source / "maia3" / "uci.py"
+            if not uci_module.is_file():
+                raise FileNotFoundError(
+                    f"Maia3 source module was not found: {uci_module}"
+                )
+
             cmd = [
                 sys.executable,
                 "-m",
@@ -488,6 +496,8 @@ def get_maia3():
             _maia3_engine = (
                 chess.engine.SimpleEngine.popen_uci(
                     cmd,
+                    timeout=180,
+                    cwd=str(maia3_source),
                     setpgrp=True,
                     stderr=(
                         subprocess.DEVNULL

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { fetchLearningRecords, getAccessToken } from "../api.js";
 import "./UserRecordsWidget.css";
 
@@ -129,46 +130,62 @@ function ActivityChart({ activity, mode }) {
   );
 }
 
-export default function UserRecordsWidget() {
+export default function UserRecordsWidget({ variant = "profile" }) {
   const [data, setData] = useState(null);
   const [mode, setMode] = useState("puzzles");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    if (!getAccessToken()) {
-      setLoading(false);
-      return undefined;
-    }
-    fetchLearningRecords()
-      .then((result) => {
-        if (!cancelled) setData(result);
-      })
-      .catch(() => {
-        if (!cancelled) setData(null);
-      })
-      .finally(() => {
+    const load = async () => {
+      if (!getAccessToken()) {
         if (!cancelled) setLoading(false);
-      });
+        return;
+      }
+      try {
+        const result = await fetchLearningRecords();
+        if (!cancelled) {
+          setData(result);
+          setError(false);
+        }
+      } catch {
+        if (!cancelled) setError(true);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    const refresh = () => load();
+    load();
+    window.addEventListener("sfedu-progress-updated", refresh);
+    window.addEventListener("sfedu-game-finished", refresh);
     return () => {
       cancelled = true;
+      window.removeEventListener("sfedu-progress-updated", refresh);
+      window.removeEventListener("sfedu-game-finished", refresh);
     };
   }, []);
 
+  if (!getAccessToken()) return null;
   if (loading) {
-    return <section className="user-records user-records--loading">Загружаем рекорды…</section>;
+    return <section className={`user-records user-records--loading user-records--${variant}`}>Загружаем статистику…</section>;
   }
-  if (!data) {
-    return <section className="user-records user-records--loading">Не удалось загрузить рекорды. Попробуйте обновить страницу.</section>;
+  if (!data || error) {
+    return (
+      <section className={`user-records user-records--loading user-records--${variant}`} role="status">
+        Не удалось загрузить статистику. Обновите страницу или попробуйте позже.
+      </section>
+    );
   }
 
   const records = data.records;
   return (
-    <section className="user-records" aria-labelledby="user-records-title">
+    <section className={`user-records user-records--${variant}`} aria-labelledby={`user-records-title-${variant}`}>
       <header className="user-records__heading">
         <div>
           <div className="user-profile-kicker">Твои достижения</div>
-          <h2 id="user-records-title">Личные рекорды</h2>
+          <h2 id={`user-records-title-${variant}`}>Личные рекорды</h2>
         </div>
         <span className="user-records__range">
           {formatRange(data.activity.starts_on, data.activity.ends_on)}
@@ -222,6 +239,11 @@ export default function UserRecordsWidget() {
         </div>
         <ActivityChart activity={data.activity} mode={mode} />
       </div>
+      {variant === "home" && (
+        <Link className="user-records__profile-link" to="/profile">
+          Подробная статистика в профиле <span aria-hidden="true">↗</span>
+        </Link>
+      )}
     </section>
   );
 }

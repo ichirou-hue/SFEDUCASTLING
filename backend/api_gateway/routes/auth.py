@@ -40,6 +40,7 @@ from backend.models.user_chess_account import (
 )
 from backend.services.assessment import onboarding_rating
 from backend.services.user_activity import record_user_visit
+from backend.services.gigacoin_service import ONBOARDING_REWARD, award_gigacoins
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -424,8 +425,16 @@ async def save_onboarding(
     user.prior_band = prior_band
     user.rating_estimate = rating_estimate
     user.rating_scale = rating_scale
+    gigacoins_earned = await award_gigacoins(
+        db, user, "onboarding", "initial-questionnaire", ONBOARDING_REWARD
+    )
     await db.commit()
-    return {"message": "Анкета сохранена", "user": user.public()}
+    return {
+        "message": "Анкета сохранена",
+        "user": user.public(),
+        "gigacoins_earned": gigacoins_earned,
+        "gigacoins_balance": int(user.gigacoins or 0),
+    }
 
 
 @router.get("/admin-only")

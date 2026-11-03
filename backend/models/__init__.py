@@ -7,6 +7,7 @@
 from backend.models.chat_message import ChatMessage
 from backend.models.dataset_move import DatasetMove
 from backend.models.game import Game, GameMove
+from backend.models.gigacoin_event import GigacoinEvent
 from backend.models.level_test import LevelTest
 from backend.models.puzzle_attempt import PuzzleAttempt
 from backend.models.training_attempt import TrainingAttempt
@@ -16,6 +17,7 @@ from backend.models.training_review import TrainingReview
 from backend.models.training_task import TrainingTask
 from backend.models.user import RefreshToken, User
 from backend.models.user_activity_day import UserActivityDay
+from backend.models.user_cosmetic import UserCosmetic
 from backend.models.user_chess_account import UserChessAccount
 from backend.models.user_theme_difficulty import UserThemeDifficulty
 
@@ -24,6 +26,7 @@ __all__ = [
     "DatasetMove",
     "Game",
     "GameMove",
+    "GigacoinEvent",
     "LevelTest",
     "PuzzleAttempt",
     "RefreshToken",
@@ -34,6 +37,7 @@ __all__ = [
     "TrainingTask",
     "User",
     "UserActivityDay",
+    "UserCosmetic",
     "UserChessAccount",
     "UserThemeDifficulty",
 ]

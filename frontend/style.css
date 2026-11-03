@@ -41,6 +41,111 @@ body {
   box-sizing: border-box;
 }
 
+/* The history and Maia progress share one fixed-width desktop column. */
+.game-history-column {
+  align-self: flex-start;
+  display: flex;
+  flex: 0 0 260px;
+  flex-direction: column;
+  gap: 12px;
+  height: min(680px, calc(100vh - 190px));
+  min-height: 360px;
+  order: 1;
+  width: 260px;
+}
+
+.game-history-column > .move-history-panel {
+  align-self: stretch;
+  flex: 1 1 auto;
+  height: auto;
+  max-height: none;
+  min-height: 0;
+  order: 0;
+  width: 100%;
+}
+
+.game-history-column > .maia-level-progress {
+  order: 1;
+}
+
+.maia-level-progress {
+  flex: 0 0 auto;
+  padding: 12px;
+  border: 1px solid rgba(180, 135, 44, 0.58);
+  border-left: 3px solid rgba(180, 135, 44, 0.9);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+
+.maia-level-progress-title {
+  color: #80652f;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  line-height: 1.3;
+  text-transform: uppercase;
+}
+
+.maia-level-progress-title span {
+  color: #4f4a3f;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.03em;
+}
+
+.maia-level-progress-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 5px;
+  margin-top: 9px;
+}
+
+.maia-level-chip {
+  display: flex;
+  min-width: 0;
+  aspect-ratio: 1.45;
+  align-items: center;
+  justify-content: center;
+  padding: 3px;
+  border: 1px solid rgba(180, 135, 44, 0.16);
+  border-radius: 9px;
+  background: rgba(243, 240, 232, 0.9);
+  color: #6f6759;
+  cursor: pointer;
+  font: 600 10px/1 "Inter", sans-serif;
+  transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease, transform 0.16s ease;
+}
+
+.maia-level-chip:hover {
+  border-color: rgba(180, 135, 44, 0.72);
+  color: #493914;
+  transform: translateY(-1px);
+}
+
+.maia-level-chip.is-earned {
+  border-color: rgba(180, 135, 44, 0.58);
+  background: rgba(201, 169, 110, 0.24);
+  color: #765518;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.maia-level-chip.is-current {
+  border-color: #8b6822;
+  background: #fff;
+  box-shadow: inset 0 0 0 1px rgba(139, 104, 34, 0.42);
+  color: #4b3712;
+}
+
+.maia-level-chip.is-current.is-earned {
+  background: rgba(201, 169, 110, 0.36);
+}
+
+.maia-level-chip:focus-visible {
+  outline: 2px solid #8b6822;
+  outline-offset: 2px;
+}
+
 #root {
   display: flex;
   flex-direction: column;
@@ -192,6 +297,48 @@ body {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.topbar-gigacoins {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 9px;
+  border: 1px solid rgba(201, 169, 110, 0.48);
+  border-radius: 999px;
+  background: rgba(201, 169, 110, 0.12);
+  color: #e4c58d;
+  font: 600 12px/1 Inter, sans-serif;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.16s ease, border-color 0.16s ease, transform 0.16s ease;
+}
+
+.topbar-gigacoins:hover,
+.topbar-gigacoins:focus-visible {
+  border-color: rgba(228, 197, 141, 0.82);
+  background: rgba(201, 169, 110, 0.2);
+}
+
+.topbar-gigacoins:active {
+  transform: translateY(1px);
+}
+
+.topbar-gigacoins svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.topbar-gigacoins small {
+  opacity: 0.75;
+  font-size: 10px;
+  font-weight: 500;
 }
 
 /* Кнопка «Выйти» в шапке нужна только там, где меню профиля скрыто
@@ -528,6 +675,41 @@ body {
   font-size: 13px;
   color: #8b7340;
   letter-spacing: 0.5px;
+}
+
+.maia-engine-error {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 6px 0 8px;
+  padding: 9px 12px;
+  border: 1px solid rgba(190, 106, 88, 0.5);
+  border-radius: 10px;
+  background: rgba(91, 35, 31, 0.88);
+  color: #ffe3dc;
+  font: 12px/1.4 "Inter", Arial, sans-serif;
+}
+
+.maia-engine-error button {
+  flex: 0 0 auto;
+  padding: 6px 12px;
+  border: 1px solid rgba(255, 227, 220, 0.42);
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.maia-engine-error button:hover:not(:disabled) {
+  background: rgba(255, 227, 220, 0.12);
+}
+
+.maia-engine-error button:disabled {
+  opacity: 0.6;
+  cursor: wait;
 }
 
 .controls-row {
@@ -3856,4 +4038,42 @@ body {
 }
 .oauth-callback-card a {
   color: #2f6b3a;
+}
+
+.training-due-empty {
+  padding: 0 16px 16px;
+  color: #66746b;
+  font-size: 13px;
+}
+
+@media (max-width: 1150px) {
+  .training-page--grid-with-due {
+    grid-template-columns: minmax(0, 1fr);
+    transition: none;
+  }
+
+  .training-due-rail {
+    position: static;
+    grid-column: 1;
+    grid-row: 2;
+    max-height: none;
+  }
+
+  .training-due-rail--collapsed .training-due-toggle {
+    width: 100%;
+    justify-content: flex-start;
+    padding: 11px 14px;
+  }
+
+  .training-due-rail--collapsed .training-due-toggle-label {
+    display: block;
+  }
+
+  .training-due-panel {
+    max-height: 60vh;
+  }
+
+  .training-due-list {
+    max-height: calc(60vh - 110px);
+  }
 }

@@ -67,6 +67,15 @@ function getApiError(error, fallback) {
   return error?.response?.data?.detail || error?.message || fallback;
 }
 
+function formatTaskCount(count) {
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+  if (mod100 >= 11 && mod100 <= 14) return `${count} заданий`;
+  if (mod10 === 1) return `${count} задание`;
+  if (mod10 >= 2 && mod10 <= 4) return `${count} задания`;
+  return `${count} заданий`;
+}
+
 /*
  * Тонкий прогресс-бар. Повторяет визуал .progress-meter из ProgressWidget,
  * чтобы процент прохождения выглядел одинаково в профиле и в обучении.
@@ -128,6 +137,7 @@ export default function TrainingPage({ user, onRegister }) {
 
   const [modules, setModules] = useState([]);
   const [dueItems, setDueItems] = useState([]);
+  const [duePanelOpen, setDuePanelOpen] = useState(false);
   // Прогресс курса: modules.items[] несёт счётчики заданий по каждому
   // модулю и его урокам. Грузится отдельно от списка модулей, потому что
   // требует JWT и считается по training_attempts.
@@ -382,15 +392,19 @@ export default function TrainingPage({ user, onRegister }) {
 
   useEffect(() => {
     const updateSize = () => {
-      const availableWidth = Math.max(320, window.innerWidth - 720);
+      const isMobile = window.matchMedia("(max-width: 760px)").matches;
+      const boardColumn = document.querySelector(".training-board-column");
+      const availableWidth = isMobile
+        ? (boardColumn?.clientWidth || window.innerWidth - 24) - 30
+        : window.innerWidth - 720;
       const availableHeight = Math.max(320, window.innerHeight - 180);
-      setBoardWidth(Math.max(320, Math.min(540, availableWidth, availableHeight)));
+      setBoardWidth(Math.max(isMobile ? 240 : 320, Math.min(540, availableWidth, availableHeight)));
     };
 
     updateSize();
     window.addEventListener("resize", updateSize);
     return () => window.removeEventListener("resize", updateSize);
-  }, []);
+  }, [selectedModule?.slug, lesson?.id]);
 
   useEffect(() => {
     if (!currentTask) return;
@@ -513,15 +527,57 @@ export default function TrainingPage({ user, onRegister }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lesson?.id]);
 
-  // Просроченное повторение ведёт сразу в урок, где живёт задание.
+  // Повторение сразу открывает нужное задание. Сохраняем слаг в URL:
+  // иначе эффект синхронизации состояния с query-параметром сбрасывает модуль.
   const openDueItem = useCallback(
     async (item) => {
-      const module = modules.find((m) => m.slug === item.module?.slug && m.enabled);
-      if (!module) return;
-      await openModule(module);
-      await openLesson(item.lesson.id, { save: false });
+      const moduleSlug = item?.module?.slug;
+      const lessonId = item?.lesson?.id;
+      const taskId = item?.task?.id;
+
+      if (!moduleSlug || lessonId == null || taskId == null) {
+        setError("Не удалось открыть повторение: данные задания неполные.");
+        return;
+      }
+
+      displayedSlugRef.current = moduleSlug;
+      setDuePanelOpen(false);
+      navigate(`/training?module=${encodeURIComponent(moduleSlug)}`);
+      saveBranchScroll("grid");
+      branchScrollRef.current.lesson = 0;
+
+      try {
+        setLoading(true);
+        setError(null);
+        const [moduleData, lessonData] = await Promise.all([
+          fetchTrainingModule(moduleSlug),
+          fetchTrainingLesson(lessonId),
+        ]);
+        const module = moduleData.module;
+        const lessonTasks = lessonData.tasks || [];
+        const dueTaskIndex = lessonTasks.findIndex(
+          (task) => String(task.id) === String(taskId),
+        );
+
+        if (!module?.enabled) {
+          throw new Error("Модуль для этого повторения больше недоступен.");
+        }
+        if (dueTaskIndex < 0) {
+          throw new Error("Задание для повторения больше недоступно в этом уроке.");
+        }
+
+        setSelectedModule(module);
+        setLessons(moduleData.lessons || []);
+        setLesson(lessonData.lesson);
+        setTasks(lessonTasks);
+        setTaskIndex(dueTaskIndex);
+      } catch (err) {
+        setError(getApiError(err, "Не удалось открыть задание для повторения."));
+      } finally {
+        setLoading(false);
+      }
     },
-    [modules, openModule, openLesson],
+    [navigate],
   );
 
   const backToModules = () => {
@@ -900,7 +956,13 @@ export default function TrainingPage({ user, onRegister }) {
     const course = progress?.modules;
 
     return (
-      <div className="training-page" ref={pageRef}>
+      <div
+        className={`training-page training-page--grid training-page--grid-with-due${
+          duePanelOpen ? " training-page--due-open" : ""
+        }`}
+        ref={pageRef}
+      >
+        <main className="training-course-main">
         <section className="training-hero">
           <div className="training-kicker">Учебный режим</div>
           <h1>Обучение шахматам</h1>
@@ -927,45 +989,6 @@ export default function TrainingPage({ user, onRegister }) {
         </section>
 
         {error && <div className="training-global-error">{error}</div>}
-
-        {dueItems.length > 0 && (
-          <section className="training-due-section">
-            <div className="training-due-heading">
-              <span className="training-due-icon">🔁</span>
-              <div>
-                <strong>
-                  Пора повторить: {dueItems.length}{" "}
-                  {dueItems.length === 1 ? "задание" : "задания"}
-                </strong>
-                <span>
-                  Интервальное повторение закрепляет материал - пройдите
-                  просроченные задания.
-                </span>
-              </div>
-            </div>
-            <div className="training-due-list">
-              {dueItems.map((item) => (
-                <button
-                  type="button"
-                  key={item.review.id}
-                  className="training-due-card"
-                  onClick={() => openDueItem(item)}
-                >
-                  <span className="training-due-card-main">
-                    <strong>{item.task.title}</strong>
-                    <span>
-                      {item.module.title} · {item.lesson.title}
-                    </span>
-                  </span>
-                  <span className="training-due-card-meta">
-                    повторений: {item.review.reps}
-                  </span>
-                  <span className="training-due-card-arrow">→</span>
-                </button>
-              ))}
-            </div>
-          </section>
-        )}
 
         <div className="training-modules-path" ref={modulesPathRef}>
           {modules.map((module, index) => {
@@ -1012,11 +1035,12 @@ export default function TrainingPage({ user, onRegister }) {
                     </span>
                   )}
 
-                  <span className="training-module-meta">
-                    {module.enabled
-                      ? `${module.lesson_count} уроков · ${module.task_count} заданий`
-                      : "Скоро"}
-                  </span>
+                  {/* Счётчик уроков и заданий дублировал строку прогресса
+                      выше, поэтому плашку с ним убрали. Для ещё не
+                      открытых модулей оставляем статус «Скоро». */}
+                  {!module.enabled && (
+                    <span className="training-module-meta">Скоро</span>
+                  )}
                 </span>
               </button>
             );
@@ -1035,6 +1059,66 @@ export default function TrainingPage({ user, onRegister }) {
             </div>
           )}
         </div>
+        </main>
+
+        <aside
+          className={`training-due-rail ${
+            duePanelOpen ? "training-due-rail--open" : "training-due-rail--collapsed"
+          }`}
+          aria-label="Интервальные повторения"
+        >
+          <button
+            type="button"
+            className="training-due-toggle"
+            aria-expanded={duePanelOpen}
+            aria-controls="training-due-panel"
+            aria-label={`${duePanelOpen ? "Скрыть" : "Показать"} задания для повторения: ${dueItems.length}`}
+            title="Задания для повторения"
+            onClick={() => setDuePanelOpen((open) => !open)}
+          >
+            <span className="training-due-toggle-icon" aria-hidden="true">🔁</span>
+            <span className="training-due-toggle-label">Повторения</span>
+            <span className="training-due-toggle-count">{dueItems.length}</span>
+            <span className="training-due-toggle-chevron" aria-hidden="true">
+              {duePanelOpen ? "−" : "+"}
+            </span>
+          </button>
+
+          {duePanelOpen && (
+            <section className="training-due-panel" id="training-due-panel">
+              <div className="training-due-heading">
+                <strong>Пора повторить: {formatTaskCount(dueItems.length)}</strong>
+                <span>Повторите задания, чтобы закрепить материал.</span>
+              </div>
+              {dueItems.length > 0 ? (
+                <div className="training-due-list">
+                  {dueItems.map((item) => (
+                    <button
+                      type="button"
+                      key={item.review.id}
+                      className="training-due-card"
+                      onClick={() => openDueItem(item)}
+                    >
+                      <span className="training-due-card-main">
+                        <strong>{item.task.title}</strong>
+                        <span>
+                          {item.module.title} · {item.lesson.title}
+                        </span>
+                      </span>
+                      <span className="training-due-card-meta">
+                        повторений: {item.review.reps}
+                      </span>
+                      <span className="training-due-card-arrow" aria-hidden="true">→</span>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="training-due-empty">Сейчас нет заданий для повтора.</p>
+              )}
+            </section>
+          )}
+        </aside>
+
         <SiteFooter />
       </div>
     );
