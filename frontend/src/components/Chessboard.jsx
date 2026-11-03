@@ -34,7 +34,8 @@ let gameId = "game_" + Date.now();
 
 /*
  * Имена файлов фигур в public/pieces. Ключи — как в chess.js
- * (piece.type). Нужны, чтобы рисовать иконки съеденного материала.
+ * (piece.type). Нужны, чтобы рисовать иконки съеденного материала
+ * и «призрак» фигуры на клетке предхода.
  */
 const PIECE_FILE_NAMES = {
   p: "pawn",
@@ -42,7 +43,15 @@ const PIECE_FILE_NAMES = {
   b: "bishop",
   r: "rook",
   q: "queen",
+  k: "king",
 };
+
+/*
+ * Небольшая задержка перед выполнением предхода: даём доске
+ * проиграть анимацию ответа Maia3, чтобы игрок успел увидеть,
+ * на что именно он отвечает.
+ */
+const PREMOVE_EXECUTION_DELAY = 220;
 
 /*
  * Порядок иконок в плашке перевеса: от пешки к ферзю, как в списке
@@ -169,6 +178,16 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
   const [selectedSquare, setSelectedSquare] = useState(null);
   const [legalMovesForSelected, setLegalMovesForSelected] = useState([]);
 
+  /*
+   * Предход: ход, который игрок ставит заранее, пока думает Maia3.
+   * Храним максимум один предход — новый заменяет предыдущий.
+   *
+   * Ref нужен для отложенного выполнения: к моменту ответа Maia3
+   * замыкание эффекта может содержать устаревшее состояние.
+   */
+  const [premove, setPremove] = useState(null);
+  const premoveRef = useRef(null);
+
   const [boardWidth, setBoardWidth] = useState(560);
   const boardBoxRef = useRef(null);
 
@@ -216,6 +235,152 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
   const [boardKey, setBoardKey] = useState(0);
 
   const game = gameRef.current;
+
+  /*
+   * ============================================================
+   * ПРЕДХОДЫ
+   * ============================================================
+   *
+   * Предход проверяется только по геометрии фигуры: занятость клеток
+   * и шахи на момент постановки не учитываются. Иначе нельзя было бы
+   * поставить типовой предход-перебой на клетку, где сейчас стоит своя
+   * фигура, или ход пешкой, путь которой пока перекрыт.
+   *
+   * Окончательную легальность проверяет chess.js после ответа Maia3:
+   * если ход невозможен, processPlayerMove вернёт false и предход
+   * будет снят.
+   */
+  const setPremoveMove = useCallback((next) => {
+    premoveRef.current = next;
+    setPremove(next);
+  }, []);
+
+  const clearPremove = useCallback(() => {
+    premoveRef.current = null;
+    setPremove(null);
+  }, []);
+
+  const isPremoveGeometryLegal = useCallback(
+    (from, to) => {
+      if (!from || !to || from === to) return false;
+
+      const piece = game.get(from);
+
+      if (!piece || piece.color !== playerColor) return false;
+
+      /*
+       * Короля нельзя «съесть» ни в каком предходе: такая клетка
+       * не может быть целью нормального хода.
+       */
+      const targetPiece = game.get(to);
+      if (targetPiece?.type === "k") return false;
+
+      const dx = to.charCodeAt(0) - from.charCodeAt(0);
+      const dy = Number(to[1]) - Number(from[1]);
+      const absX = Math.abs(dx);
+      const absY = Math.abs(dy);
+
+      switch (piece.type) {
+        case "p": {
+          const direction = piece.color === "w" ? 1 : -1;
+          const startRank = piece.color === "w" ? "2" : "7";
+
+          if (dx === 0 && dy === direction) return true;
+
+          if (
+            dx === 0 &&
+            dy === 2 * direction &&
+            from[1] === startRank
+          ) {
+            return true;
+          }
+
+          return absX === 1 && dy === direction;
+        }
+        case "n":
+          return (
+            (absX === 1 && absY === 2) ||
+            (absX === 2 && absY === 1)
+          );
+        case "b":
+          return absX === absY && absX > 0;
+        case "r":
+          return (dx === 0 || dy === 0) && absX + absY > 0;
+        case "q":
+          return (
+            (dx === 0 || dy === 0 || absX === absY) &&
+            absX + absY > 0
+          );
+        case "k": {
+          if (absX <= 1 && absY <= 1 && absX + absY > 0) {
+            return true;
+          }
+
+          /*
+           * Рокировка: только с начальной клетки короля и только
+           * при сохранённом праве на неё. Саму возможность рокировки
+           * (пути, шах) окончательно проверит chess.js.
+           */
+          if (absY !== 0 || absX !== 2) return false;
+
+          const rank = piece.color === "w" ? "1" : "8";
+          if (from !== `e${rank}`) return false;
+
+          const kingSide = to === `g${rank}`;
+          const queenSide = to === `c${rank}`;
+
+          if (!kingSide && !queenSide) return false;
+
+          const castling =
+            game.fen().split(" ")[2] || "-";
+          const right =
+            piece.color === "w"
+              ? kingSide
+                ? "K"
+                : "Q"
+              : kingSide
+                ? "k"
+                : "q";
+
+          return castling.includes(right);
+        }
+        default:
+          return false;
+      }
+    },
+    [game, playerColor],
+  );
+
+  /*
+   * Все клетки, куда геометрически может пойти выбранная фигура.
+   * Используется для подсветки кликового предхода.
+   */
+  const getPremoveTargets = useCallback(
+    (from) => {
+      const targets = [];
+
+      for (let file = 0; file < 8; file += 1) {
+        for (let rank = 1; rank <= 8; rank += 1) {
+          const to = "abcdefgh"[file] + rank;
+          const targetPiece = game.get(to);
+
+          /*
+           * Клик по своей фигуре — это выбор другой фигуры,
+           * а не взятие. Кольцо на такой клетке только путало бы;
+           * перебой мышью всё равно ставится перетаскиванием.
+           */
+          if (targetPiece?.color === playerColor) continue;
+
+          if (isPremoveGeometryLegal(from, to)) {
+            targets.push(to);
+          }
+        }
+      }
+
+      return targets;
+    },
+    [game, playerColor, isPremoveGeometryLegal],
+  );
 
   useEffect(() => {
     if (typeof onStateChange === "function") {
@@ -612,6 +777,15 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
        */
       if (sidePickerOpen) return;
 
+      /*
+       * Переход по истории меняет позицию на доске. Предход,
+       * поставленный к текущей партии, к просматриваемому кадру
+       * отношения не имеет.
+       */
+      clearPremove();
+      setSelectedSquare(null);
+      setLegalMovesForSelected([]);
+
       const g = gameRef.current;
       const history = moveHistory;
 
@@ -702,13 +876,20 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
         setViewIndex(currentIndex);
       }
     },
-    [moveHistory, isViewMode, viewIndex, sidePickerOpen],
+    [
+      moveHistory,
+      isViewMode,
+      viewIndex,
+      sidePickerOpen,
+      clearPremove,
+    ],
   );
 
   /*
    * Новая игра.
    */
   const handleNewGame = useCallback(() => {
+    clearPremove();
     game.reset();
 
     const startFen = game.fen();
@@ -764,7 +945,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
         isComparing: false,
       }));
     }
-  }, [game, onStateChange]);
+  }, [game, onStateChange, clearPremove]);
 
   /*
    * Выбор стороны в меню при входе на страницу: доска разворачивается
@@ -800,6 +981,8 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
    */
   const handleLoadFen = useCallback(
     (newFen) => {
+      clearPremove();
+
       try {
         game.load(newFen);
 
@@ -860,7 +1043,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
         return false;
       }
     },
-    [game, onStateChange],
+    [game, onStateChange, clearPremove],
   );
 
   /*
@@ -1345,6 +1528,8 @@ const fetchBestMove = useCallback(
       if (gen !== gameGenRef.current) return;
 
       if (data.error) {
+        // Хода соперника не будет — ждать предходу нечего.
+        clearPremove();
         setMaiaError(data.error);
         return;
       }
@@ -1356,6 +1541,7 @@ const fetchBestMove = useCallback(
       });
 
       if (!move) {
+        clearPremove();
         setMaiaError("Maia3 вернула нелегальный ход. Позиция не изменена.");
         return;
       }
@@ -1373,6 +1559,13 @@ const fetchBestMove = useCallback(
         buildMoveHistory(move.san);
         takeSnapshot();
         updateStatus();
+
+        /*
+         * Позиция сменилась — подсветка выбора и псевдолегальные
+         * клетки от старой позиции больше не актуальны.
+         */
+        setSelectedSquare(null);
+        setLegalMovesForSelected([]);
 
         playMoveSound();
 
@@ -1401,6 +1594,7 @@ const fetchBestMove = useCallback(
       console.error("Maia3 ошибка:", err);
       const detail = err?.response?.data?.detail;
       if (gen === gameGenRef.current) {
+        clearPremove();
         setMaiaError(
           typeof detail === "string"
             ? detail
@@ -1420,6 +1614,7 @@ const fetchBestMove = useCallback(
     takeSnapshot,
     updateStatus,
     onStateChange,
+    clearPremove,
   ]);
 
   /*
@@ -1495,6 +1690,13 @@ const fetchBestMove = useCallback(
       if (move === null) {
         return false;
       }
+
+      /*
+       * Любой реальный ход отменяет ожидающий предход: либо он уже
+       * выполняется (и эффект снял его заранее), либо игрок решил
+       * сходить сам.
+       */
+      clearPremove();
 
       /*
        * Игрок сделал ход: с этого момента уровень Maia3 зафиксирован
@@ -1604,8 +1806,61 @@ const fetchBestMove = useCallback(
       fetchEvalForPosition,
       makeAiMove,
       onStateChange,
+      clearPremove,
     ],
   );
+
+  /*
+   * Автоматическое выполнение предхода.
+   *
+   * Эффект срабатывает, когда ответ Maia3 уже применён к партии
+   * (chess.js переключил turn на игрока). Небольшая задержка нужна,
+   * чтобы доска успела проиграть анимацию хода соперника.
+   *
+   * Если ход окажется нелегальным (шах, связка, фигура съедена),
+   * processPlayerMove вернёт false — предход просто исчезнет.
+   */
+  useEffect(() => {
+    const pending = premoveRef.current;
+
+    if (!pending) return undefined;
+    if (isViewMode || sidePickerOpen || isAiThinking) return undefined;
+    if (game.turn() !== playerColor) return undefined;
+
+    if (game.isGameOver() || game.isDraw()) {
+      clearPremove();
+      return undefined;
+    }
+
+    const timer = setTimeout(() => {
+      /*
+       * За время задержки предход могли отменить или заменить,
+       * а игрок — успеть сходить вручную.
+       */
+      if (premoveRef.current !== pending) return;
+      if (game.turn() !== playerColor || isAiThinking) return;
+      if (game.isGameOver() || game.isDraw()) {
+        clearPremove();
+        return;
+      }
+
+      clearPremove();
+      processPlayerMove(pending.from, pending.to);
+    }, PREMOVE_EXECUTION_DELAY);
+
+    return () => clearTimeout(timer);
+  }, [
+    fen,
+    turn,
+    premove,
+    isAiThinking,
+    isViewMode,
+    sidePickerOpen,
+    playerColor,
+    game,
+    processPlayerMove,
+    clearPremove,
+  ]);
 
   /*
    * Играем чёрными: партия начинается с хода Maia3 за белых.
@@ -1639,29 +1894,133 @@ const fetchBestMove = useCallback(
   ]);
 
   /*
+   * Клик по клеткам во время хода Maia3 ставит предход.
+   * Цели подсвечиваются по геометрии фигуры, а не по chess.js:
+   * так работают типовые предходы-перебои и ходы через временно
+   * перекрытые клетки.
+   */
+  const handlePremoveSquareClick = useCallback(
+    (square) => {
+      if (game.isGameOver() || game.isDraw()) return;
+
+      /*
+       * Клик по уже подсвеченной цели снимает предход — удобная
+       * отмена и на мобильных, где нет правого клика.
+       */
+      if (premove && square === premove.to) {
+        clearPremove();
+        return;
+      }
+
+      const piece = game.get(square);
+
+      if (selectedSquare) {
+        if (square === selectedSquare) {
+          setSelectedSquare(null);
+          setLegalMovesForSelected([]);
+          return;
+        }
+
+        if (piece && piece.color === playerColor) {
+          setSelectedSquare(square);
+          setLegalMovesForSelected(getPremoveTargets(square));
+          return;
+        }
+
+        if (isPremoveGeometryLegal(selectedSquare, square)) {
+          const movingPiece = game.get(selectedSquare);
+
+          setPremoveMove({
+            from: selectedSquare,
+            to: square,
+            color: movingPiece.color,
+            type: movingPiece.type,
+          });
+          setSelectedSquare(null);
+          setLegalMovesForSelected([]);
+          return;
+        }
+
+        setSelectedSquare(null);
+        setLegalMovesForSelected([]);
+        return;
+      }
+
+      if (piece && piece.color === playerColor) {
+        clearPremove();
+        setSelectedSquare(square);
+        setLegalMovesForSelected(getPremoveTargets(square));
+        return;
+      }
+
+      /*
+       * Клик мимо своих фигур отменяет незавершённый выбор
+       * и уже поставленный предход.
+       */
+      clearPremove();
+      setSelectedSquare(null);
+      setLegalMovesForSelected([]);
+    },
+    [
+      game,
+      premove,
+      selectedSquare,
+      playerColor,
+      isPremoveGeometryLegal,
+      getPremoveTargets,
+      setPremoveMove,
+      clearPremove,
+    ],
+  );
+
+  /*
    * Drag & Drop.
    */
   const onDrop = useCallback(
     (sourceSquare, targetSquare) => {
-      if (
-        isViewMode ||
-        isAiThinking ||
-        game.turn() !== playerColor
-      ) {
+      if (isViewMode || sidePickerOpen) return false;
+      if (game.isGameOver() || game.isDraw()) return false;
+
+      /*
+       * Свой ход — обычная обработка. Предход на этот момент
+       * уже не нужен.
+       */
+      if (game.turn() === playerColor) {
+        clearPremove();
+        return processPlayerMove(sourceSquare, targetSquare);
+      }
+
+      /*
+       * Ход Maia3: запоминаем предход. Возвращаем false, чтобы
+       * react-chessboard не двигал фигуру — позицию изменит
+       * processPlayerMove после ответа соперника.
+       */
+      if (!isPremoveGeometryLegal(sourceSquare, targetSquare)) {
         return false;
       }
 
-      return processPlayerMove(
-        sourceSquare,
-        targetSquare,
-      );
+      const movingPiece = game.get(sourceSquare);
+
+      setPremoveMove({
+        from: sourceSquare,
+        to: targetSquare,
+        color: movingPiece.color,
+        type: movingPiece.type,
+      });
+      setSelectedSquare(null);
+      setLegalMovesForSelected([]);
+
+      return false;
     },
     [
       game,
       isViewMode,
-      isAiThinking,
+      sidePickerOpen,
       playerColor,
+      isPremoveGeometryLegal,
       processPlayerMove,
+      setPremoveMove,
+      clearPremove,
     ],
   );
 
@@ -1670,10 +2029,22 @@ const fetchBestMove = useCallback(
    */
   const onSquareClick = useCallback(
     (square) => {
-      if (isViewMode) return;
-      if (isAiThinking) return;
-      if (sidePickerOpen) return;
-      if (game.turn() !== playerColor) return;
+      if (isViewMode || sidePickerOpen) return;
+      if (game.isGameOver() || game.isDraw()) return;
+
+      /*
+       * Пока ходит Maia3, клики ставят предход.
+       */
+      if (game.turn() !== playerColor) {
+        handlePremoveSquareClick(square);
+        return;
+      }
+
+      /*
+       * Начало ручного хода отменяет ожидающий предход: он мог
+       * ждать короткую задержку перед автоматическим выполнением.
+       */
+      clearPremove();
 
       const piece = game.get(square);
 
@@ -1747,11 +2118,59 @@ const fetchBestMove = useCallback(
       game,
       selectedSquare,
       isViewMode,
-      isAiThinking,
       playerColor,
       sidePickerOpen,
+      handlePremoveSquareClick,
       processPlayerMove,
+      clearPremove,
     ],
+  );
+
+  /*
+   * Если игрок начинает тянуть фигуру на своём ходу, ожидающий
+   * предход уже не должен выполниться сам.
+   */
+  const handlePieceDragBegin = useCallback(() => {
+    if (game.turn() === playerColor) {
+      clearPremove();
+    }
+  }, [game, playerColor, clearPremove]);
+
+  const handleSquareRightClick = useCallback(() => {
+    clearPremove();
+  }, [clearPremove]);
+
+  const isDraggablePiece = useCallback(
+    ({ piece }) =>
+      !isViewMode &&
+      !sidePickerOpen &&
+      piece?.[0] === playerColor,
+    [isViewMode, sidePickerOpen, playerColor],
+  );
+
+  /*
+   * Стандартная проверка превращения из react-chessboard, но во время
+   * хода Maia3 диалог не нужен: это предход, а он всё равно
+   * превращается в ферзя в processPlayerMove.
+   */
+  const handlePromotionCheck = useCallback(
+    (sourceSquare, targetSquare, piece) => {
+      if (game.turn() !== playerColor) return false;
+
+      return (
+        ((piece === "wP" &&
+          sourceSquare[1] === "7" &&
+          targetSquare[1] === "8") ||
+          (piece === "bP" &&
+            sourceSquare[1] === "2" &&
+            targetSquare[1] === "1")) &&
+        Math.abs(
+          sourceSquare.charCodeAt(0) -
+            targetSquare.charCodeAt(0),
+        ) <= 1
+      );
+    },
+    [game, playerColor],
   );
 
   const handlePromotionPieceSelect =
@@ -2063,6 +2482,22 @@ const fetchBestMove = useCallback(
   }
 
   /*
+   * Предход рисуем последним, чтобы он перекрывал подсветку
+   * последнего хода и выбранной клетки.
+   */
+  if (premove) {
+    customSquareStyles[premove.from] = {
+      ...(customSquareStyles[premove.from] || {}),
+      backgroundColor: "rgba(179, 84, 58, 0.5)",
+    };
+
+    customSquareStyles[premove.to] = {
+      ...(customSquareStyles[premove.to] || {}),
+      backgroundColor: "rgba(179, 84, 58, 0.72)",
+    };
+  }
+
+  /*
    * Две стрелки одновременно.
    *
    * Если оба движка выбрали один и тот же ход,
@@ -2071,6 +2506,14 @@ const fetchBestMove = useCallback(
    * Если ходы разные — показываем обе.
    */
   const boardArrows = [];
+
+  if (premove) {
+    boardArrows.push([
+      premove.from,
+      premove.to,
+      "rgba(179, 84, 58, 0.9)",
+    ]);
+  }
 
   if (stockfishArrow) {
     boardArrows.push(stockfishArrow);
@@ -2085,6 +2528,43 @@ const fetchBestMove = useCallback(
     boardArrows.push(maiaArrow);
   }
 
+  /*
+   * «Призрак» фигуры на целевой клетке предхода. Абсолютный слой
+   * внутри boardBox, поэтому на расчёт размера доски не влияет.
+   */
+  const premoveGhost = (() => {
+    if (!premove) return null;
+
+    const file = premove.to.charCodeAt(0) - 97;
+    const rank = Number(premove.to[1]);
+    const squareSize = boardWidth / 8;
+    const left =
+      (boardFlipped ? 7 - file : file) * squareSize;
+    const top =
+      (boardFlipped ? rank - 1 : 8 - rank) * squareSize;
+    const colorName =
+      premove.color === "w" ? "white" : "black";
+
+    return (
+      <img
+        src={`/pieces/${colorName}_${PIECE_FILE_NAMES[premove.type]}.svg`}
+        alt=""
+        aria-hidden="true"
+        draggable={false}
+        style={{
+          position: "absolute",
+          left,
+          top,
+          width: squareSize,
+          height: squareSize,
+          opacity: 0.55,
+          pointerEvents: "none",
+          zIndex: 8,
+        }}
+      />
+    );
+  })();
+
   return (
     <div className="board-section">
       <div className="board-wrapper" data-logo-anchor>
@@ -2093,36 +2573,6 @@ const fetchBestMove = useCallback(
             Верхняя панель
         ====================================================== */}
         <div className="player-bar">
-          <div className="rating-label">
-            Противник (Maia3):{" "}
-            <span>{elo}</span> ELO
-          </div>
-
-          <input
-            type="range"
-            min="800"
-            max="2600"
-            step="100"
-            value={elo}
-            disabled={levelLocked}
-            title={
-              levelLocked
-                ? "Уровень Maia3 фиксируется после вашего первого хода"
-                : "Выберите уровень Maia3"
-            }
-            aria-label={
-              levelLocked
-                ? `Уровень Maia3: ${elo} ELO, зафиксирован на партию`
-                : `Уровень Maia3: ${elo} ELO`
-            }
-            onChange={(e) => setMaiaLevel(parseInt(e.target.value, 10))}
-            style={{
-              width: 100,
-              accentColor: "#C9A96E",
-              cursor: levelLocked ? "not-allowed" : "pointer",
-            }}
-          />
-
           {/*
            * Перевес верхней стороны живёт в её же строке, а не плашкой
            * поверх доски: так он ничего не перекрывает.
@@ -2169,6 +2619,10 @@ const fetchBestMove = useCallback(
             position={fen}
             onPieceDrop={onDrop}
             onSquareClick={onSquareClick}
+            onPieceDragBegin={handlePieceDragBegin}
+            onSquareRightClick={handleSquareRightClick}
+            onPromotionCheck={handlePromotionCheck}
+            isDraggablePiece={isDraggablePiece}
             boardWidth={boardWidth}
             animationDuration={200}
             boardOrientation={
@@ -2362,6 +2816,8 @@ const fetchBestMove = useCallback(
               customSquareStyles
             }
           />
+
+          {premoveGhost}
 
           {/*
            * Выбор стороны — та же карточка, что и итог партии.

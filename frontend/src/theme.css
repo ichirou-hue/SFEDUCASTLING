@@ -172,7 +172,6 @@
   color: var(--sf-ink);
 }
 
-:root[data-theme="dark"] .move-history-panel .rating-label,
 :root[data-theme="dark"] .move-history-panel .player-rating,
 :root[data-theme="dark"] .move-history-panel .bot-rating {
   color: var(--sf-gold);
@@ -260,7 +259,6 @@
   box-shadow: 0 0 0 3px rgba(232, 176, 122, 0.14);
 }
 
-:root[data-theme="dark"] .board-wrapper .rating-label,
 :root[data-theme="dark"] .board-wrapper .player-rating,
 :root[data-theme="dark"] .board-wrapper .bot-rating {
   color: var(--sf-gold);

@@ -138,12 +138,6 @@ body {
   text-transform: none;
 }
 
-/* Ползунок уровня под доской: в фиксированном состоянии только
-   приглушаем, положение и размер не меняются. */
-.player-bar input[type="range"]:disabled {
-  opacity: 0.55;
-}
-
 .maia-level-chip.is-earned {
   border-color: rgba(180, 135, 44, 0.58);
   background: rgba(201, 169, 110, 0.24);
@@ -691,12 +685,6 @@ body {
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-}
-
-.rating-label {
-  font-size: 13px;
-  color: #8b7340;
-  letter-spacing: 0.5px;
 }
 
 .maia-engine-error {
