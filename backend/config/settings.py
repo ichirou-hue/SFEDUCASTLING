@@ -63,6 +63,26 @@ class GigachessSettings(BaseModel):
     max_tokens: int = 700
 
 
+class ChatFallbackSettings(BaseModel):
+    """Резервная LLM с Chat Completions API для чата.
+
+    Пока заданы ``base_url`` и ``api_key``, чат может работать через
+    этого провайдера, если основная модель (Gigachess) недоступна.
+    ``prefer`` ставит резервную модель первой в очереди: удобно, когда
+    основная временно не отвечает, но её конфигурация сохраняется.
+    """
+
+    base_url: str = ""
+    api_key: str = ""
+    model: str = "gpt-6-luna"
+    prefer: bool = True
+    connect_timeout: float = 15.0
+    read_timeout: float = 60.0
+    temperature: float = 0.2
+    top_p: float = 0.95
+    max_tokens: int = 700
+
+
 class DatabaseSettings(BaseSettings):
     """Настройки подключения к базе данных (async SQLAlchemy).
 
@@ -188,6 +208,7 @@ class Settings(BaseSettings):
     data: DataSettings = DataSettings()
 
     gigachess: GigachessSettings = GigachessSettings()
+    chat_fallback: ChatFallbackSettings = ChatFallbackSettings()
     database: DatabaseSettings = DatabaseSettings()
     auth: AuthSettings = AuthSettings()
     chess_oauth: ChessOAuthSettings = ChessOAuthSettings()
@@ -208,3 +229,9 @@ print("[Config] BASE_DIR:", BASE_DIR)
 print("[Config] .env exists:", (BASE_DIR / ".env").exists())
 print("[Config] Gigachess URL:", repr(settings.gigachess.base_url))
 print("[Config] GIGACHESS_BASE_URL from env:", repr(os.getenv("GIGACHESS_BASE_URL")))
+print(
+    "[Config] Chat fallback URL:",
+    repr(settings.chat_fallback.base_url),
+    "enabled:",
+    bool(settings.chat_fallback.base_url and settings.chat_fallback.api_key),
+)

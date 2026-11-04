@@ -2,12 +2,25 @@
 
 from unittest.mock import MagicMock, patch
 
+import pytest
 from fastapi.testclient import TestClient
 
 from backend.app import app
 from backend.api_gateway.routes.chat import extract_board_fen, _mentions_position
 
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def _disable_real_chat_fallback():
+    """Изолирует тесты от реального резервного провайдера из .env."""
+
+    with patch(
+        "backend.api_gateway.routes.chat.get_chat_fallback",
+        return_value=None,
+    ):
+        yield
+
 
 START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 ITALIAN_FEN = "r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/RNBQK1NR b KQkq - 3 3"
@@ -140,6 +153,46 @@ class TestChatAsk:
         data = resp.json()
         assert data["fen"] is None
         assert "не подключён" in data["reply"]
+
+    def test_ask_prefers_fallback_when_configured(self):
+        primary = MagicMock()
+        primary.chat.return_value = "Ответ основной модели."
+        fallback = MagicMock()
+        fallback.chat.return_value = "Ответ резервной модели."
+        with patch("backend.api_gateway.routes.chat.get_gigachess", return_value=primary), \
+                patch("backend.api_gateway.routes.chat.get_chat_fallback", return_value=fallback), \
+                patch("backend.api_gateway.routes.chat.settings.chat_fallback.prefer", True):
+            resp = client.post("/api/chat/ask", json={"message": "Привет", "is_greeting": True})
+        assert resp.status_code == 200
+        assert resp.json()["reply"] == "Ответ резервной модели."
+        fallback.chat.assert_called_once()
+        primary.chat.assert_not_called()
+
+    def test_ask_falls_back_when_primary_fails(self):
+        primary = MagicMock()
+        primary.chat.side_effect = RuntimeError("primary is down")
+        fallback = MagicMock()
+        fallback.chat.return_value = "Ответ резервной модели."
+        with patch("backend.api_gateway.routes.chat.get_gigachess", return_value=primary), \
+                patch("backend.api_gateway.routes.chat.get_chat_fallback", return_value=fallback), \
+                patch("backend.api_gateway.routes.chat.settings.chat_fallback.prefer", False):
+            resp = client.post("/api/chat/ask", json={"message": "Привет", "is_greeting": True})
+        assert resp.status_code == 200
+        assert resp.json()["reply"] == "Ответ резервной модели."
+        primary.chat.assert_called_once()
+        fallback.chat.assert_called_once()
+
+    def test_ask_reports_unavailable_when_all_engines_fail(self):
+        primary = MagicMock()
+        primary.chat.side_effect = RuntimeError("primary is down")
+        fallback = MagicMock()
+        fallback.chat.side_effect = RuntimeError("fallback is down")
+        with patch("backend.api_gateway.routes.chat.get_gigachess", return_value=primary), \
+                patch("backend.api_gateway.routes.chat.get_chat_fallback", return_value=fallback), \
+                patch("backend.api_gateway.routes.chat.settings.chat_fallback.prefer", False):
+            resp = client.post("/api/chat/ask", json={"message": "Привет", "is_greeting": True})
+        assert resp.status_code == 200
+        assert "временно недоступен" in resp.json()["reply"]
 
     def test_invalid_fen_in_marker_does_not_crash(self):
         engine = MagicMock()

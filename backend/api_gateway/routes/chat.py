@@ -16,9 +16,14 @@ from starlette.concurrency import run_in_threadpool
 from backend.api_gateway.dependecies import get_optional_current_user
 from backend.api_gateway.models import ChatAskRequest
 from backend.api_gateway.sanitize import sanitize_text
-from backend.api_gateway.state import ensure_stockfish, get_gigachess, stockfish_lock
+from backend.api_gateway.state import (
+    ensure_stockfish,
+    get_chat_fallback,
+    get_gigachess,
+    stockfish_lock,
+)
+from backend.config.settings import settings
 from backend.db.session import get_db
-from backend.llm.gigachess import GigachessError
 from backend.models.chat_message import ChatMessage
 
 router = APIRouter(tags=["chat"])
@@ -193,6 +198,36 @@ SYSTEM_PROMPT = (
 )
 
 
+def _chat_engines() -> list[tuple[str, object]]:
+    """Возвращает доступные LLM-клиенты в порядке приоритета.
+
+    Пока в .env задан резервный провайдер и включён ``prefer``, чат
+    сначала идёт в него, а основная модель остаётся запасным вариантом.
+    Это позволяет быстро вернуть работоспособность, не удаляя
+    конфигурацию Gigachess.
+    """
+
+    primary = get_gigachess()
+    fallback = get_chat_fallback()
+
+    if settings.chat_fallback.prefer and fallback is not None:
+        ordered = [
+            ("fallback", fallback),
+            ("gigachess", primary),
+        ]
+    else:
+        ordered = [
+            ("gigachess", primary),
+            ("fallback", fallback),
+        ]
+
+    return [
+        (name, engine)
+        for name, engine in ordered
+        if engine is not None
+    ]
+
+
 @router.post("/api/chat/ask")
 async def chat_ask(
     req: ChatAskRequest,
@@ -208,9 +243,12 @@ async def chat_ask(
 
     db.add(ChatMessage(role="user", text=sanitize_text(req.message), user_id=uid))
 
-    engine = get_gigachess()
-    if engine is None:
-        reply_text = "AI не подключён. Проверьте GIGACHESS_BASE_URL в .env."
+    engines = _chat_engines()
+    if not engines:
+        reply_text = (
+            "AI не подключён. Проверьте GIGACHESS_BASE_URL "
+            "или CHAT_FALLBACK__API_KEY в .env."
+        )
     else:
         if req.is_greeting:
             user_content = req.message
@@ -225,18 +263,30 @@ async def chat_ask(
             {"role": "user", "content": user_content},
         ]
 
-        try:
-            # engine.chat — блокирующий HTTP-вызов; в async-эндпоинте его
-            # нельзя звать напрямую, иначе он замораживает весь event loop.
-            reply_text = await run_in_threadpool(
-                lambda: engine.chat(
-                    messages,
-                    temperature=0.3 if req.is_greeting else 0.2,
-                    max_tokens=300 if req.is_greeting else 700,
+        reply_text = None
+
+        for name, engine in engines:
+            try:
+                # engine.chat - блокирующий HTTP-вызов; в async-эндпоинте
+                # его нельзя звать напрямую, иначе он замораживает event loop.
+                candidate = await run_in_threadpool(
+                    lambda e=engine: e.chat(
+                        messages,
+                        temperature=0.3 if req.is_greeting else 0.2,
+                        max_tokens=300 if req.is_greeting else 700,
+                    )
                 )
-            )
-        except GigachessError as e:
-            print(f"[Chat] Gigachess error: {e}")
+            except Exception as e:
+                # Один провайдер упал - пробуем следующий, чтобы чат
+                # ответил хотя бы через резервную модель.
+                print(f"[Chat] {name} error: {e}")
+                continue
+
+            if candidate and candidate.strip():
+                reply_text = candidate
+                break
+
+        if reply_text is None:
             reply_text = "Извините, AI временно недоступен. Попробуйте позже."
 
     reply_text, board_fen = extract_board_fen(reply_text)
