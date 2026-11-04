@@ -3362,6 +3362,12 @@ body {
   color: #444;
 }
 
+/* Карточка уровня на экране «Практика для вашего уровня»: сам экран
+   выровнен по центру, поэтому карточку тоже держим по центру. */
+.training-register-wall .rating-band-progress {
+  margin: 14px auto 4px;
+}
+
 .training-hero,
 .training-module-header {
   max-width: 1180px;
@@ -3390,6 +3396,13 @@ body {
   line-height: 1.6;
   color: #555;
   font-size: 15px;
+}
+
+/* «Ваш уровень» в шапке обучения: на широких экранах карточка шириной
+   440px прижималась к левому краю. Центрируем её и прогресс курса на
+   одной оси — нижняя часть шапки читается как единый блок. */
+.training-hero .rating-band-progress {
+  margin: 16px auto 0;
 }
 
 .training-kicker {
@@ -3929,7 +3942,7 @@ body {
 }
 
 .training-course-progress {
-  margin-top: 18px;
+  margin: 18px auto 0;
   max-width: 520px;
 }
 
