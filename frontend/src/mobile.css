@@ -384,6 +384,10 @@
   .user-profile-page > .site-footer,
   .level-test-page > .site-footer,
   .puzzles-layout > .site-footer {
+    /* На мобилке футер растягивается через 100vw, поэтому компенсация
+       боковых отступов страницы не нужна. */
+    margin-right: 0;
+    margin-left: 0;
     margin-bottom: 0;
   }
 

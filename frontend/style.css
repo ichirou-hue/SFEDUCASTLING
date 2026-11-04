@@ -281,6 +281,11 @@ body {
    Контейнеры страниц имеют нижний padding — компенсируем его отрицательным
    margin-bottom (значения связаны с padding-bottom каждого контейнера). */
 .training-page > .site-footer {
+  /* Футер на всю ширину страницы: отрицательные поля компенсируют
+     горизонтальный padding .training-page (28px). */
+  align-self: stretch;
+  margin-right: -28px;
+  margin-left: -28px;
   margin-bottom: -36px; /* training-page: padding 40px 28px 36px */
 }
 
@@ -4130,13 +4135,36 @@ body {
   font: inherit;
   text-align: left;
   cursor: pointer;
-  transition: background 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
 }
 
 .training-due-toggle:hover {
   border-color: rgba(180, 135, 44, 0.68);
   background: #fffaf0;
-  box-shadow: 0 10px 26px rgba(35, 44, 38, 0.16);
+  box-shadow:
+    0 12px 28px rgba(35, 44, 38, 0.18),
+    0 0 0 1px rgba(180, 135, 44, 0.22);
+  transform: translateY(-2px);
+}
+
+.training-due-toggle:active {
+  box-shadow: 0 8px 22px rgba(35, 44, 38, 0.16);
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .training-due-toggle {
+    transition: none;
+  }
+
+  .training-due-toggle:hover,
+  .training-due-toggle:active {
+    transform: none;
+  }
 }
 
 .training-due-toggle:focus-visible {

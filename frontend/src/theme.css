@@ -1071,8 +1071,15 @@
 
 :root[data-theme="dark"] .training-due-toggle:hover {
   border-color: var(--sf-line-strong);
-  background: rgba(213, 180, 118, 0.08);
-  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.34);
+  /* Сохраняем непрозрачную подложку и добавляем золотистый оттенок сверху,
+     иначе карточка при наведении просвечивает фоном страницы. */
+  background:
+    linear-gradient(rgba(213, 180, 118, 0.09), rgba(213, 180, 118, 0.09)),
+    var(--sf-surface-raised);
+  box-shadow:
+    0 14px 34px rgba(0, 0, 0, 0.34),
+    0 0 0 1px rgba(213, 180, 118, 0.16),
+    0 0 22px rgba(213, 180, 118, 0.1);
 }
 
 :root[data-theme="dark"] .training-due-toggle:focus-visible,
