@@ -53,9 +53,9 @@ function insightFor(phases, gamesAnalyzed) {
   const strongest = [...sampled].sort((a, b) => b.accuracy_percent - a.accuracy_percent)[0];
   const weakest = [...sampled].sort((a, b) => a.accuracy_percent - b.accuracy_percent)[0];
   if (strongest.key === weakest.key || strongest.accuracy_percent - weakest.accuracy_percent < 3) {
-    return "Точность по этапам пока близкая - выраженного слабого места нет.";
+    return "Точность по этапам пока близкая: выраженного слабого места нет.";
   }
-  return `Увереннее всего - ${strongest.label.toLowerCase()}. Больше внимания можно уделить этапу «${weakest.label.toLowerCase()}».`;
+  return `Увереннее всего: ${strongest.label.toLowerCase()}. Больше внимания можно уделить этапу «${weakest.label.toLowerCase()}».`;
 }
 
 function pluralize(count, forms) {
@@ -326,7 +326,7 @@ export default function PhaseAccuracyWidget() {
         <div>
           <div className="user-profile-kicker">Разбор партий</div>
           <h2 id="phase-accuracy-title">Точность по этапам</h2>
-          <span>Пока нет данных для графика. Завершите партию - после её сохранения появятся оценки ходов.</span>
+          <span>Пока нет данных для графика. Завершите партию: после её сохранения появятся оценки ходов.</span>
         </div>
         <button type="button" onClick={load}>Обновить</button>
       </section>
@@ -366,7 +366,7 @@ export default function PhaseAccuracyWidget() {
             aria-pressed={selected?.key === phase.key}
           >
             <span>{phase.label}</span>
-            <strong>{phase.accuracy_percent == null ? "-" : `${phase.accuracy_percent}%`}</strong>
+            <strong>{phase.accuracy_percent == null ? "н/д" : `${phase.accuracy_percent}%`}</strong>
             <small>{phase.moves_evaluated} оценённых ходов</small>
           </button>
         ))}
@@ -389,7 +389,7 @@ export default function PhaseAccuracyWidget() {
       )}
 
       <footer className="phase-accuracy__footnote">
-        Точность - доля ходов хорошего качества среди оценённых Stockfish. Наведите на точку или нажмите на этап для подробностей.
+        Точность: доля ходов хорошего качества среди оценённых Stockfish. Наведите на точку или нажмите на этап для подробностей.
       </footer>
     </section>
   );

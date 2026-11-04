@@ -29,7 +29,7 @@ class TestAnalyzeImage:
             "/api/analyze-image",
             files={"file": ("board.txt", b"data", "text/plain")}
         )
-        # Годятся только PNG/JPG/BMP/WEBP — txt будет отклонён моделью на этапе LLaVA
+        # Годятся только PNG/JPG/BMP/WEBP - txt будет отклонён моделью на этапе LLaVA
         assert resp.status_code == 200
         data = resp.json()
         assert "error" in data

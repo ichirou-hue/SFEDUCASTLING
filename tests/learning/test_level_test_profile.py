@@ -1,6 +1,6 @@
 """Быстрые unit-тесты расчёта рейтинга/группы для level-test.
 
-level_test_result — legacy preview без записи в профиль: Elo от начальных
+level_test_result - legacy preview без записи в профиль: Elo от начальных
 1000 (k=72) по rating каждого пазла, затем группа из RATING_GROUPS.
 DB-идемпотентность /submit дополнительно проверяется интеграционно после
 alembic upgrade head: повторный submit одного test_id должен вернуть

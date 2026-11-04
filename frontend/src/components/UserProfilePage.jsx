@@ -43,7 +43,7 @@ function LinkedAccountsSection() {
   const [notice, setNotice] = useState(null);
 
   const load = useCallback(async () => {
-    // Без токена эндпоинт вернёт 401 — не дёргаем его для гостей.
+    // Без токена эндпоинт вернёт 401 - не дёргаем его для гостей.
     if (!getAccessToken()) {
       setAccounts([]);
       setLoading(false);

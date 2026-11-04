@@ -41,7 +41,7 @@ def _accuracy_by_slug(profile: dict) -> dict[str, float | None]:
 
 
 def effective_player_rating(user: User) -> int | None:
-    """После теста верим итоговому Elo, до него — предварительной оценке."""
+    """После теста верим итоговому Elo, до него - предварительной оценке."""
     if user.assessment_completed_at is not None and user.elo is not None:
         return int(user.elo)
     if user.rating_estimate is not None:
@@ -62,7 +62,7 @@ async def ensure_user_theme_difficulties(
     Для уже накопленной до B2 истории стартуем с ``base_difficulty`` и
     однократно применяем текущее accuracy. ``base_difficulty`` приходит из
     рейтинга пользователя (анкета/входной тест), поэтому новичок не получает
-    задачи сложности выше своей, а опытный — не начинает с нейтральной 2.
+    задачи сложности выше своей, а опытный - не начинает с нейтральной 2.
     Повторные GET не меняют difficulty. PostgreSQL ON CONFLICT защищает
     ленивую инициализацию от гонки.
     """

@@ -1,6 +1,7 @@
 import { Link, NavLink } from "react-router-dom";
 import { logout as apiLogout } from "../api.js";
 import MiniProfilePopover from "./MiniProfilePopover.jsx";
+import ThemeToggle from "./ThemeToggle.jsx";
 
 export default function TopBar({ user, theme, onThemeChange, onUserChange, onRegister, onOpenOnboarding }) {
   const handleLogout = async () => {
@@ -29,6 +30,11 @@ export default function TopBar({ user, theme, onThemeChange, onUserChange, onReg
         <Link to="/" className="logo-wrapper" aria-label="GigaChess: главная">
           <img src="/gigachess-logo.svg" alt="GIGACHESS" className="gigachess-logo" />
         </Link>
+        <ThemeToggle
+          theme={theme}
+          onThemeChange={onThemeChange}
+          className="theme-toggle--mobile"
+        />
       </div>
       <nav className="top-nav" aria-label="Основная навигация">
         {navItems.map((item) => (
@@ -74,10 +80,13 @@ export default function TopBar({ user, theme, onThemeChange, onUserChange, onReg
           )}
           <MiniProfilePopover
             user={user}
-            theme={theme}
-            onThemeChange={onThemeChange}
             onUserChange={onUserChange}
             onLogout={handleLogout}
+          />
+          <ThemeToggle
+            theme={theme}
+            onThemeChange={onThemeChange}
+            className="theme-toggle--desktop"
           />
           <button
             type="button"
@@ -89,7 +98,14 @@ export default function TopBar({ user, theme, onThemeChange, onUserChange, onReg
           </button>
         </div>
       ) : (
-        <button className="reg-btn" onClick={onRegister}>Регистрация</button>
+        <div className="top-bar-actions">
+          <button className="reg-btn" onClick={onRegister}>Регистрация</button>
+          <ThemeToggle
+            theme={theme}
+            onThemeChange={onThemeChange}
+            className="theme-toggle--desktop"
+          />
+        </div>
       )}
     </div>
   );

@@ -86,7 +86,7 @@ def _validate_llm_explanation(
     moved_piece_word = grounding["moved_piece_word"]
 
     # --------------------------------------------------------
-    # UCI — отдельная обязательная проверка.
+    # UCI - отдельная обязательная проверка.
     # \b между "2" и "e" не существует, поэтому square-regex сам по себе
     # никогда надёжно не поймает ошибку вида d2e4.
     # --------------------------------------------------------
@@ -105,7 +105,7 @@ def _validate_llm_explanation(
             )
 
     # --------------------------------------------------------
-    # ФИГУРЫ — только из compact grounding.
+    # ФИГУРЫ - только из compact grounding.
     # --------------------------------------------------------
     mentioned_piece_words = {
         piece_name
@@ -135,7 +135,7 @@ def _validate_llm_explanation(
         )
 
     # --------------------------------------------------------
-    # КООРДИНАТЫ — только те, которые реально были показаны модели.
+    # КООРДИНАТЫ - только те, которые реально были показаны модели.
     # --------------------------------------------------------
     used_squares = set(
         re.findall(r"(?<![a-z0-9])([a-h][1-8])(?![a-z0-9])", lowered)
@@ -215,12 +215,12 @@ def _validate_llm_explanation(
             if claimed_to not in allowed_destination_squares:
                 errors.append(
                     f"Неверно названо поле назначения {claimed_to}; "
-                    "проверенные поля назначения — "
+                    "проверенные поля назначения - "
                     f"{sorted(allowed_destination_squares)}."
                 )
 
     # --------------------------------------------------------
-    # ГЕОМЕТРИЯ ХОДА — relation-specific validation.
+    # ГЕОМЕТРИЯ ХОДА - relation-specific validation.
     # --------------------------------------------------------
     expected_movement_type = str(
         grounding.get("movement_type") or ""
@@ -294,7 +294,7 @@ def _validate_llm_explanation(
             errors.append(
                 "Неверно описана геометрия хода: указано "
                 f"{[geometry_names[g] for g in sorted(wrong_geometry)]}; "
-                "проверенный тип движения — "
+                "проверенный тип движения - "
                 f"{geometry_names[expected_movement_type]}."
             )
 
@@ -426,7 +426,7 @@ def _validate_llm_explanation(
             )
 
     # --------------------------------------------------------
-    # КОРОЛЬ ПРИ РОКИРОВКЕ — relation-specific validation.
+    # КОРОЛЬ ПРИ РОКИРОВКЕ - relation-specific validation.
     # --------------------------------------------------------
     if move_facts.get("is_castling"):
         king_pair_pattern = (
@@ -460,11 +460,11 @@ def _validate_llm_explanation(
             if claimed_to != to_square:
                 errors.append(
                     "Неверно названо поле назначения короля при рокировке: "
-                    f"{claimed_to}; проверенное поле — {to_square}."
+                    f"{claimed_to}; проверенное поле - {to_square}."
                 )
 
     # --------------------------------------------------------
-    # ЛАДЬЯ ПРИ РОКИРОВКЕ — relation-specific validation.
+    # ЛАДЬЯ ПРИ РОКИРОВКЕ - relation-specific validation.
     # --------------------------------------------------------
     castling_rook_from = grounding.get("castling_rook_from")
     castling_rook_to = grounding.get("castling_rook_to")
@@ -502,11 +502,11 @@ def _validate_llm_explanation(
             if claimed_to != castling_rook_to:
                 errors.append(
                     "Неверно названо поле назначения ладьи при рокировке: "
-                    f"{claimed_to}; проверенное поле — {castling_rook_to}."
+                    f"{claimed_to}; проверенное поле - {castling_rook_to}."
                 )
 
     # --------------------------------------------------------
-    # ПОЛЕ КОРОЛЯ СОПЕРНИКА — relation-specific validation.
+    # ПОЛЕ КОРОЛЯ СОПЕРНИКА - relation-specific validation.
     # --------------------------------------------------------
     opponent_king_square = grounding.get("opponent_king_square")
 
@@ -546,12 +546,12 @@ def _validate_llm_explanation(
         if invalid_king_squares:
             errors.append(
                 "Неверно указано поле короля соперника: "
-                f"{sorted(invalid_king_squares)}; проверенное поле — "
+                f"{sorted(invalid_king_squares)}; проверенное поле - "
                 f"{opponent_king_square}."
             )
 
     # --------------------------------------------------------
-    # КОНТРОЛЬ / АТАКА / ЗАЩИТА — проверяем именно ОТНОШЕНИЕ.
+    # КОНТРОЛЬ / АТАКА / ЗАЩИТА - проверяем именно ОТНОШЕНИЕ.
     # --------------------------------------------------------
     for sentence in sentences:
         sentence_lower = sentence.lower()
@@ -1124,7 +1124,7 @@ def _validate_llm_explanation(
         if wrong_promotion_squares:
             errors.append(
                 "Неверно указано поле превращения: "
-                f"{wrong_promotion_squares}; проверенное поле — "
+                f"{wrong_promotion_squares}; проверенное поле - "
                 f"{expected_promotion_square}."
             )
 

@@ -86,7 +86,7 @@ def _classify_game(moves: list[str]) -> list[dict]:
         diff_cp = None
         classification = None
         if ev_best is not None and ev_played is not None:
-            # ev_best — оценка позиции, где ход уже перешёл к сопернику,
+            # ev_best - оценка позиции, где ход уже перешёл к сопернику,
             # поэтому нормализуем к стороне, которая сделала ход.
             before_side = -normalize_eval(ev_best)
             after_side = -normalize_eval(ev_played)

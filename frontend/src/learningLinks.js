@@ -10,7 +10,7 @@ export const COURSE_TOPIC_META = {
 
 // Раньше модули назывались по фигурам и пазл относился к модулю, только
 // если фигура реально ходила в решении. После слияния модулей (10 -> 5)
-// профильных фигур у тем нет — словарь пуст, modulePieceOk всегда true.
+// профильных фигур у тем нет - словарь пуст, modulePieceOk всегда true.
 const PIECE_BY_MODULE = {};
 
 function fenHasPiece(fen, symbol) {

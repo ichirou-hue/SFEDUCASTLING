@@ -56,14 +56,14 @@ RATING_PUZZLES = {
         # группа 1 (0-1000)
         {"id": "low1", "fen": RATING_FEN, "moves": RATING_MOVES, "rating": 500, "themes": ["fork"]},
         {"id": "low2", "fen": RATING_FEN, "moves": RATING_MOVES, "rating": 900, "themes": ["fork"]},
-        # группа 2 (1001-1500) — своя для рейтинга 1200
+        # группа 2 (1001-1500) - своя для рейтинга 1200
         {"id": "mid1", "fen": RATING_FEN, "moves": RATING_MOVES, "rating": 1200, "themes": ["pin"]},
         {"id": "mid2", "fen": RATING_FEN, "moves": RATING_MOVES, "rating": 1350, "themes": ["pin"]},
         {"id": "mid3", "fen": RATING_FEN, "moves": RATING_MOVES, "rating": 1400, "themes": ["fork"]},
-        # группа 3 (1501-1900) — соседняя, но выше потолка 1200+200=1400
+        # группа 3 (1501-1900) - соседняя, но выше потолка 1200+200=1400
         {"id": "high1", "fen": RATING_FEN, "moves": RATING_MOVES, "rating": 1600, "themes": ["sacrifice"]},
         {"id": "high2", "fen": RATING_FEN, "moves": RATING_MOVES, "rating": 1800, "themes": ["sacrifice"]},
-        # группа 4 (1901+) — отсекается и диапазоном, и потолком
+        # группа 4 (1901+) - отсекается и диапазоном, и потолком
         {"id": "top1", "fen": RATING_FEN, "moves": RATING_MOVES, "rating": 2100, "themes": ["sacrifice"]},
     ]
 }
@@ -159,7 +159,7 @@ def cleanup():
 
 
 def _authed_user(cleanup) -> str:
-    """Регистрирует пользователя и проходит анкету — условие /level-test/start."""
+    """Регистрирует пользователя и проходит анкету - условие /level-test/start."""
     login = cleanup(f"lvltest_{uuid.uuid4().hex[:8]}")
     r = client.post(
         "/api/auth/register", json={"login": login, "password": PASSWORD}
@@ -235,8 +235,8 @@ def _add_puzzle_attempts(
         async with async_session_factory() as db:
             created_at = None
             if days_ago:
-                # naive-UTC «сейчас» — так же, как пишет приложение
-                # (created_at — timestamp без tz, серверный CURRENT_TIMESTAMP).
+                # naive-UTC «сейчас» - так же, как пишет приложение
+                # (created_at - timestamp без tz, серверный CURRENT_TIMESTAMP).
                 # Считаем в Python, а не SQL: CAST(CURRENT_TIMESTAMP AS DATETIME)
                 # в SQLite даёт 0 (NUMERIC-аффинитет), и драйвер падает.
                 created_at = datetime.now(UTC).replace(tzinfo=None) - timedelta(
@@ -634,7 +634,7 @@ class TestPuzzlePreviewBeforeOnboarding:
         assert {p["id"] for p in data["puzzles"]} == set(ids)
 
     def test_preview_resets_next_day(self, cleanup):
-        # Лимит — на сутки: вчерашние попытки не тратят сегодняшний запас.
+        # Лимит - на сутки: вчерашние попытки не тратят сегодняшний запас.
         token, user_id = _registered_user(cleanup)
         _add_puzzle_attempts(user_id, ["old1", "old2", "old3"], days_ago=1)
         _add_puzzle_attempts(user_id, ["old4"], days_ago=2)
@@ -749,7 +749,7 @@ class TestPuzzlePreviewBeforeOnboarding:
 
 
 class TestLearningProgressAccuracy:
-    """`accuracy` — solve rate (решённые/взятые по уникальным puzzle_id)."""
+    """`accuracy` - solve rate (решённые/взятые по уникальным puzzle_id)."""
 
     def _register(self) -> tuple[str, int]:
         login = f"lvlacc_{uuid.uuid4().hex[:8]}"

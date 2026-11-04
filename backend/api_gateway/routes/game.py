@@ -549,7 +549,7 @@ async def finish_game(
     Классификация каждого хода через Stockfish (1с на ход) выполняется
     в фоне, чтобы не блокировать ответ фронтенду.
     """
-    # Игрок может играть и за чёрных: тогда AI — белые, а игрок — чёрные.
+    # Игрок может играть и за чёрных: тогда AI - белые, а игрок - чёрные.
     if req.player_color == "b":
         white, black = "AI", "player"
     else:
@@ -614,12 +614,12 @@ def new_game(req: NewGameRequest):
 def captured_material(req: CapturedMaterialRequest):
     """Съеденный материал по истории ходов партии (stateless).
 
-    Реплеит партию от ``req.fen`` (по умолчанию — начальная позиция) и
+    Реплеит партию от ``req.fen`` (по умолчанию - начальная позиция) и
     собирает взятые фигуры по сторонам, включая взятие на проходе.
     """
     board = chess.Board(req.fen) if req.fen else chess.Board()
 
-    # captured[turn] — фигуры, взятые стороной turn (взятые чужие фигуры).
+    # captured[turn] - фигуры, взятые стороной turn (взятые чужие фигуры).
     captured: dict[bool, list[int]] = {chess.WHITE: [], chess.BLACK: []}
 
     for index, token in enumerate(req.moves, start=1):

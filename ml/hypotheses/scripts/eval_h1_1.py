@@ -26,7 +26,7 @@ MERGED_MODEL_PATH = Path("../Qwen3-chess-coach/outputs/merged").resolve()
 ADAPTER_CONFIG_PATH = Path("../Qwen3-chess-coach/outputs/adapter_config.json").resolve()
 
 # Общий стандартный системный промпт
-SYSTEM_INSTRUCTION = "Ты — шахматный аналитик и тренер."
+SYSTEM_INSTRUCTION = "Ты - шахматный аналитик и тренер."
 
 # Словарь стратегических шахматных терминов для H1.1
 CHESS_STRATEGIC_TERMS = [

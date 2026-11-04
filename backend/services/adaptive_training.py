@@ -140,7 +140,7 @@ async def compute_learning_progress(
     Единый источник для /api/learning/progress и для админ-просмотра
     (GET /api/admin/users/{user_id}/stats).
 
-    ``accuracy`` — это доля РЕШЁННЫХ задач от ВЗЯТЫХ (solve rate по уникальным
+    ``accuracy`` - это доля РЕШЁННЫХ задач от ВЗЯТЫХ (solve rate по уникальным
     ``puzzle_id``), а не доля верных строк-ходов. Так «Точность попыток» на
     витрине совпадает с показанными рядом «решено · N попробовано».
     Строки-попытки (``attempts``/``correct_attempts``) остаются отдельными

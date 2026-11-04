@@ -9,7 +9,7 @@
 - POST /api/auth/onboarding {answers} → сохранение анкеты, user.onboarding
 - GET  /api/auth/admin/users, PATCH .../role → управление ролями (admin)
 
-Ошибки — единый формат {"detail": "..."} с кодами 400/401/409/422.
+Ошибки - единый формат {"detail": "..."} с кодами 400/401/409/422.
 """
 
 from __future__ import annotations
@@ -106,8 +106,8 @@ class RefreshRequest(BaseModel):
 
 # === Онбординг-анкета Q1-Q8 (раздел 1 методики) =============================
 #
-# Ответы хранятся кодами (stables), а не текстами — тексты меняются,
-# коды нет. Сырые ответы лежат в users.onboarding; признак заполнения —
+# Ответы хранятся кодами (stables), а не текстами - тексты меняются,
+# коды нет. Сырые ответы лежат в users.onboarding; признак заполнения -
 # users.onboarding IS NOT NULL.
 
 Q1_CHOICES = {"never", "know_moves", "sometimes", "regular", "tournaments"}
@@ -122,7 +122,7 @@ Q8_CHOICES = {"coach", "friends", "internet", "school"}
 # (onboarding_rating): там же учтена привязка внешнего рейтинга и ограничение
 # самооценки без привязки.
 
-# TODO(BACKEND): методика, раздел 1 — сверка и доработка по мере развития.
+# TODO(BACKEND): методика, раздел 1 - сверка и доработка по мере развития.
 #
 # 1) Q2 сейчас принимается на веру: рейтинг присылает фронт. По методике его
 #    нужно проверять через GET /api/chess-profile (Lichess / Chess.com):
@@ -134,12 +134,12 @@ Q8_CHOICES = {"coach", "friends", "internet", "school"}
 #    users.rating_scale (напр. "lichess_blitz"), а не только в onboarding JSON.
 #
 # 2) Отдельные колонки вместо вложенности в users.onboarding:
-#      users.prior_band   int 1..4   — считается здесь, но должен жить в колонке;
-#      users.rating_estimate int     — шкала Lichess blitz;
-#      users.rating_scale str        — происхождение шкалы;
-#      users.pedagogy     str        — ответ Q6 (подсказки);
-#      users.skill_band   int 0..4   — пишет входной тест, не анкета.
-#    Пока эти колонок нет — источник истины users.onboarding (см. public()).
+#      users.prior_band   int 1..4   - считается здесь, но должен жить в колонке;
+#      users.rating_estimate int     - шкала Lichess blitz;
+#      users.rating_scale str        - происхождение шкалы;
+#      users.pedagogy     str        - ответ Q6 (подсказки);
+#      users.skill_band   int 0..4   - пишет входной тест, не анкета.
+#    Пока эти колонок нет - источник истины users.onboarding (см. public()).
 #
 # 3) parental_consent: сейчас только валидация ответа в JSON. Нужно:
 #      - отдельный флаг + контакт для PII-логики (раздел 8 методики);
@@ -149,7 +149,7 @@ Q8_CHOICES = {"coach", "friends", "internet", "school"}
 #
 # 4) prior_band используется ТОЛЬКО для флага расхождения с результатом
 #    входного теста (|assess - prior| >= 3 -> «перепройти», кулдаун 7 дней).
-#    Для отбора задач он НЕ применяется — тест фиксированный.
+#    Для отбора задач он НЕ применяется - тест фиксированный.
 
 
 class Q2Answer(BaseModel):
@@ -202,7 +202,7 @@ class OnboardingRequest(BaseModel):
     @field_validator("q5")
     @classmethod
     def _q5(cls, v: list[str]) -> list[str]:
-        # «ранжировать» — все три варианта, каждый ровно один раз
+        # «ранжировать» - все три варианта, каждый ровно один раз
         if sorted(v) != sorted(Q5_CHOICES):
             raise ValueError(f"q5: нужен полный порядок из {sorted(Q5_CHOICES)}")
         return v
@@ -230,7 +230,7 @@ class OnboardingRequest(BaseModel):
 
     @model_validator(mode="after")
     def _check_parental_consent(self) -> OnboardingRequest:
-        # Младше 13 (группа «до 10») — обязательно согласие родителя/опекуна.
+        # Младше 13 (группа «до 10») - обязательно согласие родителя/опекуна.
         if self.q7 == "u10":
             if not self.parental_consent:
                 raise ValueError("parental_consent обязателен для возрастной группы «до 10»")
@@ -323,7 +323,7 @@ async def refresh(req: RefreshRequest, db: AsyncSession = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=401, detail="Пользователь не найден")
 
-    # Возврат пользователя с валидным refresh-токеном — тоже визит.
+    # Возврат пользователя с валидным refresh-токеном - тоже визит.
     await record_user_visit(db, user.id)
 
     # Старый refresh больше использовать нельзя; новая пара получает новый TTL.
@@ -366,7 +366,7 @@ async def me(
 async def _linked_rating(db: AsyncSession, user_id: int) -> dict[str, Any] | None:
     """Последний подтверждённый внешний рейтинг для стартовой оценки.
 
-    Возвращает ``{"rating", "scale", "usable"}`` или None. Привязка — единственный
+    Возвращает ``{"rating", "scale", "usable"}`` или None. Привязка - единственный
     способ получить стартовую оценку выше ограничения самооценки.
     """
     account = await db.scalar(
@@ -401,10 +401,10 @@ async def save_onboarding(
     """Сохраняет ответы онбординг-анкеты Q1-Q8.
 
     Повторный вызов перезаписывает ответы (анкету можно пройти заново).
-    После успеха user.onboarding != null — фронтенд прячет плашку
+    После успеха user.onboarding != null - фронтенд прячет плашку
     «Заполните анкету».
 
-    TODO(BACKEND): контракт с фронтендом стабилен и менять его не нужно —
+    TODO(BACKEND): контракт с фронтендом стабилен и менять его не нужно -
     фронт отправляет коды ответов (q1..q8), а не тексты. Доработать внутри:
     разложить ответы по колонкам (prior_band / rating_estimate / rating_scale /
     pedagogy), проверить Q2 через /api/chess-profile, вынести parental consent
@@ -412,7 +412,7 @@ async def save_onboarding(
     """
     payload = req.model_dump(mode="json")
     # Стартовая оценка: внешний привязанный рейтинг (если есть) или самооценка
-    # Q1 с ограничением SELF_REPORT_CAP. Пишем и в JSON, и в отдельные колонки —
+    # Q1 с ограничением SELF_REPORT_CAP. Пишем и в JSON, и в отдельные колонки -
     # подбор пазлов и стартовая сложность опираются на колонки.
     linked = await _linked_rating(db, user.id)
     rating_estimate, rating_scale, prior_band = onboarding_rating(payload, linked=linked)
