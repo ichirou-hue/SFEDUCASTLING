@@ -1433,7 +1433,7 @@ export default function TrainingPage({ user, onRegister }) {
                 showBoardNotation={true}
                 customNotationStyle={{
                   fontSize: "12px",
-                  fontFamily: "Cormorant Garamond, Georgia, serif",
+                  fontFamily: "Inter, sans-serif",
                   fontWeight: "500",
                   color: "#4a3220",
                 }}

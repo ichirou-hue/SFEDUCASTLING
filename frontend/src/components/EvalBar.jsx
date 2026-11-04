@@ -8,8 +8,9 @@ import { useEffect, useRef } from "react";
  *                по кривой Lichess: разница в пешку почти не двигает
  *                шкалу, а разгромная позиция прижимает её к краю.
  *
- * Переключатель живёт внутри капсулы: отдельная кнопка рядом занимала
- * бы место в раскладке строки и сдвигала доску.
+ * Сам переключатель живёт не на шкале, а в панели управления доской:
+ * на капсуле кнопка занимала место у доски и на узком экране мешала
+ * читать оценку.
  */
 
 // Материальный перевес, при котором шкала упирается в край.
@@ -76,7 +77,6 @@ export default function EvalBar({
   diff = 0,
   engineEval = null,
   mode = "material",
-  onToggleMode,
   flipped,
   height,
 }) {
@@ -118,65 +118,84 @@ export default function EvalBar({
       : `Материальный перевес: ${label || "0"}`;
 
   /*
-   * Шкала стоит посередине между панелью истории и левым краем доски
-   * и по вертикали - ровно напротив доски, а не карточки целиком:
-   * сверху в карточке есть панель противника, снизу - кнопки.
-   * Свободное место в строке зависит от ширины окна и от того, свёрнут
-   * ли чат (доска внутри своей колонки центрируется), поэтому позицию
-   * считаем по живым замерам. Двигаем через transform: раскладку строки
-   * это не меняет, и замеры не «плывут» от собственного сдвига.
+   * Шкала держится за игровое поле, а не за карточку целиком: сверху в
+   * карточке есть панель противника, снизу - кнопки, и по карточке
+   * капсула съезжала бы относительно доски. Высоту и вертикальный
+   * сдвиг считаем по живым замерам: они меняются от ширины окна и от
+   * того, свёрнут ли чат.
    */
   useEffect(() => {
     const bar = barRef.current;
-    const section = document.querySelector(".board-section");
-    const card = document.querySelector(".board-wrapper");
-
-    if (!bar || !section || !card) return undefined;
+    if (!bar) return undefined;
 
     const measure = () => {
-      const sectionRect = section.getBoundingClientRect();
-      const cardRect = card.getBoundingClientRect();
+      // Доска может пересоздаваться (react-chessboard меняет key при
+      // смене позиции), поэтому берём актуальный узел на каждый замер,
+      // а не тот, что был при монтировании шкалы.
+      const board = document.querySelector(".eval-board-surface");
+      if (!board) return false;
 
-      // Сдвиг по горизонтали: середина просвета между историей и доской.
-      const shiftX = Math.max(
-        0,
-        Math.round((cardRect.left - sectionRect.left) / 2)
-      );
+      const boardRect = board.getBoundingClientRect();
+      // Пока доска ещё не разложена, её высота равна нулю: не схлопываем
+      // шкалу, дождёмся следующего замера.
+      if (!boardRect.height) return false;
 
-      /*
-       * Сдвиг по вертикали: шкала той же высоты, что и доска, поэтому
-       * достаточно опустить её до верхнего края доски - тогда середины
-       * совпадут. Положение доски внутри карточки берём у самой доски.
-       * Текущий transform вычитаем, чтобы замер не зависел от него.
-       */
-      const board = card.querySelector('div[style*="perspective"]');
+      bar.style.height = `${Math.round(boardRect.height)}px`;
+
+      // На узких экранах шкала лежит над доской, и CSS выключает сдвиг
+      // (transform: none). В этом режиме не копим --eval-shift-y: иначе
+      // при каждом замере он растёт и скачком применится на широком.
+      if (getComputedStyle(bar).transform === "none") {
+        bar.style.setProperty("--eval-shift-y", "0px");
+        return true;
+      }
+
       const currentY =
         parseFloat(bar.style.getPropertyValue("--eval-shift-y")) || 0;
       const barTop = bar.getBoundingClientRect().top - currentY;
-      const shiftY = board
-        ? Math.round(board.getBoundingClientRect().top - barTop)
-        : 0;
+      const shiftY = Math.round(boardRect.top - barTop);
 
-      bar.style.setProperty("--eval-shift", `${shiftX}px`);
       bar.style.setProperty("--eval-shift-y", `${shiftY}px`);
+      return true;
     };
 
     /*
-     * Замер сразу, без requestAnimationFrame: ResizeObserver вызывает
-     * нас уже после раскладки и до отрисовки, поэтому шкала едет в том
-     * же кадре, что и доска (иначе она отстаёт на кадр и «догоняет»).
+     * Шкала и доска - соседние компоненты, и к моменту первого эффекта
+     * карточки доски может ещё не быть в DOM. Поэтому ждём её в кадрах:
+     * как только появились и карточка, и поле с ненулевой высотой,
+     * ставим замер и подписываемся на изменения.
      */
-    measure();
+    let observer = null;
+    let frame = 0;
+    let timer = 0;
 
-    const observer = new ResizeObserver(measure);
-    observer.observe(section);
-    observer.observe(card);
-    window.addEventListener("resize", measure);
+    const setup = () => {
+      const card = document.querySelector(".board-wrapper");
+      if (card && !observer) {
+        observer = new ResizeObserver(measure);
+        observer.observe(card);
+        const stage = document.querySelector(".board-stage");
+        if (stage) observer.observe(stage);
+        window.addEventListener("resize", measure);
+      }
+
+      // Замер сразу: ResizeObserver вызывает нас уже после раскладки и
+      // до отрисовки, поэтому шкала едет в том же кадре, что и доска
+      // (иначе она отстаёт на кадр и «догоняет»).
+      if ((!card || !measure()) && frame < 40) {
+        frame += 1;
+        // setTimeout, а не requestAnimationFrame: в фоновой вкладке
+        // кадры не идут, а таймеры работают.
+        timer = setTimeout(setup, 50);
+      }
+    };
+    setup();
 
     return () => {
-      observer.disconnect();
+      clearTimeout(timer);
+      if (observer) observer.disconnect();
       window.removeEventListener("resize", measure);
-      bar.style.removeProperty("--eval-shift");
+      bar.style.height = "";
       bar.style.removeProperty("--eval-shift-y");
     };
   }, []);
@@ -190,31 +209,8 @@ export default function EvalBar({
       style={{ height: height || undefined, "--eval-fill": `${fillPct}%` }}
       title={title}
       aria-label={title}
-      role="group"
+      role="img"
     >
-      {/*
-       * Переключатель режима. Буква показывает, что на шкале сейчас:
-       * «М» - материал, «Д» - движок.
-       */}
-      <button
-        type="button"
-        className="eval-bar-mode"
-        onClick={onToggleMode}
-        disabled={!onToggleMode}
-        title={
-          mode === "engine"
-            ? "Показать материальный перевес"
-            : "Показать оценку движка"
-        }
-        aria-label={
-          mode === "engine"
-            ? "Переключить шкалу на материальный перевес"
-            : "Переключить шкалу на оценку движка"
-        }
-      >
-        {mode === "engine" ? "Д" : "М"}
-      </button>
-
       <div
         className="eval-bar-fill"
         style={{ height: `${fillPct}%` }}

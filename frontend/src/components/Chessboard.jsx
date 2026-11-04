@@ -456,7 +456,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
    */
   const updateBoardSize = useCallback(() => {
     const isMobile = window.matchMedia("(max-width: 760px)").matches;
-    const isStacked = window.matchMedia("(max-width: 1150px)").matches;
+    const isStacked = window.matchMedia("(max-width: 1450px)").matches;
 
     /*
      * Ширину берём у самой колонки доски, а не вычитаем чат из окна.
@@ -468,6 +468,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
     const boardChromeW = isMobile ? 22 : 66; // карточка (22 mobile / 38 desktop) + паддинги колонки
     const mainEl = document.querySelector(".main-area");
     const boardSectionEl = document.querySelector(".board-section");
+    const boardStageEl = document.querySelector(".board-stage");
     const chatEl = document.querySelector(".chat-section");
     const containerW = mainEl?.clientWidth || window.innerWidth;
 
@@ -487,13 +488,15 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
       }
     }
 
-    const sectionW = boardSectionEl
-      ? boardSectionEl.clientWidth +
+    const sizingArea = isStacked ? boardSectionEl : boardStageEl;
+    const sectionW = sizingArea
+      ? sizingArea.clientWidth +
         (chatEl ? chatEl.getBoundingClientRect().width - chatTargetW : 0)
       : containerW;
+    const evalAndGapW = isStacked ? 0 : 38 + 12;
     const availW = isStacked
       ? containerW - boardChromeW
-      : sectionW - boardChromeW;
+      : sectionW - boardChromeW - evalAndGapW;
 
     /*
      * Высота — замером живых элементов, а не гаданием по window:
@@ -515,18 +518,21 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
 
     const measuredChrome =
       wrapper && boardBox
-        ? wrapper.scrollHeight - boardBox.offsetHeight
+        ? wrapper.getBoundingClientRect().height -
+          boardBox.getBoundingClientRect().height
         : 0;
 
     // Минимум — панель противника + кнопки + ФЕН-панель + рамка
     // с паддингами, когда карточки сравнения ещё нет. Реальный хром
     // карточки — около 100px, поэтому не занижаем доску лишними 50px.
-    const chromeH = Math.max(104, measuredChrome);
+    const chromeH = measuredChrome > 0 ? measuredChrome : 104;
+    const pageViewport = mainEl?.parentElement;
+    const availableHeight = pageViewport
+      ? pageViewport.clientHeight - 22
+      : (mainEl?.clientHeight || window.innerHeight) - 12;
+    const availH = availableHeight - chromeH;
 
-    const availH =
-      (mainEl?.clientHeight || window.innerHeight) - chromeH - 12;
-
-    const size = Math.floor(Math.min(availW, availH));
+    const size = Math.round(Math.min(availW, availH));
 
     const maxBoardWidth = isMobile ? 720 : isStacked ? 860 : 1150;
     setBoardWidth(Math.max(isMobile ? 240 : 260, Math.min(size, maxBoardWidth)));
@@ -545,6 +551,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
      */
     const mainEl = document.querySelector(".main-area");
     const boardSectionEl = document.querySelector(".board-section");
+    const boardStageEl = document.querySelector(".board-stage");
     let observer;
 
     if (mainEl && typeof ResizeObserver !== "undefined") {
@@ -561,7 +568,8 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
         updateBoardSize();
       });
       observer.observe(mainEl);
-      if (boardSectionEl) observer.observe(boardSectionEl);
+      if (boardStageEl) observer.observe(boardStageEl);
+      else if (boardSectionEl) observer.observe(boardSectionEl);
     }
 
     // Чат едет 340 мс; после этого раскладка устоялась.
@@ -2403,6 +2411,7 @@ const fetchBestMove = useCallback(
         ====================================================== */}
         <div
           ref={boardBoxRef}
+          className="eval-board-surface"
           style={{
             position: "relative",
             display: "inline-block",
@@ -2425,7 +2434,7 @@ const fetchBestMove = useCallback(
             customNotationStyle={{
               fontSize: "12px",
               fontFamily:
-                "Cormorant Garamond, Georgia, serif",
+                "Inter, sans-serif",
               fontWeight: "500",
               color: "#4a3220",
             }}
@@ -2847,7 +2856,7 @@ const fetchBestMove = useCallback(
               background:
                 "rgba(255,255,255,0.75)",
               fontFamily:
-                "Cormorant Garamond, Georgia, serif",
+                "Inter, sans-serif",
               fontSize: "15px",
               lineHeight: 1.5,
             }}

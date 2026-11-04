@@ -41,9 +41,9 @@ def test_every_module_has_level_label():
     for module in MODULES:
         assert LEVEL_LABELS.get(module["slug"]), module["slug"]
     for module in MODULES[:3]:
-        assert LEVEL_LABELS[module["slug"]] == "0–1000"
+        assert LEVEL_LABELS[module["slug"]] == "0-1000"
     for module in MODULES[3:]:
-        assert LEVEL_LABELS[module["slug"]] == "1000–1500"
+        assert LEVEL_LABELS[module["slug"]] == "1000-1500"
 
 
 @pytest.mark.parametrize("module", MODULES, ids=lambda item: item["slug"])
@@ -59,7 +59,7 @@ def test_course_has_program_topics_with_four_to_six_tasks():
     for lesson in topics:
         task_count = len(lesson["tasks"])
         assert 4 <= task_count <= 6, (
-            f"{lesson['slug']}: {task_count} заданий, ожидалось 4–6"
+            f"{lesson['slug']}: {task_count} заданий, ожидалось 4-6"
         )
 
 

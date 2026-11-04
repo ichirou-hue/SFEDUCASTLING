@@ -93,7 +93,6 @@ function MainPage({ user }) {
     viewIndex: -1,
     isViewMode: false,
     evalScore: null,
-    gameReview: null,
     maiaRating: 1500,
     maiaVictory: null,
     hintMessage: null,
@@ -143,7 +142,6 @@ function MainPage({ user }) {
             isViewMode={boardState.isViewMode}
             maiaRating={boardState.maiaRating}
             userRating={user?.elo || undefined}
-            review={boardState.gameReview}
             onNavigate={(dir) => boardRef.current?.onNavigate(dir)}
             fen={boardState.fen}
             onLoadFen={(nextFen) =>
@@ -158,21 +156,22 @@ function MainPage({ user }) {
             onSelectLevel={(level) => boardRef.current?.setMaiaLevel?.(level)}
           />
         </div>
-        <EvalBar
-          diff={boardState.materialDiff}
-          engineEval={boardState.evalScore}
-          mode={evalMode}
-          onToggleMode={toggleEvalMode}
-          flipped={boardState.boardFlipped}
-          height={boardState.boardHeight}
-        />
-        <ChessboardComponent
-          ref={boardRef}
-          onStateChange={setBoardState}
-          chatCollapsed={chatCollapsed}
-          evalMode={evalMode}
-          onToggleEvalMode={toggleEvalMode}
-        />
+        <div className="board-stage">
+          <EvalBar
+            diff={boardState.materialDiff}
+            engineEval={boardState.evalScore}
+            mode={evalMode}
+            flipped={boardState.boardFlipped}
+            height={boardState.boardHeight}
+          />
+          <ChessboardComponent
+            ref={boardRef}
+            onStateChange={setBoardState}
+            chatCollapsed={chatCollapsed}
+            evalMode={evalMode}
+            onToggleEvalMode={toggleEvalMode}
+          />
+        </div>
         <ChatPanel
           hintMessage={boardState.hintMessage}
           currentFen={boardState.fen}
@@ -181,7 +180,7 @@ function MainPage({ user }) {
           onAnalyze={() => boardRef.current?.requestBestMove?.()}
           collapsed={chatCollapsed}
           onToggleCollapsed={() => {
-            setChatCollapsed(true);
+            setChatCollapsed((collapsed) => !collapsed);
             setMobileGamePanel(null);
           }}
         />
@@ -277,7 +276,7 @@ function HomePage({ user, onRegister, onOpenOnboarding }) {
               <span className="home-stats-guest__mark" aria-hidden="true">♞</span>
               <div>
                 <div className="user-profile-kicker">Твой прогресс</div>
-                <h2>Твои партии и рекорды — в одном месте</h2>
+                <h2>Твои партии и рекорды - в одном месте</h2>
                 <p>Создай аккаунт, чтобы сохранять результаты и видеть настоящую статистику.</p>
                 <button type="button" className="home-stats-guest__button" onClick={onRegister}>
                   Создать аккаунт <span aria-hidden="true">↗</span>
