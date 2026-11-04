@@ -9,6 +9,8 @@ import {
 } from "react";
 import { Chessboard as ReactChessboard } from "react-chessboard";
 import { Chess } from "chess.js";
+import { Link } from "react-router-dom";
+import { saveLocalBotGame } from "../localBotGames.js";
 
 import {
   fetchMaiaMove,
@@ -318,6 +320,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
    * ходе игрока - поражение, мат при ходе соперника - победа.
    */
   const [gameResult, setGameResult] = useState(null);
+  const [reviewArchiveId, setReviewArchiveId] = useState(null);
   /*
    * Карточку итога можно закрыть кликом по фону, чтобы рассмотреть
    * финальную позицию. Признак хранится отдельно от gameResult: иначе
@@ -907,7 +910,19 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
      */
     const uciMoves = toUciMoves(moveHistory);
 
-    if (uciMoves.length === 0) return;
+    if (uciMoves.length === 0 || uciMoves.length !== moveHistory.length) return;
+
+    const archiveId = `${Date.now()}-${gameGenRef.current}`;
+    saveLocalBotGame({
+      id: archiveId,
+      userId: getCurrentUserId(),
+      pgn: g.pgn(),
+      playedAt: new Date().toISOString(),
+      playerColor,
+      elo: gameLevelRef.current ?? elo,
+      result,
+    });
+    setReviewArchiveId(archiveId);
 
     finishGame({
       moves: uciMoves,
@@ -1246,6 +1261,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
     setMoveHistory([]);
     setPlayerMovesPlayed(0);
     setGameResult(null);
+    setReviewArchiveId(null);
     setResultCardDismissed(false);
     setPositionSnapshots([startFen]);
 
@@ -3322,28 +3338,14 @@ const fetchBestMove = useCallback(
                  * Разбор партии: до нажатия - кнопка, после ответа
                  * сервера - звёзды, точность и счётчик ходов.
                  */}
-                {review ? (
-                  <GameReviewSummary review={review} />
-                ) : (
-                  <>
-                    <button
-                      type="button"
-                      className="gameover-btn gameover-btn--review"
-                      onClick={handleReviewGame}
-                      disabled={reviewLoading}
-                    >
-                      {reviewLoading
-                        ? "Разбираем партию..."
-                        : "Разобрать партию"}
-                    </button>
-                    {reviewLoading && (
-                      <div className="gameover-review-note">
-                        Движок проверяет каждый ваш ход, это может занять
-                        до 40 секунд
-                      </div>
-                    )}
-                  </>
-                )}
+                <Link
+                  className="gameover-btn gameover-btn--review"
+                  to={reviewArchiveId ? `/review/game/${reviewArchiveId}` : "/review"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Разобрать партию по ходам
+                </Link>
 
                 {reviewError && (
                   <div className="gameover-review-note gameover-review-note--error">
@@ -3420,18 +3422,14 @@ const fetchBestMove = useCallback(
            * кликом по фону: кнопка открывает её снова и запускает разбор.
            */}
           {gameResult && (
-            <button
-              type="button"
+            <Link
               className="ctrl-btn ctrl-btn--review"
-              onClick={openReviewCard}
-              disabled={reviewLoading}
+              to={reviewArchiveId ? `/review/game/${reviewArchiveId}` : "/review"}
+              target="_blank"
+              rel="noopener noreferrer"
             >
-              {reviewLoading
-                ? "Разбираем..."
-                : review
-                  ? "Итог партии"
-                  : "Разобрать партию"}
-            </button>
+              Разобрать партию
+            </Link>
           )}
 
           {/*

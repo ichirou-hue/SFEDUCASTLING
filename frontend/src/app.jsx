@@ -11,6 +11,7 @@ import RegisterModal from "./components/RegisterModal.jsx";
 import OnboardingModal from "./components/OnboardingModal.jsx";
 import PuzzlesPage from "./components/PuzzlesPage.jsx";
 import TrainingPage from "./components/TrainingPage.jsx";
+import GameReviewPage from "./components/GameReviewPage.jsx";
 import UserProfilePage from "./components/UserProfilePage.jsx";
 import GigacoinShopPage from "./components/GigacoinShopPage.jsx";
 import AdminPage from "./components/AdminPage.jsx";
@@ -461,6 +462,8 @@ export default function App() {
           }
         />
         <Route path="/play" element={<MainPage user={user} />} />
+        <Route path="/review" element={<GameReviewPage />} />
+        <Route path="/review/game/:gameId" element={<GameReviewPage />} />
         <Route
           path="/oauth/callback"
           element={<OAuthCallbackPage onSuccess={setUser} />}

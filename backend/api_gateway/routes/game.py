@@ -9,7 +9,7 @@ from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from backend.api_gateway.dependecies import get_optional_current_user
+from backend.api_gateway.dependecies import get_current_user, get_optional_current_user
 from backend.db.session import get_db
 from backend.api_gateway.models import (
     CapturedMaterialRequest,
@@ -599,6 +599,28 @@ async def maia_achievements(
             achieved.add(game.elo)
 
     return {"levels": sorted(achieved)}
+
+
+@router.get("/api/game/local-history")
+async def local_game_history(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Все сохранённые партии текущего пользователя против бота."""
+    games = (await db.scalars(
+        select(Game)
+        .options(selectinload(Game.moves))
+        .where(Game.user_id == user.id, Game.engine == "maia3")
+        .order_by(Game.id.desc())
+    )).all()
+    return [{
+        "id": game.id,
+        "played_at": game.created_at,
+        "elo": game.elo,
+        "result": game.result,
+        "player_color": "w" if game.white == "player" else "b",
+        "moves": [move.uci for move in game.moves],
+    } for game in games]
 
 
 @router.post("/api/game/finish")

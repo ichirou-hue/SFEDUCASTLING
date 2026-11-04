@@ -26,7 +26,15 @@ const customPieces = Object.fromEntries(
 const STOCKFISH_GREEN = "rgba(0, 150, 50, 0.85)";
 const MAIA_ORANGE = "rgba(220, 120, 20, 0.9)";
 
-export default function MiniBoard({ fen, width = 220, lastMove = null, arrows = null }) {
+export default function MiniBoard({
+  fen,
+  width = 220,
+  lastMove = null,
+  arrows = null,
+  orientation = "white",
+  arePiecesDraggable = false,
+  onPieceDrop,
+}) {
   /*
    * Уникальный id доски: все доски react-chessboard на странице делят
    * один dnd-менеджер, и без своего id мини-доска рисовала бы у курсора
@@ -55,12 +63,13 @@ export default function MiniBoard({ fen, width = 220, lastMove = null, arrows = 
         id={boardId}
         position={fen}
         boardWidth={width}
-        arePiecesDraggable={false}
+        arePiecesDraggable={arePiecesDraggable}
+        onPieceDrop={onPieceDrop}
         animationDuration={0}
-        boardOrientation="white"
-        showBoardNotation={true}
+        boardOrientation={orientation}
+        showBoardNotation={false}
         customNotationStyle={{
-          fontSize: "12px",
+          fontSize: `${Math.max(8, Math.round(width * 0.0214))}px`,
           fontFamily: "Inter, sans-serif",
           fontWeight: "500",
           color: "#4a3220",

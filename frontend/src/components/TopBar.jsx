@@ -17,6 +17,7 @@ export default function TopBar({ user, theme, onThemeChange, onUserChange, onReg
   const navItems = [
     { to: "/", label: "Главная", mobileLabel: "Главная", end: true, icon: "M3 10.5 12 3l9 7.5M5.5 9v11h13V9M9 20v-6h6v6" },
     { to: "/play", label: "Игра", mobileLabel: "Игра", icon: "M7 21c-2.2 0-4-1.8-4-4 0-1.9 1.3-3.5 3-3.9V11a3 3 0 1 1 3-3h2a3 3 0 1 1 3 3v2.1c1.7.4 3 2 3 3.9 0 2.2-1.8 4-4 4H7Z" },
+    { to: "/review", label: "Разбор", mobileLabel: "Разбор", icon: "M3 4h18v16H3zM7 8h10M7 12h7M7 16h9" },
     { to: "/puzzles", label: "Задачи", mobileLabel: "Задачи", icon: "M4 4h6v5a2 2 0 1 0 4 0V4h6v6h-5a2 2 0 1 0 0 4h5v6h-6v-5a2 2 0 1 0-4 0v5H4v-6h5a2 2 0 1 0 0-4H4V4Z" },
     { to: "/training", label: "Обучение", mobileLabel: "Учёба", icon: "M3 5.5A2.5 2.5 0 0 1 5.5 3H12v17H5.5A2.5 2.5 0 0 0 3 22V5.5ZM21 5.5A2.5 2.5 0 0 0 18.5 3H12v17h6.5A2.5 2.5 0 0 1 21 22V5.5Z" },
   ];
