@@ -1,4 +1,4 @@
-import { useState, useEffect, useId, useRef, useCallback, useLayoutEffect } from "react";
+import { useState, useEffect, useId, useRef, useCallback, useLayoutEffect, useMemo } from "react";
 import { Chessboard as ReactChessboard } from "react-chessboard";
 import { Chess } from "chess.js";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -14,6 +14,7 @@ import ChatCollapsedStrip from "./ChatCollapsedStrip.jsx";
 import PuzzleRegisterGate from "./PuzzleRegisterGate.jsx";
 import PuzzlePreviewGate from "./PuzzlePreviewGate.jsx";
 import SiteFooter from "./SiteFooter.jsx";
+import { getCheckState, getKingCheckStyle } from "../chessStatus.js";
 import { getCourseTopicForPuzzle, getCourseTopicMeta } from "../learningLinks.js";
 import "./LearningCrossLinks.css";
 
@@ -198,6 +199,12 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
   const [lastMove, setLastMove] = useState(null);
   const [selectedSquare, setSelectedSquare] = useState(null);
   const [legalMovesForSelected, setLegalMovesForSelected] = useState([]);
+  /*
+   * Клетка и фигура, с которой началось перетаскивание: { square, piece }.
+   * react-chessboard прячет фигуру на исходной клетке (opacity: 0),
+   * поэтому подсвечиваем её и рисуем полупрозрачного «призрака».
+   */
+  const [dragFrom, setDragFrom] = useState(null);
   const [waitingForOpponent, setWaitingForOpponent] = useState(false);
   const [showSolution, setShowSolution] = useState(false);
   const [resultMessage, setResultMessage] = useState(null);
@@ -429,6 +436,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
   }, [chatCollapsed]);
 
   const gameRef = useRef(new Chess());
+  const checkState = useMemo(() => getCheckState(fen), [fen]);
   const solutionMovesRef = useRef([]);
   const playerMovesRef = useRef([]);
   const solutionIndexRef = useRef(0);
@@ -517,6 +525,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
       setPendingPromotion(null);
       setSelectedSquare(null);
       setLegalMovesForSelected([]);
+      setDragFrom(null);
       setWaitingForOpponent(false);
       setShowSolution(false);
       setResultMessage(null);
@@ -871,6 +880,14 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
     [handleMove],
   );
 
+  const handlePieceDragBegin = useCallback((piece, sourceSquare) => {
+    setDragFrom({ square: sourceSquare, piece });
+  }, []);
+
+  const handlePieceDragEnd = useCallback(() => {
+    setDragFrom(null);
+  }, []);
+
   const handlePromotionChoice = useCallback(
     (piece) => {
       if (!pendingPromotion) return;
@@ -1065,6 +1082,56 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
     customSquareStyles[sq] = { ...(customSquareStyles[sq] || {}), ...dotStyle };
   }
 
+  /*
+   * Красная подсветка короля накладывается последней, чтобы не теряться
+   * под подсветкой последнего хода и точками возможных ходов.
+   */
+  if (checkState.kingSquare) {
+    customSquareStyles[checkState.kingSquare] = {
+      ...(customSquareStyles[checkState.kingSquare] || {}),
+      ...getKingCheckStyle(checkState.isCheckmate),
+    };
+  }
+
+  /*
+   * «Призрак» фигуры на клетке, откуда её тянут. react-chessboard
+   * скрывает оригинал, и без такого слоя теряется точка старта.
+   */
+  const dragGhost = (() => {
+    if (!dragFrom) return null;
+
+    const { square, piece } = dragFrom;
+    const src = PIECE_IMAGES[piece];
+
+    if (!src) return null;
+
+    const file = square.charCodeAt(0) - 97;
+    const rank = Number(square[1]);
+    const squareSize = boardWidth / 8;
+    const flipped = boardOrientation === "black";
+    const left = (flipped ? 7 - file : file) * squareSize;
+    const top = (flipped ? rank - 1 : 8 - rank) * squareSize;
+
+    return (
+      <img
+        src={src}
+        alt=""
+        aria-hidden="true"
+        draggable={false}
+        style={{
+          position: "absolute",
+          left,
+          top,
+          width: squareSize,
+          height: squareSize,
+          opacity: 0.4,
+          pointerEvents: "none",
+          zIndex: 7,
+        }}
+      />
+    );
+  })();
+
   if (loading) {
     return (
       <div className="puzzles-page">
@@ -1247,52 +1314,57 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
 
       <div className="puzzle-board-section">
         <div className={`puzzle-board-wrapper ${puzzleSolved ? "puzzle-board-wrapper--solved" : ""}`} data-logo-anchor>
-          <ReactChessboard
-            id={boardId}
-            position={fen}
-            onPieceDrop={handleBoardPieceDrop}
-            onPromotionCheck={() => false}
-            onSquareClick={onSquareClick}
-            boardWidth={boardWidth}
-            animationDuration={200}
-            boardOrientation={boardOrientation}
-            showPromotionDialog={false}
-            showBoardNotation={true}
-            customNotationStyle={{
-              fontSize: "12px",
-              fontFamily: "Inter, sans-serif",
-              fontWeight: "500",
-              color: "#4a3220",
-            }}
-            areArrowsAllowed={true}
-            customArrows={boardArrows}
-            customArrowColor="rgba(0, 150, 50, 0.85)"
-            customPieces={customPieces}
-            customBoardStyle={{
-              borderRadius: "15px",
-              backgroundImage:
-                "linear-gradient(0deg, rgba(74, 178, 45, 0.43) 0%, rgba(74, 178, 45, 0.43) 100%), url(/textures/green-marble.png)",
-              backgroundPosition: "-0.111px 0px",
-              backgroundSize: "100.027% 100%",
-              backgroundRepeat: "no-repeat",
-              backgroundColor: "lightgray",
-            }}
-            customDarkSquareStyle={{
-              boxShadow:
-                "inset 1px 0 0 rgba(226, 213, 124, 0.5), inset 0 1px 0 rgba(226, 213, 124, 0.5)",
-              backgroundColor: "rgba(223, 239, 252, 0.20)",
-            }}
-            customLightSquareStyle={{
-              boxShadow:
-                "inset 1px 0 0 rgba(226, 213, 124, 0.5), inset 0 1px 0 rgba(226, 213, 124, 0.5)",
-              backgroundImage: "url(/textures/white-marble.png)",
-              backgroundPosition: "50%",
-              backgroundSize: "cover",
-              backgroundRepeat: "no-repeat",
-              backgroundColor: "rgba(255, 255, 255, 0.75)",
-            }}
-            customSquareStyles={customSquareStyles}
-          />
+          <div className="puzzle-board-surface">
+            <ReactChessboard
+              id={boardId}
+              position={fen}
+              onPieceDrop={handleBoardPieceDrop}
+              onPieceDragBegin={handlePieceDragBegin}
+              onPieceDragEnd={handlePieceDragEnd}
+              onPromotionCheck={() => false}
+              onSquareClick={onSquareClick}
+              boardWidth={boardWidth}
+              animationDuration={200}
+              boardOrientation={boardOrientation}
+              showPromotionDialog={false}
+              showBoardNotation={true}
+              customNotationStyle={{
+                fontSize: "12px",
+                fontFamily: "Inter, sans-serif",
+                fontWeight: "500",
+                color: "#4a3220",
+              }}
+              areArrowsAllowed={true}
+              customArrows={boardArrows}
+              customArrowColor="rgba(0, 150, 50, 0.85)"
+              customPieces={customPieces}
+              customBoardStyle={{
+                borderRadius: "15px",
+                backgroundImage:
+                  "linear-gradient(0deg, rgba(74, 178, 45, 0.43) 0%, rgba(74, 178, 45, 0.43) 100%), url(/textures/green-marble.png)",
+                backgroundPosition: "-0.111px 0px",
+                backgroundSize: "100.027% 100%",
+                backgroundRepeat: "no-repeat",
+                backgroundColor: "lightgray",
+              }}
+              customDarkSquareStyle={{
+                boxShadow:
+                  "inset 1px 0 0 rgba(226, 213, 124, 0.5), inset 0 1px 0 rgba(226, 213, 124, 0.5)",
+                backgroundColor: "rgba(223, 239, 252, 0.20)",
+              }}
+              customLightSquareStyle={{
+                boxShadow:
+                  "inset 1px 0 0 rgba(226, 213, 124, 0.5), inset 0 1px 0 rgba(226, 213, 124, 0.5)",
+                backgroundImage: "url(/textures/white-marble.png)",
+                backgroundPosition: "50%",
+                backgroundSize: "cover",
+                backgroundRepeat: "no-repeat",
+                backgroundColor: "rgba(255, 255, 255, 0.75)",
+              }}
+              customSquareStyles={customSquareStyles}
+            />
+            {dragGhost}
+          </div>
           {pendingPromotion && (
             <div className="puzzle-promotion-overlay">
               <section

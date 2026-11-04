@@ -12,6 +12,7 @@ import {
 } from "../api.js";
 import SiteFooter from "./SiteFooter.jsx";
 import RatingBandProgress from "./RatingBandProgress.jsx";
+import { getCheckState, getKingCheckStyle } from "../chessStatus.js";
 import "./LearningCrossLinks.css";
 
 const PIECE_IMAGES = {
@@ -225,6 +226,11 @@ export default function TrainingPage({ user, onRegister }) {
     commonTasks.every((task) => solvedTaskIds.has(task.id));
 
   const currentTask = visibleTasks[taskIndex] || null;
+  const boardPosition = boardFen || currentTask?.fen || null;
+  const checkState = useMemo(
+    () => getCheckState(boardPosition),
+    [boardPosition],
+  );
   // Следим за конкретным пользователем, а не за объектом целиком:
   // обновление профиля (идентичный id) не должно перезагружать курс.
   const userId = user?.id ?? null;
@@ -914,9 +920,21 @@ export default function TrainingPage({ user, onRegister }) {
       }
     }
 
+    /*
+     * Шах рисуем поверх остальной подсветки: король должен быть
+     * заметен и на клетке-источнике задания, и на последнем ходе.
+     */
+    if (checkState.kingSquare) {
+      styles[checkState.kingSquare] = {
+        ...(styles[checkState.kingSquare] || {}),
+        ...getKingCheckStyle(checkState.isCheckmate),
+      };
+    }
+
     return styles;
   }, [
     boardFen,
+    checkState,
     currentTask?.fen,
     currentTask?.source_square,
     legalMovesForSelected,
@@ -1458,7 +1476,7 @@ export default function TrainingPage({ user, onRegister }) {
             <div className="training-board-wrapper" data-logo-anchor>
               <ReactChessboard
                 id={boardId}
-                position={boardFen || currentTask.fen}
+                position={boardPosition || currentTask.fen}
                 onPieceDrop={handlePieceDrop}
                 onSquareClick={handleSquareClick}
                 boardWidth={boardWidth}

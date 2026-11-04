@@ -3580,6 +3580,14 @@ textarea {
   transition: border-color 0.4s, box-shadow 0.4s;
 }
 
+/* Слой доски для абсолютно позиционированных подсказок (призрак
+   перетаскиваемой фигуры): координаты считаются от клеток доски,
+   а не от padding обёртки. */
+.puzzle-board-surface {
+  position: relative;
+  display: inline-block;
+}
+
 .puzzle-board-wrapper--solved {
   border-color: rgba(131, 183, 135, 0.9);
   box-shadow: 0 0 24px rgba(131, 183, 135, 0.45), 0 2px 4px rgba(0, 0, 0, 0.25);
