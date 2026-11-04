@@ -1,9 +1,11 @@
 """Уроки внутри учебного модуля."""
 
+from typing import Any
+
 from sqlalchemy import Boolean, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from backend.db.base import Base
+from backend.db.base import Base, JsonType
 
 
 class TrainingLesson(Base):
@@ -23,6 +25,12 @@ class TrainingLesson(Base):
     # Раздел внутри модуля для дуолинго-тропинки (nullable: старые уроки
     # и уроки без группировки показываются без баннера раздела).
     section_title: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    # Развилки урока: список веток дебюта. Каждая ветка — метаданные
+    # (id, подпись, описание, FEN развилки, вступительный ход соперника).
+    # Сами задания ветки лежат в training_tasks с payload.branch = id.
+    variations: Mapped[list[dict[str, Any]] | None] = mapped_column(
+        JsonType, nullable=True
+    )
     sort_order: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
 

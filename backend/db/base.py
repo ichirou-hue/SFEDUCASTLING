@@ -3,12 +3,12 @@
 Проект должен одинаково работать на PostgreSQL и SQLite, а также
 на Linux и Windows. Для этого здесь описаны два «переносимых» типа:
 
-- ``BigIntPK``  — BigInteger-первичный ключ. PostgreSQL получает
-  BIGSERIAL (как и раньше), а SQLite — INTEGER, потому что только
+- ``BigIntPK``  - BigInteger-первичный ключ. PostgreSQL получает
+  BIGSERIAL (как и раньше), а SQLite - INTEGER, потому что только
   INTEGER PRIMARY KEY умеет автоинкрементиться (иначе INSERT падает
   с "NOT NULL constraint failed: *.id").
-- ``JsonType``  — JSON-колонка. PostgreSQL получает JSONB (как и
-  раньше, сохраняется тип для продакшена), а SQLite — JSON.
+- ``JsonType``  - JSON-колонка. PostgreSQL получает JSONB (как и
+  раньше, сохраняется тип для продакшена), а SQLite - JSON.
 
 Использовать их нужно вместо ``BigInteger`` и ``postgresql.JSONB``
 в моделях. В миграциях (alembic/versions/) типы продублированы

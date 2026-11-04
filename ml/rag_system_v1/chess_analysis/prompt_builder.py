@@ -34,14 +34,14 @@ class ChessPromptBuilder:
         context_blocks = []
         for idx, c in enumerate(found_chunks, 1):
             context_blocks.append(
-                f"[{idx}] {c['author']} — «{c['book']}»:\n"
+                f"[{idx}] {c['author']} - «{c['book']}»:\n"
                 f"    \"{c['text']}\""
             )
         formatted_context = "\n\n".join(context_blocks) if context_blocks else "Принципы активности фигур и безопасности короля."
 
         q_block = f"Вопрос ученика: \"{student_question}\"\n\n" if student_question else ""
 
-        prompt_text = f"""Ты — профессиональный шахматный тренер. Твоя задача — объяснить позицию ученику строго по фактам и цитатам из теории.
+        prompt_text = f"""Ты - профессиональный шахматный тренер. Твоя задача - объяснить позицию ученику строго по фактам и цитатам из теории.
 
 === ЭТАЛОННЫЙ ПРИМЕР ОТВЕТА (ФОРМАТ) ===
 Оценка: +1.50

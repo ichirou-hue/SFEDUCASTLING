@@ -8,7 +8,6 @@
 
 from __future__ import annotations
 
-import math
 import random
 from typing import Any
 
@@ -59,6 +58,19 @@ Q1_BAND = {
 # рейтинга самооценка не даёт стартовую оценку выше этого порога. Самооценка
 # «играю регулярно/в турнирах» без подтверждения сильно завышает рейтинг.
 SELF_REPORT_CAP = 800
+
+# Нижняя граница оценки после входного теста. Самая лёгкая задача базы имеет
+# рейтинг 505, а практика выдаёт задачи с потолком rating + 200: ниже ~305
+# пользователю просто нечего решать, поэтому тест не опускает рейтинг ниже пола.
+RATING_FLOOR = 500
+
+# Насколько входной тест (20 задач) может сдвинуть стартовую оценку.
+# Промах по всем задачам опускает на MAX_LOSS (но не ниже RATING_FLOOR),
+# решение всех задач поднимает на MAX_GAIN. Асимметрия осознанная: набор
+# смещён в простую сторону (12 из 20 задач первой группы), поэтому «решил всё
+# вместе с задачами 1900+» - куда более сильный сигнал, чем «не решил ничего».
+LEVEL_TEST_MAX_LOSS = 300
+LEVEL_TEST_MAX_GAIN = 680
 
 # Потолок стартовой оценки для внешнего аккаунта (Lichess / Chess.com) без
 # единой сыгранной партии. Такой аккаунт не подтверждает уровень, поэтому даже
@@ -147,15 +159,15 @@ def onboarding_rating(
 ) -> tuple[int, str, int]:
     """Возвращает (rating_estimate, rating_scale, prior_band).
 
-    ``linked`` — данные привязанного внешнего аккаунта (никак не меньше, чем
+    ``linked`` - данные привязанного внешнего аккаунта (никак не меньше, чем
     ``select_profile_rating``), ключи: ``rating``, ``scale``, ``usable``.
 
     Правила:
-    * надёжный внешний рейтинг (привязка Lichess/Chess.com) — стартовая оценка
+    * надёжный внешний рейтинг (привязка Lichess/Chess.com) - стартовая оценка
       берётся из него без ограничения;
-    * внешний аккаунт без сыгранных партий (``games == 0``) — оценка не выше
+    * внешний аккаунт без сыгранных партий (``games == 0``) - оценка не выше
       ``NO_GAMES_RATING_CAP`` (уровень не подтверждён);
-    * без привязки — стартовая оценка НЕ превышает ``SELF_REPORT_CAP``
+    * без привязки - стартовая оценка НЕ превышает ``SELF_REPORT_CAP``
       (самооценка ограничена), даже если пользователь заявил высокий уровень;
     * prior_band отражает заявленный уровень (внешний/самооценка) и служит
       только для флага расхождения с результатом входного теста.
@@ -198,7 +210,7 @@ def rating_for_selection(
 
     Приоритет источников: elo после входного теста > rating_estimate из
     анкеты > prior_band (представительный рейтинг диапазона). Если данных
-    нет — (None, "none"), и вызывающий код использует нейтральное поведение.
+    нет - (None, "none"), и вызывающий код использует нейтральное поведение.
     """
     if elo is not None:
         return int(elo), "level_test"
@@ -233,7 +245,7 @@ def max_puzzle_rating_for_user(
     *,
     margin: int = MAX_PUZZLE_OVER_RATING,
 ) -> int | None:
-    """Потолок рейтинга пазлов: rating + margin. None — потолок не задан."""
+    """Потолок рейтинга пазлов: rating + margin. None - потолок не задан."""
     if rating is None:
         return None
     return max(0, int(rating) + int(margin))
@@ -446,24 +458,44 @@ def calculate_performance_rating(
     *,
     initial_rating: int,
     answers: list[dict[str, Any]],
-    puzzle_lookup: dict[str, dict[str, Any]],
-    k_factor: float = 72.0,
 ) -> int:
-    """Elo-подобная оценка после 20 задач.
+    """Детерминированная оценка после входного теста.
 
-    Каждая задача выступает как «соперник» с её puzzle rating. Это даёт
-    плавный итоговый рейтинг вместо жёсткого скачка только по числу верных.
+    Итог зависит ТОЛЬКО от числа верных ответов и стартовой оценки - не от
+    того, какие именно задачи выпали в наборе. Раньше рейтинг считался
+    последовательным Elo по рейтингам конкретных задач, поэтому при 0/20 он
+    гулял в диапазоне ~425–580: набор задач выбирается случайно, а значит
+    случайным был и итог. Теперь одинаковый результат теста всегда даёт одно
+    и то же число.
+
+    Шкала кусочно-линейная с опорной точкой «половина верных = стартовая
+    оценка»:
+
+    * 0 верных       → ``initial_rating - LEVEL_TEST_MAX_LOSS`` (не ниже пола);
+    * половина       → ``initial_rating`` без изменений;
+    * все верные     → ``initial_rating + LEVEL_TEST_MAX_GAIN``.
+
+    Нижняя граница ``RATING_FLOOR`` защищает от «мёртвой» оценки: практические
+    задачи выдаются с потолком ``rating + 200``, а самая лёгкая задача базы
+    имеет рейтинг 505, поэтому ниже ~305 пользователю нечего решать.
     """
-    rating = float(initial_rating)
-    for answer in answers:
-        puzzle = puzzle_lookup.get(str(answer.get("puzzle_id")))
-        if not puzzle:
-            continue
-        puzzle_rating = float(puzzle.get("rating") or rating)
-        expected = 1.0 / (1.0 + math.pow(10.0, (puzzle_rating - rating) / 400.0))
-        actual = 1.0 if answer.get("correct") else 0.0
-        rating += k_factor * (actual - expected)
-    return max(0, min(3500, int(round(rating))))
+    total = len(answers)
+    if total <= 0:
+        return max(RATING_FLOOR, min(3500, int(initial_rating)))
+
+    correct = sum(1 for answer in answers if answer.get("correct"))
+    midpoint = total / 2.0
+
+    if correct <= midpoint:
+        # От стартовой оценки вниз к полу: полный провал даёт -MAX_LOSS.
+        ratio = (midpoint - correct) / midpoint
+        rating = float(initial_rating) - LEVEL_TEST_MAX_LOSS * ratio
+    else:
+        # От стартовой оценки вверх: все верные дают +MAX_GAIN.
+        ratio = (correct - midpoint) / (total - midpoint)
+        rating = float(initial_rating) + LEVEL_TEST_MAX_GAIN * ratio
+
+    return max(RATING_FLOOR, min(3500, int(round(rating))))
 
 
 def build_test_feedback(

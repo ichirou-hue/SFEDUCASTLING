@@ -33,6 +33,7 @@ export default function MaiaLevelProgress({
   userId,
   currentLevel,
   lastWin,
+  levelLocked = false,
   onSelectLevel,
 }) {
   const storageKey = `${STORAGE_KEY}:${userId ?? "guest"}`;
@@ -73,11 +74,14 @@ export default function MaiaLevelProgress({
 
   return (
     <section
-      className="maia-level-progress"
+      className={`maia-level-progress${levelLocked ? " is-locked" : ""}`}
       aria-label={`Победы над Maia: ${earnedLevels.length} из ${MAIA_LEVELS.length}`}
     >
       <h3 className="maia-level-progress-title">
         Победы над Maia <span>· {earnedLevels.length}/{MAIA_LEVELS.length}</span>
+        {levelLocked && (
+          <span className="maia-level-progress-lock"> · уровень зафиксирован</span>
+        )}
       </h3>
       <div className="maia-level-progress-grid" aria-label="Уровни Maia">
         {MAIA_LEVELS.map((level) => {
@@ -88,9 +92,14 @@ export default function MaiaLevelProgress({
               key={level}
               type="button"
               className={`maia-level-chip${earned ? " is-earned" : ""}${current ? " is-current" : ""}`}
-              aria-label={`${level} ELO${earned ? ", победа засчитана" : ""}${current ? ", выбран" : ""}`}
+              aria-label={`${level} ELO${earned ? ", победа засчитана" : ""}${current ? ", выбран" : ""}${levelLocked ? ", уровень зафиксирован на партию" : ""}`}
               aria-pressed={current}
-              title={`${level} ELO${earned ? " · победа" : ""}`}
+              disabled={levelLocked}
+              title={
+                levelLocked
+                  ? "Уровень Maia3 нельзя менять после вашего первого хода"
+                  : `${level} ELO${earned ? " · победа" : ""}`
+              }
               onClick={() => onSelectLevel(level)}
             >
               {earned ? <span aria-hidden="true">✓</span> : level}

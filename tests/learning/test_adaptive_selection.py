@@ -158,7 +158,7 @@ def test_adaptive_selection_uses_same_primary_topic_as_statistics():
     assert by_group["strong"]["adaptive_topic"] == "king-safety"
 
     # Пазл с backRankMate+mateIn2 статистически относится к матам,
-    # а advancedPawn+promotion — к эндшпилю. Они не должны
+    # а advancedPawn+promotion - к эндшпилю. Они не должны
     # маскироваться под tactics/king-safety только из-за дополнительного theme.
     assert primary_course_topic_for_puzzle(puzzles[0]) == "king-safety"
     assert primary_course_topic_for_puzzle(puzzles[2]) == "endgames"

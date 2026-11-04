@@ -1,6 +1,6 @@
 """Модели пользователей и refresh-токенов.
 
-`role` — единственный источник прав пользователя в БД: learner или admin.
+`role` - единственный источник прав пользователя в БД: learner или admin.
 Поле `is_admin` в API вычисляется из role только для совместимости со старым frontend.
 """
 
@@ -24,21 +24,21 @@ class User(Base):
     login: Mapped[str] = mapped_column(String(32), unique=True, index=True)
     email: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True)
     password_hash: Mapped[str] = mapped_column(String(128))
-    # elo — итоговая числовая оценка после level-test.
+    # elo - итоговая числовая оценка после level-test.
     elo: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # Внутренняя валюта GigaChess; пополняется только серверными наградами.
     gigacoins: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
     puzzle_streak: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
     equipped_avatar_frame: Mapped[str | None] = mapped_column(String(64), nullable=True)
     equipped_profile_accent: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    # Сырые ответы онбординг-анкеты Q1-Q8. None — анкета ещё не заполнена
+    # Сырые ответы онбординг-анкеты Q1-Q8. None - анкета ещё не заполнена
     # (по этому признаку фронтенд показывает плашку «Заполните анкету»).
     #
     # TODO(BACKEND): временный «мешок» для ответов. По методике нужны
-    # отдельные колонки — prior_band (1..4), rating_estimate (шкала Lichess
+    # отдельные колонки - prior_band (1..4), rating_estimate (шкала Lichess
     # blitz), rating_scale (напр. "lichess_blitz"), pedagogy (ответ Q6).
     # skill_band (0..4) пишет входной тест, не анкета.
-    # Подробности — блок TODO в backend/api_gateway/routes/auth.py.
+    # Подробности - блок TODO в backend/api_gateway/routes/auth.py.
 
     # Поля стартовой оценки. Часть из них уже могла быть создана старой
     # миграцией методики; новая миграция добавляет только отсутствующие.

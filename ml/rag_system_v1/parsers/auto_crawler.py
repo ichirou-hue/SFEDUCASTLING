@@ -100,7 +100,7 @@ class WikiChessCrawler:
         except Exception:
             sections = []
 
-        # Если разделов нет — забираем общий экстракт
+        # Если разделов нет - забираем общий экстракт
         if not sections:
             return self._fetch_full_extract(lang, title)
 

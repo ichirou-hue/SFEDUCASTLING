@@ -26,8 +26,8 @@ def upgrade() -> None:
         sa.Column("next_review_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("ease", sa.Float(), server_default="2.2", nullable=False),
         sa.Column("reps", sa.Integer(), server_default="0", nullable=False),
-        # sa.func.now() — диалектно-осознанное: на PostgreSQL рендерится как
-        # now(), на SQLite — как CURRENT_TIMESTAMP. Сырой sa.text("now()")
+        # sa.func.now() - диалектно-осознанное: на PostgreSQL рендерится как
+        # now(), на SQLite - как CURRENT_TIMESTAMP. Сырой sa.text("now()")
         # ломал INSERT на SQLite ("unknown function: now()").
         sa.Column(
             "created_at",

@@ -9,9 +9,9 @@ Retrieval-Augmented Generation для шахматного тренера: со�
 | Путь | Назначение |
 |------|-----------|
 | `parser_chunker.py` | Классификатор-чанкер: PDF/текст → чанки → ChromaDB (коллекция `chess_knowledge_base`). |
-| `dynamic_retriever.py` | `DynamicChessRetriever` — умный запрос и поиск по стадии игры (opening/middlegame/endgame). |
-| `chess_analysis/engine_analyzer.py` | `ChessEngineAnalyzer` — анализ позиции через python-chess + Stockfish (глубина 18). |
-| `chess_analysis/prompt_builder.py` | `ChessPromptBuilder` — сборка строго структурированных RAG-промптов с few-shot защитой. |
+| `dynamic_retriever.py` | `DynamicChessRetriever` - умный запрос и поиск по стадии игры (opening/middlegame/endgame). |
+| `chess_analysis/engine_analyzer.py` | `ChessEngineAnalyzer` - анализ позиции через python-chess + Stockfish (глубина 18). |
+| `chess_analysis/prompt_builder.py` | `ChessPromptBuilder` - сборка строго структурированных RAG-промптов с few-shot защитой. |
 | `parsers/auto_crawler.py` | Краулер категорий Wikipedia (RU/EN) по шахматной теории → `data/parsed_texts/articles_parsed.txt`. |
 | `parsers/vlm_parser.py` | VLM-парсер (Qwen2-VL-2B) книг в PDF → чистый текст (`tarrasch_vlm_clean.txt`). |
 | `data/raw_books/` | Исходные PDF-книги (например «300 шахматных партий» Тарраша). |
@@ -56,10 +56,10 @@ python test_rag.py
 python test_batch_coach.py
 ```
 
-> Путь к Stockfish настраивается переменной окружения `STOCKFISH_PATH` (по умолчанию `stockfish` — бинарник должен быть в PATH).
+> Путь к Stockfish настраивается переменной окружения `STOCKFISH_PATH` (по умолчанию `stockfish` - бинарник должен быть в PATH).
 
 ---
 
 ## ⚠️ Особенности импортов
 
-Модули ссылаются на пакет `knowledge_base` (например `from knowledge_base.dynamic_retriever import build_llm_rag_prompt`). Для этого в начале каждого файла выполняется вставка базовой директории в `sys.path`. При переносе кода убедитесь, что `BASE_DIR` указывает на корень, где доступен пакет `knowledge_base` (в текущей схеме — `ml/`).
+Модули ссылаются на пакет `knowledge_base` (например `from knowledge_base.dynamic_retriever import build_llm_rag_prompt`). Для этого в начале каждого файла выполняется вставка базовой директории в `sys.path`. При переносе кода убедитесь, что `BASE_DIR` указывает на корень, где доступен пакет `knowledge_base` (в текущей схеме - `ml/`).

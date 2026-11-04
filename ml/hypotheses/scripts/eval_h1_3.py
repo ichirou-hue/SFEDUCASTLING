@@ -29,7 +29,7 @@ BENCHMARK_PATH = Path("dataset_h1_3.json")
 MERGED_MODEL_PATH = Path("../Qwen3-chess-coach/outputs/merged").resolve()
 ADAPTER_CONFIG_PATH = Path("../Qwen3-chess-coach/outputs/adapter_config.json").resolve()
 
-SYSTEM_INSTRUCTION = "Ты — шахматный аналитик и тренер."
+SYSTEM_INSTRUCTION = "Ты - шахматный аналитик и тренер."
 
 def get_base_model_name() -> str:
     if ADAPTER_CONFIG_PATH.exists():

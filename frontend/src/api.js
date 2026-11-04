@@ -379,6 +379,11 @@ export async function fetchMaiaMove(fen, elo, moves = []) {
     elo,
     moves,
     engine: "maia3",
+  }, {
+    // Сервер сам перезапускает зависший движок и повторяет ход, но
+    // ожидание не должно быть бесконечным: иначе интерфейс навсегда
+    // остаётся в состоянии «Maia3 думает».
+    timeout: 120000,
   });
   return data;
 }
@@ -445,6 +450,24 @@ export async function finishGame({ moves, elo, engine, result, status, playerCol
     );
     window.dispatchEvent(new Event("sfedu-game-finished"));
   }
+  return data;
+}
+
+export async function fetchLocalGameHistory() {
+  const { data } = await api.get("/api/game/local-history");
+  return data;
+}
+
+/*
+ * Разбор партии движком: точность ходов игрока и звёзды (3/2/1).
+ * Запрос синхронный: на партию из 40 ходов сервер отвечает не дольше
+ * 40 секунд, поэтому кнопку разбора показываем с индикатором.
+ */
+export async function reviewGame(moves, playerColor = "w") {
+  const { data } = await api.post("/api/game/review", {
+    moves,
+    player_color: playerColor,
+  });
   return data;
 }
 

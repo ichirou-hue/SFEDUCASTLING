@@ -5,10 +5,10 @@ Revises: d8b41a2c6f70
 Create Date: 2026-10-03
 
 JSONB сырых ответов анкеты (см. «Анкета оценки уровня игры»,
-раздел 1). Пусто (NULL), пока пользователь анкету не заполнил —
+раздел 1). Пусто (NULL), пока пользователь анкету не заполнил -
 по этому же признаку фронтенд показывает/прячет плашку.
 
-TODO(BACKEND): следующая миграция по методике — разложить ответы
+TODO(BACKEND): следующая миграция по методике - разложить ответы
 по отдельным колонкам users:
     prior_band        int  1..4   (сейчас считается и лежит в JSON)
     rating_estimate   int         шкала Lichess blitz
@@ -29,7 +29,7 @@ down_revision: str | None = "d8b41a2c6f70"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
-# Переносимый тип: PostgreSQL — JSONB, SQLite — JSON (см. fb22cbd6384b).
+# Переносимый тип: PostgreSQL - JSONB, SQLite - JSON (см. fb22cbd6384b).
 _JSON = sa.JSON().with_variant(postgresql.JSONB(astext_type=sa.Text()), "postgresql")
 
 

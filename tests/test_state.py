@@ -57,7 +57,7 @@ class TestModelManagerStockfish:
 
     def test_ensure_stockfish_already_loaded(self):
         mock = MagicMock()
-        # Процесс «жив» — ensure должен вернуть тот же экземпляр.
+        # Процесс «жив» - ensure должен вернуть тот же экземпляр.
         mock._stockfish.poll.return_value = None
         state.manager._stockfish = mock
 
@@ -124,6 +124,77 @@ class TestLoadKnowledge:
         assert len(state.knowledge_base["openings"]) == 1
         state.knowledge_base = None
         state.KNOWLEDGE_PATH = original_path
+
+
+# --- Maia3: запуск и перезапуск движка ---
+
+class TestMaia3Checkpoint:
+    """Maia3 при каждом старте ходит в HF Hub за чекпоинтом.
+
+    Если файл уже скачан, сеть не нужна: движок запускается с
+    --local-files-only, иначе на медленной сети старт растягивается на
+    минуты, а ходы Maia3 всё это время стоят в очереди.
+    """
+
+    def test_cached_checkpoint_enables_offline_start(self):
+        calls = []
+
+        def resolve_path(spec, *, local_files_only=False):
+            calls.append(local_files_only)
+            return "C:/cache/maia3-5m.pt"
+
+        cached = state._checkpoint_cached(
+            "maia3-5m", lambda name: object(), resolve_path
+        )
+
+        assert cached is True
+        assert calls == [True]
+
+    def test_missing_checkpoint_allows_download(self):
+        def resolve_path(spec, *, local_files_only=False):
+            raise RuntimeError("not cached")
+
+        assert (
+            state._checkpoint_cached(
+                "maia3-5m", lambda name: object(), resolve_path
+            )
+            is False
+        )
+
+    def test_unknown_model_does_not_break_startup(self):
+        def resolve_spec(name):
+            raise RuntimeError("unknown model")
+
+        assert (
+            state._checkpoint_cached(
+                "nope", resolve_spec, lambda spec, **kwargs: "x"
+            )
+            is False
+        )
+
+
+class TestResetMaia3:
+    def test_reset_quits_and_closes_engine(self):
+        engine = MagicMock()
+        state._maia3_engine = engine
+
+        state.reset_maia3()
+
+        # close() закрывает транспорт сразу: зависший процесс получает
+        # EOF на stdin, а не остаётся висеть после таймаута quit().
+        engine.quit.assert_called_once()
+        engine.close.assert_called_once()
+        assert state._maia3_engine is None
+
+    def test_reset_survives_broken_engine(self):
+        engine = MagicMock()
+        engine.quit.side_effect = RuntimeError("dead")
+        engine.close.side_effect = RuntimeError("dead")
+        state._maia3_engine = engine
+
+        state.reset_maia3()
+
+        assert state._maia3_engine is None
 
 
 # --- extract_fen_from_image ---
