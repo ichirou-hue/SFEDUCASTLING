@@ -355,7 +355,7 @@
   }
 
   .site-footer {
-    display: none;
+    display: flex;
     position: relative;
     left: 50%;
     width: 100vw;
@@ -372,6 +372,11 @@
     text-align: center;
     transform: translateX(-50%);
     margin-bottom: 0 !important;
+  }
+
+  .site-footer-docs {
+    width: 100%;
+    gap: 4px 12px;
   }
 
   .training-page > .site-footer,

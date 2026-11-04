@@ -239,7 +239,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 18px;
+  flex-wrap: wrap;
+  gap: 6px 18px;
   padding: 7px 16px;
   border-top: 1px solid rgba(180, 135, 44, 0.35);
   background: rgba(255, 255, 255, 0.55);
@@ -255,12 +256,21 @@ body {
   letter-spacing: 0.04em;
 }
 
+.site-footer-docs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px 18px;
+}
+
 .site-footer-link {
   color: #2f5c36;
   font-weight: 600;
   text-decoration: underline;
   text-underline-offset: 2px;
   cursor: pointer;
+  text-align: center;
 }
 
 .site-footer-link:hover {
@@ -2361,8 +2371,13 @@ body {
   transition: background 0.2s;
   box-shadow: 0 6px 16px rgba(94, 148, 99, 0.35);
 }
-.auth-submit:hover {
+.auth-submit:hover:not(:disabled) {
   background: #76a87a;
+}
+.auth-submit:disabled {
+  opacity: 0.5;
+  cursor: default;
+  box-shadow: none;
 }
 
 .auth-footer {
@@ -2380,17 +2395,40 @@ body {
   text-decoration: underline;
 }
 
-/* Ссылка на документ внизу формы регистрации (новая вкладка) */
-.auth-reg-doc {
-  display: block;
-  margin-top: 12px;
-  font-size: 13px;
-  color: #83b787;
-  text-align: center;
-  text-decoration: none;
+/* Обязательное согласие с документами при регистрации */
+.auth-consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid rgba(150, 190, 160, 0.7);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.55);
 }
-.auth-reg-doc:hover {
+.auth-consent-input {
+  width: 18px;
+  height: 18px;
+  margin: 1px 0 0;
+  flex-shrink: 0;
+  accent-color: #83b787;
+  cursor: pointer;
+}
+.auth-consent-text {
+  font-size: 13px;
+  line-height: 1.45;
+  color: #5f6f57;
+}
+.auth-consent-text label {
+  cursor: pointer;
+}
+.auth-consent-text a {
+  color: #5e9463;
   text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.auth-consent-text a:hover {
+  color: #3f7a46;
 }
 
 /* --- Шаг привязки шахматного аккаунта после регистрации --- */

@@ -1,24 +1,24 @@
 // Сквозной футер сайта — внутри скролл-контейнера каждой страницы,
 // поэтому всегда внизу контента, а не зафиксированной полосой.
-//
-// Ссылка «Документ для ознакомления» — временная заглушка (href="#")
-// перед добавлением настоящего документа; откроется в новой вкладке.
-// Паттерн как в форме регистрации (RegisterModal: REG_DOC_URL/REG_DOC_LABEL).
-const DOC_URL = "#";
-const DOC_LABEL = "Документ для ознакомления";
+import { FOOTER_LEGAL_DOCS } from "../legalDocs.js";
 
 export default function SiteFooter() {
   return (
     <footer className="site-footer">
       <span className="site-footer-brand">GIGACHESS · обучение шахматам</span>
-      <a
-        className="site-footer-link"
-        href={DOC_URL}
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        {DOC_LABEL}
-      </a>
+      <nav className="site-footer-docs" aria-label="Правовые документы">
+        {FOOTER_LEGAL_DOCS.map((doc) => (
+          <a
+            key={doc.href}
+            className="site-footer-link"
+            href={doc.href}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {doc.label}
+          </a>
+        ))}
+      </nav>
     </footer>
   );
 }

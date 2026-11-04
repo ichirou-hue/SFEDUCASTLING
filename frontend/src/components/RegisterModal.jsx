@@ -7,6 +7,7 @@ import {
   register as apiRegister,
 } from "../api.js";
 import { formatApiError } from "../apiErrors.js";
+import { LEGAL_DOCS } from "../legalDocs.js";
 import ChessAccountsSection from "./ChessAccountsSection.jsx";
 
 const PLATFORM_LABELS = {
@@ -23,11 +24,6 @@ const PERF_LABELS = {
   daily: "Днев.",
 };
 
-// Ссылка на документ внизу формы регистрации (открывается в новой вкладке).
-// TODO: подставить реальный URL и подпись, когда документ будет приложен.
-const REG_DOC_URL = "#";
-const REG_DOC_LABEL = "Документ для ознакомления";
-
 function normalizePlatform(value) {
   return value === "chess.com" || value === "chesscom" ? "chesscom" : "lichess";
 }
@@ -40,6 +36,8 @@ export default function AuthModal({ isOpen, onClose, onSuccess, initialMode = "r
   const [submitting, setSubmitting] = useState(false);
   const [submitPhase, setSubmitPhase] = useState(""); // "" | "register" | "link"
   const [authError, setAuthError] = useState("");
+  // Обязательное согласие с документами при регистрации (только UI).
+  const [consentAccepted, setConsentAccepted] = useState(false);
 
   // Шаг после успешной регистрации: привязка шахматного аккаунта.
   // Привязка требует авторизации, поэтому выполняется уже после создания
@@ -62,6 +60,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess, initialMode = "r
     setMode(initialMode);
     setAuthError(notice || "");
     setPassword("");
+    setConsentAccepted(false);
     setStep("auth");
     setCreatedUser(null);
     setAutoLinkNotice("");
@@ -79,6 +78,10 @@ export default function AuthModal({ isOpen, onClose, onSuccess, initialMode = "r
     const nick = login.trim();
     if (!nick || !password) {
       setAuthError("Введите логин и пароль");
+      return;
+    }
+    if (isRegister && !consentAccepted) {
+      setAuthError("Подтвердите согласие с условиями использования и документами по персональным данным");
       return;
     }
     setSubmitting(true);
@@ -412,24 +415,54 @@ export default function AuthModal({ isOpen, onClose, onSuccess, initialMode = "r
             {authError && <p className="auth-error">{authError}</p>}
           </div>
 
+          {isRegister && (
+            <div className="auth-consent">
+              <input
+                id="auth-consent"
+                type="checkbox"
+                className="auth-consent-input"
+                checked={consentAccepted}
+                onChange={(e) => {
+                  setConsentAccepted(e.target.checked);
+                  if (e.target.checked) setAuthError("");
+                }}
+              />
+              <span className="auth-consent-text">
+                <label htmlFor="auth-consent">Я принимаю</label>{" "}
+                <a
+                  href={LEGAL_DOCS.terms.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {LEGAL_DOCS.terms.label}
+                </a>
+                ,{" "}
+                <a
+                  href={LEGAL_DOCS.privacy.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {LEGAL_DOCS.privacy.label}
+                </a>{" "}
+                и даю{" "}
+                <a
+                  href={LEGAL_DOCS.consent.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {LEGAL_DOCS.consent.label}
+                </a>
+              </span>
+            </div>
+          )}
+
           <button
             className="auth-submit"
             onClick={handleSubmit}
-            disabled={submitting}
+            disabled={submitting || (isRegister && !consentAccepted)}
           >
             {submitLabel}
           </button>
-
-          {isRegister && (
-            <a
-              className="auth-reg-doc"
-              href={REG_DOC_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {REG_DOC_LABEL}
-            </a>
-          )}
 
           <p className="auth-footer">
             {isRegister ? (

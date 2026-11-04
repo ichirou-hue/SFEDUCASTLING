@@ -307,7 +307,7 @@
 :root[data-theme="dark"] .user-profile-account-form button:hover:not(:disabled),
 :root[data-theme="dark"] .admin-btn--primary:hover:not(:disabled),
 :root[data-theme="dark"] .modal-submit:hover,
-:root[data-theme="dark"] .auth-submit:hover,
+:root[data-theme="dark"] .auth-submit:hover:not(:disabled),
 :root[data-theme="dark"] .auth-import-btn:hover:not(:disabled),
 :root[data-theme="dark"] .prg-submit:hover,
 :root[data-theme="dark"] .onb-submit:hover:not(:disabled) {
@@ -1681,21 +1681,27 @@
 
 :root[data-theme="dark"] .modal-label,
 :root[data-theme="dark"] .auth-label-text,
+:root[data-theme="dark"] .auth-consent-text,
 :root[data-theme="dark"] .onb-row-label,
 :root[data-theme="dark"] .modal-footer,
 :root[data-theme="dark"] .auth-footer {
   color: var(--sf-muted);
 }
 
+:root[data-theme="dark"] .auth-consent {
+  border-color: var(--sf-line);
+  background: var(--sf-soft);
+}
+
 :root[data-theme="dark"] .modal-footer a,
 :root[data-theme="dark"] .auth-footer a,
-:root[data-theme="dark"] .auth-reg-doc {
+:root[data-theme="dark"] .auth-consent-text a {
   color: var(--sf-gold);
 }
 
 :root[data-theme="dark"] .modal-footer a:hover,
 :root[data-theme="dark"] .auth-footer a:hover,
-:root[data-theme="dark"] .auth-reg-doc:hover {
+:root[data-theme="dark"] .auth-consent-text a:hover {
   color: var(--sf-gold-bright);
 }
 
