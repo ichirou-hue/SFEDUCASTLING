@@ -6,6 +6,10 @@ import os
 import pytest
 from sqlalchemy import select
 
+# Стартовый прогрев Maia3 поднимает настоящий UCI-процесс (torch,
+# чекпоинт). Тестам он не нужен и только замедляет прогон.
+os.environ.setdefault("MAIA3_PRELOAD", "0")
+
 
 @pytest.fixture(scope="session", autouse=True)
 def ensure_ci_admin_account():
