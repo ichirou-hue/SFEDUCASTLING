@@ -78,6 +78,12 @@
     max-height: 290px;
     min-height: 0;
     width: 100%;
+    overflow: hidden;
+  }
+
+  .main-area .game-history-column .move-list {
+    max-height: 280px;
+    overflow-y: auto;
   }
 
   .main-area > .chat-section {
@@ -562,11 +568,12 @@
 
   .main-area .move-list {
     flex: 0 1 auto;
-    max-height: 84px;
+    max-height: 160px;
     padding-right: 3px;
   }
 
   .main-area .move-pair {
+    height: 32px;
     grid-template-columns: 26px minmax(0, 1fr) minmax(0, 1fr);
     padding: 2px 0;
     font-size: 15px;
@@ -723,7 +730,7 @@
   }
 
   .main-area--mobile-history .move-list {
-    max-height: min(24dvh, 210px);
+    max-height: 160px;
     overflow-y: auto;
   }
 

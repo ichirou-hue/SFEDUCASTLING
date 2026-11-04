@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useLayoutEffect, useRef } from "react";
 import PositionMenu from "./PositionMenu.jsx";
 
 export default function MoveHistory({
@@ -15,12 +15,12 @@ export default function MoveHistory({
 }) {
   const listRef = useRef(null);
 
-  // Скролл теперь будет следить не только за новыми ходами, но и за переключением активного хода
-  useEffect(() => {
+  // После нового хода показываем конец списка, не двигая саму панель.
+  useLayoutEffect(() => {
     if (listRef.current) {
       listRef.current.scrollTop = listRef.current.scrollHeight;
     }
-  }, [moveHistory, viewIndex]);
+  }, [moveHistory?.length]);
   // Если moveHistory вдруг пришел как undefined, считаем его пустым массивом
   const safeHistory = moveHistory || [];
   // Если мы отмотали в самое начало (viewIndex === -1 И мы в режиме просмотра), то показываем 0.

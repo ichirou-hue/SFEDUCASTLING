@@ -69,7 +69,7 @@ textarea {
   flex: initial;
   flex-direction: column;
   gap: 12px;
-  height: auto;
+  height: min(720px, calc(100dvh - 140px));
   min-height: 0;
   order: 1;
   width: auto;
@@ -82,6 +82,7 @@ textarea {
   height: auto;
   max-height: none;
   min-height: 0;
+  overflow: hidden;
   order: 0;
   width: 100%;
 }
@@ -889,6 +890,7 @@ textarea {
 .move-pair {
   display: flex;
   align-items: center;
+  height: 56px;
   padding: 12px 0;
   border-bottom: none;
 
@@ -1474,7 +1476,7 @@ textarea {
 .move-list {
   flex: 1;
   min-height: 0;
-  /* max-height: 250px; --- РЈР”РђР›РРўР• Р­РўРЈ РЎРўР РћРљРЈ */
+  max-height: 280px; /* Пять строк истории по 56px. */
   overflow-y: auto;
   padding-right: 8px;
 }
