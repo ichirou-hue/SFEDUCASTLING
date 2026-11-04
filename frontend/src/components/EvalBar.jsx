@@ -2,9 +2,16 @@ import { useEffect, useRef } from "react";
 
 export default function EvalBar({ diff = 0, flipped, height }) {
   const barRef = useRef(null);
-  const MAX = 10;
+
+  /*
+   * Первые 10 очков перевеса занимают 40% шкалы - так обычная игра
+   * читается хорошо. Дальше шкала сжимается: 10..39 очков добавляют
+   * оставшиеся 10%, поэтому подавляющий перевес тоже виден.
+   * 39 - стоимость полного комплекта без короля.
+   */
+  const BASE_MAX = 10;
+  const EXTENDED_MAX = 39;
   const signed = Number.isFinite(diff) ? diff : 0;
-  const clamped = Math.max(-MAX, Math.min(MAX, signed));
 
   /*
    * Низ шкалы - та сторона, которая стоит внизу доски: её цвет и её
@@ -12,8 +19,13 @@ export default function EvalBar({ diff = 0, flipped, height }) {
    * тёмный мрамор (нижняя сторона) уходит вниз, бумага наверх.
    * Поэтому и цифра считается от нижней стороны.
    */
-  const bottomAdv = flipped ? -clamped : clamped;
-  const fillPct = 50 + (bottomAdv / MAX) * 50;
+  const bottomAdv = flipped ? -signed : signed;
+  const magnitude = Math.min(Math.abs(bottomAdv), EXTENDED_MAX);
+  const basePart = Math.min(magnitude, BASE_MAX) / BASE_MAX;
+  const extraPart =
+    Math.max(0, magnitude - BASE_MAX) / (EXTENDED_MAX - BASE_MAX);
+  const fillPct =
+    50 + Math.sign(bottomAdv) * (basePart * 40 + extraPart * 10);
 
   const label = (() => {
     const v = Math.round(bottomAdv);

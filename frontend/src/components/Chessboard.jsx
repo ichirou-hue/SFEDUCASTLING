@@ -2298,57 +2298,71 @@ const fetchBestMove = useCallback(
     });
 
     const diff = white - black;
-    const excess = {};
 
     /*
      * Перевес показываем по реально съеденным фигурам, а не раскладкой
      * численной разницы на «удобные» фигуры: если с доски ушёл ферзь,
      * в перевесе будет ферзь, а не слон с ладьёй.
      *
-     * По каждому типу фигур считаем, сколько взял лидер и сколько взял
-     * отстающий, взаимные взятия одного типа сокращаем - остаётся то,
-     * что лидер взял сверх соперника.
+     * Считаем перевес по каждому типу отдельно для обеих сторон:
+     * даже отстающий по общему материалу игрок может иметь лишнюю
+     * фигуру конкретного типа (например, ладью). Взаимные взятия
+     * одного типа сокращаем.
      */
-    if (diff !== 0) {
-      const leader = diff > 0 ? "w" : "b";
+    const surplus = {
+      w: {},
+      b: {},
+    };
 
-      MATERIAL_PIECE_ORDER.forEach((type) => {
-        const leaderLeft =
-          (leader === "w" ? whitePieces : blackPieces)[type] || 0;
+    MATERIAL_PIECE_ORDER.forEach((type) => {
+      /*
+       * Ограничение полным комплектом - страховка от превращения
+       * пешки: «лишняя» фигура превращения не должна считаться
+       * съеденной у соперника.
+       */
+      const whiteCount = Math.min(
+        whitePieces[type] || 0,
+        fullSet[type],
+      );
 
-        const loserLeft =
-          (leader === "w" ? blackPieces : whitePieces)[type] || 0;
+      const blackCount = Math.min(
+        blackPieces[type] || 0,
+        fullSet[type],
+      );
 
-        /*
-         * Math.max(0, ...) - страховка от превращения пешки: взятая
-         * «лишняя» фигура превращения съеденной не считается.
-         */
-        const takenByLeader = Math.max(
-          0,
-          fullSet[type] - Math.max(0, loserLeft),
-        );
-
-        const takenByLoser = Math.max(
-          0,
-          fullSet[type] - Math.max(0, leaderLeft),
-        );
-
-        const extra = takenByLeader - takenByLoser;
-
-        if (extra > 0) {
-          excess[type] = extra;
-        }
-      });
-    }
+      if (whiteCount > blackCount) {
+        surplus.w[type] = whiteCount - blackCount;
+      } else if (blackCount > whiteCount) {
+        surplus.b[type] = blackCount - whiteCount;
+      }
+    });
 
     return {
       diff,
-      excess,
+      surplus,
     };
   }, [game]);
 
   const materialAdv =
     getMaterialAdvantage();
+
+  /*
+   * Данные для строк игроков: строка показывает лишние фигуры той
+   * стороны, которая в ней сидит, а цвет иконок - цвет соперника,
+   * ведь это его фигуры были взяты.
+   */
+  const materialByColor = {
+    w: {
+      diff: materialAdv.diff,
+      pieces: materialAdv.surplus.w,
+      pieceColor: "black",
+    },
+    b: {
+      diff: -materialAdv.diff,
+      pieces: materialAdv.surplus.b,
+      pieceColor: "white",
+    },
+  };
 
   useEffect(() => {
     if (typeof onStateChange === "function") {
@@ -2363,50 +2377,53 @@ const fetchBestMove = useCallback(
   ]);
 
   /*
-   * Материальный перевес: рядом с числом - иконки конкретных фигур,
-   * которые лидер съел сверх соперника. Цвет иконок - цвет отстающей
-   * стороны: это её фигуры и были съедены.
+   * Материальный перевес: иконки конкретных фигур, которые сторона
+   * взяла сверх соперника, и число - только у лидера по общему
+   * материалу. Цвет иконок - цвет соперника: это его фигуры съедены.
    */
   const MaterialDisplay = ({
-    diff,
-    excess = {},
-    leading = "w",
+    diff = 0,
+    pieces = {},
+    pieceColor = "black",
   }) => {
-    if (diff <= 0) return null;
-
-    const capturedColor =
-      leading === "w" ? "black" : "white";
-
     const captured = [];
 
     MATERIAL_PIECE_ORDER.forEach((type) => {
-      const count = excess[type] || 0;
+      const count = pieces[type] || 0;
 
       for (let i = 0; i < count; i += 1) {
         captured.push(type);
       }
     });
 
+    if (captured.length === 0 && diff <= 0) return null;
+
     return (
       <div
         className="material-display"
-        title={`Материальный перевес: +${diff}`}
+        title={
+          diff > 0
+            ? `Материальный перевес: +${diff}`
+            : "Взятые фигуры"
+        }
       >
         <span className="material-pieces">
           {captured.map((type, index) => (
             <img
               key={`${type}-${index}`}
               className="material-piece"
-              src={`/pieces/${capturedColor}_${PIECE_FILE_NAMES[type]}.svg`}
+              src={`/pieces/${pieceColor}_${PIECE_FILE_NAMES[type]}.svg`}
               alt=""
               aria-hidden="true"
             />
           ))}
         </span>
 
-        <span className="material-diff">
-          +{diff}
-        </span>
+        {diff > 0 && (
+          <span className="material-diff">
+            +{diff}
+          </span>
+        )}
       </div>
     );
   };
@@ -2639,15 +2656,7 @@ const fetchBestMove = useCallback(
            * поверх доски: так он ничего не перекрывает.
            */}
           <MaterialDisplay
-            diff={
-              boardFlipped
-                ? materialAdv.diff
-                : -materialAdv.diff
-            }
-            excess={materialAdv.excess}
-            leading={
-              materialAdv.diff > 0 ? "w" : "b"
-            }
+            {...materialByColor[boardFlipped ? "w" : "b"]}
           />
         </div>
 
@@ -3014,15 +3023,7 @@ const fetchBestMove = useCallback(
            * а не плашкой поверх поля.
            */}
           <MaterialDisplay
-            diff={
-              boardFlipped
-                ? -materialAdv.diff
-                : materialAdv.diff
-            }
-            excess={materialAdv.excess}
-            leading={
-              materialAdv.diff > 0 ? "w" : "b"
-            }
+            {...materialByColor[boardFlipped ? "b" : "w"]}
           />
         </div>
 
