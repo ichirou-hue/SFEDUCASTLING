@@ -49,7 +49,7 @@ export default function MiniProfilePopover({
   }, [cancelClose]);
 
   const handleKeyboardBlur = (event) => {
-    // Фокус ушёл полностью за пределы триггера и поповера — закрываем.
+    // Фокус ушёл полностью за пределы триггера и поповера - закрываем.
     if (!event.currentTarget.contains(event.relatedTarget)) {
       cancelClose();
       setOpen(false);
@@ -189,7 +189,7 @@ export default function MiniProfilePopover({
           </>
         )}
 
-        {/* Переключатель темы: тёмная основная, светлая — прежнее оформление. */}
+        {/* Переключатель темы: тёмная основная, светлая - прежнее оформление. */}
         <div
           className="mini-profile__theme"
           role="group"

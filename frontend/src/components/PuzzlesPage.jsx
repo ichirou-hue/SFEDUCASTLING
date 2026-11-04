@@ -418,10 +418,10 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
   useEffect(() => {
     // Замеряем только готовую раскладку: на экране загрузки её нет
     // в DOM (другая ветка), querySelector вернул бы null и размер
-    // посчитался бы от окна — с переполнением и без пересчёта.
+    // посчитался бы от окна - с переполнением и без пересчёта.
     if (loading) return;
     const updateSize = () => {
-      // Ширина — по формуле от окна (колонки грида фиксированы).
+      // Ширина - по формуле от окна (колонки грида фиксированы).
       // Свёрнутый чат занимает 48px полосы + 24px отступа, остальное
       // достаётся доске (см. .puzzles-layout--chat-collapsed).
       const isMobile = window.matchMedia("(max-width: 760px)").matches;
@@ -432,7 +432,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
       const availW = isMobile
         ? (layoutEl?.clientWidth || window.innerWidth) - hGaps
         : window.innerWidth - infoW - chatReserve - hGaps;
-      // Высота — видимая область страницы (без топбара и футера), а не
+      // Высота - видимая область страницы (без топбара и футера), а не
       // высота самой раскладки: она теперь растягивается по содержимому,
       // и замер её clientHeight дал бы петлю (доска растит саму себя).
       const belowBoard = 175;
@@ -591,7 +591,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
   const themeInfo = currentPuzzle
     ? getThemeInfo(currentPuzzle)
     : { key: null, label: "Тактика", icon: "♟" };
-  // Сторона, за которую нужно найти ходы, — это очередь хода из FEN
+  // Сторона, за которую нужно найти ходы, - это очередь хода из FEN
   // (в lichess-паззлах игрок всегда ходит первым). boardOrientation
   // выставляется по тому же признаку в loadPuzzle.
   const sideToMove = currentPuzzle?.fen?.split(" ")?.[1] === "b" ? "b" : "w";
@@ -618,10 +618,10 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
     Boolean(previewInfo) && (previewInfo.locked || previewGate);
 
   // Гейт анкеты показываем на последнем ходу ТРЕТЬЕЙ решённой за сегодня
-  // задачи, а не на последней задаче в списке. previewInfo.remaining —
+  // задачи, а не на последней задаче в списке. previewInfo.remaining -
   // сколько ещё можно решить сегодня с учётом прошлых заходов, поэтому
   // в этой сессии гейт включается после (remaining - 1) новых решений.
-  // Какую именно из оставшихся задач пользователь решит третьей — не важно.
+  // Какую именно из оставшихся задач пользователь решит третьей - не важно.
   const previewGateAfterSolved = previewInfo
     ? Math.max(0, previewInfo.remaining - 1)
     : null;
@@ -632,9 +632,9 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
     solvedCount >= previewGateAfterSolved &&
     !(currentPuzzle?.id && solvedPuzzleIdsRef.current.has(currentPuzzle.id));
 
-  // «Позже» в пробном гейте: если задача на доске есть — просто закрываем
+  // «Позже» в пробном гейте: если задача на доске есть - просто закрываем
   // напоминание, доска остаётся на последнем ходу без сделанного хода.
-  // Если задач нет (дневной лимит выбран на загрузке) — уходим на главную.
+  // Если задач нет (дневной лимит выбран на загрузке) - уходим на главную.
   const handlePreviewLater = useCallback(() => {
     if (puzzlesRef.current.length > 0) {
       setPreviewGate(false);
@@ -729,7 +729,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
         }
 
         // Предпоследний ход игрока сделан (остался ответ соперника и финальный
-        // ход) — незарегистрированный обязан зарегистрироваться, дальше нельзя.
+        // ход) - незарегистрированный обязан зарегистрироваться, дальше нельзя.
         if (remaining === 2 && !user) setRegGate(true);
 
         if (
@@ -892,7 +892,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
 
   // Автопереключение после решения: даём полюбоваться оверлеем «Задача
   // решена!» и переходим к следующей. На последней задаче таймер не
-  // ставим — оверлей остаётся, пользователь решает сам. Ручное навигирование
+  // ставим - оверлей остаётся, пользователь решает сам. Ручное навигирование
   // (кнопки «→»/«←») меняет currentIndex → таймер отменяется, а новая
   // задача сбрасывает puzzleSolved в loadPuzzle.
   useEffect(() => {
@@ -946,7 +946,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
 
   const customSquareStyles = {};
 
-  // Подсветка последнего хода — базовая. Точки возможных ходов накладываем
+  // Подсветка последнего хода - базовая. Точки возможных ходов накладываем
   // поверх неё, иначе клетка, совпавшая с ходом соперника, теряет точку.
   if (lastMove) {
     customSquareStyles[lastMove.from] = {

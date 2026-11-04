@@ -60,7 +60,7 @@ def stockfish_analyze(req: FenRequest):
 
 @router.post("/api/eval")
 def quick_eval(req: FenRequest):
-    """Быстрая оценка позиции — только eval, без best move."""
+    """Быстрая оценка позиции - только eval, без best move."""
     stockfish = ensure_stockfish()
     if not stockfish:
         return {"evaluation": None}

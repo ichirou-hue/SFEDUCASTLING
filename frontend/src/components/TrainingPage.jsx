@@ -161,7 +161,7 @@ export default function TrainingPage({ user, onRegister }) {
   const [tasks, setTasks] = useState([]);
   const [taskIndex, setTaskIndex] = useState(0);
   // ID заданий текущего урока, решённые верно. Серверные данные из
-  // lessonProgressById.solved_task_ids плюс то, что решено в этой сессии —
+  // lessonProgressById.solved_task_ids плюс то, что решено в этой сессии -
   // так дотсы не теряют состояние при переходах внутри урока.
   const [solvedTaskIds, setSolvedTaskIds] = useState(() => new Set());
   const [loading, setLoading] = useState(true);
@@ -181,12 +181,12 @@ export default function TrainingPage({ user, onRegister }) {
   // Слаг модуля, который реально открыт сейчас. Нужен против гонки в
   // backToModules: navigate("/training") + setSelectedModule(null) могут
   // отрендериться раньше, чем обновится searchParams, и эффект автооткрытия
-  // видит stale-slug при пустом selectedModule — и тут же открывает модуль
+  // видит stale-slug при пустом selectedModule - и тут же открывает модуль
   // заново (первый клик «съедается», срабатывает только второй).
   // С этим ref stale-рендер пропускается: слаг равен отображаемому.
   const displayedSlugRef = useRef(null);
 
-  // Память скролла: три ветки рендера (grid/lessons/lesson) — три разных
+  // Память скролла: три ветки рендера (grid/lessons/lesson) - три разных
   // DOM-узла, при переходе контейнер перемонтируется и scrollTop слетает
   // в 0. Запоминаем позицию перед уходом, восстанавливаем при монтировании.
   const pageRef = useRef(null);
@@ -212,8 +212,8 @@ export default function TrainingPage({ user, onRegister }) {
   }, [progress]);
 
   // Конь-маршрутчик на тропинке модулей: сидит над первым непройденным
-  // модулем (изначально — над первым). Когда модуль закрывается, конь
-  // перепрыгивает на следующий. Всё пройдено — отдыхает над последним.
+  // модулем (изначально - над первым). Когда модуль закрывается, конь
+  // перепрыгивает на следующий. Всё пройдено - отдыхает над последним.
   const currentModuleIndex = useMemo(() => {
     if (modules.length === 0) return -1;
     const index = modules.findIndex((module) => {
@@ -263,12 +263,12 @@ export default function TrainingPage({ user, onRegister }) {
       prevKnightIndexRef.current !== null &&
       prevKnightIndexRef.current !== currentModuleIndex
     ) {
-      // Индекс сменился — конь прыгает (перезапуск анимации через key).
+      // Индекс сменился - конь прыгает (перезапуск анимации через key).
       setKnightHops((hops) => hops + 1);
     }
     prevKnightIndexRef.current = currentModuleIndex;
     placeKnight();
-    // Шрифты могут чуть сдвинуть раскладку после замера — перемерить.
+    // Шрифты могут чуть сдвинуть раскладку после замера - перемерить.
     const timer = setTimeout(placeKnight, 500);
     return () => clearTimeout(timer);
   }, [currentModuleIndex, placeKnight]);
@@ -289,8 +289,8 @@ export default function TrainingPage({ user, onRegister }) {
   }, [progress]);
 
   // Дуолинго-раскладка: уроки группируются в разделы (section_title),
-  // внутри — узлы тропинки со сквозной нумерацией. Состояние узла:
-  // done — все задания решены, current — первый нерешённый, todo — остальные.
+  // внутри - узлы тропинки со сквозной нумерацией. Состояние узла:
+  // done - все задания решены, current - первый нерешённый, todo - остальные.
   // Запирания нет: все узлы открыты, цвет лишь подсказывает порядок.
   const lessonSections = useMemo(() => {
     let foundCurrent = false;
@@ -355,7 +355,7 @@ export default function TrainingPage({ user, onRegister }) {
         const data = await fetchTrainingDue(20);
         if (!cancelled) setDueItems(data.items || []);
       } catch {
-        // Просроченные повторения — вспомогательная секция:
+        // Просроченные повторения - вспомогательная секция:
         // её сбой не должен ломать загрузку курса.
         if (!cancelled) setDueItems([]);
       }
@@ -366,7 +366,7 @@ export default function TrainingPage({ user, onRegister }) {
         const data = await fetchTrainingProgress();
         if (!cancelled) setProgress(data || null);
       } catch {
-        // Без прогресса курс всё равно читается — просто не показываем бары.
+        // Без прогресса курс всё равно читается - просто не показываем бары.
         if (!cancelled) setProgress(null);
       }
     }
@@ -392,7 +392,7 @@ export default function TrainingPage({ user, onRegister }) {
     loadDue();
     loadProgress();
 
-    // После каждого верного ответа страница сама шлёт это событие —
+    // После каждого верного ответа страница сама шлёт это событие -
     // перечитываем прогресс, чтобы бары обновились без перезахода.
     const refreshProgress = () => loadProgress();
     window.addEventListener("sfedu-progress-updated", refreshProgress);
@@ -434,7 +434,7 @@ export default function TrainingPage({ user, onRegister }) {
 
   // Автопереключение после верного ответа: даём время прочитать разбор
   // и переходим к следующему заданию. На последнем задании таймер не
-  // ставим — показывается блок «Урок завершён». Ручной переход (кнопка
+  // ставим - показывается блок «Урок завершён». Ручной переход (кнопка
   // «Следующее задание», дотсы) меняет taskIndex → таймер отменяется,
   // а новый урок сбрасывает taskResult в эффекте выше.
   useEffect(() => {
@@ -454,7 +454,7 @@ export default function TrainingPage({ user, onRegister }) {
     // Единая воронка открытия (эффект по URL, openDueItem): фиксируем,
     // что показываем именно этот модуль, до асинхронной загрузки.
     displayedSlugRef.current = module.slug;
-    // Уходим с сетки — запоминаем её скролл для возврата.
+    // Уходим с сетки - запоминаем её скролл для возврата.
     saveBranchScroll("grid");
 
     try {
@@ -491,7 +491,7 @@ export default function TrainingPage({ user, onRegister }) {
   }, [modules, openModule, requestedModuleSlug, selectedModule?.slug]);
 
   // Стрелка браузера назад: URL вернулся на /training без ?module=,
-  // а состояние ещё держит открытый модуль — сбрасываем как backToModules.
+  // а состояние ещё держит открытый модуль - сбрасываем как backToModules.
   // Заодно сбрасываем displayedSlugRef: раз слага нет в адресе, повторный
   // заход на тот же модуль (вперёд/карточка) должен открывать его заново.
   useEffect(() => {
@@ -508,7 +508,7 @@ export default function TrainingPage({ user, onRegister }) {
 
   const openLesson = useCallback(async (lessonId, opts = {}) => {
     // По умолчанию уходим со списка уроков: запоминаем его скролл.
-    // openDueItem идёт с сетки (контейнер ещё старый) — ему сохранять
+    // openDueItem идёт с сетки (контейнер ещё старый) - ему сохранять
     // "lessons" нельзя, иначе туда запишется чужая позиция.
     if (opts.save !== false) saveBranchScroll("lessons");
     // Новый урок всегда открывается сверху.
@@ -594,7 +594,7 @@ export default function TrainingPage({ user, onRegister }) {
   );
 
   const backToModules = () => {
-    // replace: это действие «назад», а не новый шаг — иначе в истории
+    // replace: это действие «назад», а не новый шаг - иначе в истории
     // останется дубль ?module=x, и стрелка браузера будет открывать
     // модуль заново вместо возврата к списку.
     navigate("/training", { replace: true });
@@ -622,7 +622,7 @@ export default function TrainingPage({ user, onRegister }) {
   };
 
   // Какая ветка смонтирована: сетка модулей, тропинка уроков или урок.
-  // Зависимости loading/lessons/tasks — контент подтягивается асинхронно:
+  // Зависимости loading/lessons/tasks - контент подтягивается асинхронно:
   // восстанавливаем позицию, когда всё уже на месте. Обновления прогресса
   // эти зависимости не трогают, поэтому скролл посреди урока не дёргается.
   const branch = !selectedModule ? "grid" : !lesson ? "lessons" : "lesson";
@@ -635,7 +635,7 @@ export default function TrainingPage({ user, onRegister }) {
 
   // Возврат на сетку модулей: если конь «ушёл» с одного модуля, а вернулся
   // уже при другом текущем (модуль закрыли в уроке, сетка была размонтирована
-  // и прыжок увидеть было негде) — проигрываем пропущенное: мгновенно
+  // и прыжок увидеть было негде) - проигрываем пропущенное: мгновенно
   // встаём на старый узел, затем планирование + прыг на новый.
   useEffect(() => {
     if (branch !== "grid") return;
@@ -670,7 +670,7 @@ export default function TrainingPage({ user, onRegister }) {
   }, [branch, modules.length]);
 
   // Уход с сетки: запоминаем индекс для будущего replay (см. выше).
-  // Читаем живой ref в cleanup — там всегда актуальное значение.
+  // Читаем живой ref в cleanup - там всегда актуальное значение.
   useEffect(() => {
     if (branch !== "grid") return;
     return () => {
@@ -1111,8 +1111,8 @@ export default function TrainingPage({ user, onRegister }) {
                   </strong>
                   <span>
                     {dueItems.length > 0
-                      ? `${formatTaskCount(dueItems.length)} ждут повторения — это займёт пару минут.`
-                      : "Новые задания появятся здесь, когда подойдёт время. Продолжайте курс — прогресс сохраняется."}
+                      ? `${formatTaskCount(dueItems.length)} ждут повторения. Это займёт пару минут.`
+                      : "Новые задания появятся здесь, когда подойдёт время. Продолжайте курс, прогресс сохраняется."}
                   </span>
                 </div>
                 {dueItems.length > 0 ? (

@@ -2,8 +2,8 @@
 
 B2-аудит зафиксировал два правила:
 - `get_training_progress` больше НЕ считает точность по темам (единственный
-  источник совмещённого профиля — build_weakness_profile / /api/learning/weaknesses);
-- `accuracy` отдаётся как None, когда попыток ещё нет (витрина рисует «—»,
+  источник совмещённого профиля - build_weakness_profile / /api/learning/weaknesses);
+- `accuracy` отдаётся как None, когда попыток ещё нет (витрина рисует «-»,
   а не сфабрикованные нули).
 """
 
@@ -33,7 +33,7 @@ class _FakeDB:
     db.scalars(select(TrainingModule)) -> список модулей.
     db.execute(...)                    -> по порядку: задания модулей
     (task_id, lesson_id, module_id), уроки модулей (lesson_id, module_id),
-    попытки пользователя, затем даты попыток паззлов ((created_at,) — для серии).
+    попытки пользователя, затем даты попыток паззлов ((created_at,) - для серии).
     """
 
     def __init__(self, modules, task_rows=(), lesson_rows=(), attempt_rows=(),
@@ -90,7 +90,7 @@ def test_progress_accuracy_is_none_without_attempts():
 
 
 def test_module_completed_only_when_all_tasks_correct():
-    # Задание 100 решено верно, 101 — ни разу. Первый модуль пройден, второй нет.
+    # Задание 100 решено верно, 101 - ни разу. Первый модуль пройден, второй нет.
     result = _progress(attempt_rows=[(100, True, None, 1)])
 
     assert result["modules"]["completed"] == 1
@@ -99,7 +99,7 @@ def test_module_completed_only_when_all_tasks_correct():
 
 
 def test_streak_counts_puzzle_attempt_dates():
-    # Попыток курса нет вообще, но паззлы решались вчера и сегодня —
+    # Попыток курса нет вообще, но паззлы решались вчера и сегодня -
     # серия должна быть 2, а не 0.
     from datetime import datetime, timedelta
 
@@ -117,13 +117,13 @@ def test_streak_counts_puzzle_attempt_dates():
     result = _run(get_training_progress(db, user_id=1))
 
     assert result["streak"] == 2
-    # Счётчики курса при этом не меняются — паззлы влияют только на серию.
+    # Счётчики курса при этом не меняются - паззлы влияют только на серию.
     assert result["attempts"]["total"] == 0
     assert result["modules"]["completed"] == 0
 
 
 def test_streak_starts_at_one_on_registration_day():
-    # В день регистрации визит уже записан, решений ещё нет — серия 1, не 0.
+    # В день регистрации визит уже записан, решений ещё нет - серия 1, не 0.
     from datetime import date
 
     db = _FakeDB(

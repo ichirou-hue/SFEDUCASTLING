@@ -21,7 +21,7 @@ class TestNormalizeEval:
         assert normalize_eval({"type": "cp", "value": -120}) == -120.0
 
     def test_mate_positive(self):
-        # Мат за 2 хода — большое преимущество.
+        # Мат за 2 хода - большое преимущество.
         assert normalize_eval({"type": "mate", "value": 2}) > 9000
 
     def test_mate_negative(self):
@@ -56,5 +56,5 @@ class TestClassify:
         assert classify(float(diff)) == expected
 
     def test_negative_diff_is_best(self):
-        # Ход лучше лучшего — тоже best.
+        # Ход лучше лучшего - тоже best.
         assert classify(-50.0) == "best"

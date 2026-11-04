@@ -41,7 +41,7 @@ def rating_band_for_difficulty(difficulty: int) -> tuple[int, int]:
 
 
 def difficulty_for_rating(rating: int | float | None) -> int:
-    """Стартовая сложность по рейтингу — обратная к rating_band_for_difficulty.
+    """Стартовая сложность по рейтингу - обратная к rating_band_for_difficulty.
 
     Используется, чтобы задать стартовую B2-сложность тем из рейтинга,
     полученного после анкеты/входного теста (вместо нейтральной 2).

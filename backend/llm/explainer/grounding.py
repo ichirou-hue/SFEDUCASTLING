@@ -354,7 +354,7 @@ def _build_gigachess_grounding(
     if development_supported and len(facts) < 5:
         add_fact(f"Ход помогает дальнейшему развитию фигур {mover_side}.")
 
-    # Если ещё есть место — одна конкретная новая атака ИЛИ защита.
+    # Если ещё есть место - одна конкретная новая атака ИЛИ защита.
     # Для critical-event ходов этот слой подавляем: он часто дублирует
     # шах/мат и добавляет лишние сущности.
     if len(facts) < 5 and not has_critical_event:

@@ -55,7 +55,7 @@ export default function RatingBandProgress({ compact = false, userId = null }) {
           <strong>{current.title}</strong>
         </div>
         <div className="rating-band-progress__rating">
-          {progress.rating_available ? progress.rating.toLocaleString("ru-RU") : "—"}
+          {progress.rating_available ? progress.rating.toLocaleString("ru-RU") : "н/д"}
           <small>рейтинг</small>
         </div>
       </div>

@@ -7,11 +7,11 @@ Create Date: 2026-10-07
 - users.role: String(16) из e5f4b3a2c1d0 -> String(32) как в модели;
 - users.rating_scale: String(32) -> String(64) как в модели;
 - users.parental_consent: колонка их assessment-потока, у нас ответ
-  хранится внутри users.onboarding — удаляем (модель её не знает);
+  хранится внутри users.onboarding - удаляем (модель её не знает);
 - ix_training_reviews_user_due: составной индекс из e4a51c7d92f1
   на случай БД, где он не был создан;
 - chat_messages.ts: fb22cbd6384b создаёт Float, модель (Python float)
-  соответствует Double — приводим колонку к Double.
+  соответствует Double - приводим колонку к Double.
 """
 
 from collections.abc import Sequence

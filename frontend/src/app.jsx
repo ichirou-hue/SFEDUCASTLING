@@ -238,7 +238,7 @@ function HomePage({ user, onRegister, onOpenOnboarding }) {
               <span className="home-stats-guest__mark" aria-hidden="true">♞</span>
               <div>
                 <div className="user-profile-kicker">Твой прогресс</div>
-                <h2>Твои партии и рекорды — в одном месте</h2>
+                <h2>Твои партии и рекорды в одном месте</h2>
                 <p>Создай аккаунт, чтобы сохранять результаты и видеть настоящую статистику.</p>
                 <button type="button" className="home-stats-guest__button" onClick={onRegister}>
                   Создать аккаунт <span aria-hidden="true">↗</span>
@@ -260,14 +260,14 @@ export default function App() {
   const [authMode, setAuthMode] = useState("register");
   const [authNotice, setAuthNotice] = useState("");
   const [user, setUser] = useState(null);
-  // Пока не прочитали localStorage, роль неизвестна — нельзя редиректить с /admin.
+  // Пока не прочитали localStorage, роль неизвестна - нельзя редиректить с /admin.
   const [authChecked, setAuthChecked] = useState(false);
   // Анкета открывается автоматически после регистрации/входа, пока не заполнена.
   const [showOnboarding, setShowOnboarding] = useState(false);
   // После анкеты сразу запускаем входной тест на /level-test.
   const [autoStartTest, setAutoStartTest] = useState(false);
   const [gigacoinToast, setGigacoinToast] = useState(null);
-  // Тёмная тема — основная; выбор хранится в localStorage (см. theme.js).
+  // Тёмная тема - основная; выбор хранится в localStorage (см. theme.js).
   const [theme, setTheme] = useState(getStoredTheme);
 
   const handleThemeChange = (nextTheme) => {
@@ -291,7 +291,7 @@ export default function App() {
     if (stored) {
       setUser(stored);
       // Обновляем профиль с сервера: роль могла измениться с прошлого визита.
-      // Ошибка сети не должна разлогинивать — молча оставляем копию из localStorage.
+      // Ошибка сети не должна разлогинивать - молча оставляем копию из localStorage.
       fetchCurrentUser()
         .then((fresh) => {
           if (fresh) setUser(fresh);
@@ -512,7 +512,7 @@ export default function App() {
             !authChecked ? null : isAdmin ? (
               <AdminPage user={user} onUserChange={setUser} />
             ) : (
-              // Гость/ученик не должны видеть админку — уводим в профиль.
+              // Гость/ученик не должны видеть админку - уводим в профиль.
               <Navigate to="/profile" replace />
             )
           }
@@ -534,7 +534,7 @@ export default function App() {
         onDone={(freshUser) => {
           if (freshUser) setUser(freshUser);
           setShowOnboarding(false);
-          // Сразу после анкеты — входной тест (страница сама его запускает).
+          // Сразу после анкеты - входной тест (страница сама его запускает).
           setAutoStartTest(true);
           navigate("/level-test");
         }}

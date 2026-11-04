@@ -99,7 +99,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess, initialMode = "r
 
       // Импортированный профиль сразу привязываем: только привязка внешнего
       // аккаунта даёт стартовую оценку выше ограничения самооценки.
-      // Ошибку не глотаем — показываем её на шаге привязки, аккаунт уже создан.
+      // Ошибку не глотаем - показываем её на шаге привязки, аккаунт уже создан.
       const importedNick = username.trim();
       let linkedNotice = "";
       let linkError = "";
@@ -208,7 +208,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess, initialMode = "r
               </div>
               <h2 className="auth-title">Аккаунт создан</h2>
               <p className="auth-subtitle">
-                Привяжите шахматный профиль — это необязательно. Подтверждённый
+                Привяжите шахматный профиль. Это необязательно. Подтверждённый
                 рейтинг Lichess или Chess.com используется для стартовой оценки.
               </p>
             </div>
@@ -266,7 +266,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess, initialMode = "r
           ✕
         </button>
 
-        {/* Левая панель — бренд и импорт профиля */}
+        {/* Левая панель - бренд и импорт профиля */}
         <div className="auth-side auth-side--brand">
           <div className="auth-brand">
             <span className="auth-brand-icon">♛</span>
@@ -371,7 +371,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess, initialMode = "r
           )}
         </div>
 
-        {/* Правая панель — форма */}
+        {/* Правая панель - форма */}
         <div className="auth-side auth-side--form">
           <div className="auth-fields">
             <label className="auth-label">

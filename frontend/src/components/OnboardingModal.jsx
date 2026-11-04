@@ -10,7 +10,7 @@ import "./OnboardingModal.css";
 import ChessAccountVerificationPanel from "./ChessAccountVerificationPanel.jsx";
 
 // Дословно из «Анкеты оценки уровня игры», раздел 1 / приложение Д.1.
-// Ключи — те же коды, что уходит на бэкенд (тексты могут меняться, коды — нет).
+// Ключи - те же коды, что уходит на бэкенд (тексты могут меняться, коды - нет).
 
 const Q1 = [
   ["never", "Никогда"],
@@ -61,8 +61,8 @@ const Q8 = [
 
 const INITIAL = {
   q1: null,
-  // Q2 — только привязка: платформа и логин для поиска профиля.
-  // Рейтинг и тип контроля в форму не вводятся — берутся из проверенной
+  // Q2 - только привязка: платформа и логин для поиска профиля.
+  // Рейтинг и тип контроля в форму не вводятся - берутся из проверенной
   // привязки в submit. Руками присвоенный рейтинг изменить нельзя.
   q2: { platform: "lichess", login: "" },
   useQ2: false,
@@ -102,7 +102,7 @@ export default function OnboardingModal({ isOpen, onClose, onDone }) {
   const [submitting, setSubmitting] = useState(false);
   // Мягкая привязка внешнего аккаунта (Q2): ищет публичный профиль через
   // POST /api/chess-profile/link и подставляет проверенный рейтинг в форму.
-  // Непривязанная отправка по-прежнему допустима — рейтинг тогда идёт на веру.
+  // Непривязанная отправка по-прежнему допустима - рейтинг тогда идёт на веру.
   const [linking, setLinking] = useState(false);
   const [linkError, setLinkError] = useState("");
   const [linked, setLinked] = useState(null);
@@ -135,7 +135,7 @@ export default function OnboardingModal({ isOpen, onClose, onDone }) {
     };
   }, [isOpen]);
 
-  // Хуки перетаскивания Q5 — строго до раннего return ниже:
+  // Хуки перетаскивания Q5 - строго до раннего return ниже:
   // условные хуки ломают порядок вызовов React и роняют модалку.
   const rankRowRefs = useRef({});
   const flipFromRef = useRef(null);
@@ -216,7 +216,7 @@ export default function OnboardingModal({ isOpen, onClose, onDone }) {
       return { ...prev, q5: next };
     });
 
-  // Замер Y-координат строк Q5 до перестановки; сама FLIP-анимация —
+  // Замер Y-координат строк Q5 до перестановки; сама FLIP-анимация -
   // в эффекте выше (хуки обязаны стоять до раннего return).
   const measureRankFlip = () => {
     const from = {};
@@ -257,7 +257,7 @@ export default function OnboardingModal({ isOpen, onClose, onDone }) {
     if (!a.q1) return "Ответьте на вопрос 1";
     if (a.useQ2 && !a.q2.login.trim())
       return "Укажите логин на платформе или снимите галочку «Есть аккаунт»";
-    // Q2 — только через привязку: рейтинг всегда проверенный, руками не вводится.
+    // Q2 - только через привязку: рейтинг всегда проверенный, руками не вводится.
     if (a.useQ2 && !linked?.account)
       return "Привяжите аккаунт кнопкой «Найти и привязать аккаунт» или снимите галочку «Есть аккаунт»";
     if (!a.q3.length) return "Выберите хотя бы один ответ на вопрос 3";
@@ -279,9 +279,9 @@ export default function OnboardingModal({ isOpen, onClose, onDone }) {
     setSubmitting(true);
     setError("");
     try {
-      // Q2 собирается только из проверенной привязки: логин — канонический
-      // с платформы, рейтинг и тип контроля — из профиля. Руками рейтинг
-      // не вводится. Нет рейтинга в профиле — шлём null, бэкенд откатится к Q1.
+      // Q2 собирается только из проверенной привязки: логин - канонический
+      // с платформы, рейтинг и тип контроля - из профиля. Руками рейтинг
+      // не вводится. Нет рейтинга в профиле - шлём null, бэкенд откатится к Q1.
       const linkedAccount = linked?.account || {};
       const verifiedTimeControl = ["blitz", "rapid", "bullet"].includes(
         linkedAccount.rating_type,

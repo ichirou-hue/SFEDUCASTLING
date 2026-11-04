@@ -18,7 +18,7 @@ START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
 
 # ============================
-# game.py — промоция, шах, пат, Stockfish ход
+# game.py - промоция, шах, пат, Stockfish ход
 # ============================
 
 class TestGamePromotionAndStatus:
@@ -35,7 +35,7 @@ class TestGamePromotionAndStatus:
         assert "e8=N" in data.get("san", "")
 
     def test_move_to_check(self):
-        """Bxf7+ — ставим шах."""
+        """Bxf7+ - ставим шах."""
         fen = "r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 3"
         resp = client.post("/api/move", json={
             "fen": fen, "from_sq": "c4", "to_sq": "f7"
@@ -76,7 +76,7 @@ class TestGamePromotionAndStatus:
 
 
 # ============================
-# analysis.py — с моками Stockfish
+# analysis.py - с моками Stockfish
 # ============================
 
 class MockResponse:
@@ -148,7 +148,7 @@ class TestAnalysisWithMocks:
 
 
 # ============================
-# knowledge.py — с загруженной базой знаний
+# knowledge.py - с загруженной базой знаний
 # ============================
 
 TEST_OPENINGS = {
@@ -205,7 +205,7 @@ class TestKnowledgeLoaded:
 
 
 # ============================
-# data.py — save-move success и PGN-обработка
+# data.py - save-move success и PGN-обработка
 # ============================
 
 class TestDataSaveSuccess:
@@ -256,7 +256,7 @@ class TestDataSaveSuccess:
 
 
 # ============================
-# vision.py — с моком LLaVA
+# vision.py - с моком LLaVA
 # ============================
 
 class TestVisionSuccess:
@@ -298,7 +298,7 @@ class TestVisionSuccess:
 
 
 # ============================
-# state.py — success-пути и get_opening_info
+# state.py - success-пути и get_opening_info
 # ============================
 
 class TestStateSuccess:
@@ -325,7 +325,7 @@ class TestStateSuccess:
         st.manager._stockfish_loaded = False
 
     def test_load_llava_disabled(self):
-        """LLaVA отключена — сразу возвращает False."""
+        """LLaVA отключена - сразу возвращает False."""
         result = st.load_llava()
         assert result is False
         assert st.llava_model is None
@@ -382,7 +382,7 @@ class TestStateSuccess:
 
 
 # ============================
-# app.py — serve_index
+# app.py - serve_index
 # ============================
 
 class TestAppCoverage:

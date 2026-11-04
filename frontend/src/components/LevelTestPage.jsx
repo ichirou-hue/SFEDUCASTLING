@@ -174,7 +174,7 @@ export default function LevelTestPage({ onCompleted = null, autoStart = false, o
       onAutoStartHandled?.();
       beginTest();
     }
-    // beginTest пересоздаётся на каждый рендер — защищаемся ref'ом от повтора.
+    // beginTest пересоздаётся на каждый рендер - защищаемся ref'ом от повтора.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoStart, phase]);
 

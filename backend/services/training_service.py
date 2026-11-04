@@ -143,7 +143,7 @@ async def save_attempt(
 def _current_streak(activity_dates: set, today=None) -> int:
     """Возвращает текущую серию дней с активностью или визитом.
 
-    ``activity_dates`` — объединение дат учебных попыток и дней визитов
+    ``activity_dates`` - объединение дат учебных попыток и дней визитов
     (см. ``get_training_progress``). Серия не обнуляется утром нового дня:
     если сегодня попыток ещё не было, но активность/визит были вчера,
     отсчёт продолжается от вчерашней даты.
@@ -174,14 +174,14 @@ async def get_training_progress(db: AsyncSession, user_id: int) -> dict:
     Accuracy считается по всем строкам training_attempts, включая повторы.
 
     Помимо итогов, ответ несёт разбивку ``modules.items``: по каждому
-    модулю — счётчики заданий и список уроков. Она нужна фронту для
+    модулю - счётчики заданий и список уроков. Она нужна фронту для
     прогресс-баров на карточках модулей и для отметки решённых заданий
     в списке уроков. Разбивка лежит внутри ``modules``, а не на верхнем
     уровне: контракт /api/training/progress фиксирует ровно три ключа
-    (modules, attempts, streak) — см. test_training_progress_contract.
+    (modules, attempts, streak) - см. test_training_progress_contract.
 
     Точность по темам курса здесь НЕ считается: единственный источник
-    совмещённого профиля (training + puzzles) — build_weakness_profile,
+    совмещённого профиля (training + puzzles) - build_weakness_profile,
     который отдаётся `/api/learning/weaknesses`. Он же питает адаптивный
     подбор и B2, поэтому виджет показывает те же цифры, что используют
     алгоритмы, а не независимый расчёт по одному треку.
@@ -268,8 +268,8 @@ async def get_training_progress(db: AsyncSession, user_id: int) -> dict:
         if created_at is not None:
             activity_dates.add(created_at.date())
 
-    # Серия — по обоим трекам: в неё идут и задания курса, и паззлы.
-    # У паззлов нет флага enabled — берём все попытки пользователя.
+    # Серия - по обоим трекам: в неё идут и задания курса, и паззлы.
+    # У паззлов нет флага enabled - берём все попытки пользователя.
     puzzle_date_rows = (
         await db.execute(
             select(PuzzleAttempt.created_at).where(
@@ -325,7 +325,7 @@ async def get_training_progress(db: AsyncSession, user_id: int) -> dict:
                         if lesson_total
                         else 0.0
                     ),
-                    # ID решённых заданий — фронт по ним красит «прогресс-дотсы»
+                    # ID решённых заданий - фронт по ним красит «прогресс-дотсы»
                     # в списке заданий урока и переживает перезаход.
                     "solved_task_ids": sorted(solved_ids),
                 }

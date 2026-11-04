@@ -48,7 +48,7 @@ async def _upsert_lesson(session, module: TrainingModule, data: dict) -> Trainin
 
     if lesson is None:
         # Переезд при слиянии модулей: урок с таким slug уже может лежать
-        # в другом (старом) модуле. Переносим его с сохранением id —
+        # в другом (старом) модуле. Переносим его с сохранением id -
         # иначе оборвутся training_attempts и сбросится прогресс.
         lesson = await session.scalar(
             select(TrainingLesson).where(

@@ -31,10 +31,10 @@ def normalize_eval(eval_dict: dict[str, Any] | None) -> float:
 
     Args:
         eval_dict: Словарь вида ``{"type": "cp", "value": 35}`` или
-            ``{"type": "mate", "value": 2}`` (знак — от лица ходящей стороны).
+            ``{"type": "mate", "value": 2}`` (знак - от лица ходящей стороны).
 
     Returns:
-        Оценка в cp: положительная — преимущество ходящего.
+        Оценка в cp: положительная - преимущество ходящего.
     """
     if not eval_dict:
         return 0.0

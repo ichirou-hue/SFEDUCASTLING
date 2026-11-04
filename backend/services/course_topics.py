@@ -92,7 +92,7 @@ COURSE_TOPIC_PUZZLE_THEMES: dict[str, set[str]] = {
 # Раньше модули назывались по фигурам, и пазл относился к такому модулю,
 # только если эта фигура реально ходила в решении. После слияния модулей
 # (10 -> 5) профильных фигур у тем больше нет: тактики выделены в tactics,
-# пешечные окончания — в pieces/endgames. Словарь оставлен пустым намеренно:
+# пешечные окончания - в pieces/endgames. Словарь оставлен пустым намеренно:
 # _module_piece_ok возвращает True, когда символа нет.
 PIECE_BY_MODULE: dict[str, str] = {}
 
@@ -247,11 +247,11 @@ def primary_course_topic_for_puzzle(puzzle: dict | None) -> str | None:
         if theme not in themes:
             continue
         if not _theme_piece_ok(puzzle, {theme}):
-            # Тема называет фигуру, которой в решении нет — пропускаем её.
+            # Тема называет фигуру, которой в решении нет - пропускаем её.
             continue
         if not _module_piece_ok(puzzle, slug):
             # Тема совпала, но профильная фигура модуля не участвует в
-            # решении — пробуем следующую подходящую тему.
+            # решении - пробуем следующую подходящую тему.
             continue
         return slug
     return None

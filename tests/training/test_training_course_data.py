@@ -6,7 +6,7 @@ from backend.services.training_course_data import LESSONS_BY_MODULE, MODULES
 
 @pytest.mark.parametrize("module", MODULES, ids=lambda item: item["slug"])
 def test_every_module_has_lessons(module):
-    # Disabled-модуль — заявленный плейсхолдер будущего контента
+    # Disabled-модуль - заявленный плейсхолдер будущего контента
     # (tactics): уроков может не быть, открываться он не должен.
     if not module["enabled"]:
         return

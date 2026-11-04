@@ -3,9 +3,9 @@
 Использование (из корня проекта, с активированным venv):
     python -m scripts.create_admin <login> <password> [--email me@example.com]
 
-Если логин уже существует — пользователь повышается до админа
+Если логин уже существует - пользователь повышается до админа
 (role='admin'), пароль НЕ меняется. Для смены пароля используйте --set-password.
-Единственный источник истины о правах — колонка users.role.
+Единственный источник истины о правах - колонка users.role.
 """
 
 import argparse
@@ -51,7 +51,7 @@ def main() -> int:
         "password",
         nargs="?",
         default=None,
-        help="пароль (если не указан — спросит скрытым вводом)",
+        help="пароль (если не указан - спросит скрытым вводом)",
     )
     parser.add_argument("--email", default=None, help="email (необязательно)")
     parser.add_argument(
