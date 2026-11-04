@@ -13,6 +13,7 @@ from backend.models.training_task import TrainingTask
 from backend.models.user import User
 from backend.services.local_time import local_today, to_local_date
 from backend.services.training_checker import TrainingCheckResult
+from backend.services.training_course_data import LEVEL_LABELS
 
 # Сколько РАЗНЫХ задач нужно решить за день, чтобы день считался занятием
 # и продлевал серию дней. Повторное решение той же задачи не считается.
@@ -49,6 +50,7 @@ async def list_modules(db: AsyncSession) -> list[dict]:
                 "description": module.description,
                 "sort_order": module.sort_order,
                 "enabled": module.enabled,
+                "level_label": LEVEL_LABELS.get(module.slug),
                 "lesson_count": int(lesson_count or 0),
                 "task_count": int(task_count or 0),
             }
@@ -147,7 +149,7 @@ async def save_attempt(
 def _current_streak(activity_dates: set, today=None) -> int:
     """Возвращает текущую серию дней занятий.
 
-    ``activity_dates`` — только дни, которые считаются занятием: в них решено
+    ``activity_dates`` - только дни, которые считаются занятием: в них решено
     минимум ``PUZZLES_PER_ACTIVE_DAY`` разных задач или выполнено задание
     модуля курса (см. ``get_training_progress``). Простой заход на сайт
     серию не продлевает.
@@ -182,14 +184,14 @@ async def get_training_progress(db: AsyncSession, user_id: int) -> dict:
     Accuracy считается по всем строкам training_attempts, включая повторы.
 
     Помимо итогов, ответ несёт разбивку ``modules.items``: по каждому
-    модулю — счётчики заданий и список уроков. Она нужна фронту для
+    модулю - счётчики заданий и список уроков. Она нужна фронту для
     прогресс-баров на карточках модулей и для отметки решённых заданий
     в списке уроков. Разбивка лежит внутри ``modules``, а не на верхнем
     уровне: контракт /api/training/progress фиксирует ровно три ключа
-    (modules, attempts, streak) — см. test_training_progress_contract.
+    (modules, attempts, streak) - см. test_training_progress_contract.
 
     Точность по темам курса здесь НЕ считается: единственный источник
-    совмещённого профиля (training + puzzles) — build_weakness_profile,
+    совмещённого профиля (training + puzzles) - build_weakness_profile,
     который отдаётся `/api/learning/weaknesses`. Он же питает адаптивный
     подбор и B2, поэтому виджет показывает те же цифры, что используют
     алгоритмы, а не независимый расчёт по одному треку.
@@ -280,9 +282,9 @@ async def get_training_progress(db: AsyncSession, user_id: int) -> dict:
         if created_at is not None:
             activity_dates.add(to_local_date(created_at))
 
-    # Паззлы: день занятий — не меньше трёх РАЗНЫХ верно решённых задач.
+    # Паззлы: день занятий - не меньше трёх РАЗНЫХ верно решённых задач.
     # Повторное решение той же задачи прогресс дня не увеличивает.
-    # У паззлов нет флага enabled — берём все попытки пользователя.
+    # У паззлов нет флага enabled - берём все попытки пользователя.
     puzzle_rows = (
         await db.execute(
             select(
@@ -330,7 +332,7 @@ async def get_training_progress(db: AsyncSession, user_id: int) -> dict:
                         if lesson_total
                         else 0.0
                     ),
-                    # ID решённых заданий — фронт по ним красит «прогресс-дотсы»
+                    # ID решённых заданий - фронт по ним красит «прогресс-дотсы»
                     # в списке заданий урока и переживает перезаход.
                     "solved_task_ids": sorted(solved_ids),
                 }

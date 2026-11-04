@@ -169,6 +169,14 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
   const [searchParams] = useSearchParams();
   const requestedTopicSlug = searchParams.get("topic");
   const requestedTopic = getCourseTopicMeta(requestedTopicSlug);
+  /*
+   * Тема из адреса - источник истины для сервера. Если метаданных для неё
+   * ещё нет (новая или устаревшая ссылка), всё равно передаём slug в API:
+   * раньше такой slug молча отбрасывался и вместо темы падала случайная
+   * подборка (например, «мат в 2 хода»).
+   */
+  const requestedTopicParam =
+    requestedTopic?.slug || (requestedTopicSlug ? requestedTopicSlug.trim() : null);
   const explicitAdaptiveMode = searchParams.get("adaptive") === "1";
   const allPuzzlesMode = searchParams.get("mode") === "all";
   const ratingMinParam = searchParams.get("rating_min");
@@ -222,6 +230,20 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
       return 0;
     }
   });
+
+  /*
+   * Профиль приходит с сервера асинхронно: в localStorage может лежать
+   * старая копия без puzzle_streak, и тогда до первой решённой задачи
+   * серия показывалась нулём. Как только свежий user.puzzle_streak
+   * пришёл, сразу показываем серверное значение.
+   */
+  useEffect(() => {
+    const serverStreak = Number(user?.puzzle_streak);
+    if (Number.isFinite(serverStreak)) {
+      setStreak(serverStreak);
+      setBestStreak((best) => Math.max(best, serverStreak));
+    }
+  }, [user?.puzzle_streak]);
 
   const persistPuzzleStreak = (nextStreak, nextBestStreak) => {
     try {
@@ -409,6 +431,10 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
   // Уникальные задачи, решённые за текущую загрузку страницы. Повторное
   // решение той же задачи не приближает пробный лимит.
   const solvedPuzzleIdsRef = useRef(new Set());
+  // Задачи, в которых пользователь подсмотрел подсказку или решение.
+  // Такая задача не засчитывается в серию, даже если после этого
+  // дорешать её самому.
+  const revealedPuzzleIdsRef = useRef(new Set());
   const loadSeqRef = useRef(0);
 
   useEffect(() => {
@@ -418,10 +444,10 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
   useEffect(() => {
     // Замеряем только готовую раскладку: на экране загрузки её нет
     // в DOM (другая ветка), querySelector вернул бы null и размер
-    // посчитался бы от окна — с переполнением и без пересчёта.
+    // посчитался бы от окна - с переполнением и без пересчёта.
     if (loading) return;
     const updateSize = () => {
-      // Ширина — по формуле от окна (колонки грида фиксированы).
+      // Ширина - по формуле от окна (колонки грида фиксированы).
       // Свёрнутый чат занимает 48px полосы + 24px отступа, остальное
       // достаётся доске (см. .puzzles-layout--chat-collapsed).
       const isMobile = window.matchMedia("(max-width: 760px)").matches;
@@ -432,7 +458,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
       const availW = isMobile
         ? (layoutEl?.clientWidth || window.innerWidth) - hGaps
         : window.innerWidth - infoW - chatReserve - hGaps;
-      // Высота — видимая область страницы (без топбара и футера), а не
+      // Высота - видимая область страницы (без топбара и футера), а не
       // высота самой раскладки: она теперь растягивается по содержимому,
       // и замер её clientHeight дал бы петлю (доска растит саму себя).
       const belowBoard = 175;
@@ -516,16 +542,14 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
     setLoading(true);
     setError(null);
     setSolvedCount(0);
-    // Новый набор задач - серия начинается заново.
-    setStreak(0);
-    setBestStreak(0);
     solvedPuzzleIdsRef.current = new Set();
+    revealedPuzzleIdsRef.current = new Set();
     setAdaptiveMeta(null);
     setPreviewInfo(null);
 
     const request = adaptiveMode
       ? fetchAdaptivePuzzles(20)
-      : fetchPuzzles(20, requestedTopic?.slug || null, ratingMin);
+      : fetchPuzzles(20, requestedTopicParam || null, ratingMin);
 
     request
       .then((data) => {
@@ -548,8 +572,10 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
             setError(
               adaptiveMode
                 ? "Пока не удалось подобрать персональную тренировку."
-                : requestedTopic
-                  ? `Для темы «${requestedTopic.title}» пока нет доступных пазлов.`
+                : requestedTopicParam
+                  ? `Для темы «${
+                      requestedTopic?.title || requestedTopicParam
+                    }» пока нет доступных пазлов.`
                   : ratingMin != null
                     ? `Пока нет доступных пазлов с рейтингом от ${ratingMin}.`
                     : "Нет доступных задач",
@@ -579,7 +605,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
     return () => {
       cancelled = true;
     };
-  }, [adaptiveMode, ratingMin, requestedTopic?.slug, requestedTopic?.title]);
+  }, [adaptiveMode, ratingMin, requestedTopicParam, requestedTopic?.title]);
 
   useEffect(() => {
     if (puzzles.length > 0 && puzzles[currentIndex]) {
@@ -591,7 +617,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
   const themeInfo = currentPuzzle
     ? getThemeInfo(currentPuzzle)
     : { key: null, label: "Тактика", icon: "♟" };
-  // Сторона, за которую нужно найти ходы, — это очередь хода из FEN
+  // Сторона, за которую нужно найти ходы, - это очередь хода из FEN
   // (в lichess-паззлах игрок всегда ходит первым). boardOrientation
   // выставляется по тому же признаку в loadPuzzle.
   const sideToMove = currentPuzzle?.fen?.split(" ")?.[1] === "b" ? "b" : "w";
@@ -618,10 +644,10 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
     Boolean(previewInfo) && (previewInfo.locked || previewGate);
 
   // Гейт анкеты показываем на последнем ходу ТРЕТЬЕЙ решённой за сегодня
-  // задачи, а не на последней задаче в списке. previewInfo.remaining —
+  // задачи, а не на последней задаче в списке. previewInfo.remaining -
   // сколько ещё можно решить сегодня с учётом прошлых заходов, поэтому
   // в этой сессии гейт включается после (remaining - 1) новых решений.
-  // Какую именно из оставшихся задач пользователь решит третьей — не важно.
+  // Какую именно из оставшихся задач пользователь решит третьей - не важно.
   const previewGateAfterSolved = previewInfo
     ? Math.max(0, previewInfo.remaining - 1)
     : null;
@@ -632,9 +658,9 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
     solvedCount >= previewGateAfterSolved &&
     !(currentPuzzle?.id && solvedPuzzleIdsRef.current.has(currentPuzzle.id));
 
-  // «Позже» в пробном гейте: если задача на доске есть — просто закрываем
+  // «Позже» в пробном гейте: если задача на доске есть - просто закрываем
   // напоминание, доска остаётся на последнем ходу без сделанного хода.
-  // Если задач нет (дневной лимит выбран на загрузке) — уходим на главную.
+  // Если задач нет (дневной лимит выбран на загрузке) - уходим на главную.
   const handlePreviewLater = useCallback(() => {
     if (puzzlesRef.current.length > 0) {
       setPreviewGate(false);
@@ -667,9 +693,37 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
     [currentPuzzle?.id, bestStreak],
   );
 
+  /*
+   * Подсказка и показ решения - это подсматривание: задача больше не
+   * засчитывается в серию, а попытка сохраняется как ошибочная. Иначе
+   * можно было посмотреть решение, повторить ходы и получить +1 к серии.
+   *
+   * Возвращает длину прерванной серии или null, если подсматривание
+   * уже было учтено (повторный клик не должен слать попытку ещё раз).
+   */
+  const markPuzzleRevealed = () => {
+    const puzzleId = currentPuzzle?.id;
+    if (!puzzleId || revealedPuzzleIdsRef.current.has(puzzleId)) return null;
+    // Уже решённую задачу подсматривать бессмысленно, а наказывать
+    // за клик после решения нельзя.
+    if (puzzleSolved || solvedPuzzleIdsRef.current.has(puzzleId)) return null;
+    revealedPuzzleIdsRef.current.add(puzzleId);
+
+    const previousStreak = streak;
+    persistPuzzleStreak(0, bestStreak);
+    setStreak(0);
+    savePuzzleProgress(false);
+    return previousStreak;
+  };
+
   const handleMove = useCallback(
     (sourceSquare, targetSquare) => {
       if (waitingForOpponent || showSolution || showRegGate || previewGate) return false;
+
+      // Сейчас очередь хода соперника: его ответ ставит таймер на 400 мс.
+      // Быстрый клик в это окно раньше попадал в ветку «неверный ход» и
+      // записывался как ошибка, хотя игрок ещё не мог ошибиться.
+      if (solutionIndexRef.current % 2 !== 0) return false;
 
       const expectedMove = solutionMovesRef.current[solutionIndexRef.current];
       if (!expectedMove) return false;
@@ -711,6 +765,18 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
         setMovesLeft(Math.ceil(remaining / 2));
 
         if (solutionIndexRef.current >= totalMoves) {
+          // Задачу смотрели в решении или с подсказкой - она не идёт
+          // в серию и не считается решённой.
+          if (
+            currentPuzzle?.id &&
+            revealedPuzzleIdsRef.current.has(currentPuzzle.id)
+          ) {
+            setResultMessage({
+              type: "hint",
+              text: "Правильно! Но задача была с подсказкой, поэтому в серию не засчитана.",
+            });
+            return true;
+          }
           setResultMessage({ type: "success", text: "Правильно! Задача решена!" });
           if (currentPuzzle?.id) {
             solvedPuzzleIdsRef.current.add(currentPuzzle.id);
@@ -729,7 +795,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
         }
 
         // Предпоследний ход игрока сделан (остался ответ соперника и финальный
-        // ход) — незарегистрированный обязан зарегистрироваться, дальше нельзя.
+        // ход) - незарегистрированный обязан зарегистрироваться, дальше нельзя.
         if (remaining === 2 && !user) setRegGate(true);
 
         if (
@@ -766,6 +832,18 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
 
         return true;
       }
+
+      // Клик по доске или бросок на недопустимую клетку - это не ход и не
+      // ошибка. Раньше любое такое действие писало «ошибку» и обнуляло
+      // серию, хотя задачу пользователь не проваливал: достаточно было
+      // кликнуть мимо при выбранной фигуре.
+      const boardGame = gameRef.current;
+      const isLegalAttempt =
+        Boolean(sourceSquare && targetSquare && boardGame) &&
+        boardGame
+          .moves({ square: sourceSquare, verbose: true })
+          .some((legalMove) => legalMove.to === targetSquare);
+      if (!isLegalAttempt) return false;
 
       // Ошибка рвёт серию: счётчик обнуляется, а если серия была,
       // сообщаем об этом в сообщении над кнопками.
@@ -842,9 +920,15 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
     const game = new Chess(currentPuzzle.fen);
     const moves = solutionMovesRef.current;
 
+    const previousStreak = markPuzzleRevealed();
     setShowSolution(true);
-    setResultMessage(null);
     setHintArrow(null);
+    setResultMessage({
+      type: "error",
+      text: previousStreak
+        ? `Решение показано: серия из ${previousStreak} прервана, задача не засчитана.`
+        : "Решение показано: задача не засчитана в серию.",
+    });
 
     let i = 0;
     const playNext = () => {
@@ -875,12 +959,15 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
 
     const from = nextUci.substring(0, 2);
     const to = nextUci.substring(2, 4);
+    const previousStreak = markPuzzleRevealed();
 
     setHintArrow({ from, to });
     setBoardArrows([[from, to, "rgba(0, 150, 50, 0.85)"]]);
     setResultMessage({
       type: "hint",
-      text: `Подсказка: попробуйте ход с ${from} на ${to}`,
+      text: previousStreak
+        ? `Подсказка: попробуйте ход с ${from} на ${to}. Серия из ${previousStreak} прервана, задача не будет засчитана.`
+        : `Подсказка: попробуйте ход с ${from} на ${to}.`,
     });
   };
 
@@ -892,7 +979,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
 
   // Автопереключение после решения: даём полюбоваться оверлеем «Задача
   // решена!» и переходим к следующей. На последней задаче таймер не
-  // ставим — оверлей остаётся, пользователь решает сам. Ручное навигирование
+  // ставим - оверлей остаётся, пользователь решает сам. Ручное навигирование
   // (кнопки «→»/«←») меняет currentIndex → таймер отменяется, а новая
   // задача сбрасывает puzzleSolved в loadPuzzle.
   useEffect(() => {
@@ -946,7 +1033,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
 
   const customSquareStyles = {};
 
-  // Подсветка последнего хода — базовая. Точки возможных ходов накладываем
+  // Подсветка последнего хода - базовая. Точки возможных ходов накладываем
   // поверх неё, иначе клетка, совпавшая с ходом соперника, теряет точку.
   if (lastMove) {
     customSquareStyles[lastMove.from] = {
@@ -1068,7 +1155,6 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
               рекорд сессии: {bestStreak}
             </div>
           )}
-          <div className="puzzle-streak-rewards">Награды за серию: 5 · +3, 10 · +5, 20 · +10, 30 · +15 GigaCoin</div>
         </div>
 
         {adaptiveMode && hasRealProfile && (
@@ -1105,11 +1191,12 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
           </div>
         )}
 
-        {!adaptiveMode && requestedTopic && (
+        {!adaptiveMode && requestedTopicParam && (
           <div className="learning-topic-filter">
             Практика по теме
             <strong>
-              {requestedTopic.icon} {requestedTopic.title}
+              {requestedTopic?.icon || "♟"}{" "}
+              {requestedTopic?.title || requestedTopicParam}
             </strong>
             <button type="button" onClick={() => navigate("/puzzles?mode=all")}>
               Показать все пазлы

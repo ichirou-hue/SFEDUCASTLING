@@ -1,16 +1,17 @@
 import { Chess } from "chess.js";
 
 export const COURSE_TOPIC_META = {
-  pieces: { title: "Фигуры: ходы и взятия", icon: "♟" },
-  "king-safety": { title: "Шах, мат и безопасность короля", icon: "♚" },
+  pieces: { title: "Шахматная азбука", icon: "♟" },
+  "king-safety": { title: "Мат - как цель игры", icon: "♚" },
   endgames: { title: "Эндшпиль", icon: "♔" },
   tactics: { title: "Тактические приёмы", icon: "♞" },
-  openings: { title: "Дебюты", icon: "♜" },
+  openings: { title: "Дебют", icon: "♜" },
+  middlegame: { title: "Миттельшпиль: стратегия", icon: "♛" },
 };
 
 // Раньше модули назывались по фигурам и пазл относился к модулю, только
 // если фигура реально ходила в решении. После слияния модулей (10 -> 5)
-// профильных фигур у тем нет — словарь пуст, modulePieceOk всегда true.
+// профильных фигур у тем нет - словарь пуст, modulePieceOk всегда true.
 const PIECE_BY_MODULE = {};
 
 function fenHasPiece(fen, symbol) {
