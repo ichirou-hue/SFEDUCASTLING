@@ -28,7 +28,7 @@ const STATUS = {
 };
 
 function dateTime(value) {
-  if (!value) return "—";
+  if (!value) return "-";
   try {
     return new Intl.DateTimeFormat("ru-RU", {
       dateStyle: "medium",

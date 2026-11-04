@@ -131,7 +131,8 @@ function getThemeInfo(puzzle) {
 }
 
 function escapeHtml(str) {
-  return str
+  return String(str ?? "")
+    .replace(/[\u2012\u2013\u2014\u2015]/g, "-")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
@@ -193,6 +194,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
   const [boardWidth, setBoardWidth] = useState(520);
 
   const [fen, setFen] = useState("");
+  const [pendingPromotion, setPendingPromotion] = useState(null);
   const [lastMove, setLastMove] = useState(null);
   const [selectedSquare, setSelectedSquare] = useState(null);
   const [legalMovesForSelected, setLegalMovesForSelected] = useState([]);
@@ -206,7 +208,6 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
    * при переходе в другой раздел. Неверный ход по-прежнему прерывает её.
    */
   const [streak, setStreak] = useState(() => {
-    if (Number.isFinite(Number(user?.puzzle_streak))) return Number(user.puzzle_streak);
     try {
       const saved = Number(sessionStorage.getItem("gigachess:puzzle-streak") || 0);
       return Number.isFinite(saved) && saved > 0 ? saved : 0;
@@ -277,6 +278,32 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
   // пока колонки ещё едут.
   const boardColTargetRef = useRef(0);
 
+  useLayoutEffect(() => {
+    const layout = layoutRef.current;
+    const boardSection = layout?.querySelector(".puzzle-board-section");
+    const board = boardSection?.querySelector(".puzzle-board-wrapper");
+    const controls = boardSection?.querySelector(".puzzle-controls");
+
+    if (!layout || !boardSection || !board || !controls) return undefined;
+
+    const measureRow = () => {
+      const boardHeight = board.getBoundingClientRect().height;
+      const controlsHeight = controls.getBoundingClientRect().height;
+      const gap = parseFloat(getComputedStyle(boardSection).rowGap) || 0;
+      layout.style.setProperty(
+        "--puzzle-board-row-height",
+        `${Math.ceil(boardHeight + controlsHeight + gap)}px`,
+      );
+    };
+
+    measureRow();
+    const observer = new ResizeObserver(measureRow);
+    observer.observe(board);
+    observer.observe(controls);
+
+    return () => observer.disconnect();
+  }, [loading, boardWidth]);
+
   useEffect(() => {
     const layout = layoutRef.current;
     const chat = chatPanelRef.current;
@@ -329,18 +356,18 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
        и анимировать ширину нечего: состояние переключается сразу. */
     if (
       typeof window.matchMedia === "function" &&
-      window.matchMedia("(max-width: 1150px)").matches
+      window.matchMedia("(max-width: 1450px)").matches
     ) {
       interruptedColRef.current = 0;
       return undefined;
     }
 
     const targetCol = chatCollapsed
-      ? 72
-      : chat.getBoundingClientRect().width + 24;
+      ? 48
+      : chat.getBoundingClientRect().width;
     const fromCol =
       interruptedColRef.current ||
-      (chatCollapsed ? naturalColRef.current : 72);
+      (chatCollapsed ? naturalColRef.current : 48);
 
     interruptedColRef.current = 0;
 
@@ -382,7 +409,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
       layout.classList.add("puzzles-layout--chat-reveal");
 
       if (!chatCollapsed) {
-        naturalColRef.current = chat.getBoundingClientRect().width + 24;
+        naturalColRef.current = chat.getBoundingClientRect().width;
       }
 
       window.setTimeout(() => {
@@ -394,7 +421,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
 
     return () => {
       if (animation.playState === "running") {
-        interruptedColRef.current = chat.getBoundingClientRect().width + 24;
+        interruptedColRef.current = chat.getBoundingClientRect().width;
       }
 
       animation.cancel();
@@ -487,6 +514,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
       const game = new Chess(puzzle.fen);
       gameRef.current = game;
       setFen(game.fen());
+      setPendingPromotion(null);
       setSelectedSquare(null);
       setLegalMovesForSelected([]);
       setWaitingForOpponent(false);
@@ -516,9 +544,6 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
     setLoading(true);
     setError(null);
     setSolvedCount(0);
-    // Новый набор задач - серия начинается заново.
-    setStreak(0);
-    setBestStreak(0);
     solvedPuzzleIdsRef.current = new Set();
     setAdaptiveMeta(null);
     setPreviewInfo(null);
@@ -596,17 +621,10 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
   // выставляется по тому же признаку в loadPuzzle.
   const sideToMove = currentPuzzle?.fen?.split(" ")?.[1] === "b" ? "b" : "w";
 
-  // Показываем персонализацию, только когда профиль настоящий с обеих
-  // сторон: есть подтверждённые попытками слабые И сильные темы.
-  // Без истории бэкенд присылает фабрикат (см. rank_topic_profile).
-  const observedWeakTopics = (adaptiveMeta?.weakTopics || []).filter(
-    (topic) => topic.observed || (topic.attempts || 0) > 0,
-  );
-  const observedStrongTopics = (adaptiveMeta?.strongTopics || []).filter(
-    (topic) => topic.observed || (topic.attempts || 0) > 0,
-  );
-  const hasRealProfile =
-    observedWeakTopics.length > 0 && observedStrongTopics.length > 0;
+  const showModeSwitcher =
+    Boolean(user && getAccessToken()) &&
+    !requestedTopicSlug &&
+    ratingMin === null;
   const relatedCourseTopic =
     getCourseTopicMeta(currentPuzzle?.adaptive_topic) ||
     requestedTopic ||
@@ -651,33 +669,51 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
         correct,
         correct ? playerMovesRef.current : [],
       )
-        .then((data) => {
-          if (Number.isFinite(Number(data?.puzzle_streak))) {
-            const serverStreak = Number(data.puzzle_streak);
-            setStreak(serverStreak);
-            setBestStreak((best) => Math.max(best, serverStreak));
-            persistPuzzleStreak(serverStreak, Math.max(bestStreak, serverStreak));
-          }
+        .then(() => {
           window.dispatchEvent(new Event("sfedu-progress-updated"));
         })
         .catch(() => {
           // Ошибка статистики не должна мешать решению самой задачи.
         });
     },
-    [currentPuzzle?.id, bestStreak],
+    [currentPuzzle?.id],
   );
 
   const handleMove = useCallback(
-    (sourceSquare, targetSquare) => {
+    (sourceSquare, targetSquare, promotionChoice = null) => {
       if (waitingForOpponent || showSolution || showRegGate || previewGate) return false;
+
+      const game = gameRef.current;
+      const movingPiece = game.get(sourceSquare);
+      const isPromotion = Boolean(
+        movingPiece?.type === "p" &&
+        game.moves({ square: sourceSquare, verbose: true }).some(
+          (move) => move.to === targetSquare && move.promotion,
+        ),
+      );
+      if (isPromotion && !promotionChoice) {
+        setPendingPromotion({
+          sourceSquare,
+          targetSquare,
+          color: movingPiece.color,
+        });
+        setSelectedSquare(null);
+        setLegalMovesForSelected([]);
+        return true;
+      }
 
       const expectedMove = solutionMovesRef.current[solutionIndexRef.current];
       if (!expectedMove) return false;
 
       const expectedCore = expectedMove.substring(0, 4);
       const moveCore = sourceSquare + targetSquare;
+      const selectedPromotion = isPromotion ? promotionChoice || "q" : null;
+      const expectedPromotion = expectedMove[4] || "q";
+      const moveMatches =
+        moveCore === expectedCore &&
+        (!isPromotion || selectedPromotion === expectedPromotion);
 
-      if (moveCore === expectedCore) {
+      if (moveMatches) {
         // Третья решённая за сегодня задача: не даём дорешить без анкеты.
         // Вместо завершающего (решающего) хода показываем окно с анкетой.
         if (
@@ -688,8 +724,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
           return true;
         }
 
-        const game = gameRef.current;
-        const promo = expectedMove.length > 4 ? expectedMove[4] : "q";
+        const promo = isPromotion ? selectedPromotion : "q";
         const move = game.move({
           from: sourceSquare,
           to: targetSquare,
@@ -769,7 +804,18 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
 
       // Ошибка рвёт серию: счётчик обнуляется, а если серия была,
       // сообщаем об этом в сообщении над кнопками.
-      if (streak > 0) {
+      if (isPromotion && promotionChoice) {
+        const selectedName = {
+          q: "ферзь",
+          r: "ладья",
+          b: "слон",
+          n: "конь",
+        }[promotionChoice] || "выбранная фигура";
+        setResultMessage({
+          type: "error",
+          text: `Превращение в ${selectedName} не решает задачу. Попробуйте другой вариант.`,
+        });
+      } else if (streak > 0) {
         setResultMessage({
           type: "error",
           text: `Неверный ход. Серия из ${streak} прервана.`,
@@ -797,6 +843,37 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
       streak,
       bestStreak,
     ],
+  );
+
+  const handleBoardPieceDrop = useCallback(
+    (sourceSquare, targetSquare) => {
+      const game = gameRef.current;
+      const piece = game.get(sourceSquare);
+      const isPromotion = Boolean(
+        piece?.type === "p" &&
+        game.moves({ square: sourceSquare, verbose: true }).some(
+          (move) => move.to === targetSquare && move.promotion,
+        ),
+      );
+      if (isPromotion) {
+        setPendingPromotion({ sourceSquare, targetSquare, color: piece.color });
+        setSelectedSquare(null);
+        setLegalMovesForSelected([]);
+        return false;
+      }
+      return handleMove(sourceSquare, targetSquare);
+    },
+    [handleMove],
+  );
+
+  const handlePromotionChoice = useCallback(
+    (piece) => {
+      if (!pendingPromotion) return;
+      const { sourceSquare, targetSquare } = pendingPromotion;
+      setPendingPromotion(null);
+      handleMove(sourceSquare, targetSquare, piece);
+    },
+    [handleMove, pendingPromotion],
   );
 
   const onSquareClick = useCallback(
@@ -1021,88 +1098,107 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
         }`}
       >
       <div className="puzzle-info-panel">
-        <div className="puzzle-theme-label">Тема задачи:</div>
-        <div className="puzzle-theme-name">{themeInfo.label}</div>
-        <div className="puzzle-theme-icon">{themeInfo.icon}</div>
-
-        <div className="puzzle-instruction">
-          Найдите лучший ход в позиции
-        </div>
-
-        {currentPuzzle && (
-          <div className="puzzle-turn-indicator">
-            Ход {currentPuzzle.fen.split(" ")[1] === "b" ? "чёрных" : "белых"}
+        <div className="puzzle-info-heading">
+          <div className="puzzle-info-heading-copy">
+            <span className="puzzle-theme-label">ТЕМА ЗАДАЧИ</span>
+            <h2 className="puzzle-theme-name">{themeInfo.label}</h2>
           </div>
-        )}
-        <div className="puzzle-side">
-          <span className={`puzzle-side-dot puzzle-side-dot--${sideToMove}`} aria-hidden="true" />
-          Играете за {sideToMove === "b" ? "чёрных" : "белых"}
+          <span className="puzzle-theme-icon" aria-hidden="true">{themeInfo.icon}</span>
         </div>
 
-        <div className="puzzle-moves-left-label">
-          Осталось найти ходов:
-        </div>
-        <div className="puzzle-moves-left-count">{movesLeft}</div>
+        <div className="puzzle-instruction">Найдите лучший ход</div>
 
-        {currentPuzzle && (
-          <div className="puzzle-rating">
-            Рейтинг: {currentPuzzle.rating}
-          </div>
-        )}
-
-        {/*
-         * Серия подряд правильно решённых задач. Показываем всегда
-         * (в том числе ноль), чтобы блок не прыгал при обнулении.
-         */}
-        <div className="puzzle-streak">
-          <div className="puzzle-streak-label">Серия:</div>
-          <div
-            className={`puzzle-streak-value ${
-              streak > 0 ? "puzzle-streak-value--hot" : ""
-            }`}
+        <div className="puzzle-nav-buttons" aria-label="Навигация по задачам">
+          <button
+            type="button"
+            className="puzzle-nav-btn"
+            onClick={handlePrevPuzzle}
+            disabled={currentIndex === 0}
+            aria-label="Предыдущая задача"
           >
-            🔥 {streak}
-          </div>
-          {bestStreak > 0 && (
-            <div className="puzzle-streak-best">
-              рекорд сессии: {bestStreak}
+            ←
+          </button>
+          <span className="puzzle-nav-index">
+            {currentIndex + 1} <span>/</span> {puzzles.length}
+          </span>
+          <button
+            type="button"
+            className="puzzle-nav-btn"
+            onClick={handleNextPuzzle}
+            disabled={currentIndex >= puzzles.length - 1}
+            aria-label="Следующая задача"
+          >
+            →
+          </button>
+        </div>
+
+        <div className={`puzzle-turn-indicator puzzle-turn-indicator--${sideToMove}`} role="status" aria-live="polite">
+          <span className="puzzle-turn-indicator-side" aria-hidden="true" />
+          <span className="puzzle-turn-indicator-main">
+            Ход {sideToMove === "b" ? "чёрных" : "белых"}
+          </span>
+          <span className="puzzle-turn-indicator-help">
+            Найдите лучший ход за {sideToMove === "b" ? "чёрных" : "белых"}
+          </span>
+        </div>
+
+        <div className="puzzle-moves-summary">
+          <span>Осталось ходов</span>
+          <strong className="puzzle-moves-left-count">{movesLeft}</strong>
+        </div>
+
+        <div className="puzzle-quick-stats">
+          {currentPuzzle && (
+            <div className="puzzle-quick-stat">
+              <span>Рейтинг задачи</span>
+              <strong>{currentPuzzle.rating}</strong>
             </div>
           )}
-          <div className="puzzle-streak-rewards">Награды за серию: 5 · +3, 10 · +5, 20 · +10, 30 · +15 GigaCoin</div>
+          <div className="puzzle-quick-stat">
+            <span>Текущая серия</span>
+            <strong className={streak > 0 ? "puzzle-streak-value--hot" : ""}>
+              🔥 {streak}
+            </strong>
+            <small className="puzzle-quick-stat-hint">решено подряд</small>
+          </div>
         </div>
 
-        {adaptiveMode && hasRealProfile && (
-          <div className="learning-topic-filter learning-topic-filter--adaptive">
-            Персональная тренировка
-            {adaptiveMeta?.playerLevel && (
-              <strong>
-                {adaptiveMeta.playerLevel.provisional ? "Предварительный уровень" : "Уровень"}: {adaptiveMeta.playerLevel.title}
-              </strong>
-            )}
-            {currentPuzzle?.adaptive_difficulty != null && (
-              <span className="adaptive-topic-list">
-                Целевая сложность: {currentPuzzle.adaptive_difficulty} из 3
-                {currentPuzzle.difficulty_match === false && " · задача вне целевого диапазона"}
-              </span>
-            )}
-            <strong>Подбор по уровню и темам</strong>
-            {adaptiveMeta?.weakTopics?.length > 0 && (
-              <div className="adaptive-topic-list">
-                Слабые: {adaptiveMeta.weakTopics.map((topic) => topic.title).join(", ")}
-              </div>
-            )}
-            <button type="button" onClick={() => navigate("/puzzles?mode=all")}>
-              Обычный режим
-            </button>
-          </div>
+        {bestStreak > 0 && (
+          <div className="puzzle-streak-best">Рекорд серии: {bestStreak}</div>
         )}
 
-        {adaptiveMode && !hasRealProfile && (
-          <div className="learning-topic-filter learning-topic-filter--adaptive">
-            <button type="button" onClick={() => navigate("/puzzles")}>
-              Обычный режим
+        <details className="puzzle-rewards-details">
+          <summary>Награды за серию</summary>
+          <p>5 задач: +3 · 10: +5 · 20: +10 · 30: +15 GigaCoin</p>
+        </details>
+
+        {showModeSwitcher && (
+          <section className="puzzle-mode-card" aria-label="Режим задач">
+            <div className="puzzle-mode-card-heading">
+              <span>Режим</span>
+              <strong>{adaptiveMode ? "Персональный подбор" : "Общий набор"}</strong>
+            </div>
+            <p>
+              Персональный подбор учитывает уровень и результаты по темам.
+              Общий набор предлагает задачи без этой адаптации.
+            </p>
+            {adaptiveMode && adaptiveMeta?.playerLevel && (
+              <div className="puzzle-mode-level">
+                {adaptiveMeta.playerLevel.provisional ? "Предварительный уровень" : "Ваш уровень"}: {adaptiveMeta.playerLevel.title}
+              </div>
+            )}
+            {adaptiveMode && currentPuzzle?.adaptive_difficulty != null && (
+              <div className="puzzle-mode-difficulty">
+                Сложность {currentPuzzle.adaptive_difficulty} из 3
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => navigate(adaptiveMode ? "/puzzles?mode=all" : "/puzzles")}
+            >
+              {adaptiveMode ? "Перейти к общему набору" : "Включить персональный подбор"}
             </button>
-          </div>
+          </section>
         )}
 
         {!adaptiveMode && requestedTopic && (
@@ -1112,7 +1208,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
               {requestedTopic.icon} {requestedTopic.title}
             </strong>
             <button type="button" onClick={() => navigate("/puzzles?mode=all")}>
-              Показать все пазлы
+              Все задачи
             </button>
           </div>
         )}
@@ -1122,7 +1218,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
             Подбор по рейтингу
             <strong>От {ratingMin}</strong>
             <button type="button" onClick={() => navigate("/puzzles?mode=all")}>
-              Показать все пазлы
+              Все задачи
             </button>
           </div>
         )}
@@ -1141,25 +1237,6 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
           </button>
         )}
 
-        <div className="puzzle-nav-buttons">
-          <button
-            className="puzzle-nav-btn"
-            onClick={handlePrevPuzzle}
-            disabled={currentIndex === 0}
-          >
-            ←
-          </button>
-          <span className="puzzle-nav-index">
-            {currentIndex + 1} / {puzzles.length}
-          </span>
-          <button
-            className="puzzle-nav-btn"
-            onClick={handleNextPuzzle}
-            disabled={currentIndex >= puzzles.length - 1}
-          >
-            →
-          </button>
-        </div>
       </div>
 
       <div className="puzzle-board-section">
@@ -1167,15 +1244,17 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
           <ReactChessboard
             id={boardId}
             position={fen}
-            onPieceDrop={handleMove}
+            onPieceDrop={handleBoardPieceDrop}
+            onPromotionCheck={() => false}
             onSquareClick={onSquareClick}
             boardWidth={boardWidth}
             animationDuration={200}
             boardOrientation={boardOrientation}
+            showPromotionDialog={false}
             showBoardNotation={true}
             customNotationStyle={{
               fontSize: "12px",
-              fontFamily: "Cormorant Garamond, Georgia, serif",
+              fontFamily: "Inter, sans-serif",
               fontWeight: "500",
               color: "#4a3220",
             }}
@@ -1208,20 +1287,63 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
             }}
             customSquareStyles={customSquareStyles}
           />
+          {pendingPromotion && (
+            <div className="puzzle-promotion-overlay">
+              <section
+                className="puzzle-promotion-dialog"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="puzzle-promotion-title"
+              >
+                <h2 id="puzzle-promotion-title">Во что превратить пешку?</h2>
+                <p>Выберите фигуру, которой хотите продолжить решение.</p>
+                <div className="puzzle-promotion-options">
+                  {[
+                    ["q", "Ферзь"],
+                    ["r", "Ладья"],
+                    ["b", "Слон"],
+                    ["n", "Конь"],
+                  ].map(([piece, label]) => (
+                    <button
+                      type="button"
+                      key={piece}
+                      onClick={() => handlePromotionChoice(piece)}
+                      aria-label={`Превратить пешку в фигуру: ${label.toLowerCase()}`}
+                    >
+                      <img
+                        src={PIECE_IMAGES[`${pendingPromotion.color}${piece.toUpperCase()}`]}
+                        alt=""
+                      />
+                      <span>{label}</span>
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  className="puzzle-promotion-cancel"
+                  onClick={() => setPendingPromotion(null)}
+                >
+                  Отмена
+                </button>
+              </section>
+            </div>
+          )}
           {puzzleSolved && (
             <div className="puzzle-solved-overlay">
               <div className="puzzle-solved-checkmark">✓</div>
-              <div className="puzzle-solved-text">Задача решена!</div>
-              {streak > 0 && (
-                <div className="puzzle-solved-streak">
-                  🔥 Серия: {streak}
-                </div>
-              )}
-              {currentIndex < puzzles.length - 1 && (
-                <div className="puzzle-solved-hint">
-                  Следующая задача откроется автоматически…
-                </div>
-              )}
+              <div className="puzzle-solved-copy">
+                <div className="puzzle-solved-text">Задача решена!</div>
+                {streak > 0 && (
+                  <div className="puzzle-solved-streak">
+                    🔥 Серия: {streak}
+                  </div>
+                )}
+                {currentIndex < puzzles.length - 1 && (
+                  <div className="puzzle-solved-hint">
+                    Следующая задача откроется автоматически…
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>

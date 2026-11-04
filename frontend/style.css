@@ -1,10 +1,16 @@
-@import url("https://fonts.googleapis.com/css2?family=Orbitron:wght@900&family=Cormorant+Garamond:wght@300;400;500&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500&family=JetBrains+Mono:wght@400&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap");
+
 @font-face {
   font-family: "Calypso";
   src: url("/Calypso.ttf") format("truetype");
-  font-weight: normal;
+  font-weight: 400;
   font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --font-ui: "Inter", "Segoe UI", system-ui, sans-serif;
+  --font-display: "Calypso", Georgia, serif;
 }
 
 * {
@@ -14,6 +20,7 @@
 }
 
 body {
+  font-family: var(--font-ui);
   margin: 0;
   padding: 0;
 
@@ -27,31 +34,46 @@ body {
   /* Р РµР·РµСЂРІРЅС‹Р№ С†РІРµС‚ РЅР° СЃР»СѓС‡Р°Р№ РґРѕР»РіРѕР№ Р·Р°РіСЂСѓР·РєРё РєР°СЂС‚РёРЅРєРё */
   background-color: #e8f5e9;
 }
+
+button,
+input,
+select,
+textarea {
+  font-family: var(--font-ui);
+}
 .main-area {
-  display: flex;
-  justify-content: flex-start;
+  display: grid;
+  grid-template-columns: minmax(220px, 260px) minmax(0, 1fr) minmax(320px, min(28vw, 520px));
+  grid-template-areas: "history board chat";
+  justify-content: stretch;
   align-items: stretch;
   gap: 24px;
   width: auto;
-  margin: 10px 0 0 24px;
+  margin: 10px 24px 0;
+  transition: grid-template-columns 340ms cubic-bezier(0.4, 0, 0.2, 1);
   /* Воздух между контентом и футером (футер прибит к низу). */
   padding-bottom: 12px;
-  flex: 1;
+  flex: 0 0 auto;
   min-height: 0;
   box-sizing: border-box;
 }
 
+.mobile-game-dock {
+  display: none;
+}
+
 /* The history and Maia progress share one fixed-width desktop column. */
 .game-history-column {
-  align-self: flex-start;
+  align-self: stretch;
   display: flex;
-  flex: 0 0 260px;
+  flex: initial;
   flex-direction: column;
   gap: 12px;
-  height: min(680px, calc(100vh - 190px));
-  min-height: 360px;
+  height: auto;
+  min-height: 0;
   order: 1;
-  width: 260px;
+  width: auto;
+  grid-area: history;
 }
 
 .game-history-column > .move-history-panel {
@@ -235,7 +257,7 @@ body {
 }
 
 .site-footer-brand {
-  font-family: "Calypso", serif;
+  font-family: var(--font-ui);
   letter-spacing: 0.04em;
 }
 
@@ -278,7 +300,7 @@ body {
 }
 
 .reg-btn {
-  font-family: "Calypso", serif;
+  font-family: var(--font-ui);
   font-size: 16px;
   color: #333;
   background: #C9A96E;
@@ -371,7 +393,7 @@ body {
   }
 }
 .user-name {
-  font-family: "Calypso", serif;
+  font-family: var(--font-ui);
   font-size: 16px;
   color: #333;
 }
@@ -384,13 +406,25 @@ body {
 }
 
 .board-section {
-  flex: 1 1 auto; /* Р”РѕСЃРєР° Р·Р°РЅРёРјР°РµС‚ РІСЋ СЃРІРѕР±РѕРґРЅСѓСЋ СЃРµСЂРµРґРёРЅСѓ */
-  min-width: 320px;
+  align-self: start;
+  flex: 0 0 auto;
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 14px;
+  padding: 0;
   order: 2;
+}
+
+.board-stage {
+  display: flex;
+  flex: 1 1 560px;
+  min-width: 0;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 12px;
+  order: 2;
+  grid-area: board;
 }
 
 .board-wrapper {
@@ -443,7 +477,7 @@ body {
 
 .gameover-title {
   margin-top: 6px;
-  font-family: "Calypso", serif;
+  font-family: var(--font-ui);
   font-size: 24px;
   color: #333;
 }
@@ -461,7 +495,7 @@ body {
   border-radius: 20px;
   background: #c9a96e;
   color: #333;
-  font-family: "Calypso", serif;
+  font-family: var(--font-ui);
   font-size: 16px;
   cursor: pointer;
   transition: background 0.2s;
@@ -513,13 +547,13 @@ body {
 }
 
 .side-pick-name {
-  font-family: "Calypso", serif;
+  font-family: var(--font-ui);
   font-size: 18px;
   color: #333;
 }
 
 .side-pick-note {
-  font-family: "Inter", sans-serif;
+  font-family: var(--font-ui);
   font-size: 11px;
   color: #837053;
 }
@@ -585,12 +619,12 @@ body {
   border: 2px solid rgba(180, 135, 44, 0.85);
   /* 38 + 12·2 = 62px - тот же след, что учитывает расчёт доски
      (evalW в Chessboard.jsx). */
-  margin: 0 12px;
+  margin: 0;
   order: 1;
-  align-self: center;
+  align-self: flex-start;
   /* Сдвиг к середине просвета между историей и доской (замеряет
      EvalBar.jsx). transform, а не margin: раскладка строки не меняется. */
-  transform: translateX(var(--eval-shift, 0px));
+  transform: translateY(var(--eval-shift-y, 0px));
   box-shadow:
     0 3px 10px rgba(74, 50, 32, 0.2),
     inset 0 0 0 1px rgba(255, 255, 255, 0.12);
@@ -653,7 +687,7 @@ body {
   background: rgba(255, 253, 247, 0.92);
   border: 1px solid rgba(180, 135, 44, 0.7);
   color: #2f5c36;
-  font-family: "Inter", sans-serif;
+  font-family: var(--font-ui);
   font-size: 11px;
   font-weight: 700;
   line-height: 15px;
@@ -734,7 +768,7 @@ body {
   border: none;
   border-radius: 6px;
   cursor: pointer;
-  font-family: "Calypso", serif;
+  font-family: var(--font-ui);
   font-size: 18px;
   min-width: 110px;
   height: 34px;
@@ -762,7 +796,7 @@ body {
   padding: 6px 10px;
   color: #333;
   font-size: 11px;
-  font-family: "Consolas", "Courier New", monospace;
+  font-family: var(--font-ui);
   outline: none;
   min-width: 0;
 }
@@ -778,7 +812,7 @@ body {
   border-radius: 6px;
   padding: 5px 10px;
   color: #333;
-  font-family: "Calypso", serif;
+  font-family: var(--font-ui);
   font-size: 14px;
   cursor: pointer;
   white-space: nowrap;
@@ -858,7 +892,7 @@ body {
   padding: 12px 0;
   border-bottom: none;
 
-  font-family: "Calypso", serif;
+  font-family: var(--font-ui);
   font-size: clamp(
     16px,
     1.2vw,
@@ -913,15 +947,15 @@ body {
    как у панели истории. Кант тоньше, чем у бумажных карточек, чтобы панель
    не выглядела тяжёлой. */
 .chat-section {
-  flex: 1 1 520px;
-  min-width: 320px;
-  max-width: 760px;
+  flex: initial;
+  min-width: 0;
+  max-width: none;
 
   height: auto;
   align-self: stretch;
 
   /* Симметрично левой панели - такой же отступ от края окна. */
-  margin: 0 24px 0 0;
+  margin: 0;
 
   border-radius: 30px;
   border: 2px solid rgba(180, 135, 44, 0.7);
@@ -934,6 +968,7 @@ body {
   display: flex;
   flex-direction: column;
   order: 3;
+  grid-area: chat;
 
   /* Скруглённые углы: содержимое не должно вылезать за рамку. */
   overflow: hidden;
@@ -944,9 +979,14 @@ body {
    скругление, но ширина 48px, и вся полоса - кнопка разворота.
    Освободившуюся ширину забирает доска (см. updateBoardSize). */
 .chat-section--collapsed {
-  flex: 0 0 48px;
-  min-width: 48px;
-  max-width: 48px;
+  min-width: 0;
+  width: 100%;
+}
+
+@media (min-width: 1451px) {
+  .main-area:has(.chat-section--collapsed) {
+    grid-template-columns: minmax(220px, 260px) minmax(0, 1fr) 48px;
+  }
 }
 
 /* Пока панель едет по ширине (см. ChatPanel.jsx), содержимое скрыто:
@@ -1037,7 +1077,7 @@ body {
 .chat-strip-title {
   margin: auto 0;
   writing-mode: vertical-rl;
-  font-family: "Calypso", serif;
+  font-family: var(--font-ui);
   font-size: 13px;
   letter-spacing: 0.06em;
   color: #456b4b;
@@ -1087,13 +1127,28 @@ body {
   box-shadow: 0 1px 4px rgba(74, 50, 32, 0.12);
 }
 
+.chat-avatar-glyph {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  box-sizing: border-box;
+  border: 1px solid rgba(34, 90, 115, 0.2);
+  border-radius: 12px;
+  background: rgba(34, 90, 115, 0.08);
+  color: #4f8564;
+  font-family: "Segoe UI Symbol", "Noto Sans Symbols 2", serif;
+  font-size: 32px;
+  line-height: 1;
+}
+
 .chat-title-block {
   display: flex;
   flex-direction: column;
 }
 
 .chat-title-block h2 {
-  font-family: "Calypso", serif;
+  font-family: var(--font-display);
   font-size: 36px;
   color: #333;
   margin: 0;
@@ -1105,6 +1160,7 @@ body {
    теперь сразу название ассистента - в масштабе заголовков соседних
    панелей (см. .history-title). */
 .chat-title-block h2.chat-panel-title {
+  font-family: var(--font-display);
   font-size: clamp(20px, 1.8vw, 32px);
   font-weight: normal;
   line-height: 1.1;
@@ -1112,7 +1168,7 @@ body {
 }
 
 .chat-subtitle {
-  font-family: "Calypso", serif;
+  font-family: var(--font-ui);
   font-size: 20px;
   color: #79b180;
   margin-top: 4px;
@@ -1239,7 +1295,7 @@ body {
   border: 1px solid rgba(180, 135, 44, 0.32);
   padding: 12px 16px;
   border-radius: 16px 16px 16px 6px;
-  font-family: "Inter", Arial, Helvetica, sans-serif;
+  font-family: var(--font-ui);
   font-size: 14.5px;
   line-height: 1.55;
   color: #3b3b33;
@@ -1303,13 +1359,16 @@ body {
 .chat-input-area input {
   flex: 1;
   min-width: 0;
+  height: 48px;
+  box-sizing: border-box;
   background: rgba(255, 253, 248, 0.85);
   border: 2px solid rgba(180, 135, 44, 0.3);
   border-radius: 16px;
-  padding: 10px 16px;
+  padding: 0 16px;
   color: #333;
   font-size: 14px;
-  font-family: "Inter", Arial, sans-serif;
+  line-height: 1.25;
+  font-family: var(--font-ui);
   outline: none;
   transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
 }
@@ -1327,14 +1386,19 @@ body {
 /* Кнопка «Отправить» в палитре «Импорт» / «Загрузить». */
 .chat-input-area button {
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 48px;
+  box-sizing: border-box;
   background: #83b787;
   border: none;
   border-radius: 16px;
-  padding: 10px 20px;
+  padding: 0 20px;
   color: #2b3d2c;
-  font-family: "Calypso", serif;
+  font-family: var(--font-ui);
   font-size: 17px;
-  line-height: 1.35;
+  line-height: 1.2;
   cursor: pointer;
   transition: background 0.2s;
 }
@@ -1357,7 +1421,7 @@ body {
   border: 1px solid rgba(180, 135, 44, 0.45);
   border-radius: 14px;
   color: #4a3220;
-  font-family: "Calypso", serif;
+  font-family: var(--font-ui);
   font-size: 15px;
   cursor: pointer;
   transition: background 0.2s, border-color 0.2s, box-shadow 0.2s;
@@ -1483,7 +1547,7 @@ body {
   display: flex;
   align-items: center;
   padding: 12px 6px;
-  font-family: "Calypso", serif;
+  font-family: var(--font-ui);
   font-size: 22px;
   color: #333;
 }
@@ -1591,7 +1655,7 @@ body {
   border: none;
 
   /* Р¤РёСЂРјРµРЅРЅС‹Р№ С€СЂРёС„С‚ РїСЂРѕРµРєС‚Р° */
-  font-family: "Calypso", serif;
+  font-family: var(--font-ui);
   font-size: 24px;
   color: #333; /* РўРµРјРЅС‹Р№ С†РІРµС‚ С‚РµРєСЃС‚Р°, С‡С‚РѕР±С‹ С…РѕСЂРѕС€Рѕ С‡РёС‚Р°Р»СЃСЏ РЅР° РјСЏС‚РЅРѕРј С„РѕРЅРµ */
 
@@ -1614,7 +1678,12 @@ body {
   padding: 10px;
 }
 .history-title {
-  font-family: "Calypso", serif;
+  display: flex;
+  align-self: stretch;
+  justify-content: center;
+  width: 100%;
+  box-sizing: border-box;
+  font-family: var(--font-display);
   font-size: clamp(20px, 1.8vw, 32px); /* РЎРґРµР»Р°Р»Рё С€СЂРёС„С‚ РЅРµРјРЅРѕРіРѕ РјРµРЅСЊС€Рµ */
   font-weight: normal;
   white-space: nowrap; /* РџСЂРёРЅСѓРґРёС‚РµР»СЊРЅРѕ РІС‹СЃС‚СЂР°РёРІР°РµРј С‚РµРєСЃС‚ СЃС‚СЂРѕРіРѕ РІ РѕРґРЅСѓ СЃС‚СЂРѕРєСѓ */
@@ -1665,7 +1734,7 @@ body {
 }
 .player-name,
 .bot-name {
-  font-family: "Calypso", serif;
+  font-family: var(--font-ui);
   font-size: clamp(13px, 0.9vw, 16px);
   line-height: 1.15;
   white-space: nowrap;
@@ -1685,7 +1754,7 @@ body {
   background: rgba(255, 253, 248, 0.96);
   border: 1px solid rgba(180, 135, 44, 0.6);
   box-shadow: 0 1px 2px rgba(74, 50, 32, 0.16);
-  font-family: "Calypso", serif;
+  font-family: var(--font-ui);
   font-size: 12px;
   letter-spacing: 0.02em;
   color: #8a6a26;
@@ -1732,7 +1801,7 @@ body {
 .player-rating,
 .bot-rating {
   /* Рейтинг - вторичная строка: спокойнее и мельче имени. */
-  font-family: "Inter", sans-serif;
+  font-family: var(--font-ui);
   font-size: 10.5px;
   letter-spacing: 0.03em;
   color: #837053;
@@ -1786,7 +1855,7 @@ body {
 }
 
 .modal-title {
-  font-family: "Calypso", serif;
+  font-family: var(--font-ui);
   font-size: 28px;
   color: #333;
   margin: 0 0 6px;
@@ -1856,7 +1925,7 @@ body {
   border: none;
   border-radius: 30px;
   font-size: 16px;
-  font-family: "Calypso", serif;
+  font-family: var(--font-ui);
   cursor: pointer;
   margin-top: 6px;
   transition: background 0.2s;
@@ -1914,7 +1983,7 @@ body {
     0 4px 12px rgba(40, 70, 46, 0.12),
     0 18px 50px rgba(40, 70, 46, 0.25),
     inset 0 1px 0 rgba(255, 255, 255, 0.75);
-  font-family: "Calypso", "Cormorant Garamond", serif;
+  font-family: var(--font-ui);
   color: #333;
 }
 
@@ -1969,7 +2038,7 @@ body {
   color: #b88a3e;
 }
 .auth-brand-name {
-  font-family: "Orbitron", "Inter", sans-serif;
+  font-family: var(--font-ui);
   font-weight: 900;
   font-size: 30px;
   letter-spacing: 0.14em;
@@ -1979,7 +2048,7 @@ body {
 }
 
 .auth-title {
-  font-family: "Calypso", serif;
+  font-family: var(--font-ui);
   font-weight: normal;
   font-size: 30px;
   line-height: 1.1;
@@ -1987,7 +2056,7 @@ body {
   margin: 0 0 8px;
 }
 .auth-subtitle {
-  font-family: "Calypso", serif;
+  font-family: var(--font-ui);
   font-size: 17px;
   color: #6b7a6e;
   line-height: 1.35;
@@ -2009,7 +2078,7 @@ body {
   margin-bottom: 12px;
 }
 .auth-section-label {
-  font-family: "Calypso", serif;
+  font-family: var(--font-ui);
   font-size: 16px;
   color: #3a513f;
   letter-spacing: 0.02em;
@@ -2035,7 +2104,7 @@ body {
   background: rgba(255, 255, 255, 0.7);
   border: 1px solid rgba(150, 190, 160, 0.6);
   color: #3a542f;
-  font-family: "Calypso", serif;
+  font-family: var(--font-ui);
   font-size: 16px;
   cursor: pointer;
   transition: background 0.2s, border-color 0.2s;
@@ -2066,7 +2135,7 @@ body {
   border-radius: 14px;
   background: #c9a96e;
   color: #fff;
-  font-family: "Calypso", serif;
+  font-family: var(--font-ui);
   font-size: 16px;
   cursor: pointer;
   transition: background 0.2s;
@@ -2226,7 +2295,7 @@ body {
   font-weight: 400;
   letter-spacing: normal;
   color: #1f2b20;
-  font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+  font-family: var(--font-ui);
 }
 .auth-input::placeholder {
   color: #8a948a;
@@ -2266,7 +2335,7 @@ body {
   border-radius: 30px;
   background: #83b787;
   color: #fff;
-  font-family: "Calypso", serif;
+  font-family: var(--font-ui);
   font-size: 18px;
   cursor: pointer;
   transition: background 0.2s;
@@ -2398,7 +2467,7 @@ body {
 }
 
 .sidebar-title {
-  font-family: "Calypso", serif;
+  font-family: var(--font-ui);
   font-size: 24px;
   color: #333;
 }
@@ -2437,7 +2506,7 @@ body {
   border-radius: 12px;
   text-decoration: none;
   color: #333;
-  font-family: "Calypso", serif;
+  font-family: var(--font-ui);
   font-size: 18px;
   transition: background 0.2s;
 }
@@ -2472,12 +2541,12 @@ body {
   flex: 1;
   flex-direction: column;
   min-height: 0;
-  overflow: hidden;
+  overflow-y: auto;
 }
 
 .puzzles-loading,
 .puzzles-error {
-  font-family: "Calypso", serif;
+  font-family: var(--font-ui);
   font-size: 24px;
   color: #555;
 }
@@ -2487,37 +2556,37 @@ body {
 }
 
 .puzzles-layout {
-  /* Жёсткие 3 колонки: инфо | доска | чат. Чат всегда справа и никогда
-     не переносится вниз — переполнение чинилось именно переносом. */
+  /* Keep the puzzle info, board, and coach aligned in one shared row. */
   display: grid;
-  grid-template-columns: 230px minmax(0, 1fr) minmax(320px, 620px);
-  gap: 16px;
+  grid-template-columns: minmax(210px, 250px) minmax(0, 1fr) minmax(320px, min(28vw, 520px));
+  gap: 24px;
   align-items: stretch;
   width: 100%;
   max-width: 100%;
   margin: 0;
   box-sizing: border-box;
-  flex: 1;
+  flex: 0 0 auto;
   min-height: 0;
-  overflow-y: auto;
-  padding: 10px 0 16px 24px;
+  overflow: visible;
+  padding: 10px 24px 16px;
+}
+
+@media (min-width: 1451px) {
+  .puzzles-layout {
+    grid-auto-rows: var(--puzzle-board-row-height, auto);
+  }
 }
 
 /* На средних экранах (ноутбук 1280) чат не должен забирать максимум:
    иначе доске остаётся ~350px. Сужаем колонку чата, доска остаётся
    играбельной. */
-@media (max-width: 1440px) {
-  .puzzles-layout {
-    grid-template-columns: 230px minmax(0, 1fr) minmax(300px, 420px);
-  }
-}
-
-@media (max-width: 1150px) {
+@media (max-width: 1450px) {
   .puzzles-layout {
     grid-template-columns: 1fr;
   }
   .puzzle-info-panel {
     width: 100%;
+    max-height: none;
   }
 }
 
@@ -2526,98 +2595,267 @@ body {
 /* ========================================= */
 .puzzle-info-panel {
   flex-shrink: 0;
+  min-width: 0;
+  min-height: 0;
   width: 230px;
   border-radius: 30px;
   border: 3px solid rgba(180, 135, 44, 0.85);
   background: rgba(255, 255, 255, 0.87);
   box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.25);
-  padding: 24px 20px;
+  padding: 18px 16px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: 12px;
+  gap: 10px;
+  max-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  justify-content: flex-start;
+}
+
+.puzzle-info-heading {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.puzzle-info-heading-copy {
+  min-width: 0;
 }
 
 .puzzle-theme-label {
-  font-family: "Calypso", serif;
-  font-size: 18px;
-  color: #555;
-}
-
-.puzzle-theme-name {
-  font-family: "Calypso", serif;
-  font-size: 22px;
-  color: #2f5c36;
-  font-weight: normal;
+  color: #80652f;
+  font: 700 10px/1.2 Inter, sans-serif;
+  letter-spacing: .09em;
   text-transform: uppercase;
 }
 
+.puzzle-theme-name {
+  margin-top: 4px;
+  font-family: var(--font-display);
+  font-size: 20px;
+  color: #2f5c36;
+  font-weight: normal;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
 .puzzle-theme-icon {
-  font-size: 64px;
+  flex: 0 0 40px;
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  font-size: 28px;
   color: #225a73;
   line-height: 1;
-  margin: 8px 0;
 }
 
 .puzzle-instruction {
-  font-family: "Calypso", serif;
-  font-size: 20px;
-  color: #333;
-  line-height: 1.3;
-  margin: 8px 0;
+  color: #46534d;
+  font: 600 13px/1.4 Inter, sans-serif;
 }
 
 .puzzle-turn-indicator {
-  padding: 6px 12px;
-  border: 1px solid rgba(34, 90, 115, 0.16);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.75);
-  color: #225a73;
-  font: 600 13px "Inter", sans-serif;
-}
-
-.puzzle-side {
-  display: flex;
+  position: relative;
+  display: grid;
+  grid-template-columns: 9px minmax(0, 1fr);
+  grid-template-rows: auto auto;
   align-items: center;
-  gap: 8px;
-  font-family: "Calypso", serif;
-  font-size: 17px;
-  color: #2f5c36;
+  column-gap: 10px;
+  row-gap: 3px;
+  width: 100%;
+  padding: 11px 13px;
+  border: 1px solid rgba(34, 90, 115, 0.3);
+  border-radius: 14px;
+  background: rgba(34, 90, 115, 0.08);
+  color: #225a73;
+  font-family: var(--font-ui);
+  cursor: default;
 }
 
-.puzzle-side-dot {
-  width: 14px;
-  height: 14px;
+.puzzle-turn-indicator-side {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  width: 16px;
+  height: 16px;
+  border: 2px solid currentColor;
   border-radius: 50%;
-  border: 1px solid #9a783b;
-  flex-shrink: 0;
+  background: currentColor;
 }
 
-.puzzle-side-dot--w { background: #f5f0e1; }
-.puzzle-side-dot--b { background: #3a3a3a; }
+.puzzle-turn-indicator--w .puzzle-turn-indicator-side {
+  border-color: #88b9d0;
+  background: #fffdf7;
+  box-shadow: 0 0 0 4px rgba(136, 185, 208, .2);
+}
 
-.puzzle-moves-left-label {
-  font-family: "Calypso", serif;
-  font-size: 16px;
-  color: #555;
-  margin-top: 12px;
+.puzzle-turn-indicator--b .puzzle-turn-indicator-side {
+  border-color: #c8a75f;
+  background: #152121;
+  box-shadow: 0 0 0 4px rgba(200, 167, 95, .2);
+}
+
+.puzzle-turn-indicator-main {
+  grid-column: 2;
+  font-size: 15px;
+  font-weight: 750;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.puzzle-turn-indicator-help {
+  grid-column: 2;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.puzzle-moves-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, .7fr);
+  width: 100%;
+  min-height: 78px;
+  align-items: center;
+  justify-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(34, 90, 115, .07);
+  color: #65706a;
+  font: 600 12px/1.25 Inter, sans-serif;
+  text-align: center;
+}
+
+.puzzle-moves-summary > span {
+  max-width: 13ch;
+  font-size: 13px;
+  line-height: 1.35;
 }
 
 .puzzle-moves-left-count {
-  font-family: "Calypso", serif;
+  font-family: var(--font-ui);
   font-size: 48px;
   color: #225a73;
   font-weight: normal;
   line-height: 1;
+  font-variant-numeric: lining-nums;
 }
 
-.puzzle-rating {
-  font-family: "Inter", sans-serif;
-  font-size: 13px;
-  color: #888;
-  margin-top: 8px;
+.puzzle-quick-stats {
+  display: grid;
+  width: 100%;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.puzzle-quick-stat {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid rgba(34, 90, 115, .1);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .45);
+}
+
+.puzzle-quick-stat span,
+.puzzle-streak-best {
+  color: #77817b;
+  font: 600 11px/1.3 Inter, sans-serif;
+}
+
+.puzzle-quick-stat-hint {
+  color: #77817b;
+  font: 500 10px/1.25 Inter, sans-serif;
+}
+
+.puzzle-quick-stat strong {
+  color: #34483e;
+  font: 700 21px/1.15 Inter, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+.puzzle-quick-stat strong.puzzle-streak-value--hot {
+  color: #b3541e;
+}
+
+.puzzle-rewards-details {
+  width: 100%;
+  color: #68736c;
+  font: 500 10px/1.4 Inter, sans-serif;
+}
+
+.puzzle-rewards-details summary {
+  cursor: pointer;
+  text-underline-offset: 2px;
+}
+
+.puzzle-rewards-details p {
+  padding: 5px 0 0 12px;
+}
+
+.puzzle-mode-card {
+  display: grid;
+  flex: 0 0 auto;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  gap: 7px;
+  margin-top: auto;
+  padding: 12px;
+  border: 1px solid rgba(180, 135, 44, .3);
+  border-radius: 16px;
+  background: rgba(201, 169, 110, .12);
+}
+
+.puzzle-mode-card-heading {
+  display: grid;
+  gap: 3px;
+}
+
+.puzzle-mode-card-heading span {
+  color: #80652f;
+  font: 700 9px/1.2 Inter, sans-serif;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+
+.puzzle-mode-card-heading strong {
+  color: #34483e;
+  font: 700 15px/1.25 Inter, sans-serif;
+}
+
+.puzzle-mode-card p,
+.puzzle-mode-level,
+.puzzle-mode-difficulty {
+  color: #68736c;
+  font: 500 12px/1.4 Inter, sans-serif;
+}
+
+.puzzle-mode-card button {
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 1px solid rgba(180, 135, 44, .4);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .72);
+  color: #594519;
+  cursor: pointer;
+  font: 700 12px/1.25 Inter, sans-serif;
+}
+
+.puzzle-mode-card button:hover {
+  background: #fff;
 }
 
 /* Серия подряд правильно решённых задач: ошибка обнуляет серию
@@ -2631,13 +2869,13 @@ body {
 }
 
 .puzzle-streak-label {
-  font-family: "Calypso", serif;
+  font-family: var(--font-ui);
   font-size: 16px;
   color: #555;
 }
 
 .puzzle-streak-value {
-  font-family: "Calypso", serif;
+  font-family: var(--font-ui);
   font-size: 32px;
   color: #225a73;
   line-height: 1;
@@ -2649,7 +2887,7 @@ body {
 }
 
 .puzzle-streak-best {
-  font-family: "Inter", sans-serif;
+  font-family: var(--font-ui);
   font-size: 12px;
   color: #888;
 }
@@ -2657,7 +2895,7 @@ body {
 /* Строчка серии в оверлее "Задача решена!". */
 .puzzle-solved-streak {
   margin-top: 6px;
-  font-family: "Calypso", serif;
+  font-family: var(--font-ui);
   font-size: 18px;
   color: #2f5c36;
   text-shadow: 0 1px 2px rgba(255, 255, 255, 0.6);
@@ -2665,14 +2903,15 @@ body {
 
 .puzzle-nav-buttons {
   display: flex;
+  width: 100%;
   align-items: center;
-  gap: 12px;
-  margin-top: 16px;
+  justify-content: space-between;
+  gap: 10px;
 }
 
 .puzzle-nav-btn {
-  width: 40px;
-  height: 36px;
+  width: 44px;
+  height: 40px;
   border: 1px solid #c9a96e;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.7);
@@ -2690,10 +2929,14 @@ body {
 }
 
 .puzzle-nav-index {
-  font-family: "Inter", sans-serif;
-  font-size: 14px;
-  color: #555;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #46534d;
 }
+
+.puzzle-nav-index span { color: #a39a85; font-weight: 400; }
 
 /* ========================================= */
 /*        PUZZLE BOARD SECTION (CENTER)      */
@@ -2722,6 +2965,88 @@ body {
   box-shadow: 0 0 24px rgba(131, 183, 135, 0.45), 0 2px 4px rgba(0, 0, 0, 0.25);
 }
 
+.puzzle-promotion-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(3, 12, 14, .68);
+  backdrop-filter: blur(5px);
+}
+
+.puzzle-promotion-dialog {
+  display: grid;
+  width: min(100%, 440px);
+  gap: 10px;
+  padding: clamp(14px, 3vw, 22px);
+  border: 1px solid rgba(213, 180, 118, .72);
+  border-radius: 18px;
+  background: #0e2021;
+  box-shadow: 0 16px 45px rgba(0, 0, 0, .42);
+  color: #f7f1e7;
+  text-align: center;
+}
+
+.puzzle-promotion-dialog h2 {
+  font: 700 clamp(18px, 3vw, 22px)/1.25 var(--font-ui);
+}
+
+.puzzle-promotion-dialog > p {
+  color: #bdc4c0;
+  font: 500 12px/1.4 Inter, sans-serif;
+}
+
+.puzzle-promotion-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.puzzle-promotion-options button {
+  display: grid;
+  place-items: center;
+  gap: 3px;
+  min-width: 0;
+  min-height: 78px;
+  padding: 7px;
+  border: 1px solid rgba(213, 180, 118, .42);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .07);
+  color: #f0d394;
+  cursor: pointer;
+  font: 700 12px/1.2 Inter, sans-serif;
+  transition: background-color .15s ease, transform .15s ease, border-color .15s ease;
+}
+
+.puzzle-promotion-options button:hover,
+.puzzle-promotion-options button:focus-visible {
+  border-color: #e5c27d;
+  background: rgba(213, 180, 118, .18);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.puzzle-promotion-options img {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+}
+
+.puzzle-promotion-cancel {
+  justify-self: center;
+  padding: 5px 12px;
+  border: 0;
+  background: transparent;
+  color: #bdc4c0;
+  cursor: pointer;
+  font: 600 12px/1.3 Inter, sans-serif;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 @keyframes puzzleSolvedPulse {
   0% { transform: scale(0.5); opacity: 0; }
   50% { transform: scale(1.15); opacity: 1; }
@@ -2740,11 +3065,13 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: rgba(131, 183, 135, 0.25);
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
+  gap: 14px;
+  padding: 16px;
+  background: rgba(3, 12, 14, 0.62);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   border-radius: 12px;
-  z-index: 10;
+  z-index: 20;
   animation: puzzleSolvedFadeIn 0.3s ease;
 }
 
@@ -2764,23 +3091,37 @@ body {
 }
 
 .puzzle-solved-text {
-  margin-top: 12px;
-  font-family: "Calypso", serif;
-  font-size: 22px;
-  color: #2f5c36;
-  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.6);
+  color: #fff8e9;
+  font: 700 clamp(17px, 4vw, 22px)/1.25 Inter, sans-serif;
+  text-shadow: none;
+}
+
+.puzzle-solved-copy {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  width: min(100%, 420px);
+  padding: 14px 18px;
+  border: 1px solid rgba(213, 180, 118, .72);
+  border-radius: 16px;
+  background: rgba(7, 20, 22, .96);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, .42);
+  text-align: center;
+}
+
+.puzzle-solved-streak {
+  color: #ffbd74;
+  font: 700 14px/1.3 Inter, sans-serif;
 }
 
 /* Подсказка об автопереключении под «Задача решена!». */
 .puzzle-solved-hint {
-  margin-top: 8px;
-  font-size: 13px;
-  color: #4a7a4f;
-  opacity: 0.85;
+  color: #d1d9d5;
+  font: 500 12px/1.4 Inter, sans-serif;
 }
 
 .puzzle-result {
-  font-family: "Calypso", serif;
+  font-family: var(--font-ui);
   font-size: 18px;
   padding: 10px 20px;
   border-radius: 12px;
@@ -2813,7 +3154,7 @@ body {
   padding: 12px 28px;
   border: none;
   border-radius: 30px;
-  font-family: "Calypso", serif;
+  font-family: var(--font-ui);
   font-size: 18px;
   cursor: pointer;
   transition: background 0.2s;
@@ -2852,11 +3193,11 @@ body {
      невысоких окнах поле ввода уезжает под экран:
      100vh - шапка 80 - отступ сверху 10 - снизу 16 - футер 32. */
   height: auto;
-  max-height: calc(100vh - 138px);
+  max-height: none;
   min-height: 0;
   align-self: stretch;
   box-sizing: border-box;
-  margin-right: 24px;
+  margin-right: 0;
   border-radius: 30px;
   z-index: 1;
   /* Та же лёгкая белая вуаль, что и у чата на главной. */
@@ -2910,12 +3251,12 @@ body {
    (48px) плюс отступ 24px, а освободившаяся ширина уходит доске -
    ровно как на главной странице. */
 .puzzles-layout--chat-collapsed {
-  grid-template-columns: 230px minmax(0, 1fr) 72px;
+  grid-template-columns: minmax(210px, 250px) minmax(0, 1fr) 48px;
 }
 
 /* Узкий экран: раскладка в одну колонку, свёрнутый чат не должен
    возвращать трёхколоночную сетку. */
-@media (max-width: 1150px) {
+@media (max-width: 1450px) {
   .puzzles-layout--chat-collapsed {
     grid-template-columns: 1fr;
   }
@@ -2956,7 +3297,7 @@ body {
   overflow-y: auto;
   /* Сверху больше воздуха под шапкой, чтобы карточки не липли к логотипу. */
   padding: 40px 28px 36px;
-  font-family: "Inter", sans-serif;
+  font-family: var(--font-ui);
   color: #333;
   /* Колонка ради футера: margin-top:auto у него вжимает его вниз
      на коротких страницах (на длинных уезжает под контент). */
@@ -2980,7 +3321,7 @@ body {
 }
 
 .training-loading {
-  font-family: "Calypso", serif;
+  font-family: var(--font-ui);
   font-size: 24px;
   color: #555;
 }
@@ -2999,7 +3340,7 @@ body {
 
 .training-register-wall h1 {
   margin: 10px 0 12px;
-  font-family: "Calypso", serif;
+  font-family: var(--font-ui);
   font-size: 30px;
   line-height: 1.2;
 }
@@ -3024,10 +3365,17 @@ body {
   -webkit-backdrop-filter: blur(10px);
 }
 
+.training-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
 .training-hero h1,
 .training-module-header h1 {
   margin: 3px 0 8px;
-  font-family: "Calypso", serif;
+  font-family: var(--font-display);
   font-size: 36px;
   font-weight: normal;
   color: #2f5c36;
@@ -3039,6 +3387,39 @@ body {
   line-height: 1.6;
   color: #555;
   font-size: 15px;
+}
+
+.training-hero p {
+  width: min(100%, 820px);
+  max-width: 820px;
+  margin: 0 auto 16px;
+  text-align: center;
+}
+
+.training-hero .rating-band-progress {
+  align-self: center;
+  text-align: center;
+}
+
+.training-hero .rating-band-progress__header {
+  justify-content: center;
+  gap: 28px;
+}
+
+.training-hero .rating-band-progress__title,
+.training-hero .rating-band-progress__rating {
+  align-items: center;
+}
+
+.training-hero .training-course-progress {
+  width: min(100%, 520px);
+  align-self: center;
+  text-align: center;
+}
+
+.training-hero .training-course-progress__head {
+  justify-content: center;
+  gap: 24px;
 }
 
 .training-kicker {
@@ -3112,7 +3493,7 @@ body {
 
 .training-module-node-icon {
   flex-shrink: 0;
-  font-family: Georgia, serif;
+  font-family: var(--font-ui);
   font-size: 56px;
   line-height: 1;
   color: #225a73;
@@ -3127,7 +3508,7 @@ body {
 }
 
 .training-module-node-title {
-  font-family: "Calypso", serif;
+  font-family: var(--font-ui);
   font-size: 24px;
   color: #2f5c36;
 }
@@ -3257,7 +3638,7 @@ body {
   color: #555;
   padding: 9px 16px;
   cursor: pointer;
-  font-family: "Inter", sans-serif;
+  font-family: var(--font-ui);
   transition: background 0.18s ease;
 }
 
@@ -3280,7 +3661,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: Georgia, serif;
+  font-family: var(--font-ui);
   font-size: 64px;
   color: #225a73;
   background: rgba(131, 183, 135, 0.18);
@@ -3317,7 +3698,7 @@ body {
 }
 
 .training-path-banner strong {
-  font-family: "Calypso", serif;
+  font-family: var(--font-ui);
   font-size: 20px;
   font-weight: normal;
   letter-spacing: 0.02em;
@@ -3422,7 +3803,7 @@ body {
 }
 
 .training-path-title {
-  font-family: "Calypso", serif;
+  font-family: var(--font-ui);
   font-size: 19px;
   color: #333;
 }
@@ -3460,7 +3841,7 @@ body {
   display: grid;
   grid-template-columns: minmax(220px, 260px) minmax(340px, 1fr) minmax(280px, 360px);
   gap: 18px;
-  align-items: start;
+  align-items: stretch;
 }
 
 .training-theory-panel,
@@ -3475,7 +3856,7 @@ body {
 .training-theory-panel h2,
 .training-task-panel h2 {
   margin: 7px 0 12px;
-  font-family: "Calypso", serif;
+  font-family: var(--font-ui);
   font-size: 25px;
   font-weight: normal;
   color: #2f5c36;
@@ -3678,7 +4059,7 @@ body {
 }
 
 .training-selected-list {
-  font-family: "JetBrains Mono", monospace;
+  font-family: var(--font-ui);
   color: #2f5c36;
 }
 
@@ -3700,7 +4081,7 @@ body {
   background: #83b787;
   color: #253b29;
   padding: 10px 18px;
-  font-family: "Calypso", serif;
+  font-family: var(--font-ui);
   font-size: 17px;
   cursor: pointer;
   transition: background 0.18s ease, transform 0.18s ease;
@@ -3796,7 +4177,7 @@ body {
 .training-empty {
   padding: 40px;
   color: #777;
-  font-family: "Calypso", serif;
+  font-family: var(--font-ui);
   font-size: 20px;
 }
 
@@ -3846,7 +4227,7 @@ body {
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.82);
   color: #4c4c4c;
-  font-family: "Inter", sans-serif;
+  font-family: var(--font-ui);
   font-size: 13px;
   line-height: 1.4;
   text-align: left;
@@ -3993,7 +4374,7 @@ body {
   border-radius: 13px;
   background: rgba(255, 255, 255, 0.88);
   color: #31573a;
-  font-family: "Calypso", serif;
+  font-family: var(--font-ui);
   font-size: 16px;
   cursor: pointer;
   transition: background 0.2s, border-color 0.2s, transform 0.2s;
@@ -4009,7 +4390,7 @@ body {
 }
 .auth-oauth-note {
   margin: 10px 0 0;
-  font-family: "Inter", system-ui, sans-serif;
+  font-family: var(--font-ui);
   font-size: 12px;
   line-height: 1.45;
   color: #788178;
@@ -4034,7 +4415,7 @@ body {
 .oauth-callback-card p {
   margin: 18px 0;
   color: #526052;
-  font-family: "Inter", system-ui, sans-serif;
+  font-family: var(--font-ui);
 }
 .oauth-callback-card a {
   color: #2f6b3a;

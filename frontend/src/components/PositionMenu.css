@@ -17,7 +17,7 @@
   border-radius: 30px;
   background: #83b787;
   border: none;
-  font-family: "Calypso", serif;
+  font-family: var(--font-ui);
   font-size: 24px;
   color: #333;
   cursor: pointer;
@@ -66,12 +66,12 @@
   gap: 14px;
   color: #20332d;
   text-align: left;
-  font-family: "Inter", sans-serif;
+  font-family: var(--font-ui);
 }
 
 .position-menu__title {
   margin: 0;
-  font-family: "Calypso", serif;
+  font-family: var(--font-ui);
   font-size: 20px;
   font-weight: normal;
   letter-spacing: 0.02em;
@@ -106,7 +106,7 @@
   border-radius: 8px;
   background: #fffdf7;
   color: #333;
-  font: 11px/1.45 "Consolas", "Courier New", monospace;
+  font: 11px/1.45 var(--font-ui);
   outline: none;
 }
 

@@ -83,7 +83,7 @@
 
 .user-record-card__icon {
   color: var(--record-accent);
-  font-family: Georgia, serif;
+  font-family: var(--font-ui);
   font-size: 20px;
 }
 

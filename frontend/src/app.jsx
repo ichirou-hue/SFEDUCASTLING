@@ -121,16 +121,10 @@ function MainPage({ user }) {
             onSelectLevel={(level) => boardRef.current?.setMaiaLevel?.(level)}
           />
         </div>
-        <EvalBar
-          diff={boardState.materialDiff}
-          flipped={boardState.boardFlipped}
-          height={boardState.boardHeight}
-        />
-        <ChessboardComponent
-          ref={boardRef}
-          onStateChange={setBoardState}
-          chatCollapsed={chatCollapsed}
-        />
+        <div className="board-stage">
+          <EvalBar diff={boardState.materialDiff} flipped={boardState.boardFlipped} height={boardState.boardHeight} />
+          <ChessboardComponent ref={boardRef} onStateChange={setBoardState} chatCollapsed={chatCollapsed} />
+        </div>
         <ChatPanel
           hintMessage={boardState.hintMessage}
           currentFen={boardState.fen}
@@ -139,7 +133,7 @@ function MainPage({ user }) {
           onAnalyze={() => boardRef.current?.requestBestMove?.()}
           collapsed={chatCollapsed}
           onToggleCollapsed={() => {
-            setChatCollapsed(true);
+            setChatCollapsed((collapsed) => !collapsed);
             setMobileGamePanel(null);
           }}
         />
@@ -235,7 +229,7 @@ function HomePage({ user, onRegister, onOpenOnboarding }) {
               <span className="home-stats-guest__mark" aria-hidden="true">♞</span>
               <div>
                 <div className="user-profile-kicker">Твой прогресс</div>
-                <h2>Твои партии и рекорды — в одном месте</h2>
+                <h2>Твои партии и рекорды - в одном месте</h2>
                 <p>Создай аккаунт, чтобы сохранять результаты и видеть настоящую статистику.</p>
                 <button type="button" className="home-stats-guest__button" onClick={onRegister}>
                   Создать аккаунт <span aria-hidden="true">↗</span>

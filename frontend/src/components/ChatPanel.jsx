@@ -41,7 +41,8 @@ function buildHintArrows(hintMessage) {
 }
 
 function escapeHtml(str) {
-  return str
+  return String(str ?? "")
+    .replace(/[\u2012\u2013\u2014\u2015]/g, "-")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
@@ -134,7 +135,7 @@ export default function ChatPanel({
       return undefined;
     }
 
-    if (window.matchMedia("(max-width: 1150px)").matches) {
+    if (window.matchMedia("(max-width: 1450px)").matches) {
       el.classList.remove("chat-section--sliding", "chat-section--reveal");
       el.style.flex = "";
       el.style.width = "";

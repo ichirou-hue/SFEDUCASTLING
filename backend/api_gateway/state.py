@@ -970,7 +970,7 @@ def get_opening_info(
                 )
 
                 games.append(
-                    f"{white} — {black}, "
+                    f"{white} - {black}, "
                     f"{year} ({winner})"
                 )
 
