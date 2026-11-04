@@ -2558,7 +2558,7 @@ textarea {
 .puzzles-layout {
   /* Keep the puzzle info, board, and coach aligned in one shared row. */
   display: grid;
-  grid-template-columns: minmax(210px, 250px) minmax(0, 1fr) minmax(320px, min(28vw, 520px));
+  grid-template-columns: minmax(360px, clamp(380px, 29vw, 480px)) minmax(0, 1fr) minmax(320px, min(28vw, 520px));
   gap: 24px;
   align-items: stretch;
   width: 100%;
@@ -2597,34 +2597,59 @@ textarea {
   flex-shrink: 0;
   min-width: 0;
   min-height: 0;
-  width: 230px;
+  width: 100%;
   border-radius: 30px;
   border: 3px solid rgba(180, 135, 44, 0.85);
   background: rgba(255, 255, 255, 0.87);
   box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.25);
-  padding: 18px 16px;
+  padding: 22px clamp(18px, 1.6vw, 26px);
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: 10px;
+  gap: 14px;
   max-height: 100%;
   overflow-x: hidden;
   overflow-y: auto;
   justify-content: flex-start;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(128, 101, 47, 0.38) transparent;
+}
+
+.puzzle-info-panel::-webkit-scrollbar {
+  width: 8px;
+}
+
+.puzzle-info-panel::-webkit-scrollbar-track {
+  margin-block: 18px;
+  background: transparent;
+}
+
+.puzzle-info-panel::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: rgba(128, 101, 47, 0.38);
+  background-clip: padding-box;
+}
+
+.puzzle-info-panel::-webkit-scrollbar-thumb:hover {
+  background: rgba(128, 101, 47, 0.58);
+  background-clip: padding-box;
 }
 
 .puzzle-info-heading {
+  position: relative;
   display: flex;
   width: 100%;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   gap: 8px;
 }
 
 .puzzle-info-heading-copy {
   min-width: 0;
+  text-align: center;
 }
 
 .puzzle-theme-label {
@@ -2645,6 +2670,8 @@ textarea {
 }
 
 .puzzle-theme-icon {
+  position: absolute;
+  right: 0;
   flex: 0 0 40px;
   display: grid;
   width: 40px;

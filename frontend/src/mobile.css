@@ -818,15 +818,30 @@
 
   .puzzle-info-panel {
     display: flex;
-    width: 100%;
+    width: auto;
     min-width: 0;
-    flex-direction: row;
-    flex-wrap: wrap;
+    max-height: none;
+    justify-self: stretch;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
     justify-content: flex-start;
-    gap: 5px 9px;
-    padding: 11px 13px;
+    gap: 12px;
+    padding: 18px 20px;
     border-radius: 18px;
-    text-align: left;
+    text-align: center;
+    overflow: visible;
+  }
+
+  .puzzle-info-heading {
+    position: relative;
+    justify-content: center;
+    width: 100%;
+  }
+
+  .puzzle-info-heading-copy {
+    width: 100%;
+    text-align: center;
   }
 
   .puzzle-theme-label {
@@ -838,16 +853,32 @@
   }
 
   .puzzle-theme-icon {
+    position: absolute;
+    right: 0;
     width: 34px;
     height: 34px;
-    margin-left: auto;
+    margin-left: 0;
     font-size: 27px;
     line-height: 34px;
   }
 
   .puzzle-instruction {
-    flex-basis: 100%;
+    flex-basis: auto;
+    width: 100%;
     font-size: 12px;
+  }
+
+  .puzzle-nav-buttons,
+  .puzzle-turn-indicator,
+  .puzzle-moves-summary,
+  .puzzle-quick-stats,
+  .puzzle-streak-best,
+  .puzzle-rewards-details,
+  .puzzle-mode-card,
+  .learning-topic-filter,
+  .learning-crosslink {
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .puzzle-instruction br {
