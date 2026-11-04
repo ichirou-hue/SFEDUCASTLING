@@ -118,7 +118,7 @@
 │   ├── rag_system_v1/       #   RAG по шахматной литературе (ChromaDB)
 │   └── synthesis_pipeline/  #   синтез тренерских SFT-датасетов
 ├── maia3/                   # git submodule: человекоподобный движок (UCI)
-├── alembic/                 # миграции (32 версии)
+├── alembic/                 # миграции (33 версии)
 ├── scripts/                 # create_admin.py, init_db.py
 ├── tests/                   # pytest: routes/, training/, learning/, auth/,
 │                            # achievements/, security/, knowledge/, analysis/, models/
