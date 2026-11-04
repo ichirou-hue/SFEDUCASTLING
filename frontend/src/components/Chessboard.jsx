@@ -179,6 +179,13 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
   const [legalMovesForSelected, setLegalMovesForSelected] = useState([]);
 
   /*
+   * Клетка и фигура, с которой началось перетаскивание: { square, piece }.
+   * react-chessboard прячет фигуру на исходной клетке (opacity: 0),
+   * поэтому подсвечиваем её и рисуем полупрозрачного «призрака».
+   */
+  const [dragFrom, setDragFrom] = useState(null);
+
+  /*
    * Предход: ход, который игрок ставит заранее, пока думает Maia3.
    * Храним максимум один предход - новый заменяет предыдущий.
    *
@@ -2130,11 +2137,23 @@ const fetchBestMove = useCallback(
    * Если игрок начинает тянуть фигуру на своём ходу, ожидающий
    * предход уже не должен выполниться сам.
    */
-  const handlePieceDragBegin = useCallback(() => {
-    if (game.turn() === playerColor) {
-      clearPremove();
-    }
-  }, [game, playerColor, clearPremove]);
+  const handlePieceDragBegin = useCallback(
+    (piece, sourceSquare) => {
+      if (game.turn() === playerColor) {
+        clearPremove();
+      }
+
+      setDragFrom({
+        square: sourceSquare,
+        piece,
+      });
+    },
+    [game, playerColor, clearPremove],
+  );
+
+  const handlePieceDragEnd = useCallback(() => {
+    setDragFrom(null);
+  }, []);
 
   const handleSquareRightClick = useCallback(() => {
     clearPremove();
@@ -2565,6 +2584,48 @@ const fetchBestMove = useCallback(
     );
   })();
 
+  /*
+   * «Призрак» фигуры на клетке, откуда её тянут. react-chessboard
+   * скрывает оригинал, и без такого слоя теряется точка старта.
+   */
+  const dragGhost = (() => {
+    if (!dragFrom) return null;
+
+    const { square, piece } = dragFrom;
+    const file = square.charCodeAt(0) - 97;
+    const rank = Number(square[1]);
+    const squareSize = boardWidth / 8;
+    const left =
+      (boardFlipped ? 7 - file : file) * squareSize;
+    const top =
+      (boardFlipped ? rank - 1 : 8 - rank) * squareSize;
+    const colorName =
+      piece[0] === "w" ? "white" : "black";
+    const pieceName =
+      PIECE_FILE_NAMES[piece[1]?.toLowerCase()];
+
+    if (!pieceName) return null;
+
+    return (
+      <img
+        src={`/pieces/${colorName}_${pieceName}.svg`}
+        alt=""
+        aria-hidden="true"
+        draggable={false}
+        style={{
+          position: "absolute",
+          left,
+          top,
+          width: squareSize,
+          height: squareSize,
+          opacity: 0.4,
+          pointerEvents: "none",
+          zIndex: 7,
+        }}
+      />
+    );
+  })();
+
   return (
     <div className="board-section">
       <div className="board-wrapper" data-logo-anchor>
@@ -2620,6 +2681,7 @@ const fetchBestMove = useCallback(
             onPieceDrop={onDrop}
             onSquareClick={onSquareClick}
             onPieceDragBegin={handlePieceDragBegin}
+            onPieceDragEnd={handlePieceDragEnd}
             onSquareRightClick={handleSquareRightClick}
             onPromotionCheck={handlePromotionCheck}
             isDraggablePiece={isDraggablePiece}
@@ -2816,6 +2878,8 @@ const fetchBestMove = useCallback(
               customSquareStyles
             }
           />
+
+          {dragGhost}
 
           {premoveGhost}
 
