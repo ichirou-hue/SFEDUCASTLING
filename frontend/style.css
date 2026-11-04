@@ -455,7 +455,10 @@ img[src^="/pieces/"] {
 }
 
 .eval-board-surface,
-.chat-board {
+.chat-board,
+.puzzle-board-wrapper,
+.training-board-wrapper,
+.level-test-board-wrap {
   -webkit-user-select: none;
   user-select: none;
 }

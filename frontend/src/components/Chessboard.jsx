@@ -2657,6 +2657,7 @@ const fetchBestMove = useCallback(
                   >
                     <img
                       className="side-pick-piece"
+                      draggable={false}
                       src="/pieces/white_king.svg"
                       alt=""
                     />
@@ -2671,6 +2672,7 @@ const fetchBestMove = useCallback(
                   >
                     <img
                       className="side-pick-piece"
+                      draggable={false}
                       src="/pieces/black_king.svg"
                       alt=""
                     />
