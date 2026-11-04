@@ -36,6 +36,17 @@ def _unique(base: str) -> str:
     return f"{base}_{uuid.uuid4().hex[:8]}"
 
 
+def set_gigacoins(login: str, amount: int) -> None:
+    async def _set():
+        async with async_session_factory() as db:
+            u = await db.scalar(select(User).where(User.login == login))
+            assert u is not None
+            u.gigacoins = amount
+            await db.commit()
+
+    asyncio.run(_set())
+
+
 def get_hash_from_db(login: str) -> str:
     async def _get():
         async with async_session_factory() as db:
@@ -294,6 +305,87 @@ class TestOnboarding:
         assert user["rating_scale"] == "self_report"
         assert user["prior_band"] == 2
         assert user["onboarding_completed"] is True
+
+
+class TestNickname:
+    def _register(self, cleanup):
+        login = cleanup(_unique("nick"))
+        r = client.post(
+            "/api/auth/register", json={"login": login, "password": PASSWORD}
+        )
+        assert r.status_code == 201, r.text
+        body = r.json()
+        return login, body["access_token"], body["user"]
+
+    def test_register_sets_nickname_and_initial_price(self, cleanup):
+        login, _, user = self._register(cleanup)
+        assert user["nickname"] == login
+        assert user["nickname_changes"] == 0
+        assert user["nickname_change_price"] == 10
+
+    def test_each_change_costs_twice_as_much(self, cleanup):
+        login, token, _ = self._register(cleanup)
+        set_gigacoins(login, 100)
+        headers = {"Authorization": f"Bearer {token}"}
+        expected = [(10, 20), (20, 40), (40, 80)]
+
+        for index, (price, next_price) in enumerate(expected, start=1):
+            nickname = f"Nick_{uuid.uuid4().hex[:8]}"
+            r = client.patch(
+                "/api/auth/nickname",
+                json={"nickname": nickname},
+                headers=headers,
+            )
+            assert r.status_code == 200, r.text
+            body = r.json()
+            assert body["price_paid"] == price
+            assert body["next_price"] == next_price
+            assert body["user"]["nickname"] == nickname
+            assert body["user"]["nickname_changes"] == index
+            assert body["user"]["login"] == login
+            assert body["user"]["gigacoins"] == 100 - sum(
+                paid for paid, _ in expected[:index]
+            )
+
+        # Баланс 30, следующая смена стоит 80.
+        r = client.patch(
+            "/api/auth/nickname",
+            json={"nickname": f"Nick_{uuid.uuid4().hex[:8]}"},
+            headers=headers,
+        )
+        assert r.status_code == 409
+        assert "Недостаточно GigaCoin" in r.json()["detail"]
+
+    def test_same_nickname_rejected(self, cleanup):
+        login, token, _ = self._register(cleanup)
+        set_gigacoins(login, 100)
+        r = client.patch(
+            "/api/auth/nickname",
+            json={"nickname": login},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert r.status_code == 400
+
+    def test_duplicate_nickname_rejected(self, cleanup):
+        first_login, _, _ = self._register(cleanup)
+        second_login, second_token, _ = self._register(cleanup)
+        set_gigacoins(second_login, 100)
+        r = client.patch(
+            "/api/auth/nickname",
+            json={"nickname": first_login},
+            headers={"Authorization": f"Bearer {second_token}"},
+        )
+        assert r.status_code == 409
+
+    def test_invalid_nickname_rejected(self, cleanup):
+        login, token, _ = self._register(cleanup)
+        set_gigacoins(login, 100)
+        r = client.patch(
+            "/api/auth/nickname",
+            json={"nickname": "bad<script>"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert r.status_code == 422
 
 
 class TestAdmin:

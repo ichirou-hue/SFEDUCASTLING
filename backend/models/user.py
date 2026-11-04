@@ -11,6 +11,7 @@ from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.db.base import Base, JsonType
+from backend.services.nickname import nickname_change_price
 
 ROLE_LEARNER = "learner"
 ROLE_ADMIN = "admin"
@@ -21,7 +22,22 @@ class User(Base):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    # login - идентификатор для входа, не меняется при смене никнейма.
     login: Mapped[str] = mapped_column(String(32), unique=True, index=True)
+    # nickname - отображаемое имя. NULL допустим только у старых записей,
+    # API всегда заполняет его логином при регистрации (public() делает
+    # fallback на login).
+    nickname: Mapped[str | None] = mapped_column(
+        String(32), unique=True, index=True, nullable=True
+    )
+    # Сколько платных смен никнейма уже сделано. От этой величины зависит
+    # цена следующей смены (10, 20, 40, 80, ...).
+    nickname_changes: Mapped[int] = mapped_column(
+        Integer, default=0, server_default="0", nullable=False
+    )
+    nickname_changed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     email: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True)
     password_hash: Mapped[str] = mapped_column(String(128))
     # elo — итоговая числовая оценка после level-test.
@@ -82,9 +98,13 @@ class User(Base):
         отдельной колонки users.is_admin в БД больше нет.
         """
         role = self.effective_role
+        changes = int(self.nickname_changes or 0)
         return {
             "id": self.id,
             "login": self.login,
+            "nickname": self.nickname or self.login,
+            "nickname_changes": changes,
+            "nickname_change_price": nickname_change_price(changes),
             "email": self.email,
             "elo": self.elo,
             "gigacoins": int(self.gigacoins or 0),
@@ -104,6 +124,9 @@ class User(Base):
             "assessment_completed": self.assessment_completed_at is not None,
             "role": role,
             "is_admin": role == ROLE_ADMIN,
+            "nickname_changed_at": (
+                self.nickname_changed_at.isoformat() if self.nickname_changed_at else None
+            ),
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 

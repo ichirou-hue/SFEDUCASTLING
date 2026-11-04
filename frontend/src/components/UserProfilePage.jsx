@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+  changeNickname,
   fetchCurrentUser,
   fetchLinkedChessAccounts,
   getAccessToken,
@@ -182,6 +183,101 @@ function LinkedAccountsSection() {
   );
 }
 
+/*
+ * Смена отображаемого никнейма за GigaCoin. Логин для входа не меняется.
+ * Каждая следующая смена дороже: цену и счётчик смен считает сервер.
+ */
+function NicknameSection({ profile, onChanged }) {
+  const currentNickname = profile?.nickname || profile?.login || "";
+  const price = Number(profile?.nickname_change_price ?? 10);
+  const balance = Number(profile?.gigacoins || 0);
+  const changes = Number(profile?.nickname_changes || 0);
+  const [nickname, setNickname] = useState(currentNickname);
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState(null);
+
+  useEffect(() => {
+    setNickname(currentNickname);
+  }, [currentNickname]);
+
+  const trimmed = nickname.trim();
+  const canSubmit =
+    !busy &&
+    trimmed.length >= 3 &&
+    trimmed.length <= 32 &&
+    trimmed.toLocaleLowerCase("ru") !== currentNickname.toLocaleLowerCase("ru");
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    if (!canSubmit) return;
+    setBusy(true);
+    setNotice(null);
+    try {
+      const result = await changeNickname(trimmed);
+      onChanged?.(result.user);
+      setNickname(result.user?.nickname || trimmed);
+      setNotice({
+        type: "ok",
+        text: `Никнейм изменён. Списано ${result.price_paid} GigaCoin, следующая смена будет стоить ${result.next_price}.`,
+      });
+    } catch (err) {
+      setNotice({
+        type: "error",
+        text:
+          err?.response?.data?.detail ||
+          err?.message ||
+          "Не удалось изменить никнейм. Попробуйте ещё раз.",
+      });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section className="user-profile-section">
+      <div className="user-profile-section-heading">
+        <div>
+          <div className="user-profile-kicker">Имя в игре</div>
+          <h2>Никнейм</h2>
+        </div>
+        <p>
+          Смена никнейма стоит GigaCoin. Логин для входа не меняется, а цена
+          каждой следующей смены удваивается.
+        </p>
+      </div>
+
+      <form className="user-profile-account-form" onSubmit={handleSubmit}>
+        <input
+          type="text"
+          value={nickname}
+          onChange={(e) => setNickname(e.target.value)}
+          placeholder="Новый никнейм"
+          aria-label="Новый никнейм"
+          maxLength={32}
+          disabled={busy}
+        />
+        <button type="submit" disabled={!canSubmit}>
+          {busy ? "Меняем…" : `Сменить за ✦ ${price}`}
+        </button>
+      </form>
+
+      <p className="user-profile-muted">
+        Баланс: ✦ {balance.toLocaleString("ru-RU")}. Смен никнейма: {changes}.
+      </p>
+
+      {notice && (
+        <div
+          className={`user-profile-warning ${
+            notice.type === "ok" ? "user-profile-warning--ok" : ""
+          }`}
+        >
+          {notice.text}
+        </div>
+      )}
+    </section>
+  );
+}
+
 export default function UserProfilePage({ user, onUserChange }) {
   const navigate = useNavigate();
   const [profile, setProfile] = useState(user || null);
@@ -191,6 +287,15 @@ export default function UserProfilePage({ user, onUserChange }) {
   useEffect(() => {
     if (user) setProfile(user);
   }, [user]);
+
+  const handleNicknameChanged = useCallback(
+    (updatedUser) => {
+      if (!updatedUser) return;
+      setProfile(updatedUser);
+      onUserChange?.(updatedUser);
+    },
+    [onUserChange],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -242,7 +347,7 @@ export default function UserProfilePage({ user, onUserChange }) {
           <div className="user-profile-heading">
             <div>
               <div className="user-profile-kicker">Профиль пользователя</div>
-              <h1>{profile?.login || "Пользователь"}</h1>
+              <h1>{profile?.nickname || profile?.login || "Пользователь"}</h1>
             </div>
             {profile?.is_admin && (
               <span className="user-profile-badge">Администратор</span>
@@ -300,6 +405,8 @@ export default function UserProfilePage({ user, onUserChange }) {
           <ChessAccountsSection user={profile} embedded />
         </div>
       </section>
+
+      <NicknameSection profile={profile} onChanged={handleNicknameChanged} />
 
       <UserRecordsWidget />
       <PhaseAccuracyWidget />

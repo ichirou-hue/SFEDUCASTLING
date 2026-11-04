@@ -336,6 +336,15 @@ export async function saveOnboarding(answers) {
   return user;
 }
 
+export async function changeNickname(nickname) {
+  const { data } = await api.patch("/api/auth/nickname", { nickname });
+  const user = data?.user;
+  if (user) {
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
+  }
+  return data;
+}
+
 export async function fetchGigacoinShop() {
   const { data } = await api.get("/api/gigacoins/shop");
   return data;
