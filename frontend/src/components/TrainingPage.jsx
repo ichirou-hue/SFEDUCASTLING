@@ -231,7 +231,7 @@ export default function TrainingPage({ user, onRegister }) {
   const currentModuleIndex = useMemo(() => {
     if (modules.length === 0) return -1;
     const index = modules.findIndex((module) => {
-      if (!module.enabled) return false;
+      if (!module.enabled || module.locked) return false;
       const moduleProgress = moduleProgressBySlug.get(module.slug);
       if (!moduleProgress || !moduleProgress.tasks_total) return true;
       return moduleProgress.tasks_solved < moduleProgress.tasks_total;
@@ -465,6 +465,12 @@ export default function TrainingPage({ user, onRegister }) {
 
   const openModule = useCallback(async (module) => {
     if (!module.enabled) return;
+    if (module.locked) {
+      setError(
+        `Модуль откроется при рейтинге Elo ${module.required_elo} и выше.`,
+      );
+      return;
+    }
 
     // Единая воронка открытия (эффект по URL, openDueItem): фиксируем,
     // что показываем именно этот модуль, до асинхронной загрузки.
@@ -1046,11 +1052,27 @@ export default function TrainingPage({ user, onRegister }) {
                 }}
                 className={`training-module-node training-module-node--${
                   index % 2 === 0 ? "left" : "right"
-                } ${module.enabled ? "" : "training-module-node--disabled"}`}
-                onClick={() =>
-                  navigate(`/training?module=${encodeURIComponent(module.slug)}`)
+                } ${module.enabled ? "" : "training-module-node--disabled"} ${
+                  module.locked ? "training-module-node--locked" : ""
+                }`}
+                onClick={() => {
+                  if (!module.enabled) return;
+                  if (module.locked) {
+                    setError(
+                      `Модуль откроется при рейтинге Elo ${module.required_elo} и выше.`,
+                    );
+                    return;
+                  }
+                  navigate(
+                    `/training?module=${encodeURIComponent(module.slug)}`,
+                  );
+                }}
+                disabled={!module.enabled || module.locked}
+                title={
+                  module.locked
+                    ? `Откроется с Elo ${module.required_elo}+`
+                    : undefined
                 }
-                disabled={!module.enabled}
               >
                 <span className="training-module-node-icon" aria-hidden="true">
                   {MODULE_ICONS[module.slug] || "♟"}
@@ -1066,7 +1088,7 @@ export default function TrainingPage({ user, onRegister }) {
                     {module.description}
                   </span>
 
-                  {module.enabled && moduleProgress && (
+                  {module.enabled && !module.locked && moduleProgress && (
                     <span className="training-module-progress">
                       <span className="training-module-progress__head">
                         <span>
@@ -1087,6 +1109,11 @@ export default function TrainingPage({ user, onRegister }) {
                       открытых модулей оставляем статус «Скоро». */}
                   {!module.enabled && (
                     <span className="training-module-meta">Скоро</span>
+                  )}
+                  {module.enabled && module.locked && (
+                    <span className="training-module-meta training-module-meta--locked">
+                      🔒 Откроется с Elo {module.required_elo}+
+                    </span>
                   )}
                 </span>
               </button>

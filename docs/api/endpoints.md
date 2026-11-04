@@ -439,25 +439,30 @@ Refresh-токен одноразовый: предыдущий отзывает
 
 ### GET `/api/training/modules`
 
+Модули выше Elo-корзины пользователя возвращаются с `locked: true` и порогом `required_elo`. Без пройденного теста уровня доступны только модули с `required_elo: 0`.
+
 ```json
-{ "modules": [ { "id": 1, "slug": "pawn", "title": "Пешка", "description": "...",
-                 "sort_order": 1, "enabled": true, "lesson_count": 4, "task_count": 12 } ] }
+{ "modules": [ { "id": 1, "slug": "pieces", "title": "Шахматная азбука", "description": "...",
+                 "sort_order": 1, "enabled": true, "level_label": "0-1000",
+                 "required_elo": 0, "locked": false, "lesson_count": 9, "task_count": 45 } ] }
 ```
 
 ### GET `/api/training/modules/{slug}`
 
-`404` - модуль не найден. Если модуль существует, но выключен (`enabled: false`), `lessons` возвращается пустым списком:
+`404` - модуль не найден. `403` - модуль закрыт по Elo (например, `1000-1500` при рейтинге ниже 1000 или без рейтинга). Если модуль существует, но выключен (`enabled: false`), `lessons` возвращается пустым списком:
 
 ```json
 {
-  "module": { "id": 1, "slug": "pawn", "title": "Пешка", "description": "...", "enabled": true, "sort_order": 1 },
+  "module": { "id": 1, "slug": "endgames", "title": "Эндшпиль", "description": "...",
+              "enabled": true, "sort_order": 4, "level_label": "1000-1500",
+              "required_elo": 1000, "locked": false },
   "lessons": [ { "id": 1, "slug": "pawn-moves", "title": "Ходы пешки", "sort_order": 1, "task_count": 3 } ]
 }
 ```
 
 ### GET `/api/training/lessons/{lesson_id}`
 
-`404` - урок не найден или выключен. Задания возвращаются без полей-эталонов (`accepted_moves`/`correct_option`) - они используются только при проверке (см. `check`):
+`404` - урок не найден или выключен. `403` - модуль урока закрыт по Elo. Задания возвращаются без полей-эталонов (`accepted_moves`/`correct_option`) - они используются только при проверке (см. `check`):
 
 ```json
 {
@@ -471,6 +476,8 @@ Refresh-токен одноразовый: предыдущий отзывает
 
 ### GET `/api/training/tasks/{task_id}`
 
+`403` - модуль задания закрыт по Elo.
+
 ```json
 { "task": { "id": 11, ..., "payload": {...}, "sort_order": 1 } }
 ```
@@ -478,6 +485,8 @@ Refresh-токен одноразовый: предыдущий отзывает
 Возвращается публичное представление задания; эталоны ответов не раскрываются.
 
 ### POST `/api/training/tasks/{task_id}/check`
+
+`403` - модуль задания закрыт по Elo (проверка ответа тоже недоступна).
 
 ```json
 { "answer": { "...": "..." }, "hints_used": 0, "response_time_ms": 4300 }

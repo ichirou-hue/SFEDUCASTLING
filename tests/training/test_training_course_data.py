@@ -3,8 +3,11 @@ import pytest
 
 from backend.services.training_course_data import (
     LEVEL_LABELS,
+    LEVEL_MIN_ELO,
     LESSONS_BY_MODULE,
     MODULES,
+    module_required_elo,
+    module_unlocked_for_elo,
 )
 
 PROGRAM_MODULES = [
@@ -44,6 +47,33 @@ def test_every_module_has_level_label():
         assert LEVEL_LABELS[module["slug"]] == "0-1000"
     for module in MODULES[3:]:
         assert LEVEL_LABELS[module["slug"]] == "1000-1500"
+
+
+def test_module_required_elo_matches_level_label():
+    """Порог доступа - нижняя граница метки уровня модуля."""
+    assert LEVEL_MIN_ELO == {
+        "pieces": 0,
+        "king-safety": 0,
+        "tactics": 0,
+        "endgames": 1000,
+        "openings": 1000,
+        "middlegame": 1000,
+    }
+    for slug, label in LEVEL_LABELS.items():
+        expected = int(label.split("-")[0])
+        assert module_required_elo(slug) == expected, slug
+
+
+def test_module_access_by_elo():
+    # Базовые модули доступны всем, включая пользователя без рейтинга.
+    assert module_unlocked_for_elo("pieces", None)
+    assert module_unlocked_for_elo("tactics", 0)
+
+    # Модули 1000-1500 открываются ровно с нижней границы.
+    assert not module_unlocked_for_elo("endgames", None)
+    assert not module_unlocked_for_elo("openings", 999)
+    assert module_unlocked_for_elo("openings", 1000)
+    assert module_unlocked_for_elo("middlegame", 1500)
 
 
 @pytest.mark.parametrize("module", MODULES, ids=lambda item: item["slug"])
