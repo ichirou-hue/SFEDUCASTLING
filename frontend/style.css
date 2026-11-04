@@ -69,7 +69,7 @@ textarea {
   flex: initial;
   flex-direction: column;
   gap: 12px;
-  height: min(720px, calc(100dvh - 140px));
+  height: auto;
   min-height: 0;
   order: 1;
   width: auto;
