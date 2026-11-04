@@ -53,11 +53,6 @@ class DataSettings(BaseModel):
     max_games_to_parse: int = Field(10, alias="MAX_GAMES_TO_PARSE")
 
 
-class LichessSettings(BaseModel):
-    explorer_url: str = Field("https://explorer.lichess.ovh/masters", alias="LICHESS_EXPLORER_URL")
-    timeout: int = Field(5, alias="LICHESS_TIMEOUT")
-
-
 class GigachessSettings(BaseModel):
     base_url: str = ""
     model: str = "gigachess"
@@ -119,6 +114,22 @@ class AuthSettings(BaseSettings):
     access_token_ttl_min: int = Field(60 * 24 * 7, alias="ACCESS_TOKEN_TTL_MIN")  # 7 суток
     refresh_token_ttl_days: int = Field(90, alias="REFRESH_TOKEN_TTL_DAYS")
 
+    # --- Защита входа от перебора пароля ---
+    # Жёсткий предел частоты запросов к /api/auth/login (slowapi): после
+    # 10 запросов в секунду с одного IP сервер отвечает 429, не тратя время
+    # на проверку пароля и обращение к БД.
+    login_rate_limit: str = Field("10/second", alias="LOGIN_RATE_LIMIT")
+    # После скольких НЕУДАЧНЫХ паролей включается экспоненциальная задержка.
+    login_backoff_after: int = Field(10, alias="LOGIN_BACKOFF_AFTER")
+    # Первая задержка и предел роста: 1, 2, 4, 8, ... секунд.
+    login_backoff_base_sec: float = Field(1.0, alias="LOGIN_BACKOFF_BASE_SEC")
+    login_backoff_max_sec: float = Field(300.0, alias="LOGIN_BACKOFF_MAX_SEC")
+    # Через сколько секунд без промахов счётчик попыток обнуляется.
+    login_failure_ttl_sec: float = Field(900.0, alias="LOGIN_FAILURE_TTL_SEC")
+    # Отдельный, более мягкий порог на все попытки с одного IP: не даёт
+    # перебирать разные логины с одного адреса.
+    login_ip_backoff_after: int = Field(30, alias="LOGIN_IP_BACKOFF_AFTER")
+
 
 
 
@@ -176,7 +187,6 @@ class Settings(BaseSettings):
     maia3: Maia3Settings = Maia3Settings()
     data: DataSettings = DataSettings()
 
-    lichess: LichessSettings = LichessSettings()
     gigachess: GigachessSettings = GigachessSettings()
     database: DatabaseSettings = DatabaseSettings()
     auth: AuthSettings = AuthSettings()

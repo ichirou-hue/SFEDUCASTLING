@@ -34,6 +34,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess, initialMode = "r
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
   const [authError, setAuthError] = useState("");
   const [oauthProviders, setOauthProviders] = useState(null);
   const [oauthLoading, setOauthLoading] = useState("");
@@ -50,10 +51,19 @@ export default function AuthModal({ isOpen, onClose, onSuccess, initialMode = "r
     setMode(initialMode);
     setAuthError(notice || "");
     setPassword("");
+    setCooldown(0);
     fetchOAuthProviders()
       .then(setOauthProviders)
       .catch(() => setOauthProviders(null));
   }, [isOpen, initialMode, notice]);
+
+  // Обратный отсчёт после 429: сервер вернул Retry-After, и повторять
+  // запрос раньше срока бессмысленно — кнопка остаётся заблокированной.
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setTimeout(() => setCooldown((value) => value - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [cooldown]);
 
   if (!isOpen) return null;
 
@@ -61,7 +71,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess, initialMode = "r
 
   // Регистрация / вход через бэкенд (задача 64)
   const handleSubmit = async () => {
-    if (submitting) return;
+    if (submitting || cooldown > 0) return;
     const nick = login.trim();
     if (!nick || !password) {
       setAuthError("Введите логин и пароль");
@@ -90,6 +100,14 @@ export default function AuthModal({ isOpen, onClose, onSuccess, initialMode = "r
       onClose();
     } catch (e) {
       // Ошибки валидации бэкенда переводим на русский (см. apiErrors.js).
+      const status = e?.response?.status;
+      const retryAfter = Number(
+        e?.response?.headers?.["retry-after"] ??
+          e?.response?.headers?.["Retry-After"],
+      );
+      if (status === 429 && Number.isFinite(retryAfter) && retryAfter > 0) {
+        setCooldown(Math.ceil(retryAfter));
+      }
       setAuthError(formatApiError(e?.response?.data?.detail));
     } finally {
       setSubmitting(false);
@@ -99,6 +117,8 @@ export default function AuthModal({ isOpen, onClose, onSuccess, initialMode = "r
   const handleSwitchMode = () => {
     setMode(isRegister ? "login" : "register");
     setAuthError("");
+    // У режимов разные лимиты (регистрация не троттлится), поэтому снимаем паузу.
+    setCooldown(0);
   };
 
   const handleOAuth = async (provider) => {
@@ -348,13 +368,15 @@ export default function AuthModal({ isOpen, onClose, onSuccess, initialMode = "r
           <button
             className="auth-submit"
             onClick={handleSubmit}
-            disabled={submitting}
+            disabled={submitting || cooldown > 0}
           >
-            {submitting
-              ? "Отправляем…"
-              : isRegister
-                ? "Зарегистрироваться"
-                : "Войти"}
+            {cooldown > 0
+              ? `Подождите ${cooldown} с`
+              : submitting
+                ? "Отправляем…"
+                : isRegister
+                  ? "Зарегистрироваться"
+                  : "Войти"}
           </button>
 
           {isRegister && (
