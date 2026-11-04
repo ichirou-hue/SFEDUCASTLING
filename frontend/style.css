@@ -2558,7 +2558,7 @@ textarea {
 .puzzles-layout {
   /* Keep the puzzle info, board, and coach aligned in one shared row. */
   display: grid;
-  grid-template-columns: minmax(360px, clamp(380px, 29vw, 480px)) minmax(0, 1fr) minmax(320px, min(28vw, 520px));
+  grid-template-columns: minmax(300px, clamp(310px, 22vw, 370px)) minmax(0, 1fr) minmax(320px, min(28vw, 520px));
   gap: 24px;
   align-items: stretch;
   width: 100%;

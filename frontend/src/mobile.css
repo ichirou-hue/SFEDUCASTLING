@@ -818,10 +818,11 @@
 
   .puzzle-info-panel {
     display: flex;
-    width: auto;
+    width: 100%;
     min-width: 0;
+    max-width: 390px;
     max-height: none;
-    justify-self: stretch;
+    justify-self: center;
     flex-direction: column;
     flex-wrap: nowrap;
     align-items: stretch;
