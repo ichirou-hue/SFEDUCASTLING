@@ -194,8 +194,60 @@ body {
 }
 
 .top-bar > .user-box,
-.top-bar > .reg-btn {
+.top-bar > .reg-btn,
+.top-bar > .top-bar-actions {
   justify-self: end;
+}
+
+/* Правая группа гостя: переключатель темы и кнопка регистрации. */
+.top-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 1px solid rgba(201, 169, 110, 0.45);
+  border-radius: 50%;
+  background: transparent;
+  color: #d8bd88;
+  cursor: pointer;
+  transition:
+    background 0.16s ease,
+    border-color 0.16s ease,
+    color 0.16s ease;
+}
+
+.theme-toggle svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.theme-toggle:hover,
+.theme-toggle:focus-visible {
+  border-color: rgba(228, 197, 141, 0.82);
+  background: rgba(213, 180, 118, 0.14);
+}
+
+.theme-toggle:focus-visible {
+  outline: 2px solid #C9A96E;
+  outline-offset: 3px;
+}
+
+/* На мобиле кнопка переезжает к логотипу, чтобы не переполнять правую группу. */
+.theme-toggle--mobile {
+  display: none;
 }
 
 .logo-wrapper {

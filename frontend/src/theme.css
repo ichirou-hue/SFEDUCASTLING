@@ -291,8 +291,7 @@
 :root[data-theme="dark"] .auth-submit,
 :root[data-theme="dark"] .auth-import-btn,
 :root[data-theme="dark"] .prg-submit,
-:root[data-theme="dark"] .onb-submit,
-:root[data-theme="dark"] .mini-profile__theme-btn--active {
+:root[data-theme="dark"] .onb-submit {
   border-color: var(--sf-gold);
   background: var(--sf-gold);
   color: #141a16;
@@ -1983,8 +1982,7 @@
   color: var(--sf-ink);
 }
 
-:root[data-theme="dark"] .mini-profile__footer,
-:root[data-theme="dark"] .mini-profile__theme {
+:root[data-theme="dark"] .mini-profile__footer {
   border-top-color: rgba(213, 180, 118, 0.16);
 }
 
@@ -2012,25 +2010,6 @@
 :root[data-theme="dark"] .mini-profile__message--error,
 :root[data-theme="dark"] .mini-profile__message--warning {
   color: var(--sf-error);
-}
-
-:root[data-theme="dark"] .mini-profile__theme-options {
-  background: rgba(246, 244, 239, 0.06);
-}
-
-:root[data-theme="dark"] .mini-profile__theme-btn {
-  color: var(--sf-muted);
-}
-
-:root[data-theme="dark"] .mini-profile__theme-btn:hover {
-  background: var(--sf-soft-2);
-  color: var(--sf-ink);
-}
-
-:root[data-theme="dark"] .mini-profile__theme-btn--active {
-  background: var(--sf-gold);
-  color: #141a16;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
 }
 
 /* =========================================================================

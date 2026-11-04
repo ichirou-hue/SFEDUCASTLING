@@ -86,6 +86,17 @@
   color: var(--lt-ink);
 }
 
+:root[data-theme="light"] .theme-toggle {
+  border-color: rgba(160, 124, 54, 0.5);
+  color: var(--lt-gold-strong);
+}
+
+:root[data-theme="light"] .theme-toggle:hover,
+:root[data-theme="light"] .theme-toggle:focus-visible {
+  border-color: #b08b45;
+  background: rgba(169, 133, 63, 0.12);
+}
+
 :root[data-theme="light"] .top-bar .user-name {
   color: var(--lt-ink);
 }

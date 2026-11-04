@@ -173,6 +173,7 @@
     grid-column: 1;
     grid-row: 1;
     min-width: 0;
+    gap: 6px;
   }
 
   .top-bar .logo-wrapper {
@@ -256,7 +257,8 @@
   }
 
   .top-bar .user-box,
-  .top-bar > .reg-btn {
+  .top-bar > .reg-btn,
+  .top-bar > .top-bar-actions {
     grid-column: 2;
     grid-row: 1;
     justify-self: end;
@@ -305,6 +307,20 @@
     min-height: 40px;
     padding: 0 12px;
     font-size: 11px;
+  }
+
+  .top-bar .theme-toggle {
+    width: 36px;
+    height: 36px;
+    flex: 0 0 36px;
+  }
+
+  .theme-toggle--mobile {
+    display: inline-flex;
+  }
+
+  .theme-toggle--desktop {
+    display: none;
   }
 
   .top-bar-logout-compact {
