@@ -1594,20 +1594,26 @@ textarea {
   text-align: center;
   min-width: 45px; /* Р§С‚РѕР±С‹ РІСЃРµ РїР»Р°С€РєРё Р±С‹Р»Рё РѕРґРёРЅР°РєРѕРІРѕР№ С€РёСЂРёРЅС‹ Рё СЃРјРѕС‚СЂРµР»РёСЃСЊ СЃРёРјРјРµС‚СЂРёС‡РЅРѕ */
 }
-.num {
-  width: 40px;
+.move-pair .num {
+  flex: 0 0 32px;
+  width: 32px;
+  padding-inline: 0;
   color: #555;
   font-size: 22px;
 }
-.move-w {
-  flex: 1;
+.move-pair .move-w {
+  flex: 1 1 0;
+  min-width: 0;
+  white-space: nowrap;
   text-align: left; /* Р‘РµР»С‹Рµ С…РѕРґС‹ РїСЂРёР¶Р°С‚С‹ РІР»РµРІРѕ (РїРѕРґ Р’С‹) */
-  padding-left: 10px;
+  padding-inline: 4px;
 }
-.move-b {
-  flex: 1;
+.move-pair .move-b {
+  flex: 1 1 0;
+  min-width: 0;
+  white-space: nowrap;
   text-align: right; /* Р§РµСЂРЅС‹Рµ С…РѕРґС‹ РїСЂРёР¶Р°С‚С‹ РІРїСЂР°РІРѕ (РїРѕРґ Maia 2) */
-  padding-right: 15px;
+  padding-inline: 4px;
 }
 /* --- РќР°РІРёРіР°С†РёСЏ СЃРѕ СЃС‚СЂРµР»РєР°РјРё --- */
 /* Р’С‹СЃС‚СЂР°РёРІР°РµРј РєРЅРѕРїРєРё Рё СЃС‡РµС‚С‡РёРє СЃС‚СЂРѕРіРѕ РїРѕ С†РµРЅС‚СЂСѓ РЅР° СЂР°РІРЅРѕРј СѓРґР°Р»РµРЅРёРё */
