@@ -17,6 +17,7 @@ import {
   saveMoveToDataset,
   fetchExplainMove,
   finishGame,
+  reviewGame,
   getStoredUser,
 } from "../api.js";
 
@@ -57,6 +58,185 @@ const MATERIAL_PIECE_ORDER = ["p", "n", "b", "r", "q"];
 const START_POSITION =
   "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
+/*
+ * История ходов в SAN -> список UCI от начальной позиции.
+ * Нужен и для сохранения партии, и для разбора: сервер работает
+ * только с UCI. Если история начинается не с начальной позиции
+ * (загружен FEN), разбор прекращается на первом же несоответствии.
+ */
+function toUciMoves(sanMoves) {
+  const replay = new Chess();
+  const moves = [];
+
+  for (const san of sanMoves) {
+    try {
+      const move = replay.move(san);
+      if (move) {
+        moves.push(move.from + move.to + (move.promotion || ""));
+      }
+    } catch {
+      break;
+    }
+  }
+
+  return moves;
+}
+
+/*
+ * Подписи для итогов разбора: что именно произошло с ходами игрока.
+ * Порядок - от лучших к худшим, чтобы строка читалась слева направо.
+ */
+const REVIEW_COUNT_LABELS = [
+  ["best", "лучших"],
+  ["excellent", "отличных"],
+  ["good", "хороших"],
+  ["inaccuracy", "неточностей"],
+  ["mistake", "ошибок"],
+  ["blunder", "зевков"],
+];
+
+function formatAccuracy(accuracy) {
+  if (accuracy == null) return "-";
+  return `${accuracy.toFixed(1).replace(".", ",")}%`;
+}
+
+/*
+ * Меньше этого числа оцененных ходов - процент строить рано: на выборке
+ * в три-четыре хода он гуляет на несколько пунктов от прогона к прогону,
+ * а один ход решает всё. Порог тот же по смыслу, что MIN_SCORED_MOVES
+ * в точности по этапам.
+ */
+const MIN_RELIABLE_MOVES = 8;
+
+/*
+ * Описание итога партии для карточки. На мате ход принадлежит
+ * проигравшей стороне: если это сторона игрока - поражение, иначе победа.
+ */
+function describeGameOver(g, playerColor) {
+  if (g.isCheckmate()) {
+    return g.turn() === playerColor
+      ? {
+          outcome: "loss",
+          reason: `Мат - победили ${playerColor === "w" ? "чёрные" : "белые"}`,
+        }
+      : { outcome: "win", reason: "Мат! Вы победили" };
+  }
+  if (g.isStalemate()) {
+    return { outcome: "draw", reason: "Пат - ничья" };
+  }
+  if (g.isThreefoldRepetition()) {
+    return { outcome: "draw", reason: "Троекратное повторение - ничья" };
+  }
+  if (g.isInsufficientMaterial()) {
+    return { outcome: "draw", reason: "Недостаточно материала - ничья" };
+  }
+  if (g.isDrawByFiftyMoves()) {
+    return { outcome: "draw", reason: "Правило 50 ходов - ничья" };
+  }
+  return { outcome: "draw", reason: "Ничья" };
+}
+
+function GameReviewSummary({ review }) {
+  const counts = review.counts || {};
+  const parts = REVIEW_COUNT_LABELS.filter(
+    ([key]) => (counts[key] || 0) > 0,
+  ).map(([key, label]) => `${label}: ${counts[key]}`);
+
+  /*
+   * Подсказка, сколько точности не хватает до следующей звезды:
+   * без неё «ноль звёзд» выглядит как поломка, а не как результат.
+   * Потолок по результату партии учитываем: за поражение больше одной
+   * звезды не дают, и обещать «до 2 звёзд» нельзя.
+   */
+  const thresholds = review.thresholds || {};
+  const stars = Number.isFinite(review.stars) ? review.stars : 0;
+  const cap = Number.isFinite(review.star_cap) ? review.star_cap : 3;
+  const nextStar = stars < cap ? stars + 1 : null;
+  const nextThreshold =
+    nextStar !== null && thresholds[String(nextStar)] != null
+      ? thresholds[String(nextStar)]
+      : null;
+
+  /*
+   * Почему звёзд меньше, чем позволяет точность. Без этой строки
+   * «1 звезда за 100% точности» выглядит как ошибка подсчёта.
+   */
+  const capNote =
+    stars >= cap && review.outcome === "loss"
+      ? "За поражение максимум одна звезда"
+      : stars >= cap && review.outcome === "draw"
+        ? "За ничью максимум две звезды"
+        : null;
+
+  return (
+    <div className="gameover-review">
+      <div
+        className="gameover-stars"
+        aria-label={`Оценка партии: ${stars} из 3 звёзд`}
+      >
+        {[1, 2, 3].map((star) => (
+          <span
+            key={star}
+            className={`gameover-star${
+              star <= stars ? " gameover-star--on" : ""
+            }`}
+            aria-hidden="true"
+          >
+            ★
+          </span>
+        ))}
+      </div>
+      <div className="gameover-review-accuracy">
+        Точность: {formatAccuracy(review.accuracy)}
+      </div>
+      <div className="gameover-review-detail">
+        {parts.length > 0 ? parts.join(" · ") : "Ходы игрока не разобраны"}
+      </div>
+      {nextThreshold !== null && review.accuracy != null && (
+        <div className="gameover-review-note">
+          До {nextStar} {nextStar === 1 ? "звезды" : "звёзд"} нужно{" "}
+          {String(nextThreshold).replace(".", ",")}% точности
+        </div>
+      )}
+      {capNote && <div className="gameover-review-note">{capNote}</div>}
+      {review.truncated && (
+        <div className="gameover-review-note">
+          Разобраны первые {review.moves_analyzed} ходов
+        </div>
+      )}
+      {review.moves_decided > 0 && (
+        <div className="gameover-review-note">
+          {/*
+           * Точность по ходам из решённых позиций не считается: когда
+           * партия уже выиграна или проиграна, любой ход сохраняет те же
+           * шансы и получает 100 %. Без этой строки «45 % за 17 ходов»
+           * выглядит как ошибка подсчёта.
+           */}
+          В точность вошли {review.moves_scored ?? 0} из{" "}
+          {review.moves_analyzed ?? 0} ходов: остальные сделаны в уже
+          решённой позиции
+        </div>
+      )}
+      {Number.isFinite(review.moves_scored) &&
+        review.moves_scored < MIN_RELIABLE_MOVES && (
+          <div className="gameover-review-note">
+            {/*
+             * Процент по трём-четырём ходам гуляет на несколько пунктов
+             * от прогона к прогону: движок ищет 300 мс, и оценка соседних
+             * позиций чуть разная. Честнее предупредить, чем показывать
+             * «55,8 %» как приговор всей игре.
+             */}
+            Оценено мало ходов - точность ориентировочная, смотрите на
+            разметку ошибок
+          </div>
+        )}
+      <div className="gameover-review-note">
+        Оценка каждого хода есть в истории партии - листайте ходы стрелками
+      </div>
+    </div>
+  );
+}
+
 let audioCtx = null;
 
 function playMoveSound() {
@@ -89,7 +269,12 @@ function playMoveSound() {
 }
 
 const ChessboardComponent = forwardRef(function ChessboardComponent(
-  { onStateChange, chatCollapsed = false },
+  {
+    onStateChange,
+    chatCollapsed = false,
+    evalMode = "material",
+    onToggleEvalMode,
+  },
   ref,
 ) {
   const gameRef = useRef(new Chess());
@@ -117,6 +302,12 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
    * ходе игрока — поражение, мат при ходе соперника — победа.
    */
   const [gameResult, setGameResult] = useState(null);
+  /*
+   * Карточку итога можно закрыть кликом по фону, чтобы рассмотреть
+   * финальную позицию. Признак хранится отдельно от gameResult: иначе
+   * карточка закрывалась бы вместе с кнопкой «Разобрать партию».
+   */
+  const [resultCardDismissed, setResultCardDismissed] = useState(false);
 
   const [boardFlipped, setBoardFlipped] = useState(false);
   const [elo, setElo] = useState(1500);
@@ -145,6 +336,30 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
   const boardBoxRef = useRef(null);
 
   const [evalScore, setEvalScore] = useState(null);
+
+  /*
+   * Запрос оценки позиции у движка. Оценка приходит от лица белых,
+   * поэтому ни доска, ни шкала её не пересчитывают. Ответ без оценки
+   * (движок недоступен) старое значение не затирает.
+   */
+  const fetchEvalForPosition = useCallback((positionFen) => {
+    fetchEval(positionFen)
+      .then((data) => {
+        if (data.evaluation) {
+          setEvalScore(data.evaluation);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  /*
+   * Разбор партии по запросу: до нажатия кнопки ничего не считаем.
+   * review - ответ сервера (звёзды, точность, счётчики ходов),
+   * reviewError - текст ошибки, reviewLoading - идёт разбор.
+   */
+  const [review, setReview] = useState(null);
+  const [reviewError, setReviewError] = useState("");
+  const [reviewLoading, setReviewLoading] = useState(false);
 
   /*
    * Две независимые стрелки:
@@ -383,6 +598,26 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
    */
   const finishSentRef = useRef(false);
 
+  /*
+   * Показать карточку итога сразу после хода. Раньше карточка зависела
+   * только от эффекта на moveHistory: если эффект по какой-то причине
+   * не срабатывал, партия визуально «не заканчивалась». Теперь состояние
+   * выставляется прямо в момент хода, а эффект ниже отвечает только
+   * за отправку партии на сервер.
+   */
+  const showGameOverCard = useCallback(() => {
+    const g = gameRef.current;
+
+    if (!g || !g.isGameOver()) return;
+
+    /*
+     * Признак закрытия карточки здесь НЕ сбрасываем: иначе она снова
+     * всплывала бы над доской, когда при разборе листаешь до последнего
+     * хода. Новую партию и так открывает handleNewGame.
+     */
+    setGameResult((current) => current ?? describeGameOver(g, playerColor));
+  }, [playerColor]);
+
   useEffect(() => {
     if (!moveHistory || moveHistory.length === 0) {
       finishSentRef.current = false;
@@ -391,11 +626,16 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
 
     const g = gameRef.current;
 
-    if (!g || finishSentRef.current || !g.isGameOver()) return;
+    if (!g || !g.isGameOver()) return;
+
+    // Карточку показываем независимо от того, отправлена ли партия.
+    showGameOverCard();
+
+    if (finishSentRef.current) return;
 
     /*
-     * Итог этой партии считаем обработанным: оверлей показываем один
-     * раз, чтобы он не всплывал снова, если игрок его закрыл.
+     * Итог этой партии считаем обработанным: отправка на сервер идёт
+     * один раз, чтобы повторный рендер не создал дубль партии.
      */
     finishSentRef.current = true;
 
@@ -425,53 +665,13 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
     }
 
     /*
-     * Оверлей итога партии. На мате ход принадлежит проигравшей стороне:
-     * если это сторона игрока — поражение, иначе победа.
+     * Партию отправляем, только если ходы разворачиваются из начальной
+     * позиции: после загрузки FEN история начинается с середины и
+     * повтор собрать нельзя.
      */
-    if (g.isCheckmate()) {
-      setGameResult(
-        g.turn() === playerColor
-          ? {
-              outcome: "loss",
-              reason: `Мат - победили ${
-                playerColor === "w" ? "чёрные" : "белые"
-              }`,
-            }
-          : { outcome: "win", reason: "Мат! Вы победили" },
-      );
-    } else if (g.isStalemate()) {
-      setGameResult({ outcome: "draw", reason: "Пат - ничья" });
-    } else if (g.isThreefoldRepetition()) {
-      setGameResult({ outcome: "draw", reason: "Троекратное повторение - ничья" });
-    } else if (g.isInsufficientMaterial()) {
-      setGameResult({ outcome: "draw", reason: "Недостаточно материала - ничья" });
-    } else if (g.isDrawByFiftyMoves()) {
-      setGameResult({ outcome: "draw", reason: "Правило 50 ходов - ничья" });
-    } else {
-      setGameResult({ outcome: "draw", reason: "Ничья" });
-    }
-
-    /*
-     * Партию на разбор отправляем, только если ходы разворачиваются
-     * из начальной позиции: после загрузки FEN история начинается
-     * с середины и повтор собрать нельзя.
-     */
-    const replay = new Chess();
-    const uciMoves = [];
-
-    for (const san of moveHistory) {
-      try {
-        const m = replay.move(san);
-
-        if (m) uciMoves.push(m.from + m.to + (m.promotion || ""));
-      } catch {
-        break;
-      }
-    }
+    const uciMoves = toUciMoves(moveHistory);
 
     if (uciMoves.length === 0) return;
-
-    const uid = getCurrentUserId();
 
     finishGame({
       moves: uciMoves,
@@ -481,7 +681,67 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
       status,
       playerColor,
     }).catch(() => {});
-  }, [moveHistory, elo, playerColor, onStateChange]);
+  }, [moveHistory, fen, elo, playerColor, onStateChange, showGameOverCard]);
+
+  /*
+   * Разбор партии по кнопке в итоговой карточке. Считает сервер:
+   * Stockfish проходится по ходам игрока и возвращает точность,
+   * звёзды и счётчики удачных/плохих ходов.
+   */
+  const handleReviewGame = useCallback(() => {
+    if (reviewLoading) return;
+
+    const uciMoves = toUciMoves(moveHistory);
+
+    if (uciMoves.length === 0) {
+      setReviewError("Партию, начатую с загруженной позиции, разобрать нельзя");
+      return;
+    }
+
+    setReviewError("");
+    setReviewLoading(true);
+
+    /*
+     * Разбор идёт до 40 секунд. Если за это время начали новую партию
+     * или загрузили FEN, ответ уже не про текущую партию: сверяем номер
+     * поколения и молча выбрасываем его.
+     */
+    const gen = gameGenRef.current;
+
+    reviewGame(uciMoves, playerColor)
+      .then((data) => {
+        if (gen === gameGenRef.current) {
+          setReview(data);
+        }
+      })
+      .catch((error) => {
+        if (gen !== gameGenRef.current) return;
+
+        const detail = error?.response?.data?.detail;
+        setReviewError(
+          typeof detail === "string" && detail
+            ? detail
+            : "Не удалось разобрать партию, попробуйте ещё раз",
+        );
+      })
+      .finally(() => {
+        if (gen === gameGenRef.current) {
+          setReviewLoading(false);
+        }
+      });
+  }, [moveHistory, playerColor, reviewLoading]);
+
+  /*
+   * Кнопка под доской. Открывает карточку итога и сразу запускает разбор,
+   * если он ещё не готов: карточку можно случайно закрыть кликом по фону,
+   * и раньше вместе с ней пропадала единственная кнопка разбора.
+   */
+  const openReviewCard = useCallback(() => {
+    setResultCardDismissed(false);
+    if (!review && !reviewLoading) {
+      handleReviewGame();
+    }
+  }, [review, reviewLoading, handleReviewGame]);
 
   /*
    * Пересчитываем FEN позиции по истории SAN.
@@ -547,61 +807,99 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
   /*
    * Навигация по истории партии.
    */
+  /*
+   * Оценка просматриваемой позиции из разбора. Разбор приходит
+   * с оценкой после каждого полухода, поэтому при листании партии
+   * шкала показывает ту же цифру, что и подпись хода в истории,
+   * и не ходит в движок заново.
+   */
+  const applyReviewEval = useCallback(
+    (index) => {
+      if (!review || !Array.isArray(review.plies)) return;
+
+      if (index < 0) {
+        setEvalScore({ type: "cp", value: 0 });
+        return;
+      }
+
+      const ply = review.plies[index];
+
+      if (!ply) return;
+
+      if (ply.mate != null) {
+        setEvalScore({ type: "mate", value: ply.mate });
+        return;
+      }
+
+      if (ply.eval_cp != null) {
+        setEvalScore({ type: "cp", value: Math.round(ply.eval_cp) });
+      }
+    },
+    [review],
+  );
+
+  /*
+   * Показ позиции после хода с индексом index (-1 - начальная).
+   * Единая точка входа и для клика по ходу в истории, и для стрелок:
+   * доска, подсветка последнего хода, оценка из разбора и режим
+   * просмотра меняются вместе.
+   */
+  const showPosition = useCallback(
+    (index) => {
+      const g = gameRef.current;
+      const history = moveHistory;
+
+      const replay = new Chess();
+      let from = null;
+      let to = null;
+
+      for (let i = 0; i <= index; i++) {
+        if (!history[i]) continue;
+
+        try {
+          const played = replay.move(history[i]);
+
+          if (played) {
+            from = played.from;
+            to = played.to;
+          }
+        } catch {
+          break;
+        }
+      }
+
+      const nextFen = replay.fen();
+
+      g.load(nextFen);
+      setFen(nextFen);
+      setLastMove(from && to ? { from, to } : null);
+      setSelectedSquare(null);
+      setLegalMovesForSelected([]);
+      applyReviewEval(index);
+
+      setStockfishArrow(null);
+      setMaiaArrow(null);
+      setCompareData(null);
+
+      if (index >= history.length - 1) {
+        setIsViewMode(false);
+        setViewIndex(-1);
+      } else {
+        setIsViewMode(true);
+        setViewIndex(index);
+      }
+    },
+    [moveHistory, applyReviewEval],
+  );
+
   const onNavigate = useCallback(
     (direction) => {
-      const g = gameRef.current;
       const history = moveHistory;
 
       if (history.length === 0) return;
 
-      const START_FEN =
-        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-
-      const getFen = (index) => {
-        if (index === -1) return START_FEN;
-
-        const tempGame = new Chess();
-
-        for (let i = 0; i <= index; i++) {
-          if (history[i]) {
-            tempGame.move(history[i]);
-          }
-        }
-
-        return tempGame.fen();
-      };
-
       if (typeof direction === "number") {
-        const targetIndex = direction;
-
-        if (targetIndex >= history.length - 1) {
-          setIsViewMode(false);
-          setViewIndex(-1);
-
-          const lastFen = getFen(history.length - 1);
-
-          g.load(lastFen);
-          setFen(lastFen);
-
-          setStockfishArrow(null);
-          setMaiaArrow(null);
-          setCompareData(null);
-
-          return;
-        }
-
-        setIsViewMode(true);
-        setViewIndex(targetIndex);
-
-        const fenToLoad = getFen(targetIndex);
-
-        g.load(fenToLoad);
-        setFen(fenToLoad);
-
-        setStockfishArrow(null);
-        setMaiaArrow(null);
-        setCompareData(null);
-
+        showPosition(direction);
         return;
       }
 
@@ -622,25 +920,51 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
         currentIndex = history.length - 1;
       }
 
-      const fenToLoad = getFen(currentIndex);
-
-      g.load(fenToLoad);
-      setFen(fenToLoad);
-
-      setStockfishArrow(null);
-      setMaiaArrow(null);
-      setCompareData(null);
-
-      if (currentIndex >= history.length - 1) {
-        setIsViewMode(false);
-        setViewIndex(-1);
-      } else {
-        setIsViewMode(true);
-        setViewIndex(currentIndex);
-      }
+      showPosition(currentIndex);
     },
-    [moveHistory, isViewMode, viewIndex],
+    [moveHistory, isViewMode, viewIndex, showPosition],
   );
+
+  /*
+   * Листание партии стрелками, как на Lichess. Включается только после
+   * завершения партии (иначе перехватывало бы прокрутку во время игры)
+   * и не трогает поля ввода - прежде всего поле чата.
+   */
+  useEffect(() => {
+    if (!gameResult) return undefined;
+
+    const onKeyDown = (event) => {
+      if (event.altKey || event.ctrlKey || event.metaKey) return;
+
+      const target = event.target;
+
+      if (
+        target &&
+        (target.isContentEditable ||
+          ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName))
+      ) {
+        return;
+      }
+
+      if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        onNavigate("prev");
+      } else if (event.key === "ArrowRight") {
+        event.preventDefault();
+        onNavigate("next");
+      } else if (event.key === "Home") {
+        event.preventDefault();
+        onNavigate("first");
+      } else if (event.key === "End") {
+        event.preventDefault();
+        onNavigate("last");
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [gameResult, onNavigate]);
 
   /*
    * Новая игра.
@@ -661,6 +985,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
     setFen(startFen);
     setMoveHistory([]);
     setGameResult(null);
+    setResultCardDismissed(false);
     setPositionSnapshots([startFen]);
 
     setViewIndex(-1);
@@ -675,6 +1000,10 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
     setIsComparing(false);
 
     setEvalScore(null);
+
+    setReview(null);
+    setReviewError("");
+    setReviewLoading(false);
 
     setStockfishArrow(null);
     setMaiaArrow(null);
@@ -725,6 +1054,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
    */
   const openSidePicker = useCallback(() => {
     setGameResult(null);
+    setResultCardDismissed(false);
     setSidePickerOpen(true);
   }, []);
 
@@ -762,6 +1092,10 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
         setIsComparing(false);
 
         setEvalScore(null);
+
+        setReview(null);
+        setReviewError("");
+        setReviewLoading(false);
 
         setStockfishArrow(null);
         setMaiaArrow(null);
@@ -852,30 +1186,12 @@ const fetchBestMove = useCallback(
        * e2e4
        * e7e5
        * g1f3
+       *
+       * Историю берём из живого объекта партии: moveHistory в состоянии
+       * React может отставать на ход, и тогда позиция на сервере не
+       * сойдётся с присланным FEN.
        */
-      const historyGame = new Chess();
-      const uciMoves = [];
-
-      for (const san of moveHistory) {
-        try {
-          const move = historyGame.move(san);
-
-          if (move) {
-            uciMoves.push(
-              move.from +
-                move.to +
-                (move.promotion || ""),
-            );
-          }
-        } catch (error) {
-          console.warn(
-            "[Compare] Не удалось восстановить ход:",
-            san,
-          );
-
-          break;
-        }
-      }
+      const uciMoves = toUciMoves(game.history());
 
       /*
        * ============================================================
@@ -1207,7 +1523,6 @@ const fetchBestMove = useCallback(
   [
     game,
     elo,
-    moveHistory,
     isComparing,
     onStateChange,
   ],
@@ -1239,30 +1554,17 @@ const fetchBestMove = useCallback(
 
     try {
       /*
-       * Формируем историю партии в UCI.
+       * Историю берём из живого объекта партии, а не из состояния React.
+       *
+       * moveHistory обновляется через setState, и в момент вызова (через
+       * 500 мс после хода игрока) замыкание держит значение с прошлого
+       * рендера - без только что сыгранного хода. Сервер получал историю,
+       * которая не сходилась с присланным FEN, писал "History FEN
+       * mismatch" и работал только с текущей позицией. Maia3 запущена
+       * с --use-uci-history и без истории играет вслепую: не видит, что
+       * было в партии, и её уровень резко падает.
        */
-      const historyGame = new Chess();
-      const uciMoves = [];
-
-      for (const san of moveHistory) {
-        try {
-          const move = historyGame.move(san);
-
-          if (move) {
-            uciMoves.push(
-              move.from +
-                move.to +
-                (move.promotion || ""),
-            );
-          }
-        } catch (error) {
-          console.warn(
-            "[Maia3] Не удалось восстановить ход:",
-            san,
-          );
-          break;
-        }
-      }
+      const uciMoves = toUciMoves(game.history());
 
       const data = await fetchMaiaMove(
         game.fen(),
@@ -1305,12 +1607,16 @@ const fetchBestMove = useCallback(
         buildMoveHistory(move.san);
         takeSnapshot();
         updateStatus();
+        showGameOverCard();
 
         playMoveSound();
 
-        if (data.evaluation) {
-          setEvalScore(data.evaluation);
-        }
+        /*
+         * Ход AI меняет позицию, поэтому оценку движка запрашиваем
+         * заново: иначе шкала отставала бы на полхода (показывала
+         * позицию сразу после хода игрока).
+         */
+        fetchEvalForPosition(currentFen);
 
         if (typeof onStateChange === "function") {
           onStateChange((prev) => ({
@@ -1333,11 +1639,16 @@ const fetchBestMove = useCallback(
       console.error("Maia3 ошибка:", err);
       const detail = err?.response?.data?.detail;
       if (gen === gameGenRef.current) {
-        setMaiaError(
-          typeof detail === "string"
-            ? detail
-            : "Maia3 сейчас недоступна. Ход не был выполнен.",
-        );
+        if (typeof detail === "string") {
+          setMaiaError(detail);
+        } else if (err?.code === "ECONNABORTED") {
+          setMaiaError(
+            "Maia3 не ответила вовремя. Движок перезапущен - " +
+              "нажмите «Повторить», ход будет сделан.",
+          );
+        } else {
+          setMaiaError("Maia3 сейчас недоступна. Ход не был выполнен.");
+        }
       }
     } finally {
       if (gen === gameGenRef.current) {
@@ -1347,11 +1658,12 @@ const fetchBestMove = useCallback(
   }, [
     game,
     elo,
-    moveHistory,
     buildMoveHistory,
     takeSnapshot,
     updateStatus,
     onStateChange,
+    fetchEvalForPosition,
+    showGameOverCard,
   ]);
 
   /*
@@ -1366,6 +1678,29 @@ const fetchBestMove = useCallback(
       })
       .catch(() => {});
   }, []);
+
+  /*
+   * Если шкалу переключили на движок, а оценки ещё нет (первый запрос
+   * не удался или прошёл до переключения), запрашиваем её для текущей
+   * позиции. Без этого капсула осталась бы материальной.
+   */
+  useEffect(() => {
+    if (evalMode !== "engine" || evalScore) return undefined;
+
+    let cancelled = false;
+
+    fetchEval(game.fen())
+      .then((data) => {
+        if (!cancelled && data.evaluation) {
+          setEvalScore(data.evaluation);
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, [evalMode, evalScore, game]);
 
   /*
    * Передаём evaluation наверх.
@@ -1393,17 +1728,17 @@ const fetchBestMove = useCallback(
   }, [viewIndex, isViewMode, onStateChange]);
 
   /*
-   * Оценка конкретной позиции.
+   * Разбор нужен не только итоговой карточке: по нему история ходов
+   * подписывает каждый ход оценкой, поэтому отдаём его наверх.
    */
-  const fetchEvalForPosition = useCallback((positionFen) => {
-    fetchEval(positionFen)
-      .then((data) => {
-        if (data.evaluation) {
-          setEvalScore(data.evaluation);
-        }
-      })
-      .catch(() => {});
-  }, []);
+  useEffect(() => {
+    if (typeof onStateChange === "function") {
+      onStateChange((prev) => ({
+        ...prev,
+        gameReview: review,
+      }));
+    }
+  }, [review, onStateChange]);
 
   /*
    * ============================================================
@@ -1452,6 +1787,7 @@ const fetchBestMove = useCallback(
       takeSnapshot();
 
       updateStatus();
+      showGameOverCard();
       playMoveSound();
 
       fetchEvalForPosition(currentFen);
@@ -1530,6 +1866,7 @@ const fetchBestMove = useCallback(
       fetchEvalForPosition,
       makeAiMove,
       onStateChange,
+      showGameOverCard,
     ],
   );
 
@@ -2330,10 +2667,10 @@ const fetchBestMove = useCallback(
            * со счётом, причиной и кнопкой новой игры. Клик по фону
            * прячет карточку, чтобы рассмотреть финальную позицию.
            */}
-          {gameResult && (
+          {gameResult && !resultCardDismissed && (
             <div
               className="gameover-overlay"
-              onClick={() => setGameResult(null)}
+              onClick={() => setResultCardDismissed(true)}
             >
               <div
                 className={`gameover-card gameover-card--${gameResult.outcome}`}
@@ -2349,13 +2686,63 @@ const fetchBestMove = useCallback(
                 <div className="gameover-reason">
                   {gameResult.reason}
                 </div>
-                <button
-                  type="button"
-                  className="gameover-btn"
-                  onClick={openSidePicker}
-                >
-                  Новая игра
-                </button>
+
+                {/*
+                 * Разбор партии: до нажатия - кнопка, после ответа
+                 * сервера - звёзды, точность и счётчик ходов.
+                 */}
+                {review ? (
+                  <GameReviewSummary review={review} />
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      className="gameover-btn gameover-btn--review"
+                      onClick={handleReviewGame}
+                      disabled={reviewLoading}
+                    >
+                      {reviewLoading
+                        ? "Разбираем партию..."
+                        : "Разобрать партию"}
+                    </button>
+                    {reviewLoading && (
+                      <div className="gameover-review-note">
+                        Движок проверяет каждый ваш ход, это может занять
+                        до 40 секунд
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {reviewError && (
+                  <div className="gameover-review-note gameover-review-note--error">
+                    {reviewError}
+                  </div>
+                )}
+
+                <div className="gameover-actions">
+                  {/*
+                   * Разбор уже готов: главное действие - посмотреть ходы
+                   * с оценками. Кнопка прячет карточку, чтобы доска
+                   * освободилась для листания.
+                   */}
+                  {review && (
+                    <button
+                      type="button"
+                      className="gameover-btn gameover-btn--review"
+                      onClick={() => setResultCardDismissed(true)}
+                    >
+                      Разбор по ходам
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="gameover-btn"
+                    onClick={openSidePicker}
+                  >
+                    Новая игра
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -2395,6 +2782,40 @@ const fetchBestMove = useCallback(
             }
           >
             Новая игра
+          </button>
+
+          {/*
+           * Разбор доступен и после того, как итоговую карточку закрыли
+           * кликом по фону: кнопка открывает её снова и запускает разбор.
+           */}
+          {gameResult && (
+            <button
+              type="button"
+              className="ctrl-btn ctrl-btn--review"
+              onClick={openReviewCard}
+              disabled={reviewLoading}
+            >
+              {reviewLoading
+                ? "Разбираем..."
+                : review
+                  ? "Итог партии"
+                  : "Разобрать партию"}
+            </button>
+          )}
+
+          {/*
+           * На узком экране шкала становится тонкой полосой, и
+           * переключатель внутри неё не помещается: там режим
+           * меняется этой кнопкой. На широком экране она скрыта -
+           * переключатель есть в самой шкале.
+           */}
+          <button
+            type="button"
+            className="ctrl-btn ctrl-btn--eval-mode"
+            onClick={onToggleEvalMode}
+            disabled={!onToggleEvalMode}
+          >
+            {evalMode === "engine" ? "Оценка: движок" : "Оценка: материал"}
           </button>
 
           {/*

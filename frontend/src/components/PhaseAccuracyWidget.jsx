@@ -43,24 +43,47 @@ function curvePath(items) {
 
 function insightFor(phases, gamesAnalyzed) {
   if (!gamesAnalyzed) return "Завершите несколько партий, чтобы увидеть точность по этапам.";
-  const sampled = phases.filter((phase) => phase.moves_evaluated >= MIN_MOVES_FOR_INSIGHT && phase.accuracy_percent != null);
+  const sampled = phases.filter((phase) => {
+    const scored = phase.moves_scored ?? phase.moves_evaluated;
+    return scored >= MIN_MOVES_FOR_INSIGHT && phase.accuracy_percent != null;
+  });
   if (!sampled.length) {
     const hasAny = phases.some((phase) => phase.moves_evaluated > 0);
     return hasAny
-      ? "Пока мало оценённых ходов для надёжного вывода. Текущие значения уже показаны ниже."
+      ? "Пока мало ходов вне решённых позиций: когда партия уже выиграна или проиграна, качество хода ни о чём не говорит, поэтому такие ходы не учитываются."
       : "Оценки ходов пока не готовы или отсутствуют. Обновите профиль после анализа партии.";
   }
   const strongest = [...sampled].sort((a, b) => b.accuracy_percent - a.accuracy_percent)[0];
   const weakest = [...sampled].sort((a, b) => a.accuracy_percent - b.accuracy_percent)[0];
-  if (strongest.key === weakest.key || strongest.accuracy_percent - weakest.accuracy_percent < 3) {
-    return "Точность по этапам пока близкая — выраженного слабого места нет.";
+  if (sampled.length === 1) {
+    return `Пока есть данные только по этапу «${strongest.label.toLowerCase()}»: ${strongest.accuracy_percent}%. Остальные этапы не набрали ходов вне решённых позиций.`;
   }
-  return `Увереннее всего — ${strongest.label.toLowerCase()}. Больше внимания можно уделить этапу «${weakest.label.toLowerCase()}».`;
+  if (strongest.accuracy_percent - weakest.accuracy_percent < 3) {
+    return "Точность по этапам пока близкая - выраженного слабого места нет.";
+  }
+  return `Увереннее всего - ${strongest.label.toLowerCase()}. Больше внимания можно уделить этапу «${weakest.label.toLowerCase()}».`;
 }
 
 function pluralize(count, forms) {
   const category = new Intl.PluralRules("ru").select(count);
   return forms[category] || forms.other;
+}
+
+/*
+ * Подпись к этапу. Точность строится только по ходам вне решённых позиций,
+ * поэтому показывать рядом с прочерком общее число оценённых ходов нельзя:
+ * у этапа может быть 30 оценок и ни одного хода, где качество игры что-то
+ * решало.
+ */
+function scoredLabel(phase) {
+  if (phase.accuracy_percent != null) {
+    return `${phase.moves_scored} оценённых ходов`;
+  }
+  if (phase.moves_scored > 0) {
+    const word = pluralize(phase.moves_scored, { one: "ход", few: "хода", many: "ходов" });
+    return `${phase.moves_scored} ${word} в живых позициях`;
+  }
+  return "нет ходов в живых позициях";
 }
 
 function ErrorCount({ count, forms, tone }) {
@@ -122,7 +145,7 @@ function AccuracyChart({ phases, selectedKey, onSelect }) {
               className={`phase-accuracy__point${selected ? " is-selected" : ""}${point ? "" : " is-empty"}`}
               role="button"
               tabIndex="0"
-              aria-label={`${phase.label}: ${point ? `${phase.accuracy_percent}%` : "пока нет данных"}, ${phase.moves_evaluated} оценённых ходов`}
+              aria-label={`${phase.label}: ${point ? `${phase.accuracy_percent}%` : "пока нет данных"}, ${scoredLabel(phase)}`}
               aria-pressed={selected}
               onClick={() => onSelect(phase.key)}
               onKeyDown={(event) => {
@@ -132,7 +155,7 @@ function AccuracyChart({ phases, selectedKey, onSelect }) {
                 }
               }}
             >
-              <title>{`${phase.label}: ${point ? `${phase.accuracy_percent}%` : "нет данных"} · ${phase.moves_evaluated} оценённых ходов`}</title>
+              <title>{`${phase.label}: ${point ? `${phase.accuracy_percent}%` : "нет данных"} · ${scoredLabel(phase)}`}</title>
               {point ? (
                 <>
                   <circle className="phase-accuracy__point-halo" cx={point.x} cy={point.y} r="15" />
@@ -326,7 +349,7 @@ export default function PhaseAccuracyWidget() {
         <div>
           <div className="user-profile-kicker">Разбор партий</div>
           <h2 id="phase-accuracy-title">Точность по этапам</h2>
-          <span>Пока нет данных для графика. Завершите партию — после её сохранения появятся оценки ходов.</span>
+          <span>Пока нет данных для графика. Завершите партию - после её сохранения появятся оценки ходов.</span>
         </div>
         <button type="button" onClick={load}>Обновить</button>
       </section>
@@ -342,7 +365,7 @@ export default function PhaseAccuracyWidget() {
         <div>
           <div className="user-profile-kicker">Разбор партий</div>
           <h2 id="phase-accuracy-title">Точность по этапам</h2>
-          <p>Как часто удаются хорошие ходы в разных частях партии</p>
+          <p>Насколько точно вы играете в разных частях партии</p>
         </div>
         <span className="phase-accuracy__games">
           {pluralize(data.games_analyzed, { one: "партия", few: "партии", many: "партий" })}
@@ -366,8 +389,8 @@ export default function PhaseAccuracyWidget() {
             aria-pressed={selected?.key === phase.key}
           >
             <span>{phase.label}</span>
-            <strong>{phase.accuracy_percent == null ? "—" : `${phase.accuracy_percent}%`}</strong>
-            <small>{phase.moves_evaluated} оценённых ходов</small>
+            <strong>{phase.accuracy_percent == null ? "-" : `${phase.accuracy_percent}%`}</strong>
+            <small>{scoredLabel(phase)}</small>
           </button>
         ))}
       </div>
@@ -378,7 +401,9 @@ export default function PhaseAccuracyWidget() {
             <strong>{selected.label}</strong>
             <span>{selected.moves_without_eval > 0
               ? `${selected.moves_without_eval} ходов без оценки`
-              : `${selected.moves_total} ходов игрока`}</span>
+              : selected.moves_decided > 0
+                ? `${selected.moves_decided} ходов в решённых позициях не учтены`
+                : `${selected.moves_total} ходов игрока`}</span>
           </div>
           <div className="phase-accuracy__errors">
             <ErrorCount count={selectedErrors.inaccuracy || 0} forms={{ one: "неточность", few: "неточности", many: "неточностей" }} tone="soft" />
@@ -389,7 +414,7 @@ export default function PhaseAccuracyWidget() {
       )}
 
       <footer className="phase-accuracy__footnote">
-        Точность — доля ходов хорошего качества среди оценённых Stockfish. Наведите на точку или нажмите на этап для подробностей.
+        Точность считается по падению вероятности победы, как в разборе партии. Ходы в уже решённых позициях не учитываются. Наведите на точку или нажмите на этап для подробностей.
       </footer>
     </section>
   );

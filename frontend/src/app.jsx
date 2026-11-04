@@ -63,6 +63,26 @@ function OAuthCallbackPage({ onSuccess }) {
   );
 }
 
+const EVAL_MODE_KEY = "sfedu-eval-mode";
+
+function readEvalMode() {
+  try {
+    return window.localStorage.getItem(EVAL_MODE_KEY) === "engine"
+      ? "engine"
+      : "material";
+  } catch {
+    return "material";
+  }
+}
+
+function storeEvalMode(mode) {
+  try {
+    window.localStorage.setItem(EVAL_MODE_KEY, mode);
+  } catch {
+    // Приватный режим браузера: настройка просто не запомнится.
+  }
+}
+
 function MainPage({ user }) {
   const boardRef = useRef(null);
   const [boardState, setBoardState] = useState({
@@ -73,11 +93,27 @@ function MainPage({ user }) {
     viewIndex: -1,
     isViewMode: false,
     evalScore: null,
+    gameReview: null,
     maiaRating: 1500,
     maiaVictory: null,
     hintMessage: null,
     isComparing: false,
   });
+
+  /*
+   * Режим шкалы у доски: материальный перевес или оценка движка.
+   * Выбор запоминаем в браузере - это личная настройка показа,
+   * а не данные пользователя, поэтому server-side хранение не нужно.
+   */
+  const [evalMode, setEvalMode] = useState(readEvalMode);
+
+  const toggleEvalMode = () => {
+    setEvalMode((current) => {
+      const next = current === "engine" ? "material" : "engine";
+      storeEvalMode(next);
+      return next;
+    });
+  };
 
   /*
    * Чат можно свернуть в узкую полосу - тогда освободившаяся ширина
@@ -107,6 +143,7 @@ function MainPage({ user }) {
             isViewMode={boardState.isViewMode}
             maiaRating={boardState.maiaRating}
             userRating={user?.elo || undefined}
+            review={boardState.gameReview}
             onNavigate={(dir) => boardRef.current?.onNavigate(dir)}
             fen={boardState.fen}
             onLoadFen={(nextFen) =>
@@ -123,6 +160,9 @@ function MainPage({ user }) {
         </div>
         <EvalBar
           diff={boardState.materialDiff}
+          engineEval={boardState.evalScore}
+          mode={evalMode}
+          onToggleMode={toggleEvalMode}
           flipped={boardState.boardFlipped}
           height={boardState.boardHeight}
         />
@@ -130,6 +170,8 @@ function MainPage({ user }) {
           ref={boardRef}
           onStateChange={setBoardState}
           chatCollapsed={chatCollapsed}
+          evalMode={evalMode}
+          onToggleEvalMode={toggleEvalMode}
         />
         <ChatPanel
           hintMessage={boardState.hintMessage}
