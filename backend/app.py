@@ -4,7 +4,6 @@
 все модули маршрутов (routes).
 """
 
-import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -123,11 +122,11 @@ class SPAStaticFiles(StaticFiles):
         return response
 
 
-# Раздаём статику фронтенда (собранный React в frontend/dist/)
-frontend_dist = os.path.join(os.path.dirname(__file__), "..", "frontend", "dist")
+# Раздаём статику фронтенда (по умолчанию frontend/dist)
+frontend_dist = settings.frontend_dir / "dist"
 app.mount(
     "/",
-    SPAStaticFiles(directory=frontend_dist, html=True),
+    SPAStaticFiles(directory=str(frontend_dist), html=True),
     name="frontend",
 )
 
@@ -140,4 +139,4 @@ load_llava()
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=8005)
+    uvicorn.run(app, host=settings.server.host, port=settings.server.port)

@@ -85,6 +85,25 @@ async def test_award_is_idempotent_and_puzzle_rewards_have_their_own_cap(db):
 
 
 @pytest.mark.asyncio
+async def test_achievement_rewards_do_not_consume_the_regular_daily_cap(db):
+    session, user = db
+    now = datetime(2026, 10, 21, 9, tzinfo=timezone.utc)
+
+    assert await award_gigacoins(
+        session,
+        user,
+        "achievement",
+        "first_game",
+        25,
+        now=now,
+        exempt_daily_cap=True,
+    ) == 25
+    # Достижение начисляется сверх лимита и не уменьшает его остаток.
+    assert await award_gigacoins(session, user, "maia_game", "game-1", DAILY_CAP, now=now) == DAILY_CAP
+    assert user.gigacoins == 25 + DAILY_CAP
+
+
+@pytest.mark.asyncio
 async def test_each_seventh_active_day_adds_a_streak_bonus(db):
     session, user = db
     first_day = datetime(2026, 10, 15, 9, tzinfo=timezone.utc)

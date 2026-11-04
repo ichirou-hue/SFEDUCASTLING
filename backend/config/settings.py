@@ -3,7 +3,7 @@ from pathlib import Path
 import os
 from dotenv import load_dotenv
 
-from pydantic import BaseModel, Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -24,13 +24,27 @@ DEFAULT_CORS_ORIGINS = (
 # Теперь загружаем .env из правильной папки
 load_dotenv(dotenv_path=BASE_DIR / ".env")
 
+
+def _env_config(**overrides: object) -> SettingsConfigDict:
+    """Единые настройки чтения .env для вложенных конфигураций."""
+    return SettingsConfigDict(
+        env_file=BASE_DIR / ".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+        **overrides,
+    )
+
+
 print(
     "[Config] ENV GIGACHESS_BASE_URL:",
     repr(os.getenv("GIGACHESS_BASE_URL")),
 )
 
 
-class ServerSettings(BaseModel):
+class ServerSettings(BaseSettings):
+    model_config = _env_config()
+
     host: str = Field("127.0.0.1", alias="SERVER_HOST")
     port: int = Field(8005, alias="SERVER_PORT")
 
@@ -108,7 +122,9 @@ class RateLimitSettings(BaseSettings):
     expensive_window_sec: int = Field(60, alias="EXPENSIVE_RATE_LIMIT_WINDOW_SEC")
 
 
-class ModelsSettings(BaseModel):
+class ModelsSettings(BaseSettings):
+    model_config = _env_config()
+
     stockfish_path: Path | None = Field(None, alias="STOCKFISH_PATH")
     stockfish_depth: int = Field(20, alias="STOCKFISH_DEPTH")
     stockfish_top_moves: int = Field(5, alias="STOCKFISH_TOP_MOVES")
@@ -116,9 +132,18 @@ class ModelsSettings(BaseModel):
     llava_model_path: Path | None = Field(None, alias="LLAVA_MODEL_PATH")
     llava_model_id: str = Field("llava-hf/llava-1.5-7b-hf", alias="LLAVA_MODEL_ID")
 
+    @field_validator("stockfish_path", "knowledge_path", "llava_model_path", mode="before")
+    @classmethod
+    def _blank_path_is_none(cls, value: object) -> object:
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
 
-class Maia3Settings(BaseModel):
+
+class Maia3Settings(BaseSettings):
     """Настройки движка Maia3 (человекоподобная игра по уровням)."""
+
+    model_config = _env_config()
 
     model_id: str = Field("maia3-5m", alias="MAIA3_MODEL_ID")
     device: str = Field("cpu", alias="MAIA3_DEVICE")
@@ -127,18 +152,24 @@ class Maia3Settings(BaseModel):
     max_elo: int = Field(2600, alias="MAIA3_MAX_ELO")
 
 
-class DataSettings(BaseModel):
+class DataSettings(BaseSettings):
+    model_config = _env_config()
+
     dataset_jsonl_path: Path = Field(BASE_DIR / "dataset.jsonl", alias="DATASET_JSONL_PATH")
     dataset_readable_path: Path = Field(BASE_DIR / "dataset_readable.json", alias="DATASET_READABLE_PATH")
     max_games_to_parse: int = Field(10, alias="MAX_GAMES_TO_PARSE")
 
 
-class LichessSettings(BaseModel):
+class LichessSettings(BaseSettings):
+    model_config = _env_config()
+
     explorer_url: str = Field("https://explorer.lichess.ovh/masters", alias="LICHESS_EXPLORER_URL")
     timeout: int = Field(5, alias="LICHESS_TIMEOUT")
 
 
-class GigachessSettings(BaseModel):
+class GigachessSettings(BaseSettings):
+    model_config = _env_config(env_prefix="GIGACHESS_")
+
     base_url: str = ""
     model: str = "gigachess"
     connect_timeout: float = 15.0

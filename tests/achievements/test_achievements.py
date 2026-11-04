@@ -2,8 +2,13 @@
 
 from __future__ import annotations
 
+import asyncio
+from datetime import UTC, datetime, time, timedelta
+
 import pytest
 
+from backend.db.session import async_session_factory
+from backend.models.gigacoin_event import GigacoinEvent
 from backend.services.achievements import (
     FIRST_GAME,
     FIRST_LOSS,
@@ -11,6 +16,7 @@ from backend.services.achievements import (
     evaluate_game_achievements,
     replay_terminal_game,
 )
+from backend.services.gigacoin_service import MOSCOW_TZ, moscow_today
 
 SCHOLAR_MATE = [
     "e2e4", "e7e5", "f1c4", "b8c6", "d1h5", "g8f6", "h5f7",
@@ -120,6 +126,49 @@ class TestAchievementsApi:
         assert _codes(response) == {FIRST_GAME, FIRST_LOSS}
         assert response.json()["gigacoins_earned"] == 15
         assert response.json()["gigacoins_balance"] == 15
+
+    def test_streak_bonus_does_not_inflate_achievement_reward(self, client, user_factory):
+        player = user_factory("streak")
+        today = moscow_today()
+
+        async def _seed_streak() -> None:
+            async with async_session_factory() as db:
+                for offset in range(1, 7):
+                    day = today - timedelta(days=offset)
+                    created_at = datetime.combine(
+                        day, time(12), tzinfo=MOSCOW_TZ
+                    ).astimezone(UTC)
+                    db.add(
+                        GigacoinEvent(
+                            user_id=player["user"]["id"],
+                            reason="activity_day",
+                            ref=day.isoformat(),
+                            amount=0,
+                            created_at=created_at,
+                        )
+                    )
+                await db.commit()
+
+        asyncio.run(_seed_streak())
+
+        response = _finish(client, player["headers"], SCHOLAR_MATE, "1-0")
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert _codes(response) == {FIRST_GAME, FIRST_MATE}
+        # 10 + 25 за достижения и ещё 10 за седьмой активный день.
+        assert body["gigacoins_earned"] == 45
+        assert body["gigacoins_balance"] == 45
+        assert {item["code"]: item["reward"] for item in body["achievements"]} == {
+            FIRST_GAME: 10,
+            FIRST_MATE: 25,
+        }
+
+        listing = client.get(
+            "/api/game/achievements", headers=player["headers"]
+        ).json()["achievements"]
+        by_code = {item["code"]: item for item in listing}
+        assert by_code[FIRST_GAME]["awarded"] == 10
+        assert by_code[FIRST_MATE]["awarded"] == 25
 
     def test_draw_awards_only_first_game(self, client, user_factory):
         player = user_factory("draw")

@@ -578,26 +578,29 @@ async def finish_game(
     coins_earned = 0
     achievements_unlocked: list[dict] = []
     if user is not None:
+        starting_gigacoins = int(user.gigacoins or 0)
         verified_result = _verified_maia_result(req)
         ref = ""
         if verified_result is not None:
             ref_payload = f"{req.engine}:{req.elo}:{req.player_color}:{','.join(req.moves)}:{verified_result}"
             ref = hashlib.sha256(ref_payload.encode("utf-8")).hexdigest()
-            coins_earned = await award_gigacoins(db, user, "game_activity", ref, 0)
+            await award_gigacoins(db, user, "game_activity", ref, 0)
         player_won = verified_result == ("1-0" if req.player_color == "w" else "0-1")
         player_drew = verified_result == "1/2-1/2"
         player_rating = int(user.elo or user.rating_estimate or 1000)
         fair_level = req.elo is not None and req.elo + MAIA_FAIR_GAP >= player_rating
         requested_coins = MAIA_WIN_COINS.get(req.elo, 0) if player_won else MAIA_DRAW_COINS if player_drew else 0
         if requested_coins and fair_level:
-            coins_earned += await award_gigacoins(db, user, "maia_game", ref, requested_coins)
+            await award_gigacoins(db, user, "maia_game", ref, requested_coins)
 
         # Достижения проверяются повтором партии, а не доверием к result/status.
         achievement_codes = evaluate_game_achievements(
             req.moves, req.result, req.player_color
         )
         achievements_unlocked = await unlock_achievements(db, user, achievement_codes)
-        coins_earned += sum(int(item["reward"]) for item in achievements_unlocked)
+        # Считаем фактическое изменение баланса: в него входят и бонусы за
+        # серию активности, которые не являются номиналом достижения.
+        coins_earned = max(0, int(user.gigacoins or 0) - starting_gigacoins)
 
         if verified_result is not None or achievements_unlocked:
             await db.commit()

@@ -1,6 +1,6 @@
 # GigaChess production CI/CD
 
-Production releases may only come from `main`. CI runs on pushes and pull requests targeting `main`; it applies Alembic migrations to a clean PostgreSQL 16 database, runs Ruff and the complete backend test suite, and builds the frontend. A commit-pinned artifact is assembled only after a successful push build on `main`. The archive explicitly excludes local datasets, databases, credentials, virtual environments, and frontend dependencies.
+Production releases may only come from `main`. CI runs on every push and on pull requests targeting `main`; it applies Alembic migrations to a clean PostgreSQL 16 database, runs Ruff and the complete backend test suite, and builds the frontend. A commit-pinned artifact is assembled only after a successful push build on `main`. The archive explicitly excludes local datasets, databases, `.env`, virtual environments, and frontend dependencies.
 
 The production workflow accepts only a successful CI run caused by a push to `main` in this repository. Manual dispatch is also restricted to `main` and requires an exact SHA with a successful CI artifact. Deployments are serialized and use strict SSH host-key checking. The root-owned server helper creates a full PostgreSQL backup before migrations, stages an immutable release, restarts `gigachess.service`, and checks `/api/health`; code rolls back if restart or health checks fail. Re-running a deployment for an already staged SHA reuses the release. Database schema rollback is not automatic.
 

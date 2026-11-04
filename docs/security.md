@@ -14,12 +14,13 @@
 | `APP_ENV` | `production` | Включает строгие проверки и выключает `/docs`, `/redoc`, `/openapi.json`. |
 | `DEBUG` | `false` | В production отладка должна быть выключена. |
 | `JWT_SECRET_KEY` | случайные 64 символа | Подпись access-токенов. Дефолтное значение запрещено, минимум 32 символа. |
-| `OAUTH_COOKIE_SECRET` | другие случайные 64 символа | Отдельная подпись OAuth-кук. Не должен совпадать с `JWT_SECRET_KEY`. |
-| `OAUTH_PUBLIC_BASE_URL` | `https://gigachess.ru` | redirect_uri для Lichess/Chess.com. Убирает зависимость от заголовка `Host`. |
-| `FRONTEND_BASE_URL` | `https://gigachess.ru` | Адрес возврата после OAuth. |
+| `OAUTH_COOKIE_SECRET` | другие случайные 64 символа | Отдельная подпись OAuth-кук. Не должен совпадать с `JWT_SECRET_KEY`, минимум 32 символа. |
+| `OAUTH_PUBLIC_BASE_URL` | `https://gigachess.ru` | redirect_uri для Lichess/Chess.com. Убирает зависимость от заголовка `Host`; в production обязателен абсолютный `https://` URL. |
+| `FRONTEND_BASE_URL` | `https://gigachess.ru` | Адрес возврата после OAuth; в production обязателен абсолютный `https://` URL. |
 | `TRUSTED_HOSTS` | `["gigachess.ru","www.gigachess.ru"]` | JSON-массив доверенных значений `Host`. |
-| `ALLOWED_ORIGINS` | `["https://gigachess.ru"]` | JSON-массив источников CORS. `["*"]` в production запрещён. |
+| `ALLOWED_ORIGINS` | `["https://gigachess.ru"]` | JSON-массив источников CORS. `["*"]` и локальные адреса в production запрещены. |
 | `OAUTH_COOKIE_SECURE` | `true` | Cookie OAuth только по HTTPS. |
+| `RATE_LIMIT_ENABLED` | `true` | Лимиты частоты запросов; в production отключать нельзя. |
 
 Сгенерировать секреты можно так:
 
@@ -47,8 +48,9 @@ ALLOWED_ORIGINS=["https://gigachess.ru"]
 В development строгие проверки не блокируют запуск: проблемы пишутся в лог
 как `[Security] ...`. Пустой `TRUSTED_HOSTS` в development означает,
 что проверка `Host` выключена. В production пустой список запрещён, как и
-`TRUSTED_HOSTS=["*"]`, локальные адреса в `ALLOWED_ORIGINS` и
-`OAUTH_COOKIE_SECURE=false`.
+`TRUSTED_HOSTS=["*"]`, локальные адреса в `ALLOWED_ORIGINS`,
+`OAUTH_COOKIE_SECURE=false`, короткий `OAUTH_COOKIE_SECRET`, не-HTTPS
+публичные URL и `RATE_LIMIT_ENABLED=false`.
 
 ## Что исправлено
 
@@ -100,13 +102,16 @@ ALLOWED_ORIGINS=["https://gigachess.ru"]
   `/api/auth/oauth/{provider}/start`): 10 запросов за 60 секунд.
 
 Значения меняются через `LOGIN_RATE_LIMIT_*`, `AUTH_RATE_LIMIT_*`,
-`CHAT_RATE_LIMIT_*`, `EXPENSIVE_RATE_LIMIT_*`, выключить лимиты можно
-через `RATE_LIMIT_ENABLED=false`.
+`CHAT_RATE_LIMIT_*`, `EXPENSIVE_RATE_LIMIT_*`. В development лимиты можно
+выключить через `RATE_LIMIT_ENABLED=false`; в production такая конфигурация
+не проходит проверку при старте.
 
 Ограничение работает в памяти одного процесса. Если запущено несколько
 воркеров uvicorn или несколько машин, нужен внешний счётчик (например,
 Redis). Для запросов через nginx реальный IP берётся из `X-Forwarded-For`,
-но только если соединение пришло с частного или loopback-адреса.
+но только если соединение пришло с частного или loopback-адреса. Из цепочки
+выбирается ближайший к прокси публичный адрес: подставленный клиентом первый
+элемент заголовка не используется.
 
 Вход и регистрация всегда ограничиваются по IP: случайный заголовок
 `Authorization` не создаёт новый счётчик. Остальные лимиты при валидном

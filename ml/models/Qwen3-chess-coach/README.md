@@ -71,8 +71,8 @@ python inference.py
 
 ## 📈 Кто использует модель
 
-- [`ml/chess_benchmark`](../chess_benchmark) — оценивает модель (локально через `transformers` + `peft`, включая merged-чекпоинты).
-- [`ml/hypotheses`](../hypotheses) — сравнивает `./outputs/merged` с облачным GigaChess.
+- [`ml/chess_benchmark`](../../chess_benchmark) — оценивает модель (локально через `transformers` + `peft`, включая merged-чекпоинты).
+- [`ml/hypotheses`](../../hypotheses) — сравнивает `./outputs/merged` с облачным GigaChess.
 - `backend/` — сервис Qwen3-8B разворачивается через vLLM (`start_llm.sh`) и используется как LLM-бэкенд.
 
 > Для бенчмарка и гипотез сначала выполните `train.py` + `merge_lora.py`, см. [`ml/README.md`](../README.md).

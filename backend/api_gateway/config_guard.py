@@ -8,8 +8,10 @@
 
 from __future__ import annotations
 
+import ipaddress
 import logging
 from typing import Any
+from urllib.parse import urlsplit
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +26,32 @@ def _as_list(value: Any) -> list[str]:
     if isinstance(value, str):
         return [value]
     return [str(item) for item in value]
+
+
+def _is_local_origin(origin: str) -> bool:
+    """True для loopback/unspecified-источника, включая любой регистр."""
+    try:
+        hostname = urlsplit(origin.strip()).hostname
+    except ValueError:
+        return False
+    if not hostname:
+        return False
+    host = hostname.lower()
+    if host == "localhost" or host.endswith(".localhost"):
+        return True
+    try:
+        address = ipaddress.ip_address(host)
+    except ValueError:
+        return False
+    return address.is_loopback or address.is_unspecified
+
+
+def _is_https_url(value: str) -> bool:
+    try:
+        parsed = urlsplit(value.strip())
+    except ValueError:
+        return False
+    return parsed.scheme == "https" and bool(parsed.netloc)
 
 
 def trusted_host_allowed(
@@ -87,11 +115,19 @@ def collect_security_issues(settings_obj: Any) -> list[str]:
             "OAUTH_COOKIE_SECRET совпадает с JWT_SECRET_KEY: используйте "
             "отдельный секрет для OAuth-кук."
         )
+    elif len(oauth.cookie_secret.strip()) < 32:
+        issues.append(
+            "OAUTH_COOKIE_SECRET короче 32 символов: слишком слабый секрет."
+        )
 
     if not oauth.public_base_url.strip():
         issues.append(
             "OAUTH_PUBLIC_BASE_URL не задан: базовый адрес OAuth будет браться "
             "из заголовка Host (риск open redirect)."
+        )
+    elif not _is_https_url(oauth.public_base_url):
+        issues.append(
+            "OAUTH_PUBLIC_BASE_URL должен быть абсолютным https:// URL."
         )
 
     if not oauth.frontend_base_url.strip():
@@ -99,6 +135,8 @@ def collect_security_issues(settings_obj: Any) -> list[str]:
             "FRONTEND_BASE_URL не задан: редирект после OAuth может уйти на "
             "подменённый Host."
         )
+    elif not _is_https_url(oauth.frontend_base_url):
+        issues.append("FRONTEND_BASE_URL должен быть абсолютным https:// URL.")
 
     if not bool(getattr(oauth, "cookie_secure", False)):
         issues.append(
@@ -111,7 +149,7 @@ def collect_security_issues(settings_obj: Any) -> list[str]:
         issues.append(
             "TRUSTED_HOSTS не задан: список доверенных Host обязателен в production."
         )
-    elif "*" in trusted_hosts:
+    elif any(host.strip() == "*" for host in trusted_hosts):
         issues.append(
             "TRUSTED_HOSTS содержит '*': проверка Host фактически отключена."
         )
@@ -120,18 +158,19 @@ def collect_security_issues(settings_obj: Any) -> list[str]:
     if not origins:
         issues.append("ALLOWED_ORIGINS пуст: CORS не настроен.")
     else:
-        local_markers = ("://localhost", "://127.0.0.1", "://[::1]")
-        if any(
-            marker in origin
-            for origin in origins
-            for marker in local_markers
-        ):
+        if any(_is_local_origin(origin) for origin in origins):
             issues.append(
                 "ALLOWED_ORIGINS содержит локальные адреса разработки: "
                 "укажите домены production."
             )
-        if "*" in origins:
+        if any(origin.strip() == "*" for origin in origins):
             issues.append("ALLOWED_ORIGINS содержит '*': откройте только свои домены.")
+
+    rate_limit = getattr(settings_obj, "rate_limit", None)
+    if rate_limit is not None and not bool(getattr(rate_limit, "enabled", True)):
+        issues.append(
+            "RATE_LIMIT_ENABLED=false: в production лимиты частоты обязательны."
+        )
 
     if bool(getattr(settings_obj, "debug", False)):
         issues.append("DEBUG=True: в production отладка должна быть выключена.")

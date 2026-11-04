@@ -186,7 +186,7 @@ async def unlock_achievements(
         if definition is None or code in existing:
             continue
 
-        credited = await award_gigacoins(
+        await award_gigacoins(
             db,
             user,
             "achievement",
@@ -195,11 +195,14 @@ async def unlock_achievements(
             now=now,
             exempt_daily_cap=True,
         )
+        # ``credited`` может включать бонус за серию активности. В каталоге
+        # достижений показываем номинальную награду, а фактическое начисление
+        # учитывается отдельно в балансе пользователя.
         db.add(
             UserAchievement(
                 user_id=user.id,
                 code=code,
-                reward=credited,
+                reward=definition.reward,
                 created_at=now or datetime.now(UTC),
             )
         )
@@ -207,7 +210,7 @@ async def unlock_achievements(
             {
                 "code": code,
                 "title": definition.title,
-                "reward": credited,
+                "reward": definition.reward,
                 "icon": definition.icon,
             }
         )

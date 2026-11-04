@@ -63,7 +63,11 @@ async def _earned_between(db: AsyncSession, user_id: int, start: datetime, end: 
             GigacoinEvent.created_at >= start,
             GigacoinEvent.created_at < end,
             GigacoinEvent.amount > 0,
-            GigacoinEvent.reason.not_in(("active_streak", "shop_purchase")),
+            # Достижения и бонусы за серию не должны уменьшать дневной лимит
+            # обычных наград: они начисляются сверх него.
+            GigacoinEvent.reason.not_in(
+                ("active_streak", "shop_purchase", "achievement")
+            ),
         )
     ) or 0)
 

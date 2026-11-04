@@ -75,9 +75,21 @@ def _client_ip(request: Request) -> str:
     client_host = request.client.host if request.client else ""
     forwarded = request.headers.get("x-forwarded-for", "")
     if forwarded and _is_trusted_proxy(client_host):
-        candidate = forwarded.split(",", 1)[0].strip()
-        if candidate:
-            return candidate
+        # X-Forwarded-For дописывается прокси справа налево. Берём правый
+        # валидный адрес и пропускаем частные/loopback-прокси, чтобы клиент
+        # не мог подставить свой адрес первым элементом заголовка.
+        candidates = [part.strip() for part in forwarded.split(",") if part.strip()]
+        parsed: list[tuple[str, ipaddress.IPv4Address | ipaddress.IPv6Address]] = []
+        for candidate in candidates:
+            try:
+                parsed.append((candidate, ipaddress.ip_address(candidate)))
+            except ValueError:
+                continue
+        for candidate, address in reversed(parsed):
+            if not (address.is_private or address.is_loopback):
+                return candidate
+        if parsed:
+            return parsed[-1][0]
     return client_host or "unknown"
 
 
