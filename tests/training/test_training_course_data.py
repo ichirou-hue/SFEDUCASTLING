@@ -6,6 +6,7 @@ from backend.services.training_course_data import (
     LEVEL_MIN_ELO,
     LESSONS_BY_MODULE,
     MODULES,
+    locked_module_slugs,
     module_required_elo,
     module_unlocked_for_elo,
 )
@@ -74,6 +75,21 @@ def test_module_access_by_elo():
     assert not module_unlocked_for_elo("openings", 999)
     assert module_unlocked_for_elo("openings", 1000)
     assert module_unlocked_for_elo("middlegame", 1500)
+
+
+def test_locked_module_slugs_match_access_rule():
+    """Набор закрытых слагов совпадает с построчной проверкой доступа."""
+    for elo in (None, 0, 800, 999, 1000, 1500):
+        expected = {
+            slug
+            for slug in LEVEL_MIN_ELO
+            if not module_unlocked_for_elo(slug, elo)
+        }
+        assert locked_module_slugs(elo) == expected, elo
+
+    assert locked_module_slugs(None) == {"endgames", "openings", "middlegame"}
+    assert locked_module_slugs(999) == {"endgames", "openings", "middlegame"}
+    assert locked_module_slugs(1000) == set()
 
 
 @pytest.mark.parametrize("module", MODULES, ids=lambda item: item["slug"])

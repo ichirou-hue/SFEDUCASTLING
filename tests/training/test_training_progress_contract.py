@@ -1,10 +1,10 @@
-"""Тесты контракта прогресса: никаких `topics` и никаких нулевых заглушек accuracy.
+"""РўРµСЃС‚С‹ РєРѕРЅС‚СЂР°РєС‚Р° РїСЂРѕРіСЂРµСЃСЃР°: РЅРёРєР°РєРёС… `topics` Рё РЅРёРєР°РєРёС… РЅСѓР»РµРІС‹С… Р·Р°РіР»СѓС€РµРє accuracy.
 
-B2-аудит зафиксировал два правила:
-- `get_training_progress` больше НЕ считает точность по темам (единственный
-  источник совмещённого профиля - build_weakness_profile / /api/learning/weaknesses);
-- `accuracy` отдаётся как None, когда попыток ещё нет (витрина рисует «-»,
-  а не сфабрикованные нули).
+B2-Р°СѓРґРёС‚ Р·Р°С„РёРєСЃРёСЂРѕРІР°Р» РґРІР° РїСЂР°РІРёР»Р°:
+- `get_training_progress` Р±РѕР»СЊС€Рµ РќР• СЃС‡РёС‚Р°РµС‚ С‚РѕС‡РЅРѕСЃС‚СЊ РїРѕ С‚РµРјР°Рј (РµРґРёРЅСЃС‚РІРµРЅРЅС‹Р№
+  РёСЃС‚РѕС‡РЅРёРє СЃРѕРІРјРµС‰С‘РЅРЅРѕРіРѕ РїСЂРѕС„РёР»СЏ - build_weakness_profile / /api/learning/weaknesses);
+- `accuracy` РѕС‚РґР°С‘С‚СЃСЏ РєР°Рє None, РєРѕРіРґР° РїРѕРїС‹С‚РѕРє РµС‰С‘ РЅРµС‚ (РІРёС‚СЂРёРЅР° СЂРёСЃСѓРµС‚ В«-В»,
+  Р° РЅРµ СЃС„Р°Р±СЂРёРєРѕРІР°РЅРЅС‹Рµ РЅСѓР»Рё).
 """
 
 import asyncio
@@ -15,7 +15,7 @@ from backend.services.training_service import get_training_progress
 
 
 def _local_noon(days_ago: int = 0) -> datetime:
-    """Полдень местного дня: не зависит от времени запуска тестов."""
+    """РџРѕР»РґРµРЅСЊ РјРµСЃС‚РЅРѕРіРѕ РґРЅСЏ: РЅРµ Р·Р°РІРёСЃРёС‚ РѕС‚ РІСЂРµРјРµРЅРё Р·Р°РїСѓСЃРєР° С‚РµСЃС‚РѕРІ."""
     day = local_today() - timedelta(days=days_ago)
     return datetime.combine(day, time(12, 0), tzinfo=LOCAL_TZ)
 
@@ -36,13 +36,13 @@ class _Module:
 
 
 class _FakeDB:
-    """Синтаксис-заглушка БД без реального Postgres.
+    """РЎРёРЅС‚Р°РєСЃРёСЃ-Р·Р°РіР»СѓС€РєР° Р‘Р” Р±РµР· СЂРµР°Р»СЊРЅРѕРіРѕ Postgres.
 
-    db.scalars(select(TrainingModule)) -> список модулей.
-    db.execute(...)                    -> по порядку: задания модулей
-    (task_id, lesson_id, module_id), уроки модулей (lesson_id, module_id),
-    попытки пользователя, затем попытки паззлов
-    ((puzzle_id, correct, created_at) - для серии).
+    db.scalars(select(TrainingModule)) -> СЃРїРёСЃРѕРє РјРѕРґСѓР»РµР№.
+    db.execute(...)                    -> РїРѕ РїРѕСЂСЏРґРєСѓ: Р·Р°РґР°РЅРёСЏ РјРѕРґСѓР»РµР№
+    (task_id, lesson_id, module_id), СѓСЂРѕРєРё РјРѕРґСѓР»РµР№ (lesson_id, module_id),
+    РїРѕРїС‹С‚РєРё РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ, Р·Р°С‚РµРј РїРѕРїС‹С‚РєРё РїР°Р·Р·Р»РѕРІ
+    ((puzzle_id, correct, created_at) - РґР»СЏ СЃРµСЂРёРё).
     """
 
     def __init__(self, modules, task_rows=(), lesson_rows=(), attempt_rows=(),
@@ -69,7 +69,7 @@ def _run(coro):
 
 def _progress(attempt_rows=()):
     db = _FakeDB(
-        modules=[_Module(1, "pawn", "Пешка"), _Module(2, "rook", "Ладья")],
+        modules=[_Module(1, "pawn", "РџРµС€РєР°"), _Module(2, "rook", "Р›Р°РґСЊСЏ")],
         task_rows=[(100, 10, 1), (101, 20, 2)],
         lesson_rows=[(10, 1), (20, 2)],
         attempt_rows=attempt_rows,
@@ -98,7 +98,7 @@ def test_progress_accuracy_is_none_without_attempts():
 
 
 def test_module_completed_only_when_all_tasks_correct():
-    # Задание 100 решено верно, 101 - ни разу. Первый модуль пройден, второй нет.
+    # Р—Р°РґР°РЅРёРµ 100 СЂРµС€РµРЅРѕ РІРµСЂРЅРѕ, 101 - РЅРё СЂР°Р·Сѓ. РџРµСЂРІС‹Р№ РјРѕРґСѓР»СЊ РїСЂРѕР№РґРµРЅ, РІС‚РѕСЂРѕР№ РЅРµС‚.
     result = _progress(attempt_rows=[(100, True, None, 1)])
 
     assert result["modules"]["completed"] == 1
@@ -107,11 +107,11 @@ def test_module_completed_only_when_all_tasks_correct():
 
 
 def test_streak_counts_days_with_three_distinct_puzzles():
-    # День занятий - три РАЗНЫЕ задачи. Вчера и сегодня по три - серия 2.
+    # Р”РµРЅСЊ Р·Р°РЅСЏС‚РёР№ - С‚СЂРё Р РђР—РќР«Р• Р·Р°РґР°С‡Рё. Р’С‡РµСЂР° Рё СЃРµРіРѕРґРЅСЏ РїРѕ С‚СЂРё - СЃРµСЂРёСЏ 2.
     now = _local_noon()
     yesterday = _local_noon(days_ago=1)
     db = _FakeDB(
-        modules=[_Module(1, "pawn", "Пешка"), _Module(2, "rook", "Ладья")],
+        modules=[_Module(1, "pawn", "РџРµС€РєР°"), _Module(2, "rook", "Р›Р°РґСЊСЏ")],
         task_rows=[(100, 10, 1), (101, 20, 2)],
         lesson_rows=[(10, 1), (20, 2)],
         attempt_rows=[],
@@ -127,18 +127,18 @@ def test_streak_counts_days_with_three_distinct_puzzles():
     result = _run(get_training_progress(db, user_id=1))
 
     assert result["streak"] == 2
-    # Счётчики курса при этом не меняются - паззлы влияют только на серию.
+    # РЎС‡С‘С‚С‡РёРєРё РєСѓСЂСЃР° РїСЂРё СЌС‚РѕРј РЅРµ РјРµРЅСЏСЋС‚СЃСЏ - РїР°Р·Р·Р»С‹ РІР»РёСЏСЋС‚ С‚РѕР»СЊРєРѕ РЅР° СЃРµСЂРёСЋ.
     assert result["attempts"]["total"] == 0
     assert result["modules"]["completed"] == 0
 
 
 def test_two_puzzles_in_a_day_are_not_enough():
-    # Вчера три задачи, сегодня только две - сегодня ещё не занятие,
-    # серия держится за вчерашний день и равна 1.
+    # Р’С‡РµСЂР° С‚СЂРё Р·Р°РґР°С‡Рё, СЃРµРіРѕРґРЅСЏ С‚РѕР»СЊРєРѕ РґРІРµ - СЃРµРіРѕРґРЅСЏ РµС‰С‘ РЅРµ Р·Р°РЅСЏС‚РёРµ,
+    # СЃРµСЂРёСЏ РґРµСЂР¶РёС‚СЃСЏ Р·Р° РІС‡РµСЂР°С€РЅРёР№ РґРµРЅСЊ Рё СЂР°РІРЅР° 1.
     now = _local_noon()
     yesterday = _local_noon(days_ago=1)
     db = _FakeDB(
-        modules=[_Module(1, "pawn", "Пешка")],
+        modules=[_Module(1, "pawn", "РџРµС€РєР°")],
         puzzle_rows=[
             ("a1", True, yesterday),
             ("a2", True, yesterday),
@@ -153,10 +153,10 @@ def test_two_puzzles_in_a_day_are_not_enough():
 
 
 def test_repeated_puzzle_counts_once_per_day():
-    # Одна и та же задача, решённая трижды, не делает день занятием.
+    # РћРґРЅР° Рё С‚Р° Р¶Рµ Р·Р°РґР°С‡Р°, СЂРµС€С‘РЅРЅР°СЏ С‚СЂРёР¶РґС‹, РЅРµ РґРµР»Р°РµС‚ РґРµРЅСЊ Р·Р°РЅСЏС‚РёРµРј.
     now = _local_noon()
     db = _FakeDB(
-        modules=[_Module(1, "pawn", "Пешка")],
+        modules=[_Module(1, "pawn", "РџРµС€РєР°")],
         puzzle_rows=[("same", True, now), ("same", True, now), ("same", True, now)],
     )
     result = _run(get_training_progress(db, user_id=1))
@@ -165,10 +165,10 @@ def test_repeated_puzzle_counts_once_per_day():
 
 
 def test_visits_do_not_extend_streak():
-    # Простой заход на сайт больше не продлевает серию: учитываются только
-    # дни занятий (3+ разных пазла или задание курса).
+    # РџСЂРѕСЃС‚РѕР№ Р·Р°С…РѕРґ РЅР° СЃР°Р№С‚ Р±РѕР»СЊС€Рµ РЅРµ РїСЂРѕРґР»РµРІР°РµС‚ СЃРµСЂРёСЋ: СѓС‡РёС‚С‹РІР°СЋС‚СЃСЏ С‚РѕР»СЊРєРѕ
+    # РґРЅРё Р·Р°РЅСЏС‚РёР№ (3+ СЂР°Р·РЅС‹С… РїР°Р·Р»Р° РёР»Рё Р·Р°РґР°РЅРёРµ РєСѓСЂСЃР°).
     db = _FakeDB(
-        modules=[_Module(1, "pawn", "Пешка")],
+        modules=[_Module(1, "pawn", "РџРµС€РєР°")],
         attempt_rows=[],
         puzzle_rows=[],
     )
@@ -178,10 +178,10 @@ def test_visits_do_not_extend_streak():
 
 
 def test_course_task_counts_as_active_day():
-    # Достаточно одного задания модуля курса за день.
+    # Р”РѕСЃС‚Р°С‚РѕС‡РЅРѕ РѕРґРЅРѕРіРѕ Р·Р°РґР°РЅРёСЏ РјРѕРґСѓР»СЏ РєСѓСЂСЃР° Р·Р° РґРµРЅСЊ.
     now = _local_noon()
     db = _FakeDB(
-        modules=[_Module(1, "pawn", "Пешка")],
+        modules=[_Module(1, "pawn", "РџРµС€РєР°")],
         task_rows=[(100, 10, 1)],
         lesson_rows=[(10, 1)],
         attempt_rows=[(100, True, now, 1)],
@@ -192,11 +192,11 @@ def test_course_task_counts_as_active_day():
 
 
 def test_streak_joins_course_and_puzzle_days():
-    # Вчера - три пазла, сегодня - задание курса: дни объединяются.
+    # Р’С‡РµСЂР° - С‚СЂРё РїР°Р·Р»Р°, СЃРµРіРѕРґРЅСЏ - Р·Р°РґР°РЅРёРµ РєСѓСЂСЃР°: РґРЅРё РѕР±СЉРµРґРёРЅСЏСЋС‚СЃСЏ.
     now = _local_noon()
     yesterday = _local_noon(days_ago=1)
     db = _FakeDB(
-        modules=[_Module(1, "pawn", "Пешка")],
+        modules=[_Module(1, "pawn", "РџРµС€РєР°")],
         task_rows=[(100, 10, 1)],
         lesson_rows=[(10, 1)],
         attempt_rows=[(100, True, now, 1)],
@@ -209,3 +209,63 @@ def test_streak_joins_course_and_puzzle_days():
     result = _run(get_training_progress(db, user_id=1))
 
     assert result["streak"] == 2
+
+
+def _course_modules():
+    return [
+        _Module(1, "pieces", "РЁР°С…РјР°С‚РЅР°СЏ Р°Р·Р±СѓРєР°"),
+        _Module(2, "endgames", "Р­РЅРґС€РїРёР»СЊ"),
+        _Module(3, "openings", "Р”РµР±СЋС‚"),
+        _Module(4, "middlegame", "РњРёС‚С‚РµР»СЊС€РїРёР»СЊ: СЃС‚СЂР°С‚РµРіРёСЏ"),
+    ]
+
+
+def test_locked_modules_excluded_from_course_goal():
+    # Р‘РµР· Elo С†РµР»СЊ РєСѓСЂСЃР° - С‚РѕР»СЊРєРѕ Р±Р°Р·РѕРІС‹Рµ РјРѕРґСѓР»Рё, РёРЅР°С‡Рµ 100% РЅРµРґРѕСЃС‚РёР¶РёРјС‹.
+    # Р—Р°РіР»СѓС€РєР° Р‘Р” РЅРµ СѓРјРµРµС‚ С„РёР»СЊС‚СЂРѕРІР°С‚СЊ РїРѕ module_ids, РїРѕСЌС‚РѕРјСѓ Р·Р°РґР°РЅРёСЏ Рё
+    # СѓСЂРѕРєРё Р·Р°РєСЂС‹С‚С‹С… РјРѕРґСѓР»РµР№ РІ РЅРµС‘ РЅРµ РєР»Р°РґС‘Рј - РєР°Рє Рё РІ СЂРµР°Р»СЊРЅРѕРј SQL.
+    db = _FakeDB(
+        modules=_course_modules(),
+        task_rows=[(100, 10, 1)],
+        lesson_rows=[(10, 1)],
+    )
+    result = _run(get_training_progress(db, user_id=1))
+
+    assert result["modules"]["total"] == 1
+    assert [item["slug"] for item in result["modules"]["items"]] == ["pieces"]
+    assert result["modules"]["completed"] == 0
+    assert result["modules"]["percent"] == 0.0
+
+
+def test_locked_modules_join_goal_when_elo_is_enough():
+    # РЎ Elo 1000 РјРѕРґСѓР»Рё 1000-1500 РІС…РѕРґСЏС‚ РІ С†РµР»СЊ РєСѓСЂСЃР°.
+    db = _FakeDB(
+        modules=_course_modules(),
+        task_rows=[(100, 10, 1), (101, 20, 2), (102, 30, 3), (103, 40, 4)],
+        lesson_rows=[(10, 1), (20, 2), (30, 3), (40, 4)],
+    )
+    result = _run(get_training_progress(db, user_id=1, user_elo=1000))
+
+    assert result["modules"]["total"] == 4
+    assert {item["slug"] for item in result["modules"]["items"]} == {
+        "pieces",
+        "endgames",
+        "openings",
+        "middlegame",
+    }
+
+
+def test_progress_counts_attempts_from_locked_modules():
+    # РСЃС‚РѕСЂРёСЏ РїРѕРїС‹С‚РѕРє - СЃС‚Р°С‚РёСЃС‚РёРєР°, Р° РЅРµ РґРѕСЃС‚СѓРї: РѕРЅР° РЅРµ РѕР±СЂРµР·Р°РµС‚СЃСЏ РїРѕ Elo.
+    db = _FakeDB(
+        modules=_course_modules()[:2],
+        task_rows=[(100, 10, 1)],
+        lesson_rows=[(10, 1)],
+        attempt_rows=[(101, True, _local_noon(), 2)],
+    )
+    result = _run(get_training_progress(db, user_id=1, user_elo=None))
+
+    assert result["modules"]["total"] == 1
+    assert result["attempts"]["total"] == 1
+    assert result["attempts"]["correct"] == 1
+    assert result["attempts"]["accuracy"] == 100.0

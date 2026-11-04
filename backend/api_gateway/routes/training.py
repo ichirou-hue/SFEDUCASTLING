@@ -28,6 +28,7 @@ from backend.services.gigacoin_service import (
 )
 from backend.services.training_course_data import (
     LEVEL_LABELS,
+    locked_module_slugs,
     module_required_elo,
     module_unlocked_for_elo,
 )
@@ -189,8 +190,10 @@ async def training_progress(
     засчитывается за 3 разных решённых пазла или хотя бы одно решённое
     задание модуля. Дни визитов и награды GigaCoin в серию не входят,
     поэтому ``progress["streak"]`` здесь НЕ перезаписывается.
+
+    В цели курса учитываются только модули, открытые пользователю по Elo.
     """
-    return await get_training_progress(db, user.id)
+    return await get_training_progress(db, user.id, user_elo=user.elo)
 
 
 @router.get("/due")
@@ -200,14 +203,14 @@ async def training_due(
     user: User = Depends(get_current_user),
 ):
     """Задания, которые текущему пользователю уже пора повторить."""
-    items = await get_due_training_reviews(db, user_id=user.id, limit=limit)
-    # Повторения из закрытых по Elo модулей не выдаём: иначе пользователь
-    # получит задание, которое не сможет открыть.
-    items = [
-        item
-        for item in items
-        if module_unlocked_for_elo(item["module"]["slug"], user.elo)
-    ]
+    items = await get_due_training_reviews(
+        db,
+        user_id=user.id,
+        limit=limit,
+        # Повторения из закрытых по Elo модулей отсекаются в SQL: пользователь
+        # не должен получать задание, которое не сможет открыть.
+        locked_slugs=locked_module_slugs(user.elo),
+    )
     return {
         "total": len(items),
         "items": [

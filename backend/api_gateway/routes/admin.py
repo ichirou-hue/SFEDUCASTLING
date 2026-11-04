@@ -132,7 +132,7 @@ async def admin_user_stats(
 
     return {
         "user": await _user_with_ratings(db, target),
-        "training": await get_training_progress(db, target.id),
+        "training": await get_training_progress(db, target.id, user_elo=target.elo),
         "learning": await compute_learning_progress(db, user_id=target.id),
         "weaknesses": weaknesses,
     }

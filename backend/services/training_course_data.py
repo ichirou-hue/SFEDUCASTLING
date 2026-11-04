@@ -69,6 +69,19 @@ def module_unlocked_for_elo(slug: str, elo: int | None) -> bool:
     return elo is not None and int(elo) >= required
 
 
+def locked_module_slugs(elo: int | None) -> set[str]:
+    """Слаги модулей, закрытых для данного Elo.
+
+    Нужны запросам, которые фильтруют контент по модулям в SQL: так лимит
+    выборки не расходуется на закрытые модули.
+    """
+    return {
+        slug
+        for slug in LEVEL_MIN_ELO
+        if not module_unlocked_for_elo(slug, elo)
+    }
+
+
 def _options(*pairs: tuple[str, str]) -> list[dict[str, str]]:
     return [{"id": option_id, "label": label} for option_id, label in pairs]
 
