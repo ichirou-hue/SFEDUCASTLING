@@ -2617,33 +2617,10 @@ textarea {
   align-items: center;
   text-align: center;
   gap: 14px;
-  max-height: 100%;
+  max-height: none;
   overflow-x: hidden;
-  overflow-y: auto;
+  overflow-y: visible;
   justify-content: flex-start;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(128, 101, 47, 0.38) transparent;
-}
-
-.puzzle-info-panel::-webkit-scrollbar {
-  width: 8px;
-}
-
-.puzzle-info-panel::-webkit-scrollbar-track {
-  margin-block: 18px;
-  background: transparent;
-}
-
-.puzzle-info-panel::-webkit-scrollbar-thumb {
-  border: 2px solid transparent;
-  border-radius: 999px;
-  background: rgba(128, 101, 47, 0.38);
-  background-clip: padding-box;
-}
-
-.puzzle-info-panel::-webkit-scrollbar-thumb:hover {
-  background: rgba(128, 101, 47, 0.58);
-  background-clip: padding-box;
 }
 
 .puzzle-info-heading {
@@ -2680,15 +2657,15 @@ textarea {
 .puzzle-theme-icon {
   position: absolute;
   right: 0;
-  flex: 0 0 40px;
+  flex: 0 0 56px;
   display: grid;
-  width: 40px;
-  height: 40px;
+  width: 56px;
+  height: 56px;
   place-items: center;
   border: 0;
   border-radius: 0;
   background: transparent;
-  font-size: 28px;
+  font-size: 42px;
   color: #225a73;
   line-height: 1;
 }
@@ -2700,27 +2677,28 @@ textarea {
 
 .puzzle-turn-indicator {
   position: relative;
-  display: grid;
-  grid-template-columns: 9px minmax(0, 1fr);
-  grid-template-rows: auto auto;
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  column-gap: 10px;
-  row-gap: 3px;
+  gap: 3px;
   width: 100%;
-  padding: 11px 13px;
+  padding: 14px 18px;
   border: 1px solid rgba(34, 90, 115, 0.3);
   border-radius: 14px;
   background: rgba(34, 90, 115, 0.08);
   color: #225a73;
   font-family: var(--font-ui);
   cursor: default;
+  text-align: center;
 }
 
 .puzzle-turn-indicator-side {
-  grid-column: 1;
-  grid-row: 1 / span 2;
+  position: absolute;
+  left: 18px;
+  top: 50%;
   width: 16px;
   height: 16px;
+  transform: translateY(-50%);
   border: 2px solid currentColor;
   border-radius: 50%;
   background: currentColor;
@@ -2739,7 +2717,6 @@ textarea {
 }
 
 .puzzle-turn-indicator-main {
-  grid-column: 2;
   font-size: 15px;
   font-weight: 750;
   text-transform: uppercase;
@@ -2747,7 +2724,6 @@ textarea {
 }
 
 .puzzle-turn-indicator-help {
-  grid-column: 2;
   font-size: 12px;
   font-weight: 500;
   text-transform: none;

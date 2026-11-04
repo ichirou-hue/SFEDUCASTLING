@@ -1159,7 +1159,6 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
             <strong className={streak > 0 ? "puzzle-streak-value--hot" : ""}>
               🔥 {streak}
             </strong>
-            <small className="puzzle-quick-stat-hint">решено подряд</small>
           </div>
         </div>
 
