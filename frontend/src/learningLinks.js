@@ -1,11 +1,12 @@
 import { Chess } from "chess.js";
 
 export const COURSE_TOPIC_META = {
-  pieces: { title: "Фигуры: ходы и взятия", icon: "♟" },
-  "king-safety": { title: "Шах, мат и безопасность короля", icon: "♚" },
+  pieces: { title: "Шахматная азбука", icon: "♟" },
+  "king-safety": { title: "Мат - как цель игры", icon: "♚" },
   endgames: { title: "Эндшпиль", icon: "♔" },
   tactics: { title: "Тактические приёмы", icon: "♞" },
-  openings: { title: "Дебюты", icon: "♜" },
+  openings: { title: "Дебют", icon: "♜" },
+  middlegame: { title: "Миттельшпиль: стратегия", icon: "♛" },
 };
 
 // Раньше модули назывались по фигурам и пазл относился к модулю, только

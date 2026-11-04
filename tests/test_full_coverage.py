@@ -18,7 +18,7 @@ START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
 
 # ============================
-# game.py - промоция, шах, пат, Stockfish ход
+# game.py — промоция, шах, пат, Stockfish ход
 # ============================
 
 class TestGamePromotionAndStatus:
@@ -35,7 +35,7 @@ class TestGamePromotionAndStatus:
         assert "e8=N" in data.get("san", "")
 
     def test_move_to_check(self):
-        """Bxf7+ - ставим шах."""
+        """Bxf7+ — ставим шах."""
         fen = "r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 3"
         resp = client.post("/api/move", json={
             "fen": fen, "from_sq": "c4", "to_sq": "f7"
@@ -76,17 +76,8 @@ class TestGamePromotionAndStatus:
 
 
 # ============================
-# analysis.py - с моками Stockfish
+# analysis.py — с моками Stockfish
 # ============================
-
-class MockResponse:
-    """Заглушка для requests.Response."""
-    def __init__(self, data, status_code=200):
-        self.status_code = status_code
-        self._data = data
-    def json(self):
-        return self._data
-
 
 class TestAnalysisWithMocks:
     """Покрываем success-пути analysis.py (Stockfish, similarity)."""
@@ -148,7 +139,7 @@ class TestAnalysisWithMocks:
 
 
 # ============================
-# knowledge.py - с загруженной базой знаний
+# knowledge.py — с загруженной базой знаний
 # ============================
 
 TEST_OPENINGS = {
@@ -205,7 +196,7 @@ class TestKnowledgeLoaded:
 
 
 # ============================
-# data.py - save-move success и PGN-обработка
+# data.py — save-move success и PGN-обработка
 # ============================
 
 class TestDataSaveSuccess:
@@ -256,7 +247,7 @@ class TestDataSaveSuccess:
 
 
 # ============================
-# vision.py - с моком LLaVA
+# vision.py — с моком LLaVA
 # ============================
 
 class TestVisionSuccess:
@@ -298,7 +289,7 @@ class TestVisionSuccess:
 
 
 # ============================
-# state.py - success-пути и get_opening_info
+# state.py - success-пути загрузки
 # ============================
 
 class TestStateSuccess:
@@ -325,7 +316,7 @@ class TestStateSuccess:
         st.manager._stockfish_loaded = False
 
     def test_load_llava_disabled(self):
-        """LLaVA отключена - сразу возвращает False."""
+        """LLaVA отключена — сразу возвращает False."""
         result = st.load_llava()
         assert result is False
         assert st.llava_model is None
@@ -339,27 +330,6 @@ class TestStateSuccess:
         result = st.load_knowledge()
         assert result is False
         st.KNOWLEDGE_PATH = original_path
-
-    def test_get_opening_info_success(self):
-        """Lichess API отвечает с дебютом и партиями."""
-        mock_resp = MockResponse({
-            "opening": {"name": "Italian Game"},
-            "topGames": [
-                {"white": {"name": "Carlsen"}, "black": {"name": "Nakamura"},
-                 "year": 2020, "winner": "white"}
-            ]
-        })
-        with patch("backend.api_gateway.state.requests.get", return_value=mock_resp):
-            result = st.get_opening_info(START_FEN)
-        assert result is not None
-        assert result["name"] == "Italian Game"
-
-    def test_get_opening_info_no_opening(self):
-        """Lichess API отвечает, но без дебюта."""
-        mock_resp = MockResponse({})
-        with patch("backend.api_gateway.state.requests.get", return_value=mock_resp):
-            result = st.get_opening_info(START_FEN)
-        assert result is None
 
     def test_extract_fen_from_image_success(self, tmp_path):
         """LLaVA возвращает FEN."""
@@ -382,7 +352,7 @@ class TestStateSuccess:
 
 
 # ============================
-# app.py - serve_index
+# app.py — serve_index
 # ============================
 
 class TestAppCoverage:

@@ -1,39 +1,62 @@
 """Фоновая запись завершённых партий (задача 83).
 
-Принимает полную партию (список ходов UCI + результат), проигрывает её
-и для каждого хода считает потерю в центепешках через Stockfish,
-классифицирует ход (best/excellent/...) и сохраняет games + game_moves.
+Принимает полную партию (список ходов UCI + результат), проигрывает её,
+оценивает позицию после каждого полухода через Stockfish и классифицирует
+ход по падению вероятности победы - той же моделью, что использует разбор
+партии. Оценки и классы сохраняются в games + game_moves.
+
+Раньше ход сравнивался с отдельным поиском «лучшего хода», а класс
+ставился по сантипешкам (20/50/100/300/500 cp). Из-за этого в уже
+проигранной позиции любой ход выглядел «лучшим», и точность по этапам
+в профиле была завышена. Теперь достаточно одной оценки на полуход:
+соседние оценки и дают потерю игрока.
 
 Запускается через FastAPI BackgroundTasks после ответа клиенту,
-чтобы длительная оценка Stockfish (1с на ход) не блокировала запрос.
+чтобы длительная оценка Stockfish (0.5 с на ход) не блокировала запрос.
 """
 
 import chess
 from fastapi.concurrency import run_in_threadpool
 
-from backend.analysis.classifier import classify, normalize_eval
+from backend.analysis.classifier import classify_move
+from backend.analysis.engine_eval import ensure_single_line, position_eval
 from backend.api_gateway.state import ensure_stockfish, stockfish_lock
 from backend.db.session import async_session_factory
 from backend.models.game import Game, GameMove
 
+# Время поиска на полуход в фоновой записи. Разбор партии использует
+# 300 мс, здесь чуть больше: запись идёт в фоне и не мешает клиенту.
+SEARCH_MS = 500
+
 
 def _classify_game(moves: list[str]) -> list[dict]:
-    """Проигрывает партию и классифицирует каждый ход.
+    """Проигрывает партию и оценивает каждый ход.
 
-    Для каждого хода игрока сравнивается оценка позиции ПОСЛЕ его хода
-    с оценкой позиции ПОСЛЕ лучшего хода Stockfish в той же позиции.
+    Оценка берётся один раз на позицию: стартовая позиция, затем позиция
+    после каждого полухода. Потеря хода - разница соседних оценок от лица
+    стороны, делавшей ход; класс - по падению вероятности победы.
 
     Returns:
         Список записей ходов: fen, uci, san, turn, classification,
-        ev_best, ev_played, best_uci, diff_cp.
+        ev_before, ev_after (сантипешки от лица белых), mate.
     """
     board = chess.Board()
     try:
-        sf = ensure_stockfish()
+        engine = ensure_stockfish()
     except Exception as exc:
         print(f"[Game analysis] Stockfish unavailable; saving moves without scores: {exc}")
-        sf = None
+        engine = None
     records: list[dict] = []
+
+    prev_cp: float | None = None
+    if engine is not None:
+        try:
+            with stockfish_lock:
+                ensure_single_line(engine)
+            prev_cp, _ = position_eval(engine, board, SEARCH_MS)
+        except Exception as exc:
+            print(f"[Game analysis] Stockfish failed; saving moves without scores: {exc}")
+            engine = None
 
     for uci in moves:
         try:
@@ -46,52 +69,25 @@ def _classify_game(moves: list[str]) -> list[dict]:
         fen_before = board.fen()
         turn = board.turn
         san = board.san(move)
-
-        ev_best = None
-        ev_played = None
-        best_uci = None
-
-        if sf is not None:
-            try:
-                with stockfish_lock:
-                    sf.set_fen_position(fen_before)
-                    best_uci = sf.get_best_move_time(1000)
-                    if best_uci:
-                        try:
-                            best_move = chess.Move.from_uci(best_uci)
-                            if best_move in board.legal_moves:
-                                best_board = board.copy()
-                                best_board.push(best_move)
-                                sf.set_fen_position(best_board.fen())
-                                ev_best = sf.get_evaluation(searchtime=1000)
-                        except ValueError:
-                            ev_best = None
-            except Exception as exc:
-                print(f"[Game analysis] Stockfish failed; saving remaining moves without scores: {exc}")
-                sf = None
-
         board.push(move)
 
-        if sf is not None:
+        cp: float | None = None
+        mate: int | None = None
+        if engine is not None:
             try:
-                with stockfish_lock:
-                    sf.set_fen_position(board.fen())
-                    ev_played = sf.get_evaluation(searchtime=1000)
+                cp, mate = position_eval(engine, board, SEARCH_MS)
             except Exception as exc:
                 print(f"[Game analysis] Stockfish failed; saving remaining moves without scores: {exc}")
-                sf = None
+                engine = None
 
-        # Потеря = насколько ход игрока хуже лучшего хода (обе оценки
-        # приводятся к точке зрения стороны, делавшей ход).
-        diff_cp = None
         classification = None
-        if ev_best is not None and ev_played is not None:
-            # ev_best - оценка позиции, где ход уже перешёл к сопернику,
-            # поэтому нормализуем к стороне, которая сделала ход.
-            before_side = -normalize_eval(ev_best)
-            after_side = -normalize_eval(ev_played)
-            diff_cp = before_side - after_side
-            classification = classify(diff_cp)
+        diff_cp = None
+        if cp is not None and prev_cp is not None:
+            classification = classify_move(prev_cp, cp, turn)
+            # Потеря в сантипешках от лица ходившей стороны: пригодится
+            # для отладки и старых клиентов.
+            sign = 1.0 if turn == chess.WHITE else -1.0
+            diff_cp = round(max(0.0, (prev_cp - cp) * sign), 1)
 
         records.append({
             "fen": fen_before,
@@ -99,11 +95,14 @@ def _classify_game(moves: list[str]) -> list[dict]:
             "san": san,
             "turn": "w" if turn == chess.WHITE else "b",
             "classification": classification,
-            "ev_best": ev_best,
-            "ev_played": ev_played,
-            "best_uci": best_uci,
+            "ev_before": prev_cp,
+            "ev_after": cp,
+            "mate": mate,
             "diff_cp": diff_cp,
         })
+
+        if cp is not None:
+            prev_cp = cp
 
     return records
 
@@ -147,10 +146,13 @@ async def record_game(
                     san=rec["san"],
                     turn=rec["turn"],
                     classification=rec["classification"],
-                    ev_before=normalize_eval(rec["ev_best"]),
-                    ev_after=normalize_eval(rec["ev_played"]),
+                    ev_before=rec["ev_before"],
+                    ev_after=rec["ev_after"],
                     diff_cp=rec["diff_cp"],
-                    eval_raw={"best_uci": rec["best_uci"], "best": rec["ev_best"], "played": rec["ev_played"]},
+                    eval_raw={
+                        "model": "win_probability",
+                        "mate": rec["mate"],
+                    },
                 )
             )
 

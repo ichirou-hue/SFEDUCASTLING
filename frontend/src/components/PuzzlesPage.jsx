@@ -683,6 +683,11 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
     (sourceSquare, targetSquare, promotionChoice = null) => {
       if (waitingForOpponent || showSolution || showRegGate || previewGate) return false;
 
+      // Сейчас очередь хода соперника: его ответ ставит таймер на 400 мс.
+      // Быстрый клик в это окно раньше попадал в ветку «неверный ход» и
+      // записывался как ошибка, хотя игрок ещё не мог ошибиться.
+      if (solutionIndexRef.current % 2 !== 0) return false;
+
       const game = gameRef.current;
       const movingPiece = game.get(sourceSquare);
       const isPromotion = Boolean(

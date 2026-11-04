@@ -160,6 +160,10 @@ export default function TrainingPage({ user, onRegister }) {
   const [lesson, setLesson] = useState(null);
   const [tasks, setTasks] = useState([]);
   const [taskIndex, setTaskIndex] = useState(0);
+  // Выбранная развилка урока дебютов. null - общая линия (задания без
+  // payload.branch). Ветка выбирается после её прохождения и дальше
+  // фильтрует задания: common + tasks своего branch.
+  const [branchId, setBranchId] = useState(null);
   // ID заданий текущего урока, решённые верно. Серверные данные из
   // lessonProgressById.solved_task_ids плюс то, что решено в этой сессии -
   // так дотсы не теряют состояние при переходах внутри урока.
@@ -197,7 +201,30 @@ export default function TrainingPage({ user, onRegister }) {
     if (el) branchScrollRef.current[branch] = el.scrollTop;
   };
 
-  const currentTask = tasks[taskIndex] || null;
+  // Развилки урока: общая линия + задания выбранной ветки. У обычных
+  // уроков variations пуст, branchId всегда null и visibleTasks === tasks.
+  const lessonVariations = useMemo(
+    () => (Array.isArray(lesson?.variations) ? lesson.variations : []),
+    [lesson],
+  );
+  const commonTasks = useMemo(
+    () => tasks.filter((task) => !task.payload?.branch),
+    [tasks],
+  );
+  const visibleTasks = useMemo(() => {
+    if (!branchId) return commonTasks;
+    return [
+      ...commonTasks,
+      ...tasks.filter((task) => task.payload?.branch === branchId),
+    ];
+  }, [tasks, commonTasks, branchId]);
+  const selectedVariation =
+    lessonVariations.find((item) => item.id === branchId) || null;
+  const commonLineDone =
+    commonTasks.length > 0 &&
+    commonTasks.every((task) => solvedTaskIds.has(task.id));
+
+  const currentTask = visibleTasks[taskIndex] || null;
   // Следим за конкретным пользователем, а не за объектом целиком:
   // обновление профиля (идентичный id) не должно перезагружать курс.
   const userId = user?.id ?? null;
@@ -383,6 +410,7 @@ export default function TrainingPage({ user, onRegister }) {
       setLesson(null);
       setTasks([]);
       setTaskIndex(0);
+      setBranchId(null);
       setError(null);
       setLoading(false);
       return;
@@ -439,14 +467,14 @@ export default function TrainingPage({ user, onRegister }) {
   // а новый урок сбрасывает taskResult в эффекте выше.
   useEffect(() => {
     if (!taskResult?.correct) return undefined;
-    if (taskIndex >= tasks.length - 1) return undefined;
+    if (taskIndex >= visibleTasks.length - 1) return undefined;
 
     const timer = setTimeout(() => {
       setTaskIndex((index) => index + 1);
     }, AUTO_ADVANCE_DELAY_MS);
 
     return () => clearTimeout(timer);
-  }, [taskResult?.correct, taskIndex, tasks.length]);
+  }, [taskResult?.correct, taskIndex, visibleTasks.length]);
 
   const openModule = useCallback(async (module) => {
     if (!module.enabled) return;
@@ -466,6 +494,7 @@ export default function TrainingPage({ user, onRegister }) {
       setLesson(null);
       setTasks([]);
       setTaskIndex(0);
+      setBranchId(null);
     } catch (err) {
       setError(getApiError(err, "Не удалось открыть учебный модуль."));
     } finally {
@@ -503,6 +532,7 @@ export default function TrainingPage({ user, onRegister }) {
     setLesson(null);
     setTasks([]);
     setTaskIndex(0);
+    setBranchId(null);
     setError(null);
   }, [requestedModuleSlug, selectedModule]);
 
@@ -520,6 +550,7 @@ export default function TrainingPage({ user, onRegister }) {
       setLesson(data.lesson);
       setTasks(data.tasks || []);
       setTaskIndex(0);
+      setBranchId(null);
     } catch (err) {
       setError(getApiError(err, "Не удалось открыть урок."));
     } finally {
@@ -604,6 +635,7 @@ export default function TrainingPage({ user, onRegister }) {
     setLesson(null);
     setTasks([]);
     setTaskIndex(0);
+    setBranchId(null);
     setError(null);
   };
 
@@ -612,6 +644,7 @@ export default function TrainingPage({ user, onRegister }) {
     setLesson(null);
     setTasks([]);
     setTaskIndex(0);
+    setBranchId(null);
     setError(null);
   };
 
@@ -892,9 +925,18 @@ export default function TrainingPage({ user, onRegister }) {
   ]);
 
   const nextTask = () => {
-    if (taskIndex < tasks.length - 1) {
+    if (taskIndex < visibleTasks.length - 1) {
       setTaskIndex((index) => index + 1);
     }
+  };
+
+  const selectVariation = (variation) => {
+    if (!variation) return;
+    // Первое задание ветки идёт сразу после общей линии: доска встанет
+    // на позицию после вступительного хода соперника (intro_move).
+    setBranchId(variation.id);
+    setTaskIndex(commonTasks.length);
+    setTaskResult(null);
   };
 
   if (loading && modules.length === 0 && user) {
@@ -1027,6 +1069,11 @@ export default function TrainingPage({ user, onRegister }) {
                     </span>
                     <span className="training-module-node-main">
                       <span className="training-module-node-title">{module.title}</span>
+                      {module.level_label && (
+                        <span className="training-module-level">
+                          Уровень {module.level_label}
+                        </span>
+                      )}
                       <span className="training-module-node-description">
                         {module.description}
                       </span>
@@ -1170,7 +1217,7 @@ export default function TrainingPage({ user, onRegister }) {
             className="learning-crosslink"
             onClick={openPuzzlesForCurrentTopic}
           >
-            Проверить на пазлах этой темы →
+            Проверить на пазлах этой темы
           </button>
         </div>
 
@@ -1181,6 +1228,11 @@ export default function TrainingPage({ user, onRegister }) {
           <div>
             <div className="training-kicker">Учебный модуль</div>
             <h1>{selectedModule.title}</h1>
+            {selectedModule.level_label && (
+              <div className="training-module-level training-module-level--header">
+                Уровень {selectedModule.level_label}
+              </div>
+            )}
             <p>{selectedModule.description}</p>
           </div>
         </section>
@@ -1291,7 +1343,7 @@ export default function TrainingPage({ user, onRegister }) {
             >
               ←
             </button>
-            {tasks.map((task, index) => {
+            {visibleTasks.map((task, index) => {
               const solved = solvedTaskIds.has(task.id);
               // Последовательное прохождение: точка открыта, если задание
               // уже решено, оно первое, или решено предыдущее. Прыгнуть
@@ -1299,7 +1351,7 @@ export default function TrainingPage({ user, onRegister }) {
               const unlocked =
                 index === 0 ||
                 solved ||
-                solvedTaskIds.has(tasks[index - 1].id);
+                solvedTaskIds.has(visibleTasks[index - 1].id);
 
               return (
                 <button
@@ -1330,14 +1382,57 @@ export default function TrainingPage({ user, onRegister }) {
             <button
               type="button"
               className="training-progress-nav"
-              onClick={() => setTaskIndex((index) => Math.min(tasks.length - 1, index + 1))}
-              disabled={taskIndex >= tasks.length - 1}
+              onClick={() => setTaskIndex((index) => Math.min(visibleTasks.length - 1, index + 1))}
+              disabled={taskIndex >= visibleTasks.length - 1}
               aria-label="Следующее задание"
               title="Следующее задание"
             >
               →
             </button>
           </div>
+
+          {lessonVariations.length > 0 && (
+            <div className="training-variations">
+              <div className="training-kicker">Развилка</div>
+              <p className="training-variations-lead">
+                {commonLineDone
+                  ? "Общая линия пройдена. Выберите, как ответит соперник, - и доска покажет ходы этой ветки."
+                  : "Сначала пройдите общую линию, затем выберите вариант соперника."}
+              </p>
+              <div className="training-variation-list">
+                {lessonVariations.map((variation) => {
+                  const active = variation.id === branchId;
+                  return (
+                    <button
+                      type="button"
+                      key={variation.id}
+                      className={`training-variation-card${
+                        active ? " training-variation-card--active" : ""
+                      }`}
+                      onClick={() => selectVariation(variation)}
+                      disabled={!commonLineDone}
+                      aria-pressed={active}
+                      title={variation.description || variation.label}
+                    >
+                      <span className="training-variation-label">
+                        {variation.label}
+                      </span>
+                      {variation.line && (
+                        <span className="training-variation-line">
+                          {variation.line}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+              {selectedVariation?.description && (
+                <p className="training-variation-description">
+                  {selectedVariation.description}
+                </p>
+              )}
+            </div>
+          )}
         </aside>
 
         <main className="training-board-column">
@@ -1346,8 +1441,19 @@ export default function TrainingPage({ user, onRegister }) {
             className="learning-crosslink learning-crosslink--over-board"
             onClick={openPuzzlesForCurrentTopic}
           >
-            Проверить на пазлах этой темы →
+            Проверить на пазлах этой темы
           </button>
+          {selectedVariation && (
+            <div className="training-branch-banner">
+              <span className="training-branch-banner-label">
+                {selectedVariation.label}
+              </span>
+              <span className="training-branch-banner-line">
+                Соперник сыграл {selectedVariation.intro_san} ·{" "}
+                {selectedVariation.line}
+              </span>
+            </div>
+          )}
           {currentTask ? (
             <div className="training-board-wrapper" data-logo-anchor>
               <ReactChessboard
@@ -1525,7 +1631,7 @@ export default function TrainingPage({ user, onRegister }) {
                   {taskResult.correct && taskResult.explanation && (
                     <p>{taskResult.explanation}</p>
                   )}
-                  {taskResult.correct && taskIndex < tasks.length - 1 && (
+                  {taskResult.correct && taskIndex < visibleTasks.length - 1 && (
                     <span className="training-auto-hint">
                       Следующее задание откроется автоматически…
                     </span>
@@ -1533,21 +1639,36 @@ export default function TrainingPage({ user, onRegister }) {
                 </div>
               )}
 
-              {taskResult?.correct && taskIndex < tasks.length - 1 && (
+              {taskResult?.correct && taskIndex < visibleTasks.length - 1 && (
                 <button type="button" className="training-next-btn" onClick={nextTask}>
                   Следующее задание →
                 </button>
               )}
 
-              {taskResult?.correct && taskIndex === tasks.length - 1 && (
-                <div className="training-lesson-complete">
-                  <div className="training-complete-icon">✓</div>
-                  <strong>Урок завершён</strong>
-                  <span>Результат сохранён. Можно перейти к следующему уроку.</span>
-                  <button type="button" className="training-next-btn" onClick={backToLessons}>
-                    К списку уроков
-                  </button>
-                </div>
+              {taskResult?.correct && taskIndex === visibleTasks.length - 1 && (
+                lessonVariations.length > 0 && !branchId ? (
+                  <div className="training-lesson-complete">
+                    <div className="training-complete-icon">⇉</div>
+                    <strong>Общая линия пройдена</strong>
+                    <span>
+                      Выберите развилку в панели теории - соперник ответит
+                      по-разному, и задания пойдут по выбранной ветке.
+                    </span>
+                  </div>
+                ) : (
+                  <div className="training-lesson-complete">
+                    <div className="training-complete-icon">✓</div>
+                    <strong>Урок завершён</strong>
+                    <span>
+                      {lessonVariations.length > 1
+                        ? "Результат сохранён. Другие ветки развилки можно пройти отдельно."
+                        : "Результат сохранён. Можно перейти к следующему уроку."}
+                    </span>
+                    <button type="button" className="training-next-btn" onClick={backToLessons}>
+                      К списку уроков
+                    </button>
+                  </div>
+                )
               )}
             </>
           )}

@@ -1,6 +1,99 @@
 import { useEffect, useRef } from "react";
 import PositionMenu from "./PositionMenu.jsx";
 
+/*
+ * Значки качества хода, как в шахматной нотации: две ошибки - зевок,
+ * одна - ошибка, «?!» - неточность. Удачные ходы оставляем без значка,
+ * чтобы список не пестрел.
+ */
+const REVIEW_MARKS = {
+  inaccuracy: "?!",
+  mistake: "?",
+  blunder: "??",
+};
+
+/*
+ * Подпись оценки хода: +0,3 / -1,2 / -10,0 / #.
+ * Оценка приходит после хода и всегда от лица белых, как на Lichess
+ * и chess.com.
+ *
+ * Мат показываем числом, а не «M3» или «мат 3»: число достраивается
+ * до предела ±10 пешек (на коротком поиске движок называет мат то в 3,
+ * то в 6 ходов, и подпись начинала прыгать). Точную длину мата видно
+ * в подсказке. Значок # остаётся только для мата, который уже на доске.
+ */
+function formatEval(ply) {
+  if (!ply) return "";
+
+  if (ply.mate === 0) return "#";
+
+  if (ply.eval_cp == null) return "";
+
+  const pawns = ply.eval_cp / 100;
+
+  if (Math.abs(pawns) < 0.05) return "0,0";
+
+  const text = Math.abs(pawns).toFixed(1).replace(".", ",");
+  return pawns > 0 ? `+${text}` : `-${text}`;
+}
+
+/*
+ * Склонение «ход» для подсказок: 1 ход, 2 хода, 5 ходов.
+ */
+function movesWord(count) {
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+
+  if (mod10 === 1 && mod100 !== 11) return "ход";
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return "хода";
+  return "ходов";
+}
+
+/*
+ * Расшифровка оценки для всплывающей подсказки: у мата нужно указать
+ * и число ходов, и сторону, которая его ставит.
+ */
+function describeEval(ply) {
+  if (!ply) return "";
+
+  /*
+   * Ходы из решённых позиций в точность не идут, и значка качества у них
+   * нет. Без пояснения это выглядит как потеря разбора - особенно рядом
+   * с оценкой -10,0 (это не порог, а предел шкалы: мат и +10 пешек для
+   * вероятности победы одно и то же).
+   */
+  const decidedNote = ply.decided
+    ? " Позиция уже решена: ход не оценивался и в точность не вошёл."
+    : "";
+
+  if (ply.mate != null) {
+    if (ply.mate === 0) return `Мат на доске.${decidedNote}`;
+
+    const side = ply.mate > 0 ? "белых" : "чёрных";
+    const count = Math.abs(ply.mate);
+    const value = formatEval(ply);
+
+    return `Мат в ${count} ${movesWord(count)} (ставит сторона ${side}). Оценка: ${value}.${decidedNote}`;
+  }
+
+  if (ply.eval_cp == null) return "Оценки нет";
+
+  return `Оценка движка: ${formatEval(ply)}.${decidedNote}`;
+}
+
+/*
+ * Тон подписи: явный перевес одной из сторон или равенство.
+ */
+function evalTone(ply) {
+  if (!ply) return "";
+
+  const value = ply.eval_cp || 0;
+
+  if (value > 50) return "is-white";
+  if (value < -50) return "is-black";
+  return "is-equal";
+}
+
 export default function MoveHistory({
   moveHistory,
   positionSnapshots,
@@ -13,15 +106,37 @@ export default function MoveHistory({
   getPgn,
   maiaRating = 1500,
   userRating = "?",
+  review = null,
 }) {
   const listRef = useRef(null);
 
-  // Скролл теперь будет следить не только за новыми ходами, но и за переключением активного хода
+  /*
+   * Скролл следит и за новыми ходами, и за активным ходом при листании.
+   * Раньше список всегда прыгал в конец, из-за чего при разборе
+   * выбранный ход мог оказаться за пределами видимой области.
+   */
   useEffect(() => {
-    if (listRef.current) {
-      listRef.current.scrollTop = listRef.current.scrollHeight;
+    const list = listRef.current;
+
+    if (!list) return;
+
+    const active = list.querySelector(".is-active");
+
+    if (!active) {
+      list.scrollTop = list.scrollHeight;
+      return;
+    }
+
+    const listRect = list.getBoundingClientRect();
+    const activeRect = active.getBoundingClientRect();
+
+    if (activeRect.top < listRect.top) {
+      list.scrollTop -= listRect.top - activeRect.top;
+    } else if (activeRect.bottom > listRect.bottom) {
+      list.scrollTop += activeRect.bottom - listRect.bottom;
     }
   }, [moveHistory, viewIndex]);
+
   // Если moveHistory вдруг пришел как undefined, считаем его пустым массивом
   const safeHistory = moveHistory || [];
   // Если мы отмотали в самое начало (viewIndex === -1 И мы в режиме просмотра), то показываем 0.
@@ -29,12 +144,36 @@ export default function MoveHistory({
   const currentHalfMove =
     viewIndex === -1 && !isViewMode ? safeHistory.length : viewIndex + 1;
 
+  /*
+   * В режиме просмотра viewIndex === -1 означает начало партии: вперёд
+   * идти можно (к первому ходу), поэтому кнопка «вперёд» блокируется
+   * только когда мы уже в конце живой партии. Раньше она оставалась
+   * выключенной после отката в начало и вернуться к игре было нельзя.
+   *
+   * navigationDisabled дополнительно блокирует листание, пока идёт
+   * живая партия: клик по ходу не должен уводить из текущей позиции.
+   */
   const isPrevDisabled =
-    navigationDisabled || safeHistory.length === 0 || viewIndex === 0;
+    navigationDisabled ||
+    safeHistory.length === 0 ||
+    (isViewMode && viewIndex === -1);
   const isNextDisabled =
-    navigationDisabled || safeHistory.length === 0 || viewIndex === -1;
+    navigationDisabled ||
+    safeHistory.length === 0 ||
+    (!isViewMode && viewIndex === -1);
 
-  // НОВОЕ: Группируем плоский массив строк в красивые пары (белые/черные)
+  /*
+   * Разбор приходит по каждому полуходу, поэтому индекс в массиве
+   * совпадает с индексом истории. Оценки может не быть (партия длиннее
+   * лимита разбора) - тогда подпись просто не рисуется.
+   */
+  const reviewPlies = Array.isArray(review?.plies) ? review.plies : [];
+
+  const isActiveIndex = (index) =>
+    viewIndex === index ||
+    (viewIndex === -1 && index === safeHistory.length - 1);
+
+  // Группируем плоский массив строк в красивые пары (белые/черные)
   const movePairs = [];
   for (let i = 0; i < safeHistory.length; i += 2) {
     movePairs.push({
@@ -50,50 +189,103 @@ export default function MoveHistory({
       <h3 className="history-title">История ходов</h3>
       <div className="title-separator"></div>
 
+      {/* Подпись под заголовком: откуда взялись оценки ходов. */}
+      {review && (
+        <div className="review-hint">
+          Разбор партии: оценка после каждого хода
+        </div>
+      )}
+
       {/* Список ходов - сразу под заголовком, ближе к доске */}
       <div
         className={`move-list${navigationDisabled ? " move-list--locked" : ""}`}
         ref={listRef}
       >
-        {movePairs.map((item, index) => (
-          <div key={index} className="move-pair">
-            <span className="num">{item.num}.</span>
+        {review ? (
+          /*
+           * Разбор: по одному ходу в строке, чтобы рядом с ходом
+           * поместилась оценка и значок качества.
+           */
+          safeHistory.map((san, index) => {
+            const ply = reviewPlies[index];
+            const mark = ply?.classification
+              ? REVIEW_MARKS[ply.classification]
+              : "";
 
-            {/* Ход белых */}
-            <span
-              className={`move-w ${viewIndex === item.wIndex || (viewIndex === -1 && item.wIndex === safeHistory.length - 1) ? "active" : ""}`}
-              onClick={
-                navigationDisabled
-                  ? undefined
-                  : () => onNavigate(item.wIndex)
-              }
-              aria-disabled={navigationDisabled || undefined}
-              style={{
-                cursor: navigationDisabled ? "default" : "pointer",
-              }}
-            >
-              {item.w}
-            </span>
+            return (
+              <button
+                key={index}
+                type="button"
+                className={`review-move is-${index % 2 === 0 ? "white" : "black"}${
+                  isActiveIndex(index) ? " is-active" : ""
+                }`}
+                onClick={() => onNavigate(index)}
+              >
+                <span className="review-move-num">
+                  {index % 2 === 0 ? `${Math.floor(index / 2) + 1}.` : ""}
+                </span>
+                <span
+                  className={`review-move-san${
+                    ply?.classification
+                      ? ` review-move-san--${ply.classification}`
+                      : ""
+                  }`}
+                >
+                  {san}
+                  {mark && (
+                    <span className="review-move-mark">{mark}</span>
+                  )}
+                </span>
+                <span
+                  className={`review-move-eval ${evalTone(ply)}`}
+                  title={describeEval(ply)}
+                >
+                  {formatEval(ply)}
+                </span>
+              </button>
+            );
+          })
+        ) : (
+          movePairs.map((item, index) => (
+            <div key={index} className="move-pair">
+              <span className="num">{item.num}.</span>
 
-            {/* Ход черных */}
-            {item.b && (
+              {/* Ход белых */}
               <span
-                className={`move-b ${viewIndex === item.bIndex || (viewIndex === -1 && item.bIndex === safeHistory.length - 1) ? "active" : ""}`}
+                className={`move-w ${isActiveIndex(item.wIndex) ? "active" : ""}`}
                 onClick={
                   navigationDisabled
                     ? undefined
-                    : () => onNavigate(item.bIndex)
+                    : () => onNavigate(item.wIndex)
                 }
                 aria-disabled={navigationDisabled || undefined}
                 style={{
                   cursor: navigationDisabled ? "default" : "pointer",
                 }}
               >
-                {item.b}
+                {item.w}
               </span>
-            )}
-          </div>
-        ))}
+
+              {/* Ход черных */}
+              {item.b && (
+                <span
+                  className={`move-b ${isActiveIndex(item.bIndex) ? "active" : ""}`}
+                  onClick={
+                    navigationDisabled
+                      ? undefined
+                      : () => onNavigate(item.bIndex)
+                  }
+                  aria-disabled={navigationDisabled || undefined}
+                  style={{
+                    cursor: navigationDisabled ? "default" : "pointer",
+                  }}
+                >
+                  {item.b}
+                </span>
+              )}
+            </div>
+          ))
+        )}
       </div>
 
       {/* Карточка соперника - под списком ходов, рядом с навигацией */}

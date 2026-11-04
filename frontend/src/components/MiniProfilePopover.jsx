@@ -116,7 +116,11 @@ export default function MiniProfilePopover({
   const courseCompleted = safeNumber(modules.completed);
   const courseTotal = safeNumber(modules.total);
   const solvedPuzzles = safeNumber(learning?.solved);
-  const streak = safeNumber(training?.streak);
+  // Серия дней занятий: день засчитывается за 3+ разных пазла
+  // или хотя бы одно задание модуля курса. Заход сам по себе не считается.
+  const dayStreak = safeNumber(training?.streak);
+  // Серия пазлов: сколько решено подряд без единой ошибки.
+  const puzzleStreak = safeNumber(learning?.puzzle_streak);
 
   return (
     <div
@@ -173,9 +177,19 @@ export default function MiniProfilePopover({
                 <span>Пазлы</span>
                 <strong>{solvedPuzzles}</strong>
               </div>
-              <div className="mini-profile__row mini-profile__row--streak">
-                <span>Серия</span>
-                <strong>🔥 {streak} дн.</strong>
+              <div
+                className="mini-profile__row mini-profile__row--streak"
+                title="День занятий: 3+ разных решённых пазла или задание курса"
+              >
+                <span>Серия дней</span>
+                <strong>🔥 {dayStreak} дн.</strong>
+              </div>
+              <div
+                className="mini-profile__row mini-profile__row--streak"
+                title="Пазлы, решённые подряд без ошибок"
+              >
+                <span>Серия пазлов</span>
+                <strong>⚡ {puzzleStreak}</strong>
               </div>
             </div>
 

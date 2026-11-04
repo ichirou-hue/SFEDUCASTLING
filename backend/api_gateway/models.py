@@ -212,6 +212,29 @@ class FinishGameRequest(BaseModel):
         return normalize_player_color(v)
 
 
+class GameReviewRequest(BaseModel):
+    """Запрос: разбор завершённой партии движком.
+
+    Attributes:
+        moves: Полная история партии в нотации UCI от начальной позиции.
+        player_color: Сторона игрока ("w" или "b"). Разбираются только
+            ходы этой стороны.
+    """
+
+    moves: list[str] = Field(default_factory=list, max_length=600)
+    player_color: str = "w"
+
+    @field_validator("moves")
+    @classmethod
+    def moves_must_not_be_empty(cls, v: list[str]) -> list[str]:
+        return [move.strip() for move in v if move.strip()]
+
+    @field_validator("player_color")
+    @classmethod
+    def player_color_must_be_valid(cls, v: str) -> str:
+        return normalize_player_color(v)
+
+
 class NewGameRequest(BaseModel):
     """Запрос: начать новую партию за выбранную сторону.
 

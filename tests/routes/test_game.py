@@ -1,5 +1,7 @@
 """Тесты игровых endpoint'ов: /api/legal-moves, /api/move, /api/stockfish-move."""
 
+import time
+
 import chess
 import pytest
 from fastapi.testclient import TestClient
@@ -136,6 +138,226 @@ class TestAiMove:
         assert resp.status_code == 422
 
 
+# --- история партии для Maia3 ---
+
+class _RecordingMaiaEngine:
+    """Заглушка Maia3: запоминает доску, которую ей передали на ход."""
+
+    def __init__(self, move: chess.Move):
+        self.move = move
+        self.boards: list[chess.Board] = []
+
+    def configure(self, options: dict) -> None:
+        pass
+
+    def play(self, board: chess.Board, limit=None):
+        self.boards.append(board.copy())
+
+        class _Result:
+            def __init__(self, move: chess.Move):
+                self.move = move
+
+        return _Result(self.move)
+
+
+class _BrokenMaiaEngine:
+    """Заглушка Maia3, которая падает на каждом ходе."""
+
+    def __init__(self) -> None:
+        self.quitted = False
+
+    def configure(self, options: dict) -> None:
+        pass
+
+    def play(self, board: chess.Board, limit=None):
+        raise chess.engine.EngineTerminatedError("process died")
+
+    def quit(self) -> None:
+        self.quitted = True
+
+
+class _HangingMaiaEngine:
+    """Заглушка Maia3, которая не отвечает (зависший процесс)."""
+
+    def __init__(self, delay: float = 0.5) -> None:
+        self.delay = delay
+
+    def configure(self, options: dict) -> None:
+        pass
+
+    def play(self, board: chess.Board, limit=None):
+        time.sleep(self.delay)
+        raise chess.engine.EngineTerminatedError("too late")
+
+
+class TestMaiaHistory:
+    """Maia3 запущена с --use-uci-history и без истории играет вслепую.
+
+    python-chess передаёт историю только тогда, когда у доски есть стек
+    ходов: ``position fen ... moves ...``. Поэтому сервер обязан собрать
+    доску заново из присланных ходов, а не отдавать голый FEN.
+    """
+
+    def test_matching_history_reaches_the_engine(self, monkeypatch):
+        from backend.api_gateway.models import FenRequest
+        from backend.api_gateway.routes import game as game_routes
+
+        # Роут строит доску из FEN, поэтому стека ходов у неё нет:
+        # историю может дать только собранный заново replay.
+        replay = chess.Board()
+        for uci in ("e2e4", "e7e5"):
+            replay.push_uci(uci)
+        board = chess.Board(replay.fen())
+
+        engine = _RecordingMaiaEngine(chess.Move.from_uci("g1f3"))
+        monkeypatch.setattr(game_routes, "get_maia3", lambda: engine)
+
+        request = FenRequest(
+            fen=board.fen(),
+            elo=1500,
+            moves=["e2e4", "e7e5"],
+            engine="maia3",
+        )
+        move = game_routes._maia3_move(request, board)
+
+        assert move == chess.Move.from_uci("g1f3")
+        assert len(engine.boards) == 1
+        # Именно стек ходов несёт историю: python-chess превращает его
+        # в "position fen <старт> moves e2e4 e7e5".
+        assert len(engine.boards[0].move_stack) == 2
+
+    def test_mismatched_history_falls_back_to_current_position(self, monkeypatch):
+        from backend.api_gateway.models import FenRequest
+        from backend.api_gateway.routes import game as game_routes
+
+        replay = chess.Board()
+        for uci in ("e2e4", "e7e5"):
+            replay.push_uci(uci)
+        board = chess.Board(replay.fen())
+
+        engine = _RecordingMaiaEngine(chess.Move.from_uci("g1f3"))
+        monkeypatch.setattr(game_routes, "get_maia3", lambda: engine)
+
+        # Историю прислали от другой партии - доверять ей нельзя,
+        # но ход всё равно должен быть сделан по текущей позиции.
+        request = FenRequest(
+            fen=board.fen(),
+            elo=1500,
+            moves=["d2d4"],
+            engine="maia3",
+        )
+        move = game_routes._maia3_move(request, board)
+
+        assert move == chess.Move.from_uci("g1f3")
+        assert len(engine.boards[0].move_stack) == 0
+        assert engine.boards[0].fen() == board.fen()
+
+    def test_dead_engine_is_reset(self, monkeypatch):
+        from backend.api_gateway.models import FenRequest
+        from backend.api_gateway.routes import game as game_routes
+
+        engine = _BrokenMaiaEngine()
+        monkeypatch.setattr(game_routes, "get_maia3", lambda: engine)
+
+        reset_calls = []
+        monkeypatch.setattr(
+            game_routes,
+            "reset_maia3",
+            lambda: reset_calls.append(True),
+        )
+
+        request = FenRequest(fen=START_FEN, elo=1500, moves=[], engine="maia3")
+        move = game_routes._maia3_move(request, chess.Board())
+
+        assert move is None
+        # Без сброса мёртвый процесс остался бы в переменной модуля
+        # и все следующие ходы падали бы до перезапуска сервера.
+        # Попыток две, поэтому и сбросов два.
+        assert reset_calls == [True, True]
+
+    def test_dead_engine_is_retried_with_a_fresh_process(self, monkeypatch):
+        from backend.api_gateway.models import FenRequest
+        from backend.api_gateway.routes import game as game_routes
+
+        broken = _BrokenMaiaEngine()
+        fresh = _RecordingMaiaEngine(chess.Move.from_uci("e2e4"))
+        engines = [broken, fresh]
+
+        monkeypatch.setattr(
+            game_routes,
+            "get_maia3",
+            lambda: engines.pop(0) if engines else fresh,
+        )
+
+        reset_calls = []
+        monkeypatch.setattr(
+            game_routes,
+            "reset_maia3",
+            lambda: reset_calls.append(True),
+        )
+
+        request = FenRequest(fen=START_FEN, elo=1500, moves=[], engine="maia3")
+        move = game_routes._maia3_move(request, chess.Board())
+
+        # Один упавший ход раньше превращался в 503 и «висящую» партию:
+        # теперь сервер поднимает новый процесс и доигрывает ход сам.
+        assert move == chess.Move.from_uci("e2e4")
+        assert reset_calls == [True]
+
+    def test_hanging_engine_is_aborted_by_timeout(self, monkeypatch):
+        from backend.api_gateway.models import FenRequest
+        from backend.api_gateway.routes import game as game_routes
+
+        engine = _HangingMaiaEngine(delay=0.5)
+        monkeypatch.setattr(game_routes, "get_maia3", lambda: engine)
+        monkeypatch.setattr(game_routes, "MAIA3_PLAY_TIMEOUT", 0.05)
+
+        reset_calls = []
+        monkeypatch.setattr(
+            game_routes,
+            "reset_maia3",
+            lambda: reset_calls.append(True),
+        )
+
+        request = FenRequest(fen=START_FEN, elo=1500, moves=[], engine="maia3")
+        move = game_routes._maia3_move(request, chess.Board())
+
+        # Зависший движок держал мьютекс, и следующие ходы вставали за ним.
+        assert move is None
+        assert reset_calls == [True, True]
+
+    def test_fen_counters_do_not_discard_history(self, monkeypatch):
+        from backend.api_gateway.models import FenRequest
+        from backend.api_gateway.routes import game as game_routes
+
+        replay = chess.Board()
+        for uci in ("e2e4", "e7e5"):
+            replay.push_uci(uci)
+
+        # Тот же ход, но с другими счётчиками: клиентские библиотеки
+        # считают полуходы и номер хода по-своему, а на игру это не влияет.
+        placement, turn, castling, en_passant, _halfmove, _fullmove = (
+            replay.fen().split()
+        )
+        board = chess.Board(
+            f"{placement} {turn} {castling} {en_passant} 7 42"
+        )
+
+        engine = _RecordingMaiaEngine(chess.Move.from_uci("g1f3"))
+        monkeypatch.setattr(game_routes, "get_maia3", lambda: engine)
+
+        request = FenRequest(
+            fen=board.fen(),
+            elo=1500,
+            moves=["e2e4", "e7e5"],
+            engine="maia3",
+        )
+        move = game_routes._maia3_move(request, board)
+
+        assert move == chess.Move.from_uci("g1f3")
+        assert len(engine.boards[0].move_stack) == 2
+
+
 # --- /api/game/new ---
 
 class TestNewGame:
@@ -254,6 +476,85 @@ class TestFinishGame:
         resp = client.post(
             "/api/game/finish",
             json={"moves": [], "player_color": "green"},
+        )
+        assert resp.status_code == 422
+
+
+# --- /api/game/review ---
+
+class TestGameReview:
+    def test_empty_history_returns_400(self):
+        resp = client.post("/api/game/review", json={"moves": []})
+        assert resp.status_code == 400
+
+    def test_engine_unavailable_returns_503(self, monkeypatch):
+        import backend.api_gateway.routes.game as game_routes
+        from backend.services.game_review import EngineUnavailable
+
+        def boom(*args, **kwargs):
+            raise EngineUnavailable("нет движка")
+
+        monkeypatch.setattr(game_routes, "review_game", boom)
+
+        resp = client.post("/api/game/review", json={"moves": ["e2e4"]})
+        assert resp.status_code == 503
+        assert "Stockfish" in resp.json()["detail"]
+
+    def test_invalid_move_returns_400(self, monkeypatch):
+        import backend.api_gateway.routes.game as game_routes
+
+        def boom(*args, **kwargs):
+            raise ValueError("Недопустимый ход на позиции 1: e2e5")
+
+        monkeypatch.setattr(game_routes, "review_game", boom)
+
+        resp = client.post("/api/game/review", json={"moves": ["e2e5"]})
+        assert resp.status_code == 400
+        assert "e2e5" in resp.json()["detail"]
+
+    def test_returns_review_payload(self, monkeypatch):
+        import backend.api_gateway.routes.game as game_routes
+
+        seen: dict = {}
+
+        def fake_review(moves, player_color="w"):
+            seen["moves"] = moves
+            seen["player_color"] = player_color
+            return {
+                "player_color": player_color,
+                "moves_analyzed": 1,
+                "truncated": False,
+                "accuracy": 87.5,
+                "stars": 3,
+                "thresholds": {"3": 85.0, "2": 70.0, "1": 50.0},
+                "average_centipawn_loss": 5.0,
+                "counts": {"best": 1},
+                "moves": [],
+            }
+
+        monkeypatch.setattr(game_routes, "review_game", fake_review)
+
+        resp = client.post(
+            "/api/game/review",
+            json={"moves": ["e2e4", "e7e5"], "player_color": "b"},
+        )
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["accuracy"] == 87.5
+        assert data["stars"] == 3
+        assert seen == {"moves": ["e2e4", "e7e5"], "player_color": "b"}
+
+    def test_invalid_player_color_returns_422(self, monkeypatch):
+        import backend.api_gateway.routes.game as game_routes
+
+        monkeypatch.setattr(
+            game_routes, "review_game", lambda *a, **k: {"stars": 0}
+        )
+
+        resp = client.post(
+            "/api/game/review",
+            json={"moves": ["e2e4"], "player_color": "green"},
         )
         assert resp.status_code == 422
 

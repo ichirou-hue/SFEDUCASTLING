@@ -151,6 +151,56 @@
   color: var(--sf-ink-strong);
 }
 
+/* Разбор партии: строки истории с оценками ходов. */
+:root[data-theme="dark"] .review-hint {
+  color: var(--sf-muted-2);
+}
+
+:root[data-theme="dark"] .review-move {
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .review-move:hover {
+  background: var(--sf-soft-2);
+}
+
+:root[data-theme="dark"] .review-move.is-active {
+  background-color: rgba(213, 180, 118, 0.16);
+}
+
+:root[data-theme="dark"] .review-move-num {
+  color: var(--sf-muted);
+}
+
+:root[data-theme="dark"] .review-move-san--inaccuracy {
+  color: #e0c060;
+}
+
+:root[data-theme="dark"] .review-move-san--mistake {
+  color: #e8a06a;
+}
+
+:root[data-theme="dark"] .review-move-san--blunder {
+  color: #e88f7c;
+}
+
+:root[data-theme="dark"] .review-move-eval.is-white {
+  background: rgba(246, 244, 239, 0.9);
+  box-shadow: none;
+  color: #1f3d2b;
+}
+
+:root[data-theme="dark"] .review-move-eval.is-black {
+  background: rgba(246, 244, 239, 0.12);
+  box-shadow: inset 0 0 0 1px var(--sf-line);
+  color: var(--sf-ink-strong);
+}
+
+:root[data-theme="dark"] .review-move-eval.is-equal {
+  background: var(--sf-soft-2);
+  color: var(--sf-muted);
+}
+
 /* Жетон игрока: слева свой зелёный тон, справа - нейтральный тёмный. */
 :root[data-theme="dark"] .player-info {
   background: linear-gradient(
@@ -439,6 +489,52 @@
   color: var(--sf-ink);
 }
 
+/* Разбор партии: второстепенная кнопка и итог со звёздами. */
+:root[data-theme="dark"] .gameover-btn--review {
+  border: 1px solid var(--sf-line-strong);
+  background: rgba(246, 244, 239, 0.08);
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .gameover-btn--review:hover {
+  background: rgba(213, 180, 118, 0.16);
+}
+
+:root[data-theme="dark"] .ctrl-btn--review {
+  border: 1px solid var(--sf-line-strong);
+  background: rgba(246, 244, 239, 0.08);
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .ctrl-btn--review:hover {
+  background: rgba(213, 180, 118, 0.16);
+}
+
+:root[data-theme="dark"] .gameover-review-accuracy {
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .gameover-review-detail {
+  color: var(--sf-muted);
+}
+
+:root[data-theme="dark"] .gameover-review-note {
+  color: var(--sf-muted-2);
+}
+
+:root[data-theme="dark"] .gameover-review-note--error {
+  color: var(--sf-error);
+}
+
+:root[data-theme="dark"] .gameover-star {
+  color: rgba(213, 180, 118, 0.22);
+}
+
+:root[data-theme="dark"] .gameover-star--on {
+  color: #e8c06a;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+
 /* Иконка бота нарисована тёмной: в тёмной теме подменяем её светлой
    версией. Фильтр не подходит, он перекрашивал бы и золотое кольцо. */
 :root[data-theme="dark"] .bot-avatar img,
@@ -677,10 +773,6 @@
 
 :root[data-theme="dark"] .puzzle-streak-value--hot {
   color: #e8b07a;
-}
-
-:root[data-theme="dark"] .puzzle-streak-rewards {
-  color: var(--sf-muted-2);
 }
 
 :root[data-theme="dark"] .puzzle-instruction {

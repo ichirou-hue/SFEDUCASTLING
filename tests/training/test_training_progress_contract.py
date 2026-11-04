@@ -8,8 +8,16 @@ B2-аудит зафиксировал два правила:
 """
 
 import asyncio
+from datetime import datetime, time, timedelta
 
+from backend.services.local_time import LOCAL_TZ, local_today
 from backend.services.training_service import get_training_progress
+
+
+def _local_noon(days_ago: int = 0) -> datetime:
+    """Полдень местного дня: не зависит от времени запуска тестов."""
+    day = local_today() - timedelta(days=days_ago)
+    return datetime.combine(day, time(12, 0), tzinfo=LOCAL_TZ)
 
 
 class _Result:
@@ -33,18 +41,18 @@ class _FakeDB:
     db.scalars(select(TrainingModule)) -> список модулей.
     db.execute(...)                    -> по порядку: задания модулей
     (task_id, lesson_id, module_id), уроки модулей (lesson_id, module_id),
-    попытки пользователя, затем даты попыток паззлов ((created_at,) - для серии).
+    попытки пользователя, затем попытки паззлов
+    ((puzzle_id, correct, created_at) - для серии).
     """
 
     def __init__(self, modules, task_rows=(), lesson_rows=(), attempt_rows=(),
-                 puzzle_date_rows=(), visit_date_rows=()):
+                 puzzle_rows=()):
         self._modules = modules
         self._exec_results = [
             list(task_rows),
             list(lesson_rows),
             list(attempt_rows),
-            list(puzzle_date_rows),
-            list(visit_date_rows),
+            list(puzzle_rows),
         ]
 
     async def scalars(self, stmt):
@@ -98,20 +106,22 @@ def test_module_completed_only_when_all_tasks_correct():
     assert result["modules"]["total"] == 2
 
 
-def test_streak_counts_puzzle_attempt_dates():
-    # Попыток курса нет вообще, но паззлы решались вчера и сегодня -
-    # серия должна быть 2, а не 0.
-    from datetime import datetime, timedelta
-
-    now = datetime.now()
+def test_streak_counts_days_with_three_distinct_puzzles():
+    # День занятий - три РАЗНЫЕ задачи. Вчера и сегодня по три - серия 2.
+    now = _local_noon()
+    yesterday = _local_noon(days_ago=1)
     db = _FakeDB(
         modules=[_Module(1, "pawn", "Пешка"), _Module(2, "rook", "Ладья")],
         task_rows=[(100, 10, 1), (101, 20, 2)],
         lesson_rows=[(10, 1), (20, 2)],
         attempt_rows=[],
-        puzzle_date_rows=[
-            (now - timedelta(days=1),),
-            (now,),
+        puzzle_rows=[
+            ("a1", True, yesterday),
+            ("a2", True, yesterday),
+            ("a3", True, yesterday),
+            ("b1", True, now),
+            ("b2", True, now),
+            ("b3", True, now),
         ],
     )
     result = _run(get_training_progress(db, user_id=1))
@@ -122,57 +132,80 @@ def test_streak_counts_puzzle_attempt_dates():
     assert result["modules"]["completed"] == 0
 
 
-def test_streak_starts_at_one_on_registration_day():
-    # В день регистрации визит уже записан, решений ещё нет - серия 1, не 0.
-    from datetime import date
-
+def test_two_puzzles_in_a_day_are_not_enough():
+    # Вчера три задачи, сегодня только две - сегодня ещё не занятие,
+    # серия держится за вчерашний день и равна 1.
+    now = _local_noon()
+    yesterday = _local_noon(days_ago=1)
     db = _FakeDB(
         modules=[_Module(1, "pawn", "Пешка")],
-        task_rows=[],
-        lesson_rows=[],
-        attempt_rows=[],
-        visit_date_rows=[(date.today(),)],
+        puzzle_rows=[
+            ("a1", True, yesterday),
+            ("a2", True, yesterday),
+            ("a3", True, yesterday),
+            ("b1", True, now),
+            ("b2", True, now),
+        ],
     )
     result = _run(get_training_progress(db, user_id=1))
 
     assert result["streak"] == 1
 
 
-def test_streak_counts_consecutive_visit_days():
-    # Ежедневные заходы без решения задач продолжают серию.
-    from datetime import date, timedelta
-
-    today = date.today()
+def test_repeated_puzzle_counts_once_per_day():
+    # Одна и та же задача, решённая трижды, не делает день занятием.
+    now = _local_noon()
     db = _FakeDB(
         modules=[_Module(1, "pawn", "Пешка")],
-        task_rows=[],
-        lesson_rows=[],
+        puzzle_rows=[("same", True, now), ("same", True, now), ("same", True, now)],
+    )
+    result = _run(get_training_progress(db, user_id=1))
+
+    assert result["streak"] == 0
+
+
+def test_visits_do_not_extend_streak():
+    # Простой заход на сайт больше не продлевает серию: учитываются только
+    # дни занятий (3+ разных пазла или задание курса).
+    db = _FakeDB(
+        modules=[_Module(1, "pawn", "Пешка")],
         attempt_rows=[],
-        visit_date_rows=[
-            (today - timedelta(days=2),),
-            (today - timedelta(days=1),),
-            (today,),
+        puzzle_rows=[],
+    )
+    result = _run(get_training_progress(db, user_id=1))
+
+    assert result["streak"] == 0
+
+
+def test_course_task_counts_as_active_day():
+    # Достаточно одного задания модуля курса за день.
+    now = _local_noon()
+    db = _FakeDB(
+        modules=[_Module(1, "pawn", "Пешка")],
+        task_rows=[(100, 10, 1)],
+        lesson_rows=[(10, 1)],
+        attempt_rows=[(100, True, now, 1)],
+    )
+    result = _run(get_training_progress(db, user_id=1))
+
+    assert result["streak"] == 1
+
+
+def test_streak_joins_course_and_puzzle_days():
+    # Вчера - три пазла, сегодня - задание курса: дни объединяются.
+    now = _local_noon()
+    yesterday = _local_noon(days_ago=1)
+    db = _FakeDB(
+        modules=[_Module(1, "pawn", "Пешка")],
+        task_rows=[(100, 10, 1)],
+        lesson_rows=[(10, 1)],
+        attempt_rows=[(100, True, now, 1)],
+        puzzle_rows=[
+            ("a1", True, yesterday),
+            ("a2", True, yesterday),
+            ("a3", True, yesterday),
         ],
     )
     result = _run(get_training_progress(db, user_id=1))
 
-    assert result["streak"] == 3
-
-
-def test_streak_joins_visit_and_activity_days():
-    # Визит между двумя учебными днями не рвёт серию: дни объединяются.
-    from datetime import date, datetime, timedelta
-
-    today = date.today()
-    yesterday = today - timedelta(days=1)
-    db = _FakeDB(
-        modules=[_Module(1, "pawn", "Пешка")],
-        task_rows=[],
-        lesson_rows=[],
-        attempt_rows=[],
-        puzzle_date_rows=[(datetime.combine(today - timedelta(days=2), datetime.min.time()),)],
-        visit_date_rows=[(yesterday,), (today,)],
-    )
-    result = _run(get_training_progress(db, user_id=1))
-
-    assert result["streak"] == 3
+    assert result["streak"] == 2

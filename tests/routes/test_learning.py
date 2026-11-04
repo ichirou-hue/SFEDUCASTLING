@@ -1,8 +1,10 @@
 """Тесты обучающих endpoint'ов: /api/learning/level-test/*, /api/learning/puzzle/check."""
 
 import asyncio
+import json
 import uuid
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
@@ -22,6 +24,7 @@ from backend.models.user_chess_account import (
     UserChessAccount,
     VERIFICATION_VERIFIED,
 )
+from backend.services.assessment import SELF_REPORT_CAP
 
 client = TestClient(app)
 
@@ -45,7 +48,6 @@ NEW_PUZZLES = {
 }
 
 MATCH_ANCHOR = "backend.api_gateway.state.puzzle_base"
-
 PASSWORD = "Sup3rSecret!"
 
 # Валидная позиция и решение для проверки отбора по рейтингу.
@@ -91,6 +93,35 @@ PREVIEW_PUZZLES = {
         {"id": "p_high2", "fen": RATING_FEN, "moves": RATING_MOVES, "rating": 1500, "themes": ["fork"]},
     ]
 }
+
+
+def _level_test_pool() -> dict:
+    """20 задач: ровно столько, сколько нужно входному тесту.
+
+    Раскладка повторяет GROUP_ALLOCATION для стартовой оценки 800
+    (12 задач первой группы, 5 второй, 2 третьей, 1 четвёртой), поэтому
+    набор заполняется целиком и без fallback.
+    """
+    puzzles: list[dict] = []
+    plan = [(1, 12), (2, 5), (3, 2), (4, 1)]
+    bounds = {1: (500, 1000), 2: (1001, 1500), 3: (1501, 1900), 4: (1901, 2000)}
+    for group, count in plan:
+        low, high = bounds[group]
+        step = max(1, (high - low) // max(1, count))
+        for index in range(count):
+            puzzles.append(
+                {
+                    "id": f"lt{group}_{index}",
+                    "fen": RATING_FEN,
+                    "moves": RATING_MOVES,
+                    "rating": min(high, low + index * step),
+                    "themes": ["fork"],
+                }
+            )
+    return {"puzzles": puzzles}
+
+
+LEVEL_TEST_PUZZLES = _level_test_pool()
 
 # Минимальная валидная анкета Q1-Q8: без неё /level-test/start отвечает 409.
 ONBOARDING = {
@@ -176,8 +207,10 @@ def _authed_user(cleanup) -> str:
 def _authed_user_with_rating(cleanup, rating: int) -> str:
     """Пользователь с привязанным внешним рейтингом.
 
-    Только подтверждённая привязка (verified=True, verification_status=verified,
-    rating_usable=True) снимает ограничение самооценки 800.
+    Только ПОДТВЕРЖДЁННАЯ привязка (rating_usable=True и статус verified)
+    снимает ограничение самооценки 800, поэтому стартовая оценка берётся из
+    внешнего рейтинга. Без статуса verified аккаунт считается лишь
+    привязанным (`linked`), и его рейтинг не используется для подбора.
     """
     login = cleanup(f"lvlrated_{uuid.uuid4().hex[:8]}")
     r = client.post(
@@ -439,19 +472,102 @@ class TestLevelTestResult:
         assert resp.status_code == 200
         assert resp.json().get("error") == "База паззлов не загружена"
 
-    def test_high_level_when_3_of_5_in_top_bucket(self):
+    def test_all_correct_gives_club_level(self):
         answers = []
         ids = ["a1", "a2", "a3", "a4", "a5", "b1", "b2", "b3", "b4", "b5"]
-        for i, pid in enumerate(ids):
+        for pid in ids:
             answers.append({"puzzle_id": pid, "correct": True})
-        # Корзины: 5 задач уровня 1 (все верно), 5 задач уровня 2 (все верно).
-        # Наибольший достигнутый уровень, где >=3 из 5: уровень 2.
+        # Детерминированная шкала: 10/10 верных = полный прирост +680
+        # от стартовых 1000, итог 1680 -> группа 3 «Клубный».
         with patch(MATCH_ANCHOR, NEW_PUZZLES):
             resp = client.post("/api/learning/level-test/result", json=answers)
         assert resp.status_code == 200
         data = resp.json()
-        assert data["result"]["level"] == 2
-        assert data["level"] == 2
+        assert data["rating"] == 1680
+        assert data["result"]["level"] == 3
+        assert data["level"] == 3
+
+
+class TestLevelTestSubmitDeterminism:
+    """Итог входного теста не зависит от того, какие задачи выпали."""
+
+    def test_zero_of_twenty_always_gives_same_rating(self, cleanup):
+        """Сквозной сценарий из багрепорта: 0/20 всегда даёт одно число.
+
+        Раньше при 0 из 20 рейтинг гулял в диапазоне ~425–580, потому что
+        считался Elo-ом по рейтингам случайно выбранных задач.
+        """
+        token = _authed_user(cleanup)
+
+        with patch(MATCH_ANCHOR, LEVEL_TEST_PUZZLES):
+            started = client.post(
+                "/api/learning/level-test/start", headers=_headers(token)
+            )
+            assert started.status_code == 200, started.text
+            body = started.json()
+            test_id = body["test_id"]
+            assert body["total"] == 20
+
+            # «Пропустить» каждую задачу = ответить неверно.
+            for question in body["questions"]:
+                skipped = client.post(
+                    "/api/learning/level-test/skip",
+                    json={"test_id": test_id, "puzzle_id": question["id"]},
+                    headers=_headers(token),
+                )
+                assert skipped.status_code == 200, skipped.text
+
+            submitted = client.post(
+                "/api/learning/level-test/submit",
+                json={"test_id": test_id},
+                headers=_headers(token),
+            )
+
+        assert submitted.status_code == 200, submitted.text
+        result = submitted.json()
+        assert result["score"]["correct"] == 0
+        assert result["score"]["total"] == 20
+        # Стартовая оценка без привязки аккаунта — 800, промах по всем
+        # задачам опускает её на 300 до нижней границы «Начального».
+        assert result["rating"] == 500
+        assert result["band"] == 1
+
+    def test_unlinked_user_is_capped_even_with_perfect_score(self, cleanup):
+        """Без Lichess/Chess.com итог не выше 800 при любом числе верных."""
+        token = _authed_user(cleanup)
+
+        with patch(MATCH_ANCHOR, LEVEL_TEST_PUZZLES):
+            started = client.post(
+                "/api/learning/level-test/start", headers=_headers(token)
+            )
+            assert started.status_code == 200, started.text
+            body = started.json()
+            test_id = body["test_id"]
+
+            # Отвечаем верно на все задачи: решение у всех задач одинаковое.
+            for question in body["questions"]:
+                checked = client.post(
+                    "/api/learning/level-test/check",
+                    json={
+                        "test_id": test_id,
+                        "puzzle_id": question["id"],
+                        "move": "b1b8",
+                    },
+                    headers=_headers(token),
+                )
+                assert checked.status_code == 200, checked.text
+
+            submitted = client.post(
+                "/api/learning/level-test/submit",
+                json={"test_id": test_id},
+                headers=_headers(token),
+            )
+
+        assert submitted.status_code == 200, submitted.text
+        result = submitted.json()
+        # 20/20 дал бы 800 + 680 = 1480, но без привязки аккаунта потолок 800.
+        assert result["score"]["correct"] == 20
+        assert result["rating"] == SELF_REPORT_CAP
 
 
 class TestPuzzleCheck:
@@ -521,9 +637,9 @@ class TestPuzzleSelectionByRating:
         assert "high1" not in ids and "high2" not in ids and "top1" not in ids
         assert "low1" not in ids and "low2" not in ids
 
-    def test_topic_practice_ignores_rating(self, cleanup):
-        # Практика по теме модуля не привязана к рейтингу: доступны все пазлы
-        # темы, включая сильно ниже и выше корзины пользователя.
+    def test_topic_practice_respects_rating_bracket(self, cleanup):
+        # Практика по теме модуля подчиняется тому же правилу, что и обычная:
+        # только своя корзина с потолком «рейтинг + 200» (1200 -> 1400).
         token = _authed_user_with_rating(cleanup, 1200)
         with patch(MATCH_ANCHOR, TOPIC_PUZZLES):
             resp = client.get(
@@ -534,12 +650,58 @@ class TestPuzzleSelectionByRating:
         assert resp.status_code == 200, resp.text
         data = resp.json()
         assert data["personalization"] == {
-            "source": None,
-            "group": None,
-            "max_rating": None,
+            "source": "onboarding",
+            "group": 2,
+            "max_rating": 1400,
         }
         ids = {p["id"] for p in data["puzzles"]}
-        assert ids == {"rook_low", "rook_mid", "rook_high", "rook_top"}
+        assert ids == {"rook_mid"}
+        assert all(p["rating"] <= 1400 for p in data["puzzles"])
+
+    def test_topic_practice_never_exceeds_ceiling(self, cleanup):
+        # Если в своей корзине темы задач нет, потолок всё равно соблюдается:
+        # задачи сильно выше рейтинга игрока не подставляются.
+        token = _authed_user_with_rating(cleanup, 1200)
+        with patch(MATCH_ANCHOR, {"puzzles": TOPIC_PUZZLES["puzzles"][3:]}):
+            resp = client.get(
+                "/api/learning/puzzles",
+                params={"count": 20, "topic": "pieces"},
+                headers=_headers(token),
+            )
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data["puzzles"] == []
+        assert data["personalization"]["max_rating"] == 1400
+
+    def test_topic_practice_on_real_base_respects_ceiling(self, cleanup):
+        # Живая база пазлов: у игрока 550 по теме «Мат - как цель игры»
+        # не должно быть задач сложнее 750.
+        puzzle_file = (
+            Path(__file__).resolve().parents[2]
+            / "backend"
+            / "knowledge"
+            / "puzzles.json"
+        )
+        with puzzle_file.open(encoding="utf-8") as f:
+            real_base = json.load(f)
+
+        token = _authed_user_with_rating(cleanup, 550)
+        with patch(MATCH_ANCHOR, real_base):
+            resp = client.get(
+                "/api/learning/puzzles",
+                params={"count": 20, "topic": "king-safety"},
+                headers=_headers(token),
+            )
+
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data["puzzles"], "по теме мата должен быть хотя бы один пазл"
+        assert all(p["rating"] <= 750 for p in data["puzzles"])
+        assert data["personalization"] == {
+            "source": "onboarding",
+            "group": 1,
+            "max_rating": 750,
+        }
 
 
 class TestAdaptivePuzzleSelectionByRating:

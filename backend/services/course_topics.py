@@ -13,7 +13,7 @@ from backend.services.puzzle_validation import (
 
 COURSE_TOPIC_META: dict[str, dict[str, Any]] = {
     "pieces": {
-        "title": "Фигуры: ходы и взятия",
+        "title": "Шахматная азбука",
         "themes": {
             "advancedPawn",
             "pawnEndgame",
@@ -24,7 +24,7 @@ COURSE_TOPIC_META: dict[str, dict[str, Any]] = {
         },
     },
     "king-safety": {
-        "title": "Шах, мат и безопасность короля",
+        "title": "Мат - как цель игры",
         "themes": {
             "mate",
             "mateIn1",
@@ -34,9 +34,6 @@ COURSE_TOPIC_META: dict[str, dict[str, Any]] = {
             "mateIn5",
             "smotheredMate",
             "backRankMate",
-            "exposedKing",
-            "kingsideAttack",
-            "defensiveMove",
         },
     },
     "endgames": {
@@ -70,7 +67,7 @@ COURSE_TOPIC_META: dict[str, dict[str, Any]] = {
         },
     },
     "openings": {
-        "title": "Дебюты",
+        "title": "Дебют",
         "themes": {"opening"},
     },
     "middlegame": {
@@ -179,6 +176,39 @@ def _theme_piece_ok(puzzle: dict, themes: set[str]) -> bool:
         return all(_PIECE_TYPE_BY_SYMBOL[symbol] in used for symbol in wanted)
     return all(_fen_has_piece(puzzle.get("fen"), symbol) for symbol in wanted)
 
+
+def _solution_ends_in_mate(puzzle: dict) -> bool:
+    """Заканчивается ли решение пазла матом.
+
+    Темы mate/mateIn* в базе Lichess иногда висят на задачах, где мата
+    в решении нет. Для модуля «Мат - как цель игры» проверяем не метку,
+    а конечную позицию: после всех ходов решения должен быть мат.
+    """
+    fen = puzzle.get("fen")
+    moves = puzzle.get("moves")
+    if not fen or not moves:
+        return False
+
+    sequence = "".join(str(moves).split())
+    try:
+        board = chess.Board(fen)
+    except ValueError:
+        return False
+
+    parsed_any = False
+    for i in range(0, len(sequence) - 3, 4):
+        try:
+            move = chess.Move.from_uci(sequence[i : i + 4])
+        except ValueError:
+            return False
+        try:
+            board.push(move)
+        except Exception:
+            return False
+        parsed_any = True
+
+    return parsed_any and board.is_checkmate()
+
 # Один пазл может затрагивать несколько модулей. Для статистики B1 одна
 # puzzle_attempt относится к одной основной теме, чтобы не удваивать попытки.
 # Порядок важен: побеждает первая совпавшая тема.
@@ -215,9 +245,11 @@ THEME_TO_PRIMARY_TOPIC: list[tuple[str, str]] = [
     ("clearance", "tactics"),
     ("trappedPiece", "tactics"),
     ("opening", "openings"),
-    ("exposedKing", "king-safety"),
-    ("kingsideAttack", "king-safety"),
-    ("defensiveMove", "king-safety"),
+    # Атака на короля и открытый король сами по себе не гарантируют мат:
+    # в статистике относим их к миттельшпилю, а не к «Мат - как цель игры».
+    ("exposedKing", "middlegame"),
+    ("kingsideAttack", "middlegame"),
+    ("defensiveMove", "middlegame"),
     ("endgame", "endgames"),
     ("opposition", "endgames"),
     ("passedPawn", "endgames"),
@@ -235,6 +267,10 @@ def puzzle_matches_course_topic(puzzle: dict, topic: str) -> bool:
     if not matched:
         return False
     if not _theme_piece_ok(puzzle, matched):
+        return False
+    # «Мат - как цель игры»: метки mate* недостаточно, решение должно
+    # действительно заканчиваться матом.
+    if topic == "king-safety" and not _solution_ends_in_mate(puzzle):
         return False
     return _module_piece_ok(puzzle, topic)
 

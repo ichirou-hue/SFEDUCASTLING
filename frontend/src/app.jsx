@@ -63,6 +63,26 @@ function OAuthCallbackPage({ onSuccess }) {
   );
 }
 
+const EVAL_MODE_KEY = "sfedu-eval-mode";
+
+function readEvalMode() {
+  try {
+    return window.localStorage.getItem(EVAL_MODE_KEY) === "engine"
+      ? "engine"
+      : "material";
+  } catch {
+    return "material";
+  }
+}
+
+function storeEvalMode(mode) {
+  try {
+    window.localStorage.setItem(EVAL_MODE_KEY, mode);
+  } catch {
+    // Приватный режим браузера: настройка просто не запомнится.
+  }
+}
+
 function MainPage({ user }) {
   const boardRef = useRef(null);
   const [boardState, setBoardState] = useState({
@@ -80,6 +100,21 @@ function MainPage({ user }) {
     sidePickerOpen: true,
     levelLocked: false,
   });
+
+  /*
+   * Режим шкалы у доски: материальный перевес или оценка движка.
+   * Выбор запоминаем в браузере - это личная настройка показа,
+   * а не данные пользователя, поэтому server-side хранение не нужно.
+   */
+  const [evalMode, setEvalMode] = useState(readEvalMode);
+
+  const toggleEvalMode = () => {
+    setEvalMode((current) => {
+      const next = current === "engine" ? "material" : "engine";
+      storeEvalMode(next);
+      return next;
+    });
+  };
 
   /*
    * Чат можно свернуть в узкую полосу - тогда освободившаяся ширина
@@ -126,8 +161,20 @@ function MainPage({ user }) {
           />
         </div>
         <div className="board-stage">
-          <EvalBar diff={boardState.materialDiff} flipped={boardState.boardFlipped} height={boardState.boardHeight} />
-          <ChessboardComponent ref={boardRef} onStateChange={setBoardState} chatCollapsed={chatCollapsed} />
+          <EvalBar
+            diff={boardState.materialDiff}
+            engineEval={boardState.evalScore}
+            mode={evalMode}
+            flipped={boardState.boardFlipped}
+            height={boardState.boardHeight}
+          />
+          <ChessboardComponent
+            ref={boardRef}
+            onStateChange={setBoardState}
+            chatCollapsed={chatCollapsed}
+            evalMode={evalMode}
+            onToggleEvalMode={toggleEvalMode}
+          />
         </div>
         <ChatPanel
           hintMessage={boardState.hintMessage}

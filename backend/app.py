@@ -7,8 +7,21 @@
 import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 from starlette.exceptions import HTTPException
+from starlette.requests import Request
+
+from backend.api_gateway import windows_accept
+from backend.api_gateway.rate_limit import limiter
+
+# Windows: клиент, оборвавший соединение во время accept (закрытая
+# вкладка, отменённый запрос), на Python 3.14 закрывал слушающий сокет,
+# и сервер переставал принимать новые подключения до перезапуска.
+# Патч должен стоять до того, как uvicorn создаст сервер.
+windows_accept.install()
 
 
 from backend.api_gateway.state import (
@@ -38,12 +51,53 @@ from backend.api_gateway.routes.gigacoins import router as gigacoins_router
 
 app = FastAPI(title="SFEDUCASTLING API")
 
+# slowapi: жёсткий лимит частоты запросов (см. backend/api_gateway/rate_limit.py).
+# Ключ — IP клиента; 429 уже содержит Retry-After благодаря headers_enabled.
+app.state.limiter = limiter
+
+
+@app.exception_handler(RateLimitExceeded)
+async def _rate_limit_handler(request: Request, exc: RateLimitExceeded):
+    """Единый формат ошибки с Retry-After.
+
+    Тело в стиле остального API — {"detail": ...}, а не slowapi-шный
+    {"error": ...}: фронтенд показывает именно detail. Заголовки (Retry-After,
+    X-RateLimit-*) забираем у штатного обработчика slowapi.
+    """
+    default_response = _rate_limit_exceeded_handler(request, exc)
+    headers = {
+        name: value
+        for name, value in default_response.headers.items()
+        if name.lower() == "retry-after" or name.lower().startswith("x-ratelimit")
+    }
+    try:
+        # slowapi может отдать "0", если окно закрывается в эту же секунду.
+        # Клиенту всё равно нужно подождать хотя бы секунду.
+        retry_after = max(1, int(float(headers.get("Retry-After", "1"))))
+    except (TypeError, ValueError):
+        retry_after = 1
+    headers["Retry-After"] = str(retry_after)
+    return JSONResponse(
+        status_code=429,
+        content={
+            "detail": (
+                "Слишком много попыток входа. "
+                f"Повторите через {retry_after} с."
+            )
+        },
+        headers=headers,
+    )
+
+
 # Разрешаем запросы с любых источников (для разработки)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
+    # Без этого браузер скрывает Retry-After от JS на другом origin,
+    # и форма входа не сможет показать обратный отсчёт.
+    expose_headers=["Retry-After", "X-RateLimit-Limit", "X-RateLimit-Remaining"],
 )
 
 # Подключаем маршруты, разбитые по доменам
@@ -103,6 +157,12 @@ load_knowledge()
 load_puzzles()
 print("Инициализация LLaVA...")
 load_llava()
+
+
+@app.on_event("startup")
+async def startup_event():
+    # Глушим трейсбеки от оборванных клиентов (WinError 64 при accept).
+    windows_accept.quiet_loop_noise()
 
 
 @app.on_event("shutdown")

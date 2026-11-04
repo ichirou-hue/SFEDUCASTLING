@@ -53,11 +53,6 @@ class DataSettings(BaseModel):
     max_games_to_parse: int = Field(10, alias="MAX_GAMES_TO_PARSE")
 
 
-class LichessSettings(BaseModel):
-    explorer_url: str = Field("https://explorer.lichess.ovh/masters", alias="LICHESS_EXPLORER_URL")
-    timeout: int = Field(5, alias="LICHESS_TIMEOUT")
-
-
 class GigachessSettings(BaseModel):
     base_url: str = ""
     model: str = "gigachess"
@@ -90,6 +85,11 @@ class DatabaseSettings(BaseSettings):
         alias="DATABASE_URL",
     )
     echo: bool = Field(False, alias="DATABASE_ECHO")
+    # Часовой пояс сессии БД. Зафиксирован в UTC: все naive-отметки времени
+    # (timestamp without time zone) пишутся в UTC, а местный день считается
+    # в приложении (см. backend/services/local_time.py). Иначе now() в БД
+    # зависит от настроек сервера и «сегодня» в базе расходится с приложением.
+    timezone: str = Field("UTC", alias="DATABASE_TIMEZONE")
     pool_size: int = Field(5, alias="DATABASE_POOL_SIZE")
     max_overflow: int = Field(10, alias="DATABASE_MAX_OVERFLOW")
 
@@ -113,6 +113,22 @@ class AuthSettings(BaseSettings):
     jwt_secret: str = Field("dev-key-change-me", alias="JWT_SECRET_KEY")
     access_token_ttl_min: int = Field(60 * 24 * 7, alias="ACCESS_TOKEN_TTL_MIN")  # 7 суток
     refresh_token_ttl_days: int = Field(90, alias="REFRESH_TOKEN_TTL_DAYS")
+
+    # --- Защита входа от перебора пароля ---
+    # Жёсткий предел частоты запросов к /api/auth/login (slowapi): после
+    # 10 запросов в секунду с одного IP сервер отвечает 429, не тратя время
+    # на проверку пароля и обращение к БД.
+    login_rate_limit: str = Field("10/second", alias="LOGIN_RATE_LIMIT")
+    # После скольких НЕУДАЧНЫХ паролей включается экспоненциальная задержка.
+    login_backoff_after: int = Field(10, alias="LOGIN_BACKOFF_AFTER")
+    # Первая задержка и предел роста: 1, 2, 4, 8, ... секунд.
+    login_backoff_base_sec: float = Field(1.0, alias="LOGIN_BACKOFF_BASE_SEC")
+    login_backoff_max_sec: float = Field(300.0, alias="LOGIN_BACKOFF_MAX_SEC")
+    # Через сколько секунд без промахов счётчик попыток обнуляется.
+    login_failure_ttl_sec: float = Field(900.0, alias="LOGIN_FAILURE_TTL_SEC")
+    # Отдельный, более мягкий порог на все попытки с одного IP: не даёт
+    # перебирать разные логины с одного адреса.
+    login_ip_backoff_after: int = Field(30, alias="LOGIN_IP_BACKOFF_AFTER")
 
 
 
@@ -162,6 +178,8 @@ class Settings(BaseSettings):
     debug: bool = Field(False, alias="DEBUG")
     secret_key: str = Field("dev-key", alias="SECRET_KEY")
     frontend_dir: Path = Field(BASE_DIR / "frontend", alias="FRONTEND_DIR")
+    # Местный календарный день приложения: серия дней, дневные лимиты.
+    timezone: str = Field("Europe/Moscow", alias="TIMEZONE")
 
     server: ServerSettings = ServerSettings()
     cors: CorsSettings = CorsSettings()
@@ -169,7 +187,6 @@ class Settings(BaseSettings):
     maia3: Maia3Settings = Maia3Settings()
     data: DataSettings = DataSettings()
 
-    lichess: LichessSettings = LichessSettings()
     gigachess: GigachessSettings = GigachessSettings()
     database: DatabaseSettings = DatabaseSettings()
     auth: AuthSettings = AuthSettings()

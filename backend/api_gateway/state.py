@@ -19,8 +19,6 @@ import sys
 import threading
 from pathlib import Path
 
-import requests
-
 
 # =============================================================
 # MODEL MANAGER
@@ -48,7 +46,7 @@ class ModelManager:
         3. stockfish_engine/stockfish рядом с проектом (Linux);
         4. legacy stockfish_engine/stockfish.exe (Windows).
 
-        Возвращает первый существующий путь, иначе - кандидат №3,
+        Возвращает первый существующий путь, иначе — кандидат №3,
         чтобы лог указывал на актуальное место, а не на legacy .exe.
         """
 
@@ -285,8 +283,12 @@ class ModelManager:
 
                 "Hash": 128,
 
-                # MultiPV задаётся также перед анализом.
-                "MultiPV": 5,
+                # MultiPV = 1: get_evaluation() читает ПОСЛЕДНЮЮ строку
+                # info, а при MultiPV > 1 последняя строка - это худший
+                # из показанных ходов. Оценка позиции из-за этого
+                # уезжала на несколько пешек. Кому нужны несколько
+                # линий, тот задаёт MultiPV сам (get_top_moves).
+                "MultiPV": 1,
             }
 
             # -------------------------------------------------
@@ -452,6 +454,66 @@ _maia3_lock = threading.Lock()
 _maia3_loading_lock = threading.Lock()
 
 
+def _maia3_stderr():
+    """Куда писать stderr процесса Maia3.
+
+    На Windows stderr раньше уходил в DEVNULL, и любая ошибка движка
+    (падение в torch, битый чекпоинт, нехватка памяти) была не видна:
+    в консоли оставалось только «ход не выполнен». Теперь он пишется в
+    logs/maia3.log - по этому файлу видно причину сбоя.
+    """
+
+    try:
+        from backend.config.settings import BASE_DIR
+
+        log_dir = Path(BASE_DIR) / "logs"
+        log_dir.mkdir(parents=True, exist_ok=True)
+
+        return open(log_dir / "maia3.log", "ab", buffering=0)
+    except OSError:
+        return subprocess.DEVNULL
+
+
+def _checkpoint_cached(
+    model_id: str,
+    resolve_model_spec,
+    resolve_checkpoint_path,
+) -> bool:
+    """Есть ли чекпоинт модели в кэше (без обращения к сети)."""
+
+    try:
+        spec = resolve_model_spec(model_id)
+        resolve_checkpoint_path(spec, local_files_only=True)
+        return True
+    except Exception:
+        return False
+
+
+def _maia3_checkpoint_is_cached(model_id: str) -> bool:
+    """Лежит ли чекпоинт модели в кэше Hugging Face.
+
+    Maia3 при каждом старте заново разрешает чекпоинт через HF Hub, то
+    есть ходит в сеть. На медленной или пропавшей сети запуск движка
+    растягивается на минуты, и все ходы Maia3 в это время стоят в
+    очереди. Если файл уже скачан, сеть не нужна: передаём движку
+    --local-files-only.
+    """
+
+    try:
+        from maia3.model_registry import (
+            resolve_checkpoint_path,
+            resolve_model_spec,
+        )
+    except Exception:
+        return False
+
+    return _checkpoint_cached(
+        model_id,
+        resolve_model_spec,
+        resolve_checkpoint_path,
+    )
+
+
 def get_maia3():
     """Возвращает UCI-движок Maia3 или None."""
 
@@ -464,6 +526,8 @@ def get_maia3():
 
         if _maia3_engine is not None:
             return _maia3_engine
+
+        stderr_stream = subprocess.DEVNULL
 
         try:
 
@@ -493,17 +557,19 @@ def get_maia3():
                 str(settings.maia3.default_elo),
             ]
 
+            if _maia3_checkpoint_is_cached(settings.maia3.model_id):
+                cmd.append("--local-files-only")
+
+            if os.name == "nt":
+                stderr_stream = _maia3_stderr()
+
             _maia3_engine = (
                 chess.engine.SimpleEngine.popen_uci(
                     cmd,
                     timeout=180,
                     cwd=str(maia3_source),
                     setpgrp=True,
-                    stderr=(
-                        subprocess.DEVNULL
-                        if os.name == "nt"
-                        else None
-                    ),
+                    stderr=stderr_stream,
                 )
             )
 
@@ -521,6 +587,15 @@ def get_maia3():
             )
 
             _maia3_engine = None
+
+        finally:
+
+            # Дочерний процесс уже получил свою копию дескриптора.
+            if stderr_stream is not subprocess.DEVNULL:
+                try:
+                    stderr_stream.close()
+                except Exception:
+                    pass
 
     return _maia3_engine
 
@@ -540,6 +615,37 @@ def shutdown_maia3():
                 pass
 
             _maia3_engine = None
+
+
+def reset_maia3():
+    """Сбрасывает мёртвый процесс Maia3, чтобы следующий запрос поднял новый.
+
+    Без сброса упавший процесс остаётся в глобальной переменной, и каждый
+    следующий ход падает на нём же до перезапуска сервера: в интерфейсе
+    это выглядит как «Maia3 внезапно перестала ходить».
+    """
+
+    global _maia3_engine
+
+    with _maia3_loading_lock:
+
+        engine = _maia3_engine
+        _maia3_engine = None
+
+    if engine is not None:
+
+        try:
+            engine.quit()
+        except Exception:
+            pass
+
+        # quit() ждёт ответа движка с таймаутом: у зависшего процесса
+        # он истечёт, а процесс останется. close() закрывает транспорт
+        # сразу, и такой процесс получает EOF на stdin.
+        try:
+            engine.close()
+        except Exception:
+            pass
 
 
 def maia3_lock():
@@ -653,9 +759,9 @@ def _attach_russian_names(openings: list) -> int:
     """Дополняет записи дебютов полем ``name_ru``.
 
     Имена в ``openings.json`` только английские, а интерфейс русский.
-    Перевод считается на старте (3810 записей - доли секунды) и кладётся
+    Перевод считается на старте (3810 записей — доли секунды) и кладётся
     прямо в объект: словарь полей не ограничен, поле просто пройдёт дальше
-    в JSON ответа. Если переводить не удалось, ``name_ru`` не ставится -
+    в JSON ответа. Если переводить не удалось, ``name_ru`` не ставится —
     фронт покажет оригинальное английское имя.
     """
     from backend.knowledge.openings_ru import translate_opening_name
@@ -889,99 +995,3 @@ rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 1
         return (
             f"ERROR: {str(e)}"
         )
-
-
-# =============================================================
-# LICHESS MASTERS
-# =============================================================
-
-def get_opening_info(
-    fen: str,
-) -> dict | None:
-    """Получает информацию о дебюте."""
-
-    try:
-
-        resp = requests.get(
-            "https://explorer.lichess.ovh/masters",
-            params={
-                "fen": fen,
-            },
-            timeout=5,
-        )
-
-        if resp.status_code != 200:
-            return None
-
-        data = resp.json()
-
-        info = {}
-
-        if data.get("opening"):
-
-            info["name"] = (
-                data["opening"].get(
-                    "name",
-                    "",
-                )
-            )
-
-        top_games = (
-            data.get(
-                "topGames",
-                [],
-            )[:3]
-        )
-
-        if top_games:
-
-            games = []
-
-            for game in top_games:
-
-                white = (
-                    game.get(
-                        "white",
-                        {},
-                    ).get(
-                        "name",
-                        "?",
-                    )
-                )
-
-                black = (
-                    game.get(
-                        "black",
-                        {},
-                    ).get(
-                        "name",
-                        "?",
-                    )
-                )
-
-                year = game.get(
-                    "year",
-                    "?",
-                )
-
-                winner = game.get(
-                    "winner",
-                    "draw",
-                )
-
-                games.append(
-                    f"{white} против {black}, "
-                    f"{year} ({winner})"
-                )
-
-            info["games"] = games
-
-        return (
-            info
-            if info
-            else None
-        )
-
-    except Exception:
-
-        return None

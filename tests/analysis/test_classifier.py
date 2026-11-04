@@ -1,60 +1,87 @@
 """Модульные тесты классификатора ходов (backend.analysis.classifier)."""
 
+import chess
 import pytest
 
-from backend.analysis.classifier import (
-    BEST_CP,
-    EXCELLENT_CP,
-    GOOD_CP,
-    INACCURACY_CP,
-    MISTAKE_CP,
-    classify,
-    normalize_eval,
+from backend.analysis.classifier import classify, classify_move
+from backend.analysis.win_probability import (
+    DROP_BEST,
+    DROP_EXCELLENT,
+    DROP_GOOD,
+    DROP_INACCURACY,
+    DROP_MISTAKE,
+    move_accuracy,
+    player_win_percent,
+    win_percent,
 )
 
 
-class TestNormalizeEval:
-    def test_cp_positive(self):
-        assert normalize_eval({"type": "cp", "value": 35}) == 35.0
+class TestWinPercent:
+    def test_equal_position(self):
+        assert win_percent(0) == pytest.approx(50.0)
 
-    def test_cp_negative(self):
-        assert normalize_eval({"type": "cp", "value": -120}) == -120.0
+    def test_positive_cp_helps_white(self):
+        assert win_percent(100) > 50.0
+        assert win_percent(500) > win_percent(100)
 
-    def test_mate_positive(self):
-        # Мат за 2 хода - большое преимущество.
-        assert normalize_eval({"type": "mate", "value": 2}) > 9000
+    def test_symmetric(self):
+        assert win_percent(150) + win_percent(-150) == pytest.approx(100.0)
 
-    def test_mate_negative(self):
-        assert normalize_eval({"type": "mate", "value": -3}) < -9000
+    def test_clamped(self):
+        assert 0.0 <= win_percent(-10000) <= 100.0
+        assert 0.0 <= win_percent(10000) <= 100.0
 
-    def test_none(self):
-        assert normalize_eval(None) == 0.0
+    def test_player_win_percent_for_black(self):
+        assert player_win_percent(200, chess.BLACK) == pytest.approx(
+            100.0 - win_percent(200)
+        )
+        assert player_win_percent(200, chess.WHITE) == pytest.approx(win_percent(200))
 
-    def test_unknown_type(self):
-        assert normalize_eval({"type": "foo", "value": 1}) == 0.0
+
+class TestMoveAccuracy:
+    def test_no_loss_is_full_accuracy(self):
+        assert move_accuracy(50.0, 50.0) == pytest.approx(100.0, abs=1e-3)
+        assert move_accuracy(40.0, 60.0) == pytest.approx(100.0, abs=1e-3)
+
+    def test_huge_loss_is_near_zero(self):
+        assert move_accuracy(90.0, 10.0) < 10.0
+        assert move_accuracy(100.0, 0.0) >= 0.0
 
 
 class TestClassify:
     @pytest.mark.parametrize(
-        "diff,expected",
+        "drop,expected",
         [
-            (0, "best"),
-            (BEST_CP, "best"),
-            (BEST_CP + 1, "excellent"),
-            (EXCELLENT_CP, "excellent"),
-            (EXCELLENT_CP + 1, "good"),
-            (GOOD_CP, "good"),
-            (GOOD_CP + 1, "inaccuracy"),
-            (INACCURACY_CP, "inaccuracy"),
-            (INACCURACY_CP + 1, "mistake"),
-            (MISTAKE_CP, "mistake"),
-            (MISTAKE_CP + 1, "blunder"),
-            (100000, "blunder"),
+            (0.0, "best"),
+            (DROP_BEST - 0.1, "best"),
+            (DROP_BEST, "excellent"),
+            (DROP_EXCELLENT - 0.1, "excellent"),
+            (DROP_EXCELLENT, "good"),
+            (DROP_GOOD - 0.1, "good"),
+            (DROP_GOOD, "inaccuracy"),
+            (DROP_INACCURACY - 0.1, "inaccuracy"),
+            (DROP_INACCURACY, "mistake"),
+            (DROP_MISTAKE - 0.1, "mistake"),
+            (DROP_MISTAKE, "blunder"),
+            (80.0, "blunder"),
         ],
     )
-    def test_porogi(self, diff, expected):
-        assert classify(float(diff)) == expected
+    def test_thresholds_by_win_percent_drop(self, drop, expected):
+        assert classify(60.0, 60.0 - drop) == expected
 
-    def test_negative_diff_is_best(self):
-        # Ход лучше лучшего - тоже best.
-        assert classify(-50.0) == "best"
+    def test_negative_drop_is_best(self):
+        assert classify(50.0, 55.0) == "best"
+
+    def test_classify_move_uses_mover_perspective(self):
+        # Белые теряют 6 пешек в равной позиции - это их грубая ошибка,
+        # а для чёрных та же оценка означает отличный ход.
+        assert classify_move(0.0, -600.0, chess.WHITE) == "blunder"
+        assert classify_move(0.0, -600.0, chess.BLACK) == "best"
+
+    def test_classify_move_matches_classify_for_black(self):
+        assert classify_move(
+            100.0, -100.0, chess.BLACK
+        ) == classify(
+            player_win_percent(100.0, chess.BLACK),
+            player_win_percent(-100.0, chess.BLACK),
+        )

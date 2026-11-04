@@ -2,21 +2,21 @@
 
 from __future__ import annotations
 
-from datetime import UTC, date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from typing import Iterable
+
+from backend.services.local_time import LOCAL_TZ, to_local_date
 
 
 # Moscow has observed fixed UTC+3 since 2014. A fixed offset avoids requiring
 # the external tzdata package on Windows installations of Python.
-MOSCOW = timezone(timedelta(hours=3), name="MSK")
+MOSCOW = LOCAL_TZ
 VALID_RESULTS = {"1-0", "0-1", "1/2-1/2"}
 
 
 def _local_date(value: datetime) -> date:
     """Convert DB timestamps to the user's calendar date (naive DB values are UTC)."""
-    if value.tzinfo is None:
-        value = value.replace(tzinfo=UTC)
-    return value.astimezone(MOSCOW).date()
+    return to_local_date(value)
 
 
 def _player_outcome(game) -> str | None:
@@ -104,6 +104,8 @@ def build_user_records(
             "weekly_starts_on": week_start.isoformat(),
             "longest_win_streak": longest_win_streak,
             "best_puzzle_streak": longest_puzzle_streak,
+            # Текущая серия: сколько пазлов решено подряд без ошибок.
+            "current_puzzle_streak": current_puzzle_streak,
         },
         "activity": {
             "starts_on": chart_start.isoformat(),
