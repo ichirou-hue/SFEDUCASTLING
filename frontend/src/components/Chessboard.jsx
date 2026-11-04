@@ -3,6 +3,7 @@ import {
   useRef,
   useCallback,
   useEffect,
+  useMemo,
   forwardRef,
   useId,
   useImperativeHandle,
@@ -10,6 +11,7 @@ import {
 import { Chessboard as ReactChessboard } from "react-chessboard";
 import { Chess } from "chess.js";
 
+import { getCheckState, getKingCheckStyle } from "../chessStatus.js";
 import {
   fetchMaiaMove,
   fetchEval,
@@ -457,6 +459,13 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
   const [boardKey, setBoardKey] = useState(0);
 
   const game = gameRef.current;
+
+  /*
+   * Шах и мат считаем по отображаемому FEN: при листании истории
+   * доска показывает произвольный кадр партии, и подсветка должна
+   * соответствовать именно ему.
+   */
+  const checkState = useMemo(() => getCheckState(fen), [fen]);
 
   /*
    * ============================================================
@@ -2876,6 +2885,17 @@ const fetchBestMove = useCallback(
     customSquareStyles[premove.to] = {
       ...(customSquareStyles[premove.to] || {}),
       backgroundColor: "rgba(179, 84, 58, 0.72)",
+    };
+  }
+
+  /*
+   * Шах рисуем последним: красная подсветка короля должна быть видна
+   * поверх подсветки последнего хода, выбранной клетки и предхода.
+   */
+  if (checkState.kingSquare) {
+    customSquareStyles[checkState.kingSquare] = {
+      ...(customSquareStyles[checkState.kingSquare] || {}),
+      ...getKingCheckStyle(checkState.isCheckmate),
     };
   }
 

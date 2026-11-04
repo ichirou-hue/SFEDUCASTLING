@@ -1,4 +1,4 @@
-import { useState, useEffect, useId, useRef, useCallback, useLayoutEffect } from "react";
+import { useState, useEffect, useId, useRef, useCallback, useLayoutEffect, useMemo } from "react";
 import { Chessboard as ReactChessboard } from "react-chessboard";
 import { Chess } from "chess.js";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -14,6 +14,7 @@ import ChatCollapsedStrip from "./ChatCollapsedStrip.jsx";
 import PuzzleRegisterGate from "./PuzzleRegisterGate.jsx";
 import PuzzlePreviewGate from "./PuzzlePreviewGate.jsx";
 import SiteFooter from "./SiteFooter.jsx";
+import { getCheckState, getKingCheckStyle } from "../chessStatus.js";
 import { getCourseTopicForPuzzle, getCourseTopicMeta } from "../learningLinks.js";
 import "./LearningCrossLinks.css";
 
@@ -429,6 +430,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
   }, [chatCollapsed]);
 
   const gameRef = useRef(new Chess());
+  const checkState = useMemo(() => getCheckState(fen), [fen]);
   const solutionMovesRef = useRef([]);
   const playerMovesRef = useRef([]);
   const solutionIndexRef = useRef(0);
@@ -1063,6 +1065,17 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
           backgroundRepeat: "no-repeat",
         };
     customSquareStyles[sq] = { ...(customSquareStyles[sq] || {}), ...dotStyle };
+  }
+
+  /*
+   * Красная подсветка короля накладывается последней, чтобы не теряться
+   * под подсветкой последнего хода и точками возможных ходов.
+   */
+  if (checkState.kingSquare) {
+    customSquareStyles[checkState.kingSquare] = {
+      ...(customSquareStyles[checkState.kingSquare] || {}),
+      ...getKingCheckStyle(checkState.isCheckmate),
+    };
   }
 
   if (loading) {
