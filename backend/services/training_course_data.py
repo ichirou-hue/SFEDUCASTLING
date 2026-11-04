@@ -18,8 +18,11 @@ FEN, фигура на исходной клетке и UCI-эталоны за�
 позиции и payload обязаны быть согласованы - это проверяют тесты.
 """
 
+import os
+
 import chess
 
+from backend.services.course_extra_tasks import EXTRA_TASKS_BY_LESSON
 from backend.services.openings_course_data import build_openings_lessons
 
 START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
@@ -301,28 +304,28 @@ PIECE_MOVEMENT = _lesson(
             "Отметьте все клетки, на которые может перейти белый слон d4.",
             "K7/3np2k/4p3/PP4pB/p2BP3/6b1/N2P4/5r2 w - - 0 24",
             "d4",
-            "Слон d4 движется по четырём диагоналям до края доски или до фигуры.",
+            "Слон d4 может пойти на a1, a7, b2, b6, c3, c5, e3, e5, f2, f6, g1, g7 и h8.",
         ),
         _select(
             "Линии ладьи",
             "Отметьте все клетки, на которые может перейти белая ладья d4.",
             "K6k/2p5/b1p2n2/p4Bp1/3R4/PP3PP1/5N2/4R3 w - - 0 31",
             "d4",
-            "Ладья d4 ходит по четвёртой горизонтали и вертикали d.",
+            "Ладья d4 может пойти на a4, b4, c4, d1, d2, d3, d5, d6, d7, d8, e4, f4, g4 и h4.",
         ),
         _select(
             "Возможности ферзя",
             "Отметьте все клетки, на которые может перейти белый ферзь d4.",
             "K1N5/7k/8/pb4p1/3Q4/PP3P2/n6P/4R3 w - - 0 18",
             "d4",
-            "Ферзь d4 объединяет линии ладьи и диагонали слона.",
+            "Ферзь d4 соединяет ходы ладьи и слона: по горизонтали, вертикали и диагоналям у него 27 полей.",
         ),
         _select(
             "Ходы короля",
             "Отметьте все клетки, на которые может перейти белый король e4.",
             "2n1bN1k/1pp5/7p/2P5/4K2p/PPP5/6r1/3R4 w - - 0 34",
             "e4",
-            "Король e4 может шагнуть на любое соседнее безопасное поле.",
+            "Король e4 может шагнуть на d3, d4, d5, e3, e5, f3, f4 или f5.",
         ),
     ],
 )
@@ -991,7 +994,7 @@ CHECK_DEFENSE = _lesson(
             "Король e1 атакован ладьёй e8. Отметьте все клетки, куда король может уйти.",
             "3rr2k/n2p4/5R2/1pP2P2/1p1P2pN/6P1/2Q5/B3K2b w - - 0 28",
             "e1",
-            "Король должен уйти с вертикали e на одну из безопасных соседних клеток.",
+            "Король e1 может уйти только на d1, d2, f1 или f2: остальные соседние поля держит ладья e8.",
         ),
         _move(
             "Уйдите из-под шаха",
@@ -2066,8 +2069,8 @@ DEVELOPMENT_TEMPO = _lesson(
     [
         _move(
             "Развейте коня",
-            "Развейте коня g1 на f3.",
-            START_FEN,
+            "После 1.e4 e5 развейте коня g1 на f3.",
+            "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
             "g1",
             "2.Nf3 развивает коня к центру и берёт под контроль поля d4 и e5.",
             accepted=["g1f3"],
@@ -2132,11 +2135,11 @@ OPENING_KING_SAFETY = _lesson(
     [
         _move(
             "Рокируйте короля",
-            "Сделайте белыми любую разрешённую рокировку и уберите короля из центра.",
-            "r3k2r/ppp1bppp/2np1n2/4p3/4P3/2NP1N2/PPP1BPPP/R3K2R w KQkq - 0 1",
+            "Сделайте белыми разрешённую рокировку и уберите короля из центра.",
+            "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/2N2N2/PPPP1PPP/R1BQK2R w KQkq - 4 4",
             "e1",
-            "Короткая и длинная рокировка уводят короля из центра.",
-            accepted=["e1g1", "e1c1"],
+            "Здесь возможна только короткая рокировка O-O: длинную не пускают свои же ферзь и слон.",
+            accepted=["e1g1"],
         ),
         _choose(
             "Где король уязвим",
@@ -2222,10 +2225,10 @@ OPENING_CENTER = _lesson(
         ),
         _move(
             "Займите центр",
-            "Займите центр пешкой d2-d4.",
-            START_FEN,
+            "После 1.e4 e6 займите центр пешкой d2-d4.",
+            "rnbqkbnr/pppp1ppp/4p3/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2",
             "d2",
-            "1.d4 занимает центр и открывает диагональ слону c1.",
+            "2.d4 занимает центр и открывает диагональ слону c1.",
             accepted=["d2d4"],
         ),
         _choose(
@@ -2390,7 +2393,7 @@ MATERIAL_ADVANTAGE = _lesson(
             "Отметьте все клетки, на которые может перейти белая ладья d1.",
             "4k1N1/1n6/ppp3p1/4P1b1/3r4/5R2/PP5P/3RK3 w - - 0 37",
             "d1",
-            "Ладья d1 ходит по первой горизонтали и вертикали d.",
+            "Ладья d1 может пойти на a1, b1, c1, d2, d3 или d4.",
         ),
         _choose(
             "Что такое материальное преимущество",
@@ -2593,7 +2596,7 @@ OPEN_FILES = _lesson(
             "Отметьте все клетки, на которые может перейти белая ладья a1.",
             "4k1N1/7p/1r6/4Pnp1/8/3P1b1P/2R5/R3K3 w - - 0 30",
             "a1",
-            "Ладья a1 ходит по первой горизонтали и вертикали a.",
+            "Ладья a1 может пойти на a2, a3, a4, a5, a6, a7, a8, b1, c1 или d1.",
         ),
         _choose(
             "Зачем занимать линию",
@@ -2873,4 +2876,112 @@ LESSONS_BY_MODULE = {
         ]
     ),
 }
+
+
+def _task_signature(task: dict) -> tuple:
+    """Ключ одинаковых упражнений: позиция, фигура, ответ и тип."""
+    payload = task.get("payload") or {}
+    if task["task_type"] == "choose_option":
+        options = tuple(
+            sorted(
+                (
+                    option["id"] if isinstance(option, dict) else option[0],
+                    option["label"] if isinstance(option, dict) else option[1],
+                )
+                for option in payload["options"]
+            )
+        )
+        answer = (payload.get("correct_option"), options)
+    else:
+        answer = (
+            payload.get("mode"),
+            tuple(sorted(payload.get("accepted_moves") or ())),
+        )
+    return (task["fen"], task["source_square"], task["task_type"], answer)
+
+
+def _is_valid_position(task: dict) -> bool:
+    """Проверяет FEN задания: сгенерированные позиции иногда битые.
+
+    Пример - вскрытый шах без белого короля. Такое задание нельзя показать
+    на доске, поэтому в курс оно не попадает.
+    """
+    try:
+        return chess.Board(task["fen"]).is_valid()
+    except (KeyError, ValueError):
+        return False
+
+
+def _merge_extra_tasks(lessons_by_module: dict[str, list[dict]]) -> None:
+    """Добавляет позиции из реальных партий и убирает повторы.
+
+    Дополнительные задания лежат отдельно (course_extra_tasks) и собраны
+    скриптом scripts/build_course_extra.py. Здесь они вливаются в уроки:
+    одинаковые упражнения (позиция + фигура + ответ + тип) остаются только
+    в первом уроке, а текстовых вопросов в игровых темах - не больше трёх.
+
+    Готовая нумерация уроков не переписывается: у конкретных дебютов задания
+    веток идут с ``100 * index``, и сплошная перенумерация ломала этот
+    контракт (общая линия 1..N, ветки 101.., 201..). Новые задания получают
+    номера после последнего существующего.
+    """
+    seen: set[tuple] = set()
+    for module_slug, lessons in lessons_by_module.items():
+        for lesson in lessons:
+            merged = list(lesson["tasks"]) + [
+                dict(task)
+                for task in EXTRA_TASKS_BY_LESSON.get(lesson["slug"], [])
+                if _is_valid_position(task)
+            ]
+
+            unique = []
+            lesson_seen: set[tuple] = set()
+            for task in merged:
+                signature = _task_signature(task)
+                if signature in lesson_seen:
+                    continue
+                # Внутри модуля дебютов одни и те же позиции встречаются в
+                # разных дебютах (например, c4 после d4 Nf6). Это не дубль
+                # урока, поэтому чистим только повторы внутри урока.
+                if module_slug != "openings" and signature in seen:
+                    continue
+                lesson_seen.add(signature)
+                seen.add(signature)
+                unique.append(task)
+
+            # В темах с ходами оставляем 2-3 текстовых вопроса: остальное -
+            # задания на доске.
+            has_position_task = any(
+                task["task_type"] != "choose_option" for task in unique
+            )
+            if has_position_task:
+                kept_choose = 0
+                filtered = []
+                for task in unique:
+                    if task["task_type"] == "choose_option":
+                        kept_choose += 1
+                        if kept_choose > 3:
+                            continue
+                    filtered.append(task)
+                unique = filtered
+
+            last_order = max(
+                (task.get("sort_order") or 0 for task in unique), default=0
+            )
+            for task in unique:
+                if task.get("sort_order"):
+                    continue
+                last_order += 1
+                task["sort_order"] = last_order
+                task.setdefault(
+                    "difficulty", min(3, 1 + (last_order - 1) // 2)
+                )
+            lesson["tasks"] = unique
+
+
+# Генератор scripts/build_course_extra.py импортирует модуль с этим флагом,
+# чтобы видеть только исходные задания курса и не считать свои же прошлые
+# результаты частью базы (иначе подбор позиций «плывёт» от запуска к запуску).
+if os.environ.get("TRAINING_COURSE_BASE_ONLY") != "1":
+    _merge_extra_tasks(LESSONS_BY_MODULE)
 

@@ -1,9 +1,11 @@
+import re
+
 import chess
 import pytest
 
 from backend.services.training_course_data import (
-    LEVEL_LABELS,
     LESSONS_BY_MODULE,
+    LEVEL_LABELS,
     MODULES,
 )
 
@@ -19,6 +21,11 @@ PROGRAM_MODULES = [
 # 39 тем: в исходном файле у двух тем модуля тактики повторён номер «15»,
 # поэтому строк на одну больше, чем последний номер темы.
 PROGRAM_TOPICS = 39
+
+# Каждая тема программы наполнена 12-15 заданиями: база урока плюс
+# позиции из реальных партий (course_extra_tasks).
+MIN_TOPIC_TASKS = 12
+MAX_TOPIC_TASKS = 15
 
 
 def _topics():
@@ -53,13 +60,14 @@ def test_every_module_has_lessons(module):
     assert all(lesson["tasks"] for lesson in lessons)
 
 
-def test_course_has_program_topics_with_four_to_six_tasks():
+def test_course_has_program_topics_with_expected_task_count():
     topics = _topics()
     assert len(topics) == PROGRAM_TOPICS
     for lesson in topics:
         task_count = len(lesson["tasks"])
-        assert 4 <= task_count <= 6, (
-            f"{lesson['slug']}: {task_count} заданий, ожидалось 4-6"
+        assert MIN_TOPIC_TASKS <= task_count <= MAX_TOPIC_TASKS, (
+            f"{lesson['slug']}: {task_count} заданий, "
+            f"ожидалось {MIN_TOPIC_TASKS}-{MAX_TOPIC_TASKS}"
         )
 
 
@@ -70,6 +78,30 @@ def test_lesson_slugs_are_unique():
         for lesson in lessons
     ]
     assert len(slugs) == len(set(slugs))
+
+
+def _task_signature(task):
+    payload = task["payload"]
+    if task["task_type"] == "choose_option":
+        answer = (
+            payload.get("correct_option"),
+            tuple(sorted(option["id"] for option in payload["options"])),
+        )
+    else:
+        answer = (
+            payload.get("mode"),
+            tuple(sorted(payload.get("accepted_moves") or ())),
+        )
+    return (task["fen"], task["source_square"], task["task_type"], answer)
+
+
+def test_no_duplicate_tasks_inside_lesson():
+    for module_slug, lessons in LESSONS_BY_MODULE.items():
+        for lesson in lessons:
+            signatures = [_task_signature(task) for task in lesson["tasks"]]
+            assert len(signatures) == len(set(signatures)), (
+                f"повторы заданий в {module_slug}/{lesson['slug']}"
+            )
 
 
 def test_all_course_positions_and_payloads_are_valid():
@@ -142,7 +174,8 @@ def test_openings_module_starts_with_five_principles():
     assert [lesson["sort_order"] for lesson in OPENINGS_THEORY] == [1, 2, 3, 4, 5]
     assert OPENINGS_THEORY[0]["title"] == "Три главных дебютных принципа"
     assert OPENINGS_THEORY[-1]["title"] == "Критические ошибки в дебюте"
-    assert all(len(lesson["tasks"]) == 5 for lesson in OPENINGS_THEORY)
+    # Пять принципов сохраняют базовые задания, дополнительные идут сверху.
+    assert all(len(lesson["tasks"]) >= 5 for lesson in OPENINGS_THEORY)
 
 
 def test_concrete_openings_follow_principles():
@@ -166,6 +199,7 @@ def test_concrete_openings_follow_principles():
 )
 def test_opening_lesson_has_varied_branches(lesson):
     variations = lesson.get("variations") or []
+    assert 12 <= len(lesson["tasks"]) <= 15
     assert len(variations) >= 2, "у урока дебюта должно быть минимум две ветки"
     assert len({variation["id"] for variation in variations}) == len(variations)
 
@@ -224,3 +258,70 @@ def test_opening_branch_tasks_follow_intro(lesson):
 
         # Задания ветки сгруппированы и не пересекаются с общей линией.
         assert all(task["sort_order"] >= 100 for task in branch_tasks)
+
+
+# --- Матовые задачи: заголовок не должен обещать неверный мат ---
+
+MATE_IN_TITLE = re.compile(r"мат в (один|\d+) (?:ход|хода|ходов)", re.IGNORECASE)
+
+
+def _push(board, move):
+    probe = board.copy()
+    probe.push(move)
+    return probe
+
+
+def _has_forced_mate(board, moves):
+    """Форсированный мат белых не длиннее `moves` своих ходов."""
+    if moves == 0:
+        return False
+    for move in board.legal_moves:
+        after = _push(board, move)
+        if after.is_checkmate():
+            return True
+        if moves == 1 or after.is_game_over():
+            continue
+        if all(
+            _has_forced_mate(_push(after, reply), moves - 1)
+            for reply in after.legal_moves
+        ):
+            return True
+    return False
+
+
+def test_mate_titles_match_the_position():
+    checked = 0
+    for module_slug, lessons in LESSONS_BY_MODULE.items():
+        for lesson in lessons:
+            for task in lesson["tasks"]:
+                if task["task_type"] != "make_move":
+                    continue
+                match = MATE_IN_TITLE.search(task["title"])
+                if match is None:
+                    continue
+                checked += 1
+                where = f"{module_slug}/{lesson['slug']}/{task['sort_order']}"
+                board = chess.Board(task["fen"])
+                distance = 1 if match.group(1).lower() == "один" else int(match.group(1))
+                for uci in task["payload"]["accepted_moves"]:
+                    after = _push(board, chess.Move.from_uci(uci))
+                    if distance == 1:
+                        assert after.is_checkmate(), (
+                            f"{where}: заголовок «{task['title']}», "
+                            f"а ход {uci} не мат"
+                        )
+                        continue
+                    assert list(after.legal_moves), (
+                        f"{where}: после {uci} пат, а не матовая атака"
+                    )
+                    # Первый ход матовой атаки: на любой ответ чёрных у белых
+                    # остаётся форсированный мат за distance - 1 ход.
+                    assert all(
+                        _has_forced_mate(_push(after, reply), distance - 1)
+                        for reply in after.legal_moves
+                    ), f"{where}: после {uci} нет мата в {distance} хода"
+                    # Титул не завышает длину: более короткого мата быть не должно.
+                    assert not _has_forced_mate(board, distance - 1), (
+                        f"{where}: мат короче, чем «{task['title']}»"
+                    )
+    assert checked >= 10
