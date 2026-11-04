@@ -2550,6 +2550,12 @@ textarea {
   flex-direction: column;
   min-height: 0;
   overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.puzzles-page-shell::-webkit-scrollbar,
+.puzzle-info-panel::-webkit-scrollbar {
+  display: none;
 }
 
 .puzzles-loading,
@@ -2620,6 +2626,7 @@ textarea {
   max-height: none;
   overflow-x: hidden;
   overflow-y: visible;
+  scrollbar-width: none;
   justify-content: flex-start;
 }
 
