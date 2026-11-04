@@ -59,7 +59,7 @@
 }
 
 .onb-brand-name {
-  font-family: "Orbitron", "Inter", sans-serif;
+  font-family: var(--font-ui);
   font-weight: 900;
   font-size: 16px;
   letter-spacing: 0.14em;
@@ -69,7 +69,7 @@
 }
 
 .onb-title {
-  font-family: "Calypso", serif;
+  font-family: var(--font-ui);
   font-size: 26px;
   color: #333;
   margin: 0 0 6px;
@@ -456,7 +456,7 @@
 }
 
 .onb-submit {
-  font-family: "Calypso", serif;
+  font-family: var(--font-ui);
   font-size: 16px;
   color: #333;
   background: #c9a96e;
@@ -483,7 +483,7 @@
   background: #c9a96e;
   border: none;
   border-radius: 20px;
-  font-family: "Calypso", serif;
+  font-family: var(--font-ui);
   font-size: 14px;
   color: #333;
   cursor: pointer;

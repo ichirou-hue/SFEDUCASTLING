@@ -112,16 +112,16 @@
 .home-hero h1 {
   margin-top:0;
   color:#fbfaf6;
-  font:500 clamp(48px,4.5vw,72px)/.98 Inter,sans-serif;
-  letter-spacing:-.065em
+  font:400 clamp(48px,4.5vw,72px)/.98 var(--font-display);
+  letter-spacing:-.02em
 }
 .home-title-line {
   white-space:nowrap
 }
 .home-hero h1 em {
   color:#d5b476;
-  font:400 1.08em/1 "Cormorant Garamond",Georgia,serif;
-  letter-spacing:-.025em
+  font:400 1.08em/1 var(--font-display);
+  letter-spacing:-.02em
 }
 .home-lead {
   max-width:470px;

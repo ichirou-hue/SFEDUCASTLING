@@ -244,7 +244,7 @@ async def level_test_start(
     if user.effective_role == ROLE_ADMIN:
         raise HTTPException(status_code=403, detail="Администратору стартовая оценка не требуется")
     if not isinstance(user.onboarding, dict) or not user.onboarding.get("submitted_at"):
-        raise HTTPException(status_code=409, detail="Сначала заполните анкету Q1–Q8")
+        raise HTTPException(status_code=409, detail="Сначала заполните анкету Q1-Q8")
 
     lookup = _puzzle_lookup()
     if not lookup:

@@ -4,7 +4,8 @@
   display: none;
 }
 
-@media (max-width: 1150px) and (min-width: 761px) {
+@media (max-width: 1450px) and (min-width: 761px) {
+  .board-stage { display: contents; }
   .main-area {
     display: grid;
     flex: 0 0 auto;
@@ -20,7 +21,8 @@
     padding-bottom: 0;
   }
 
-  .main-area > .eval-bar {
+  .main-area .eval-bar {
+    align-self: stretch;
     grid-area: evaluation;
     width: auto;
     height: 10px !important;
@@ -30,7 +32,7 @@
     transform: none;
   }
 
-  .main-area > .eval-bar .eval-bar-fill {
+  .main-area .eval-bar .eval-bar-fill {
     top: 0;
     right: auto;
     bottom: auto;
@@ -42,11 +44,11 @@
     border-right: 2px solid rgba(180, 135, 44, 0.9);
   }
 
-  .main-area > .eval-bar .eval-bar-label {
+  .main-area .eval-bar .eval-bar-label {
     display: none;
   }
 
-  .main-area > .board-section {
+  .main-area .board-section {
     grid-area: board;
     min-width: 0;
     padding: 0;
@@ -117,6 +119,7 @@
 }
 
 @media (max-width: 760px) {
+  .board-stage { display: contents; }
   :root {
     -webkit-tap-highlight-color: transparent;
   }
@@ -458,7 +461,8 @@
     padding-bottom: 0;
   }
 
-  .main-area > .eval-bar {
+  .main-area .eval-bar {
+    align-self: stretch;
     grid-area: evaluation;
     width: auto;
     height: 9px !important;
@@ -469,7 +473,7 @@
     transform: none;
   }
 
-  .main-area > .eval-bar .eval-bar-fill {
+  .main-area .eval-bar .eval-bar-fill {
     top: 0;
     right: auto;
     bottom: auto;
@@ -482,11 +486,11 @@
     transition: width 0.45s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
-  .main-area > .eval-bar .eval-bar-label {
+  .main-area .eval-bar .eval-bar-label {
     display: none;
   }
 
-  .main-area > .board-section {
+  .main-area .board-section {
     grid-area: board;
     width: 100%;
     min-width: 0;
@@ -674,14 +678,16 @@
   }
 
   .main-area .chat-input-area input {
+    height: 44px;
     min-height: 44px;
-    padding: 9px 12px;
+    padding: 0 12px;
   }
 
   .main-area .chat-input-area button {
     min-width: 46px;
+    height: 44px;
     min-height: 44px;
-    padding: 8px 12px;
+    padding: 0 12px;
   }
 
   /* Keep mobile game tools in the page flow below the board so they never
@@ -930,7 +936,15 @@
   }
 
   .puzzle-chat-section .chat-input-area input {
+    height: 44px;
     min-height: 44px;
+    padding: 0 12px;
+  }
+
+  .puzzle-chat-section .chat-input-area button {
+    height: 44px;
+    min-height: 44px;
+    padding: 0 12px;
   }
 
   /* Training path and lesson flow */
