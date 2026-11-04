@@ -176,18 +176,29 @@ export default function ChessAccountsSection({
           const oauthAvailable =
             provider === "lichess" || capabilities?.[provider]?.oauth === true;
 
+          // Неподключённый провайдер использует ту же карточку, что и
+          // подключённый аккаунт: меняется только содержимое.
           return (
-            <div className="chess-account-add" key={provider}>
-              <div className="chess-account-add__provider">
-                <div
-                  className={`chess-account-add__mark chess-account-add__mark--${provider}`}
-                  aria-hidden="true"
-                >
-                  {icon}
-                </div>
-                <div className="chess-account-add__provider-text">
-                  <strong>{label}</strong>
-                  <span>Не подключён</span>
+            <div
+              className={`chess-account-card ${
+                embedded ? "chess-account-card--profile" : ""
+              } chess-account-card--add`}
+              key={provider}
+            >
+              <div className="chess-account-card__head">
+                <div className="chess-account-card__identity">
+                  <div
+                    className={`chess-account-card__platform-icon chess-account-card__platform-icon--${provider}`}
+                    aria-hidden="true"
+                  >
+                    {icon}
+                  </div>
+                  <div>
+                    <div className="chess-account-card__provider">{label}</div>
+                    <div className="chess-account-card__username">
+                      Не подключён
+                    </div>
+                  </div>
                 </div>
               </div>
 

@@ -1172,6 +1172,34 @@
   box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28);
 }
 
+:root[data-theme="dark"] .learning-crosslink--compact {
+  border-color: var(--sf-line);
+  background: linear-gradient(
+    135deg,
+    rgba(213, 180, 118, 0.14),
+    rgba(154, 199, 223, 0.05)
+  );
+  color: var(--sf-ink-strong);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+:root[data-theme="dark"] .learning-crosslink--compact:hover {
+  border-color: var(--sf-gold);
+  background: linear-gradient(
+    135deg,
+    rgba(213, 180, 118, 0.22),
+    rgba(154, 199, 223, 0.08)
+  );
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+:root[data-theme="dark"] .learning-crosslink--compact:focus-visible {
+  box-shadow: 0 0 0 3px rgba(213, 180, 118, 0.4),
+    0 8px 22px rgba(0, 0, 0, 0.32);
+}
+
 :root[data-theme="dark"] .learning-topic-filter button {
   color: var(--sf-blue);
 }
@@ -2086,4 +2114,234 @@
 
 :root[data-theme="dark"] .chess-accounts-section--embedded .chess-accounts-section__summary strong {
   color: var(--sf-gold);
+}
+
+/* --- Карточки шахматных аккаунтов -------------------------------------- */
+
+:root[data-theme="dark"] .chess-account-card {
+  border-color: var(--sf-line);
+  background: var(--sf-surface-raised);
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .chess-account-card__provider {
+  color: var(--sf-muted-2);
+}
+
+:root[data-theme="dark"] .chess-account-card__username {
+  color: var(--sf-ink-strong);
+}
+
+:root[data-theme="dark"] .chess-account-card--add .chess-account-card__username {
+  color: var(--sf-muted);
+}
+
+:root[data-theme="dark"] .chess-account-card__platform-icon {
+  border-color: var(--sf-line);
+  background: var(--sf-soft);
+  color: var(--sf-green);
+}
+
+:root[data-theme="dark"] .chess-account-card__platform-icon--chesscom {
+  background: var(--sf-gold-soft);
+  color: var(--sf-gold);
+}
+
+:root[data-theme="dark"] .chess-account-card__rating {
+  color: var(--sf-muted);
+}
+
+:root[data-theme="dark"] .chess-account-card__rating strong {
+  color: var(--sf-ink-strong);
+}
+
+:root[data-theme="dark"] .chess-account-card__meta {
+  color: var(--sf-muted-2);
+}
+
+:root[data-theme="dark"] .chess-account-badge--verified {
+  border-color: rgba(141, 199, 155, 0.38);
+  background: var(--sf-green-soft);
+  color: var(--sf-green);
+}
+
+:root[data-theme="dark"] .chess-account-badge--pending,
+:root[data-theme="dark"] .chess-account-badge--warning {
+  border-color: var(--sf-line);
+  background: var(--sf-gold-soft);
+  color: var(--sf-gold-bright);
+}
+
+:root[data-theme="dark"] .chess-account-badge--error {
+  border-color: rgba(190, 106, 88, 0.4);
+  background: var(--sf-error-soft);
+  color: var(--sf-error);
+}
+
+:root[data-theme="dark"] .chess-account-badge--neutral {
+  border-color: var(--sf-line);
+  background: var(--sf-soft);
+  color: var(--sf-muted);
+}
+
+:root[data-theme="dark"] .chess-account-trust .is-trusted {
+  background: var(--sf-green-soft);
+  color: var(--sf-green);
+}
+
+:root[data-theme="dark"] .chess-account-trust .is-untrusted {
+  background: var(--sf-soft);
+  color: var(--sf-muted);
+}
+
+:root[data-theme="dark"] .chess-account-action {
+  border-color: var(--sf-line);
+  background: var(--sf-soft);
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .chess-account-action:hover:not(:disabled) {
+  border-color: var(--sf-line-strong);
+  background: var(--sf-soft-2);
+}
+
+:root[data-theme="dark"] .chess-account-action--primary {
+  border-color: var(--sf-gold);
+  background: var(--sf-gold);
+  color: #141a16;
+}
+
+:root[data-theme="dark"] .chess-account-action--primary:hover:not(:disabled) {
+  border-color: var(--sf-gold-bright);
+  background: var(--sf-gold-bright);
+}
+
+:root[data-theme="dark"] .chess-account-action--quiet {
+  border-color: transparent;
+  background: transparent;
+  color: var(--sf-muted);
+}
+
+:root[data-theme="dark"] .chess-account-action--quiet:hover:not(:disabled) {
+  border-color: var(--sf-line);
+  background: var(--sf-soft);
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .chess-account-action--danger {
+  border-color: transparent;
+  background: transparent;
+  color: var(--sf-error);
+}
+
+:root[data-theme="dark"] .chess-account-action--danger:hover:not(:disabled) {
+  border-color: rgba(190, 106, 88, 0.4);
+  background: var(--sf-error-soft);
+}
+
+:root[data-theme="dark"] .chess-account-card__warning {
+  border-color: var(--sf-line);
+  background: var(--sf-gold-soft);
+  color: var(--sf-gold-bright);
+}
+
+:root[data-theme="dark"] .chess-account-card__error {
+  border-color: rgba(190, 106, 88, 0.4);
+  background: var(--sf-error-soft);
+  color: var(--sf-error);
+}
+
+:root[data-theme="dark"] .chess-account-card__note,
+:root[data-theme="dark"] .chess-account-add__note {
+  border-color: var(--sf-line);
+  background: var(--sf-soft);
+  color: var(--sf-muted);
+}
+
+:root[data-theme="dark"] .chess-account-add__note > span {
+  background: var(--sf-gold-soft);
+  color: var(--sf-gold);
+}
+
+:root[data-theme="dark"] .chess-account-add__controls input {
+  border-color: var(--sf-line);
+  background: var(--sf-input);
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .chess-account-add__controls input::placeholder {
+  color: var(--sf-muted-2);
+}
+
+:root[data-theme="dark"] .chess-account-add__controls input:focus {
+  border-color: var(--sf-gold);
+  box-shadow: 0 0 0 3px rgba(213, 180, 118, 0.14);
+}
+
+:root[data-theme="dark"] .chess-account-add__link-btn {
+  border-color: var(--sf-gold);
+  background: var(--sf-gold);
+  color: #141a16;
+}
+
+:root[data-theme="dark"] .chess-account-add__link-btn:hover:not(:disabled) {
+  border-color: var(--sf-gold-bright);
+  background: var(--sf-gold-bright);
+}
+
+:root[data-theme="dark"] .chess-account-add__oauth {
+  color: var(--sf-gold);
+}
+
+:root[data-theme="dark"] .chess-account-add__oauth:hover:not(:disabled) {
+  color: var(--sf-gold-bright);
+}
+
+:root[data-theme="dark"] .chess-account-add__oauth > span {
+  background: var(--sf-gold-soft);
+  color: var(--sf-gold);
+}
+
+:root[data-theme="dark"] .chess-account-history {
+  border-top-color: var(--sf-line);
+}
+
+:root[data-theme="dark"] .chess-account-history__title {
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .chess-account-history__empty,
+:root[data-theme="dark"] .chess-account-history__item {
+  color: var(--sf-muted);
+}
+
+:root[data-theme="dark"] .chess-account-history__status.is-verified {
+  color: var(--sf-green);
+}
+
+:root[data-theme="dark"] .chess-account-history__status.is-error {
+  color: var(--sf-error);
+}
+
+:root[data-theme="dark"] .chess-account-history__status.is-warning,
+:root[data-theme="dark"] .chess-account-history__status.is-pending {
+  color: var(--sf-gold-bright);
+}
+
+:root[data-theme="dark"] .chess-account-history__reason {
+  color: var(--sf-muted-2);
+}
+
+:root[data-theme="dark"] .chess-accounts-section__error {
+  border-color: rgba(190, 106, 88, 0.4);
+  background: var(--sf-error-soft);
+  color: var(--sf-error);
+}
+
+:root[data-theme="dark"] .chess-accounts-section__error button {
+  color: var(--sf-error);
+}
+
+:root[data-theme="dark"] .chess-accounts-section__error button:hover {
+  background: var(--sf-error-soft);
 }

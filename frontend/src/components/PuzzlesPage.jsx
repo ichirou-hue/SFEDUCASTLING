@@ -1137,7 +1137,10 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
               )
             }
           >
-            Пройти урок по теме →
+            Пройти урок по теме{" "}
+            <span className="learning-crosslink-arrow" aria-hidden="true">
+              →
+            </span>
           </button>
         )}
 

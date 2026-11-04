@@ -894,6 +894,12 @@
     font-size: 11px;
   }
 
+  .learning-crosslink--compact {
+    max-width: 100%;
+    padding: 9px 14px;
+    font-size: 12px;
+  }
+
   .puzzle-board-section {
     min-width: 0;
     width: 100%;
