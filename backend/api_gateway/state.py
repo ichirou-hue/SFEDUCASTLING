@@ -557,29 +557,44 @@ def get_maia3():
                 str(settings.maia3.history),
                 "--elo",
                 str(settings.maia3.default_elo),
-                # Приложению нужен только лучший ход: WDL-строки оно не
-                # читает, а их расчёт - это второй forward модели на каждый
-                # ход (пачка из MultiPV позиций). Отключаем его целиком.
-                "--multipv",
-                "1",
-                "--no-compute-wdl",
             ]
 
             if _maia3_checkpoint_is_cached(settings.maia3.model_id):
                 cmd.append("--local-files-only")
 
+            # Приложению нужен только лучший ход: WDL-строки оно не читает,
+            # а их расчёт - это второй forward модели на каждый ход (пачка из
+            # MultiPV позиций). Отключаем его целиком.
+            speed_flags = [
+                "--multipv",
+                "1",
+                "--no-compute-wdl",
+            ]
+
             if os.name == "nt":
                 stderr_stream = _maia3_stderr()
 
-            _maia3_engine = (
-                chess.engine.SimpleEngine.popen_uci(
-                    cmd,
+            def popen(extra_flags):
+                return chess.engine.SimpleEngine.popen_uci(
+                    cmd + extra_flags,
                     timeout=180,
                     cwd=str(maia3_source),
                     setpgrp=True,
                     stderr=stderr_stream,
                 )
-            )
+
+            try:
+                _maia3_engine = popen(speed_flags)
+            except Exception as exc:
+                # Сабмодуль maia3 может быть старше этих флагов (например,
+                # после git submodule update без нашего коммита), и тогда
+                # движок падает на разборе аргументов. Ходы важнее
+                # ускорения: запускаем как есть, с расчётом WDL.
+                print(
+                    "[Maia3] Запуск с флагами ускорения не удался: "
+                    f"{exc}. Повтор без них."
+                )
+                _maia3_engine = popen([])
 
             # popen_uci завершает только uci-хендшейк. Чекпоинт грузится
             # на первый isready, то есть без этого вызова его загрузка
