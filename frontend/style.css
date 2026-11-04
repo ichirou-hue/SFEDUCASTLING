@@ -82,6 +82,7 @@ textarea {
   height: auto;
   max-height: none;
   min-height: 0;
+  overflow: hidden;
   order: 0;
   width: 100%;
 }
@@ -1276,6 +1277,7 @@ textarea {
 .move-pair {
   display: flex;
   align-items: center;
+  height: 56px;
   padding: 12px 0;
   border-bottom: none;
 
@@ -1861,7 +1863,7 @@ textarea {
 .move-list {
   flex: 1;
   min-height: 0;
-  /* max-height: 250px; --- РЈР”РђР›РРўР• Р­РўРЈ РЎРўР РћРљРЈ */
+  max-height: 280px; /* Пять строк истории по 56px. */
   overflow-y: auto;
   padding-right: 8px;
 }
@@ -1979,20 +1981,26 @@ textarea {
   text-align: center;
   min-width: 45px; /* Р§С‚РѕР±С‹ РІСЃРµ РїР»Р°С€РєРё Р±С‹Р»Рё РѕРґРёРЅР°РєРѕРІРѕР№ С€РёСЂРёРЅС‹ Рё СЃРјРѕС‚СЂРµР»РёСЃСЊ СЃРёРјРјРµС‚СЂРёС‡РЅРѕ */
 }
-.num {
-  width: 40px;
+.move-pair .num {
+  flex: 0 0 32px;
+  width: 32px;
+  padding-inline: 0;
   color: #555;
   font-size: 22px;
 }
-.move-w {
-  flex: 1;
+.move-pair .move-w {
+  flex: 1 1 0;
+  min-width: 0;
+  white-space: nowrap;
   text-align: left; /* Р‘РµР»С‹Рµ С…РѕРґС‹ РїСЂРёР¶Р°С‚С‹ РІР»РµРІРѕ (РїРѕРґ Р’С‹) */
-  padding-left: 10px;
+  padding-inline: 4px;
 }
-.move-b {
-  flex: 1;
+.move-pair .move-b {
+  flex: 1 1 0;
+  min-width: 0;
+  white-space: nowrap;
   text-align: right; /* Р§РµСЂРЅС‹Рµ С…РѕРґС‹ РїСЂРёР¶Р°С‚С‹ РІРїСЂР°РІРѕ (РїРѕРґ Maia 2) */
-  padding-right: 15px;
+  padding-inline: 4px;
 }
 
 /* Пока открыта карточка выбора стороны, ходы только читаются:
@@ -3159,6 +3167,12 @@ textarea {
   flex-direction: column;
   min-height: 0;
   overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.puzzles-page-shell::-webkit-scrollbar,
+.puzzle-info-panel::-webkit-scrollbar {
+  display: none;
 }
 
 .puzzles-loading,
@@ -3176,7 +3190,7 @@ textarea {
   /* Жёсткие 3 колонки: инфо | доска | чат. Чат всегда справа и никогда
      не переносится вниз - переполнение чинилось именно переносом. */
   display: grid;
-  grid-template-columns: minmax(210px, 250px) minmax(0, 1fr) minmax(320px, min(28vw, 520px));
+  grid-template-columns: minmax(300px, clamp(310px, 22vw, 370px)) minmax(0, 1fr) minmax(320px, min(28vw, 520px));
   gap: 24px;
   align-items: stretch;
   width: 100%;
@@ -3215,34 +3229,37 @@ textarea {
   flex-shrink: 0;
   min-width: 0;
   min-height: 0;
-  width: 230px;
+  width: 100%;
   border-radius: 30px;
   border: 3px solid rgba(180, 135, 44, 0.85);
   background: rgba(255, 255, 255, 0.87);
   box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.25);
-  padding: 18px 16px;
+  padding: 22px clamp(18px, 1.6vw, 26px);
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: 10px;
-  max-height: 100%;
+  gap: 14px;
+  max-height: none;
   overflow-x: hidden;
-  overflow-y: auto;
+  overflow-y: visible;
+  scrollbar-width: none;
   justify-content: flex-start;
 }
 
 .puzzle-info-heading {
+  position: relative;
   display: flex;
   width: 100%;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   gap: 8px;
 }
 
 .puzzle-info-heading-copy {
   min-width: 0;
+  text-align: center;
 }
 
 .puzzle-theme-label {
@@ -3262,20 +3279,6 @@ textarea {
   overflow-wrap: anywhere;
 }
 
-.puzzle-theme-icon {
-  flex: 0 0 40px;
-  display: grid;
-  width: 40px;
-  height: 40px;
-  place-items: center;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  font-size: 28px;
-  color: #225a73;
-  line-height: 1;
-}
-
 .puzzle-instruction {
   color: #46534d;
   font: 600 13px/1.4 Inter, sans-serif;
@@ -3283,27 +3286,28 @@ textarea {
 
 .puzzle-turn-indicator {
   position: relative;
-  display: grid;
-  grid-template-columns: 9px minmax(0, 1fr);
-  grid-template-rows: auto auto;
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  column-gap: 10px;
-  row-gap: 3px;
+  gap: 3px;
   width: 100%;
-  padding: 11px 13px;
+  padding: 14px 18px;
   border: 1px solid rgba(34, 90, 115, 0.3);
   border-radius: 14px;
   background: rgba(34, 90, 115, 0.08);
   color: #225a73;
   font-family: var(--font-ui);
   cursor: default;
+  text-align: center;
 }
 
 .puzzle-turn-indicator-side {
-  grid-column: 1;
-  grid-row: 1 / span 2;
+  position: absolute;
+  left: 18px;
+  top: 50%;
   width: 16px;
   height: 16px;
+  transform: translateY(-50%);
   border: 2px solid currentColor;
   border-radius: 50%;
   background: currentColor;
@@ -3322,7 +3326,6 @@ textarea {
 }
 
 .puzzle-turn-indicator-main {
-  grid-column: 2;
   font-size: 15px;
   font-weight: 750;
   text-transform: uppercase;
@@ -3330,7 +3333,6 @@ textarea {
 }
 
 .puzzle-turn-indicator-help {
-  grid-column: 2;
   font-size: 12px;
   font-weight: 500;
   text-transform: none;
@@ -4486,6 +4488,27 @@ textarea {
   grid-template-columns: minmax(220px, 260px) minmax(340px, 1fr) minmax(280px, 360px);
   gap: 18px;
   align-items: stretch;
+}
+
+@media (min-width: 1101px) {
+  .training-lesson-layout {
+    height: clamp(480px, calc(100dvh - 240px), 720px);
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .training-theory-panel,
+  .training-task-panel {
+    min-height: 0;
+    height: 100%;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(128, 101, 47, 0.38) transparent;
+  }
+
+  .training-board-column {
+    min-height: 0;
+    justify-content: center;
+  }
 }
 
 .training-theory-panel,

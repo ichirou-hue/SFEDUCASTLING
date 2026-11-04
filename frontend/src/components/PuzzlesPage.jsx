@@ -1108,7 +1108,6 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
             <span className="puzzle-theme-label">ТЕМА ЗАДАЧИ</span>
             <h2 className="puzzle-theme-name">{themeInfo.label}</h2>
           </div>
-          <span className="puzzle-theme-icon" aria-hidden="true">{themeInfo.icon}</span>
         </div>
 
         <div className="puzzle-instruction">Найдите лучший ход</div>
@@ -1164,7 +1163,6 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
             <strong className={streak > 0 ? "puzzle-streak-value--hot" : ""}>
               🔥 {streak}
             </strong>
-            <small className="puzzle-quick-stat-hint">решено подряд</small>
           </div>
         </div>
 

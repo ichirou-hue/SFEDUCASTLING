@@ -78,6 +78,12 @@
     max-height: 290px;
     min-height: 0;
     width: 100%;
+    overflow: hidden;
+  }
+
+  .main-area .game-history-column .move-list {
+    max-height: 280px;
+    overflow-y: auto;
   }
 
   .main-area > .chat-section {
@@ -601,11 +607,12 @@
 
   .main-area .move-list {
     flex: 0 1 auto;
-    max-height: 84px;
+    max-height: 160px;
     padding-right: 3px;
   }
 
   .main-area .move-pair {
+    height: 32px;
     grid-template-columns: 26px minmax(0, 1fr) minmax(0, 1fr);
     padding: 2px 0;
     font-size: 15px;
@@ -762,7 +769,7 @@
   }
 
   .main-area--mobile-history .move-list {
-    max-height: min(24dvh, 210px);
+    max-height: 160px;
     overflow-y: auto;
   }
 
@@ -869,13 +876,29 @@
     display: flex;
     width: 100%;
     min-width: 0;
-    flex-direction: row;
-    flex-wrap: wrap;
+    max-width: 390px;
+    max-height: none;
+    justify-self: center;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
     justify-content: flex-start;
-    gap: 5px 9px;
-    padding: 11px 13px;
+    gap: 12px;
+    padding: 18px 20px;
     border-radius: 18px;
-    text-align: left;
+    text-align: center;
+    overflow: visible;
+  }
+
+  .puzzle-info-heading {
+    position: relative;
+    justify-content: center;
+    width: 100%;
+  }
+
+  .puzzle-info-heading-copy {
+    width: 100%;
+    text-align: center;
   }
 
   .puzzle-theme-label {
@@ -886,17 +909,23 @@
     font-size: 15px;
   }
 
-  .puzzle-theme-icon {
-    width: 34px;
-    height: 34px;
-    margin-left: auto;
-    font-size: 27px;
-    line-height: 34px;
+  .puzzle-instruction {
+    flex-basis: auto;
+    width: 100%;
+    font-size: 12px;
   }
 
-  .puzzle-instruction {
-    flex-basis: 100%;
-    font-size: 12px;
+  .puzzle-nav-buttons,
+  .puzzle-turn-indicator,
+  .puzzle-moves-summary,
+  .puzzle-quick-stats,
+  .puzzle-streak-best,
+  .puzzle-rewards-details,
+  .puzzle-mode-card,
+  .learning-topic-filter,
+  .learning-crosslink {
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .puzzle-instruction br {
