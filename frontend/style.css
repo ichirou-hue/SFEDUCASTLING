@@ -3879,6 +3879,27 @@ textarea {
   align-items: stretch;
 }
 
+@media (min-width: 1101px) {
+  .training-lesson-layout {
+    height: clamp(480px, calc(100dvh - 240px), 720px);
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .training-theory-panel,
+  .training-task-panel {
+    min-height: 0;
+    height: 100%;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(128, 101, 47, 0.38) transparent;
+  }
+
+  .training-board-column {
+    min-height: 0;
+    justify-content: center;
+  }
+}
+
 .training-theory-panel,
 .training-task-panel {
   border-radius: 24px;
