@@ -372,6 +372,150 @@ body {
   font-weight: 500;
 }
 
+/* Плашка награды GigaCoin — та же тёмная карточка с золотым акцентом,
+   что и панели игры/магазина. Фиксированная, поэтому не сдвигает
+   содержимое страницы и не мешает шапке. */
+.gigacoin-reward-toast {
+  position: fixed;
+  z-index: 2000;
+  right: clamp(16px, 3vw, 28px);
+  bottom: clamp(16px, 3vw, 28px);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 252px;
+  max-width: min(380px, calc(100vw - 32px));
+  padding: 12px 16px 12px 13px;
+  border: 1px solid rgba(213, 180, 118, 0.46);
+  border-left: 3px solid #d5b476;
+  border-radius: 16px;
+  background:
+    radial-gradient(120% 150% at 0% 0%, rgba(213, 180, 118, 0.16), transparent 48%),
+    linear-gradient(145deg, rgba(7, 18, 22, 0.97), rgba(10, 25, 27, 0.96));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 253, 248, 0.08),
+    0 18px 42px rgba(0, 0, 0, 0.42);
+  color: #f6f4ef;
+  font: 500 13px/1.35 Inter, sans-serif;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  animation:
+    gigacoin-toast-in 240ms cubic-bezier(0.2, 0.8, 0.2, 1) both,
+    gigacoin-toast-out 280ms ease-in 3.72s forwards;
+}
+
+.gigacoin-reward-toast__icon {
+  display: inline-flex;
+  flex: 0 0 38px;
+  width: 38px;
+  height: 38px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(213, 180, 118, 0.42);
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 34% 28%,
+    rgba(233, 205, 151, 0.3),
+    rgba(213, 180, 118, 0.08) 66%,
+    rgba(213, 180, 118, 0.02)
+  );
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 253, 248, 0.06),
+    0 0 18px rgba(213, 180, 118, 0.16);
+  color: #e9cd97;
+  animation: gigacoin-toast-icon-pop 420ms cubic-bezier(0.34, 1.56, 0.64, 1) 110ms both;
+}
+
+.gigacoin-reward-toast__icon svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.gigacoin-reward-toast__copy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.gigacoin-reward-toast__copy strong {
+  display: block;
+  color: #fffdf8;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.gigacoin-reward-toast__label {
+  color: rgba(246, 244, 239, 0.58);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.gigacoin-reward-toast__amount {
+  color: #e9cd97;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.gigacoin-reward-toast__copy small {
+  color: rgba(246, 244, 239, 0.55);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.gigacoin-reward-toast__copy small b {
+  color: #f6f4ef;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes gigacoin-toast-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes gigacoin-toast-out {
+  to {
+    opacity: 0;
+    transform: translate3d(0, 6px, 0) scale(0.99);
+  }
+}
+
+@keyframes gigacoin-toast-icon-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gigacoin-reward-toast,
+  .gigacoin-reward-toast__icon {
+    animation: none;
+  }
+}
+
 /* Кнопка «Выйти» в шапке нужна только там, где меню профиля скрыто
    (см. MiniProfilePopover.css, до 640px). На широких экранах выход
    живёт внутри меню профиля. */
@@ -3158,6 +3302,9 @@ body {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  /* Резервируем место под скроллбар: появление блока результата не
+     должно менять ширину страницы и вызывать перерисовку фона. */
+  scrollbar-gutter: stable;
   /* Сверху больше воздуха под шапкой, чтобы карточки не липли к логотипу. */
   padding: 40px 28px 36px;
   font-family: "Inter", sans-serif;

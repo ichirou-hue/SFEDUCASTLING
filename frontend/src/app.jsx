@@ -330,6 +330,8 @@ export default function App() {
       setGigacoinToast({
         amount,
         balance: Number.isFinite(balance) ? balance : null,
+        // Новый ключ перезапускает анимацию плашки при повторной награде.
+        id: Date.now(),
       });
       window.clearTimeout(gigacoinToastTimer);
       gigacoinToastTimer = window.setTimeout(() => setGigacoinToast(null), 4000);
@@ -373,12 +375,30 @@ export default function App() {
         }}
       />
       {gigacoinToast?.amount > 0 && (
-        <div className="gigacoin-reward-toast" role="status" aria-live="polite">
-          <span className="gigacoin-reward-toast__icon" aria-hidden="true">✦</span>
+        <div
+          key={gigacoinToast.id}
+          className="gigacoin-reward-toast"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          <span className="gigacoin-reward-toast__icon" aria-hidden="true">
+            <svg viewBox="0 0 20 20">
+              <circle cx="10" cy="10" r="7.2" />
+              <path d="M12.3 7.5c-.4-.7-1.1-1-2.2-1-1.2 0-2 .5-2 1.4 0 2.2 4.8.8 4.8 3.3 0 1-.9 1.7-2.5 1.7-1.2 0-2.1-.4-2.6-1.2M10 4.9v1.4m0 7v1.7" />
+            </svg>
+          </span>
           <span className="gigacoin-reward-toast__copy">
-            <strong>Получено +{gigacoinToast.amount} GigaCoin</strong>
+            <strong>
+              <span className="gigacoin-reward-toast__label">Получено</span>{" "}
+              <span className="gigacoin-reward-toast__amount">
+                +{gigacoinToast.amount} GigaCoin
+              </span>
+            </strong>
             {gigacoinToast.balance != null && (
-              <small>Баланс: {gigacoinToast.balance.toLocaleString("ru-RU")}</small>
+              <small>
+                Баланс: <b>{gigacoinToast.balance.toLocaleString("ru-RU")}</b>
+              </small>
             )}
           </span>
         </div>

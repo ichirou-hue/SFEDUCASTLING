@@ -97,14 +97,49 @@
 }
 
 :root[data-theme="light"] .gigacoin-reward-toast {
-  border-color: rgba(160, 124, 54, 0.42);
-  background: rgba(253, 250, 243, 0.98);
-  box-shadow: 0 12px 30px rgba(48, 65, 52, 0.16);
+  border-color: rgba(160, 124, 54, 0.4);
+  border-left-color: #a07c36;
+  background:
+    radial-gradient(120% 150% at 0% 0%, rgba(169, 133, 63, 0.14), transparent 48%),
+    linear-gradient(145deg, rgba(255, 253, 248, 0.98), rgba(248, 243, 232, 0.97));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 16px 36px rgba(48, 65, 52, 0.18);
+  color: var(--lt-ink);
+}
+
+:root[data-theme="light"] .gigacoin-reward-toast__icon {
+  border-color: rgba(160, 124, 54, 0.32);
+  background: radial-gradient(
+    circle at 34% 28%,
+    rgba(255, 255, 255, 0.95),
+    rgba(169, 133, 63, 0.12) 66%,
+    rgba(169, 133, 63, 0.03)
+  );
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.7),
+    0 0 16px rgba(169, 133, 63, 0.12);
+  color: var(--lt-gold-strong);
+}
+
+:root[data-theme="light"] .gigacoin-reward-toast__copy strong {
+  color: var(--lt-ink-strong);
+}
+
+:root[data-theme="light"] .gigacoin-reward-toast__label {
+  color: var(--lt-muted);
+}
+
+:root[data-theme="light"] .gigacoin-reward-toast__amount {
   color: var(--lt-gold-strong);
 }
 
 :root[data-theme="light"] .gigacoin-reward-toast__copy small {
-  color: rgba(130, 97, 37, 0.78);
+  color: var(--lt-muted-2);
+}
+
+:root[data-theme="light"] .gigacoin-reward-toast__copy small b {
+  color: var(--lt-ink-strong);
 }
 
 /* =========================================================================

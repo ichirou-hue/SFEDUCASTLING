@@ -36,6 +36,10 @@
 
 :root[data-theme="dark"] body {
   background-color: #071116;
+  /* Базовый marble-bg.jpg — светлый. В тёмной теме он не должен
+     просвечивать при перерисовке страниц (например, когда в уроке
+     появляется блок результата). */
+  background-image: none;
   color: var(--sf-ink);
 }
 

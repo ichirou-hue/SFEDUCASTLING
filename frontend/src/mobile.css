@@ -284,7 +284,12 @@
 
   .gigacoin-reward-toast {
     right: 14px;
+    left: 14px;
     bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+    width: auto;
+    min-width: 0;
+    max-width: none;
+    padding: 12px 14px 12px 12px;
   }
 
   .top-bar .onb-badge {
