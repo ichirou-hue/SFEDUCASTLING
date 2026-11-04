@@ -471,6 +471,78 @@ body {
   background: #b89a5e;
 }
 
+.gameover-btn:disabled {
+  cursor: default;
+  opacity: 0.65;
+}
+
+/* Кнопка разбора - светлее основной: это второе действие, после него
+   в карточке появляются звёзды и точность. */
+.gameover-btn--review {
+  background: #f1e6cf;
+  border: 1px solid rgba(180, 135, 44, 0.8);
+}
+
+.gameover-btn--review:hover {
+  background: #e8d9b8;
+}
+
+/* Кнопки карточки итога: после разбора их две - «Разбор по ходам»
+   и «Новая игра». На узком экране переносятся на вторую строку. */
+.gameover-actions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Итог разбора: три звезды, точность и счётчики ходов игрока. */
+.gameover-review {
+  margin-top: 14px;
+}
+
+.gameover-stars {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  font-size: 26px;
+  line-height: 1;
+}
+
+.gameover-star {
+  color: rgba(180, 135, 44, 0.28);
+}
+
+.gameover-star--on {
+  color: #e0a52a;
+  text-shadow: 0 1px 3px rgba(74, 50, 32, 0.35);
+}
+
+.gameover-review-accuracy {
+  margin-top: 8px;
+  font-family: "Calypso", serif;
+  font-size: 18px;
+  color: #333;
+}
+
+.gameover-review-detail {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #666;
+}
+
+.gameover-review-note {
+  margin-top: 8px;
+  font-family: "Inter", sans-serif;
+  font-size: 12px;
+  color: #837053;
+}
+
+.gameover-review-note--error {
+  color: #b3543a;
+}
+
 /* Выбор стороны при входе на главную: та же карточка, что и итог
    партии, только вместо одной кнопки — две «медали» сторон. */
 .gameover-card--side {
@@ -662,6 +734,56 @@ body {
   box-shadow: 0 1px 3px rgba(74, 50, 32, 0.22);
 }
 
+/* Переключатель «Материал / Движок»: маленькая круглая кнопка у верхнего
+   края капсулы. Она внутри шкалы, поэтому не сдвигает доску, а верх
+   выбран потому, что плашка с цифрой всегда держится середины заливки. */
+.eval-bar-mode {
+  position: absolute;
+  top: 5px;
+  left: 50%;
+  z-index: 2;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  transform: translateX(-50%);
+  border: 1px solid rgba(180, 135, 44, 0.85);
+  border-radius: 50%;
+  background: rgba(255, 253, 247, 0.94);
+  color: #2f5c36;
+  font-family: "Inter", sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.eval-bar-mode:hover {
+  background: #fffdf8;
+  transform: translateX(-50%) scale(1.08);
+}
+
+.eval-bar-mode:disabled {
+  cursor: default;
+  opacity: 0.6;
+  transform: translateX(-50%);
+}
+
+/* Шкала в режиме движка: золотая риска границы становится ярче, чтобы
+   режим отличался от материального без дополнительных подписей. */
+.eval-bar--engine .eval-bar-fill {
+  border-top-color: rgba(201, 154, 62, 1);
+}
+
+.eval-bar--engine .eval-bar-mode {
+  background: #2f5c36;
+  border-color: rgba(201, 154, 62, 0.95);
+  color: #f6f0e3;
+}
+
 .player-bar {
   width: 100%;
   padding: 4px 4px;
@@ -740,6 +862,42 @@ body {
   height: 34px;
   line-height: 1;
   text-align: center;
+}
+
+/* Постоянная кнопка разбора под доской: итоговую карточку можно
+   закрыть кликом по фону, а разбор должен остаться доступным. */
+.ctrl-btn--review {
+  background: #f1e6cf;
+  border: 1px solid rgba(180, 135, 44, 0.8);
+}
+
+.ctrl-btn--review:hover {
+  background: #e8d9b8;
+}
+
+.ctrl-btn--review:disabled {
+  cursor: default;
+  opacity: 0.65;
+}
+
+/* Переключатель шкалы для узких экранов: там шкала - тонкая полоса,
+   и кнопка внутри неё не помещается. На широком экране не нужна. */
+.ctrl-btn--eval-mode {
+  display: none;
+}
+
+@media (max-width: 1150px) {
+  /* Кнопки под доской на узком экране переносятся, а не вылезают
+     за край: к переключателю шкалы добавляется ещё одна плашка. */
+  .controls-row {
+    flex-wrap: wrap;
+  }
+
+  .ctrl-btn--eval-mode {
+    min-width: 0;
+    padding: 6px 12px;
+    font-size: 15px;
+  }
 }
 
 .fen-bar {
@@ -1542,6 +1700,109 @@ body {
   flex: 1;
   text-align: right; /* Р§РµСЂРЅС‹Рµ С…РѕРґС‹ РїСЂРёР¶Р°С‚С‹ РІРїСЂР°РІРѕ (РїРѕРґ Maia 2) */
   padding-right: 15px;
+}
+
+/* --- Разбор партии: ход + оценка + значок качества ---------------------- */
+
+.review-hint {
+  margin: -2px 0 8px;
+  font-family: "Inter", sans-serif;
+  font-size: 11px;
+  color: #837053;
+}
+
+.review-move {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 6px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #333;
+  font-family: "Calypso", serif;
+  font-size: 18px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.review-move:hover {
+  background: rgba(131, 183, 135, 0.18);
+}
+
+.review-move.is-active {
+  background-color: #dcecd9;
+}
+
+.review-move-num {
+  flex: 0 0 28px;
+  color: #555;
+  font-size: 14px;
+  text-align: right;
+}
+
+.review-move.is-black .review-move-san {
+  padding-left: 18px;
+}
+
+.review-move-san {
+  flex: 1;
+  min-width: 0;
+}
+
+.review-move-mark {
+  margin-left: 3px;
+  font-family: "Inter", sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.review-move-san--inaccuracy {
+  color: #a98417;
+}
+
+.review-move-san--mistake {
+  color: #c26a3a;
+}
+
+.review-move-san--blunder {
+  color: #b3543a;
+}
+
+/*
+ * Оценка - компактная плашка в стиле шахматных сайтов: светлая при
+ * перевесе белых, тёмная при перевесе чёрных.
+ */
+.review-move-eval {
+  flex: 0 0 auto;
+  min-width: 46px;
+  padding: 2px 5px;
+  border-radius: 6px;
+  font-family: "Inter", sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.review-move-eval.is-white {
+  background: #f7f5ee;
+  box-shadow: inset 0 0 0 1px rgba(74, 50, 32, 0.18);
+  color: #2f4f3a;
+}
+
+.review-move-eval.is-black {
+  background: #3b3b39;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+  color: #f3f0e6;
+}
+
+.review-move-eval.is-equal {
+  background: rgba(74, 50, 32, 0.08);
+  color: #666;
 }
 /* --- РќР°РІРёРіР°С†РёСЏ СЃРѕ СЃС‚СЂРµР»РєР°РјРё --- */
 /* Р’С‹СЃС‚СЂР°РёРІР°РµРј РєРЅРѕРїРєРё Рё СЃС‡РµС‚С‡РёРє СЃС‚СЂРѕРіРѕ РїРѕ С†РµРЅС‚СЂСѓ РЅР° СЂР°РІРЅРѕРј СѓРґР°Р»РµРЅРёРё */
@@ -3138,6 +3399,23 @@ body {
   color: #666;
 }
 
+/* Метка уровня из программы курса: только подсказка, доступ не ограничивает. */
+.training-module-level {
+  align-self: flex-start;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(47, 92, 54, 0.28);
+  background: rgba(47, 92, 54, 0.08);
+  color: #2f5c36;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.training-module-level--header {
+  margin: 6px 0 4px;
+}
+
 .training-module-meta {
   align-self: flex-start;
   padding: 7px 12px;
@@ -3557,6 +3835,99 @@ body {
   background: #e8e4da;
   border-color: #c9c4b4;
   color: #999;
+}
+
+/* Развилка дебюта: карточки вариантов в панели теории. */
+.training-variations {
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px dashed rgba(180, 135, 44, 0.55);
+  display: grid;
+  gap: 10px;
+}
+
+.training-variations-lead {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #64748b;
+}
+
+.training-variation-list {
+  display: grid;
+  gap: 8px;
+}
+
+.training-variation-card {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid #c9a96e;
+  background: rgba(255, 255, 255, 0.8);
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.training-variation-card:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 1);
+  border-color: #b4872c;
+}
+
+.training-variation-card--active,
+.training-variation-card--active:hover:not(:disabled) {
+  background: #f3e9d2;
+  border-color: #5e9463;
+}
+
+.training-variation-card:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.training-variation-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #2f5c36;
+}
+
+.training-variation-line {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  color: #555;
+}
+
+.training-variation-description {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #555;
+}
+
+/* Плашка выбранной ветки над доской. */
+.training-branch-banner {
+  display: grid;
+  gap: 3px;
+  margin-bottom: 12px;
+  padding: 9px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(180, 135, 44, 0.68);
+  background: rgba(243, 233, 210, 0.9);
+}
+
+.training-branch-banner-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #2f5c36;
+}
+
+.training-branch-banner-line {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 13px;
+  color: #555;
 }
 
 /* Прогресс-бары обучения. Повторяем визуал .progress-meter из

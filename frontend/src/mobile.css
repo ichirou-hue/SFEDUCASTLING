@@ -4,6 +4,12 @@
   display: none;
 }
 
+/* Быстрый доступ к «Ходам» и «Чату» нужен только на телефоне:
+   на широком экране обе панели и так стоят рядом с доской. */
+.mobile-game-dock {
+  display: none;
+}
+
 @media (max-width: 1150px) and (min-width: 761px) {
   .main-area {
     display: grid;
@@ -44,6 +50,14 @@
 
   .main-area > .eval-bar .eval-bar-label {
     display: none;
+  }
+
+  .main-area > .eval-bar .eval-bar-mode {
+    display: none;
+  }
+
+  .ctrl-btn--eval-mode {
+    display: inline-block;
   }
 
   .main-area > .board-section {
@@ -484,6 +498,14 @@
 
   .main-area > .eval-bar .eval-bar-label {
     display: none;
+  }
+
+  .main-area > .eval-bar .eval-bar-mode {
+    display: none;
+  }
+
+  .ctrl-btn--eval-mode {
+    display: inline-block;
   }
 
   .main-area > .board-section {
