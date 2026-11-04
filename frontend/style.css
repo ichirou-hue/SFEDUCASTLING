@@ -2654,22 +2654,6 @@ textarea {
   overflow-wrap: anywhere;
 }
 
-.puzzle-theme-icon {
-  position: absolute;
-  right: 0;
-  flex: 0 0 56px;
-  display: grid;
-  width: 56px;
-  height: 56px;
-  place-items: center;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  font-size: 42px;
-  color: #225a73;
-  line-height: 1;
-}
-
 .puzzle-instruction {
   color: #46534d;
   font: 600 13px/1.4 Inter, sans-serif;
