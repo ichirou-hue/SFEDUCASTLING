@@ -8,6 +8,19 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
+# Секрет по умолчанию. Приложение в production обязано стартовать только
+# с собственным JWT_SECRET_KEY (см. backend/api_gateway/config_guard.py).
+DEFAULT_JWT_SECRET = "dev-key-change-me"
+
+# Источники, разрешённые в development. В production этот список нужно
+# заменить реальными доменами: config_guard считает локальные адреса ошибкой.
+DEFAULT_CORS_ORIGINS = (
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:8005",
+    "http://127.0.0.1:8005",
+)
+
 # Теперь загружаем .env из правильной папки
 load_dotenv(dotenv_path=BASE_DIR / ".env")
 
@@ -22,10 +35,77 @@ class ServerSettings(BaseModel):
     port: int = Field(8005, alias="SERVER_PORT")
 
 
-class CorsSettings(BaseModel):
-    allowed_origins: list[str] = Field(["*"], alias="ALLOWED_ORIGINS")
+class CorsSettings(BaseSettings):
+    """CORS. По умолчанию разрешены только локальные адреса разработки.
+
+    ``ALLOWED_ORIGINS`` принимает JSON-массив, например:
+    ``ALLOWED_ORIGINS=["https://gigachess.ru"]``.
+    """
+
+    model_config = SettingsConfigDict(
+        env_file=BASE_DIR / ".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
+
+    allowed_origins: list[str] = Field(
+        default_factory=lambda: list(DEFAULT_CORS_ORIGINS),
+        alias="ALLOWED_ORIGINS",
+    )
     allow_methods: list[str] = Field(["*"], alias="ALLOW_METHODS")
     allow_headers: list[str] = Field(["*"], alias="ALLOW_HEADERS")
+    allow_credentials: bool = Field(False, alias="ALLOW_CREDENTIALS")
+
+
+class SecuritySettings(BaseSettings):
+    """Заголовки безопасности, доверенные хосты и лимиты загрузки."""
+
+    model_config = SettingsConfigDict(
+        env_file=BASE_DIR / ".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
+
+    # Пусто = проверка Host выключена в development и обязательна в production.
+    trusted_hosts: list[str] = Field(default_factory=list, alias="TRUSTED_HOSTS")
+    max_upload_bytes: int = Field(10 * 1024 * 1024, alias="MAX_UPLOAD_BYTES")
+    security_headers_enabled: bool = Field(True, alias="SECURITY_HEADERS_ENABLED")
+    hsts_max_age: int = Field(31_536_000, alias="HSTS_MAX_AGE")
+    content_security_policy: str = Field(
+        "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; "
+        "object-src 'none'; script-src 'self' 'unsafe-inline'; "
+        "style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; "
+        "font-src 'self' data:; connect-src 'self' https: wss:; "
+        "manifest-src 'self'; form-action 'self'",
+        alias="CONTENT_SECURITY_POLICY",
+    )
+
+
+class RateLimitSettings(BaseSettings):
+    """Простые in-memory лимиты частоты (один процесс uvicorn).
+
+    Значения задаются в запросах за окно. Для нескольких воркеров нужен
+    внешний лимитер (Redis), здесь сознательно оставлен минимальный вариант.
+    """
+
+    model_config = SettingsConfigDict(
+        env_file=BASE_DIR / ".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
+
+    enabled: bool = Field(True, alias="RATE_LIMIT_ENABLED")
+    login_attempts: int = Field(5, alias="LOGIN_RATE_LIMIT_ATTEMPTS")
+    login_window_sec: int = Field(60, alias="LOGIN_RATE_LIMIT_WINDOW_SEC")
+    auth_attempts: int = Field(20, alias="AUTH_RATE_LIMIT_ATTEMPTS")
+    auth_window_sec: int = Field(60, alias="AUTH_RATE_LIMIT_WINDOW_SEC")
+    chat_attempts: int = Field(30, alias="CHAT_RATE_LIMIT_ATTEMPTS")
+    chat_window_sec: int = Field(60, alias="CHAT_RATE_LIMIT_WINDOW_SEC")
+    expensive_attempts: int = Field(10, alias="EXPENSIVE_RATE_LIMIT_ATTEMPTS")
+    expensive_window_sec: int = Field(60, alias="EXPENSIVE_RATE_LIMIT_WINDOW_SEC")
 
 
 class ModelsSettings(BaseModel):
@@ -110,9 +190,17 @@ class AuthSettings(BaseSettings):
         extra="ignore",
     )
 
-    jwt_secret: str = Field("dev-key-change-me", alias="JWT_SECRET_KEY")
+    jwt_secret: str = Field(DEFAULT_JWT_SECRET, alias="JWT_SECRET_KEY")
     access_token_ttl_min: int = Field(60 * 24 * 7, alias="ACCESS_TOKEN_TTL_MIN")  # 7 суток
     refresh_token_ttl_days: int = Field(90, alias="REFRESH_TOKEN_TTL_DAYS")
+
+    @property
+    def uses_default_secret(self) -> bool:
+        return self.jwt_secret.strip() in {"", DEFAULT_JWT_SECRET}
+
+    @property
+    def secret_is_weak(self) -> bool:
+        return self.uses_default_secret or len(self.jwt_secret.strip()) < 32
 
 
 
@@ -134,6 +222,9 @@ class ChessOAuthSettings(BaseSettings):
 
     public_base_url: str = Field("", alias="OAUTH_PUBLIC_BASE_URL")
     frontend_base_url: str = Field("", alias="FRONTEND_BASE_URL")
+    # Отдельный секрет для подписи OAuth-кук. Пусто = fallback на jwt_secret
+    # только вне production; в production значение обязательно.
+    cookie_secret: str = Field("", alias="OAUTH_COOKIE_SECRET")
     cookie_secure: bool = Field(False, alias="OAUTH_COOKIE_SECURE")
     flow_ttl_sec: int = Field(600, alias="OAUTH_FLOW_TTL_SEC")
     http_timeout: float = Field(10.0, alias="OAUTH_HTTP_TIMEOUT")
@@ -156,15 +247,32 @@ class ChessOAuthSettings(BaseSettings):
         "client_secret_post", alias="CHESSCOM_OAUTH_TOKEN_AUTH_METHOD"
     )
 
+    @property
+    def uses_default_cookie_secret(self) -> bool:
+        return not self.cookie_secret.strip()
+
+    def cookie_signing_secret(self) -> str:
+        """Секрет для OAuth-кук.
+
+        Отдельный секрет не даёт подделать OAuth-куку, даже если JWT-секрет
+        утёк. В production его наличие обязательно (см. config_guard).
+        """
+        configured = self.cookie_secret.strip()
+        if configured:
+            return configured
+        return settings.auth.jwt_secret
+
 
 class Settings(BaseSettings):
     app_name: str = Field("SFEDUCASTLING API", alias="APP_NAME")
+    app_env: str = Field("development", alias="APP_ENV")
     debug: bool = Field(False, alias="DEBUG")
-    secret_key: str = Field("dev-key", alias="SECRET_KEY")
     frontend_dir: Path = Field(BASE_DIR / "frontend", alias="FRONTEND_DIR")
 
     server: ServerSettings = ServerSettings()
     cors: CorsSettings = CorsSettings()
+    security: SecuritySettings = SecuritySettings()
+    rate_limit: RateLimitSettings = RateLimitSettings()
     models: ModelsSettings = ModelsSettings()
     maia3: Maia3Settings = Maia3Settings()
     data: DataSettings = DataSettings()
@@ -182,6 +290,15 @@ class Settings(BaseSettings):
         extra="ignore",
         env_nested_delimiter="__",
     )
+
+    @property
+    def is_production(self) -> bool:
+        return self.app_env.strip().lower() in {"production", "prod"}
+
+    @property
+    def docs_enabled(self) -> bool:
+        """Swagger/Redoc выключены в production."""
+        return not self.is_production
 
 
 env_path = BASE_DIR / ".env"

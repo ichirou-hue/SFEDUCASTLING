@@ -1,9 +1,16 @@
 """Учебные модули: верхний уровень курса (пешка, конь, слон и т.д.)."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from sqlalchemy import Boolean, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.db.base import Base
+
+if TYPE_CHECKING:
+    from backend.models.training_lesson import TrainingLesson
 
 
 class TrainingModule(Base):
@@ -16,7 +23,7 @@ class TrainingModule(Base):
     sort_order: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
 
-    lessons: Mapped[list["TrainingLesson"]] = relationship(
+    lessons: Mapped[list[TrainingLesson]] = relationship(
         back_populates="module",
         cascade="all, delete-orphan",
         order_by="TrainingLesson.sort_order",

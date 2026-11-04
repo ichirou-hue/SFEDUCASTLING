@@ -14,9 +14,9 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from sqlalchemy import select
-from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.db.upsert import dialect_insert
 from backend.models.training_lesson import TrainingLesson
 from backend.models.training_module import TrainingModule
 from backend.models.training_task import TrainingTask
@@ -98,13 +98,13 @@ async def ensure_user_theme_difficulties(
             continue
         initial = next_difficulty(starting_difficulty, accuracy_by_slug.get(slug))
         stmt = (
-            pg_insert(UserThemeDifficulty)
+            dialect_insert(db, UserThemeDifficulty)
             .values(
                 user_id=user_id,
                 theme_slug=slug,
                 current_difficulty=initial,
             )
-            .on_conflict_do_nothing(constraint="uq_user_theme_difficulty")
+            .on_conflict_do_nothing(index_elements=["user_id", "theme_slug"])
         )
         await db.execute(stmt)
         inserted = True
@@ -172,13 +172,13 @@ async def update_theme_difficulty_after_attempt(
     # Строка обычно уже создана ensure_user_theme_difficulties(). Но оставляем
     # безопасную ленивую вставку для прямых вызовов сервиса.
     stmt = (
-        pg_insert(UserThemeDifficulty)
+        dialect_insert(db, UserThemeDifficulty)
         .values(
             user_id=user_id,
             theme_slug=theme_slug,
             current_difficulty=initial_difficulty_for_rating(player_rating),
         )
-        .on_conflict_do_nothing(constraint="uq_user_theme_difficulty")
+        .on_conflict_do_nothing(index_elements=["user_id", "theme_slug"])
     )
     await db.execute(stmt)
     await db.flush()

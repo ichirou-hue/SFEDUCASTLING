@@ -5,7 +5,6 @@ import json
 import sys
 import io
 from unittest.mock import patch, MagicMock, PropertyMock
-import pytest
 import chess
 from fastapi.testclient import TestClient
 from backend.app import app
@@ -211,7 +210,7 @@ class TestKnowledgeLoaded:
 class TestDataSaveSuccess:
     """Покрываем success-путь save_move_to_dataset и PGN error handler."""
 
-    def test_save_move_success(self):
+    def test_save_move_success(self, auth_headers):
         """Stockfish загружен, сохраняем ход в БД."""
         mock_sf = MagicMock()
         mock_sf.get_best_move_time.return_value = "e2e4"
@@ -220,20 +219,20 @@ class TestDataSaveSuccess:
         with patch("backend.api_gateway.routes.data.ensure_stockfish", return_value=mock_sf):
             resp = client.post("/api/save-move-to-dataset", json={
                 "fen": START_FEN, "move": "e2e4", "game_id": "g1"
-            })
+            }, headers=auth_headers)
 
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "saved"
         assert data["dataset_size"] >= 1
 
-    def test_save_move_exception(self):
+    def test_save_move_exception(self, auth_headers):
         """Stockfish загружен, set_fen_position падает."""
         mock_sf = MagicMock()
         mock_sf.set_fen_position.side_effect = ValueError("bad fen")
         with patch("backend.api_gateway.routes.data.ensure_stockfish", return_value=mock_sf):
             resp = client.post("/api/save-move-to-dataset", json={
-                "fen": START_FEN, "move": "e2e4"})
+                "fen": START_FEN, "move": "e2e4"}, headers=auth_headers)
         assert resp.status_code == 200
         assert "error" in resp.json()
 

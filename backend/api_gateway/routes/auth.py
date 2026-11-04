@@ -24,6 +24,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api_gateway.dependecies import get_current_admin, get_current_user
+from backend.api_gateway.rate_limit import auth_rate_limit, login_rate_limit
 from backend.api_gateway.security import (
     create_access_token,
     generate_refresh_token,
@@ -272,7 +273,7 @@ async def _issue_tokens(db: AsyncSession, user: User) -> dict:
     }
 
 
-@router.post("/register", status_code=status.HTTP_201_CREATED)
+@router.post("/register", status_code=status.HTTP_201_CREATED, dependencies=[Depends(auth_rate_limit)])
 async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
     existing = await db.scalar(select(User).where(User.login == req.login))
     if existing:
@@ -297,7 +298,7 @@ async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
     return {"message": "Аккаунт создан", **tokens}
 
 
-@router.post("/login")
+@router.post("/login", dependencies=[Depends(login_rate_limit)])
 async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
     user = await db.scalar(
         select(User).where((User.login == req.login) | (User.email == req.login))
@@ -308,7 +309,7 @@ async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
     return {"message": "Вход выполнен", **(await _issue_tokens(db, user))}
 
 
-@router.post("/refresh")
+@router.post("/refresh", dependencies=[Depends(auth_rate_limit)])
 async def refresh(req: RefreshRequest, db: AsyncSession = Depends(get_db)):
     """Ротация refresh-токена и продление активной сессии ещё на 90 дней."""
     token_hash = hash_refresh_token(req.refresh_token)

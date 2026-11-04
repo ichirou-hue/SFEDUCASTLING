@@ -1,11 +1,17 @@
 """Стандартные учебные задания, отображаемые во вкладке «Обучение»."""
 
-from typing import Any
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import Boolean, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.db.base import Base, JsonType
+
+if TYPE_CHECKING:
+    from backend.models.training_attempt import TrainingAttempt
+    from backend.models.training_lesson import TrainingLesson
 
 
 class TrainingTask(Base):
@@ -39,8 +45,8 @@ class TrainingTask(Base):
     sort_order: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
 
-    lesson: Mapped["TrainingLesson"] = relationship(back_populates="tasks")
-    attempts: Mapped[list["TrainingAttempt"]] = relationship(
+    lesson: Mapped[TrainingLesson] = relationship(back_populates="tasks")
+    attempts: Mapped[list[TrainingAttempt]] = relationship(
         back_populates="task",
         cascade="all, delete-orphan",
         order_by="TrainingAttempt.created_at",

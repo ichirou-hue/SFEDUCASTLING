@@ -13,8 +13,9 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.concurrency import run_in_threadpool
 
-from backend.api_gateway.dependecies import get_optional_current_user
+from backend.api_gateway.dependecies import get_current_user, get_optional_current_user
 from backend.api_gateway.models import ChatAskRequest
+from backend.api_gateway.rate_limit import chat_rate_limit
 from backend.api_gateway.sanitize import sanitize_text
 from backend.api_gateway.state import ensure_stockfish, get_gigachess, stockfish_lock
 from backend.db.session import get_db
@@ -138,23 +139,44 @@ class IngestMessage(BaseModel):
     role: str = Field(default="assistant", pattern="^(user|assistant)$")
 
 
-@router.post("/api/chat/ingest")
-async def ingest_comment(req: IngestMessage, db: AsyncSession = Depends(get_db)):
-    """Принимает сообщение и сохраняет его для отправки в чат."""
-    message = ChatMessage(role=req.role, text=sanitize_text(req.message))
+@router.post("/api/chat/ingest", dependencies=[Depends(chat_rate_limit)])
+async def ingest_comment(
+    req: IngestMessage,
+    user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Принимает сообщение и сохраняет его владельцу.
+
+    Раньше запись попадала в общий поток без автора: любой мог и читать,
+    и писать. Теперь сообщение привязывается к текущему пользователю.
+    """
+    message = ChatMessage(
+        role=req.role,
+        text=sanitize_text(req.message),
+        user_id=user.id,
+    )
     db.add(message)
     await db.commit()
-    total = await db.scalar(select(func.count(ChatMessage.id)))
+    total = await db.scalar(
+        select(func.count(ChatMessage.id)).where(ChatMessage.user_id == user.id)
+    )
     return {"ok": True, "count": total}
 
 
 @router.get("/api/chat/messages")
-async def get_chat_messages(after: int = 0, db: AsyncSession = Depends(get_db)):
-    """Отдаёт сообщения с id > `after` (для опроса фронтендом)."""
+async def get_chat_messages(
+    after: int = 0,
+    user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Отдаёт сообщения владельца с id > `after` (для опроса фронтендом)."""
     rows = (
         await db.execute(
             select(ChatMessage)
-            .where(ChatMessage.id > after)
+            .where(
+                ChatMessage.id > after,
+                ChatMessage.user_id == user.id,
+            )
             .order_by(ChatMessage.id.asc())
         )
     ).scalars().all()
@@ -167,9 +189,14 @@ async def get_chat_messages(after: int = 0, db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/api/chat/messages/count")
-async def get_messages_count(db: AsyncSession = Depends(get_db)):
-    """Возвращает текущее количество сообщений (для опроса)."""
-    total = await db.scalar(select(func.count(ChatMessage.id)))
+async def get_messages_count(
+    user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Возвращает количество сообщений владельца (для опроса)."""
+    total = await db.scalar(
+        select(func.count(ChatMessage.id)).where(ChatMessage.user_id == user.id)
+    )
     return {"count": total}
 
 
@@ -193,7 +220,7 @@ SYSTEM_PROMPT = (
 )
 
 
-@router.post("/api/chat/ask")
+@router.post("/api/chat/ask", dependencies=[Depends(chat_rate_limit)])
 async def chat_ask(
     req: ChatAskRequest,
     db: AsyncSession = Depends(get_db),

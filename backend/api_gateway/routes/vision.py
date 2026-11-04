@@ -2,14 +2,17 @@
 
 import os
 import tempfile
-from fastapi import APIRouter, UploadFile, File
 
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+
+from backend.api_gateway.rate_limit import expensive_rate_limit
 from backend.api_gateway.state import llava_model, load_llava, extract_fen_from_image
+from backend.api_gateway.uploads import read_upload_limited
 
 router = APIRouter(tags=["vision"])
 
 
-@router.post("/api/analyze-image")
+@router.post("/api/analyze-image", dependencies=[Depends(expensive_rate_limit)])
 async def analyze_image(file: UploadFile = File(...)):
     """Распознаёт шахматную позицию с загруженного изображения доски."""
     global llava_model
@@ -22,7 +25,7 @@ async def analyze_image(file: UploadFile = File(...)):
 
     tmp_path = None
     try:
-        contents = await file.read()
+        contents = await read_upload_limited(file)
 
         filename = file.filename or "image.png"
         ext = filename.split(".")[-1].lower()
@@ -40,6 +43,8 @@ async def analyze_image(file: UploadFile = File(...)):
 
         return {"fen": fen, "message": "Позиция распознана!"}
 
+    except HTTPException:
+        raise
     except Exception as e:
         return {"error": str(e)}
 

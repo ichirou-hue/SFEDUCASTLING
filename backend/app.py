@@ -5,12 +5,17 @@
 """
 
 import os
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 
+from backend.api_gateway.config_guard import validate_runtime_settings
+from backend.api_gateway.security_headers import SecurityHeadersMiddleware
 from backend.api_gateway.state import (
     load_stockfish,
     load_knowledge,
@@ -18,6 +23,7 @@ from backend.api_gateway.state import (
     load_llava,
     shutdown_maia3,
 )
+from backend.config.settings import settings
 
 from backend.api_gateway.routes.game import router as game_router
 from backend.api_gateway.routes.analysis import router as analysis_router
@@ -36,15 +42,42 @@ from backend.api_gateway.routes.admin import router as admin_router
 from backend.api_gateway.routes.health import router as health_router
 from backend.api_gateway.routes.gigacoins import router as gigacoins_router
 
-app = FastAPI(title="SFEDUCASTLING API")
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    # В production падаем на небезопасной конфигурации до приёма трафика.
+    validate_runtime_settings(settings)
+    yield
+    shutdown_maia3()
 
-# Разрешаем запросы с любых источников (для разработки)
+
+app = FastAPI(
+    title="SFEDUCASTLING API",
+    debug=settings.debug,
+    docs_url="/docs" if settings.docs_enabled else None,
+    redoc_url="/redoc" if settings.docs_enabled else None,
+    openapi_url="/openapi.json" if settings.docs_enabled else None,
+    lifespan=lifespan,
+)
+
+# CORS: домены только из настроек, без жёсткого "*".
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=list(settings.cors.allowed_origins),
+    allow_credentials=settings.cors.allow_credentials,
+    allow_methods=list(settings.cors.allow_methods),
+    allow_headers=list(settings.cors.allow_headers),
 )
+
+# Заголовок Host проверяем только если список доверенных хостов задан.
+# В production он обязателен (см. config_guard).
+if settings.security.trusted_hosts:
+    app.add_middleware(
+        TrustedHostMiddleware,
+        allowed_hosts=list(settings.security.trusted_hosts),
+    )
+
+# Добавляем последним, чтобы заголовки были и на ответах CORS/TrustedHost.
+app.add_middleware(SecurityHeadersMiddleware)
 
 # Подключаем маршруты, разбитые по доменам
 app.include_router(game_router)
@@ -103,11 +136,6 @@ load_knowledge()
 load_puzzles()
 print("Инициализация LLaVA...")
 load_llava()
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    shutdown_maia3()
 
 
 if __name__ == "__main__":

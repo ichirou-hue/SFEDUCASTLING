@@ -5,9 +5,9 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from sqlalchemy import select
-from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.db.upsert import dialect_insert
 from backend.models.training_lesson import TrainingLesson
 from backend.models.training_module import TrainingModule
 from backend.models.training_review import TrainingReview
@@ -36,7 +36,7 @@ async def update_training_review_after_attempt(
     # сломанный server_default "now()" (функции нет в SQLite), и INSERT падал
     # с "unknown function: now()". Явные значения работают на обоих диалектах.
     stmt = (
-        pg_insert(TrainingReview)
+        dialect_insert(db, TrainingReview)
         .values(
             user_id=user_id,
             task_id=task_id,
@@ -46,7 +46,7 @@ async def update_training_review_after_attempt(
             created_at=current,
             updated_at=current,
         )
-        .on_conflict_do_nothing(constraint="uq_training_review_user_task")
+        .on_conflict_do_nothing(index_elements=["user_id", "task_id"])
     )
     await db.execute(stmt)
     await db.flush()

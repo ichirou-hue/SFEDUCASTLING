@@ -6,23 +6,38 @@ from datetime import UTC, datetime
 
 import chess
 import chess.pgn
-from fastapi import APIRouter, Depends, File, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.api_gateway.dependecies import get_current_admin, get_current_user
 from backend.api_gateway.models import DatasetMoveRequest, PGNTextRequest
+from backend.api_gateway.rate_limit import expensive_rate_limit
 from backend.api_gateway.state import ensure_stockfish, stockfish_lock
+from backend.api_gateway.uploads import read_upload_limited
 from backend.config.settings import settings
 from backend.db.session import get_db
 from backend.models.dataset_move import DatasetMove
+from backend.models.user import User
 
 router = APIRouter(tags=["data"])
 
 
-@router.post("/api/save-move-to-dataset")
-async def save_move_to_dataset(req: DatasetMoveRequest, db: AsyncSession = Depends(get_db)):
-    """Сохраняет ход пользователя в тренировочный датасет с оценкой Stockfish."""
+@router.post(
+    "/api/save-move-to-dataset",
+    dependencies=[Depends(expensive_rate_limit)],
+)
+async def save_move_to_dataset(
+    req: DatasetMoveRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Сохраняет ход в тренировочный датасет от имени текущего пользователя.
+
+    ``user_id`` из тела больше не принимается: иначе можно было записать ход
+    на чужой аккаунт. Поле оставлено в схеме для совместимости и игнорируется.
+    """
     stockfish = ensure_stockfish()
     if not stockfish:
         return {"error": "Stockfish не загружен"}
@@ -38,7 +53,7 @@ async def save_move_to_dataset(req: DatasetMoveRequest, db: AsyncSession = Depen
             user_move=req.move,
             stockfish_move=stockfish_best,
             stockfish_eval=stockfish_eval,
-            user_id=req.user_id,
+            user_id=user.id,
             game_id=req.game_id,
         )
         db.add(row)
@@ -64,11 +79,14 @@ async def save_move_to_dataset(req: DatasetMoveRequest, db: AsyncSession = Depen
 
 
 @router.get("/api/dataset/export")
-async def export_dataset(db: AsyncSession = Depends(get_db)):
-    """Выгружает весь датасет в формате NDJSON (по строке на объект).
+async def export_dataset(
+    _: User = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Выгружает весь датасет в формате NDJSON (только администратор).
 
-    Каждая строка повторяет структуру объекта из старого dataset.jsonl,
-    чтобы ML-пайплайн работал без изменений.
+    В датасете есть ``user_id`` и ходы всех пользователей, поэтому публичный
+    доступ к нему закрыт.
     """
 
     async def row_gen():
@@ -89,13 +107,14 @@ async def export_dataset(db: AsyncSession = Depends(get_db)):
     return StreamingResponse(row_gen(), media_type="application/x-ndjson")
 
 
-@router.post("/api/parse-pgn-text")
+@router.post(
+    "/api/parse-pgn-text",
+    dependencies=[Depends(expensive_rate_limit)],
+)
 def parse_pgn_text(req: PGNTextRequest):
     """Разбирает PGN-текст, вставленный пользователем, в структурированный формат."""
     try:
-        print("[PGN-Text] Начало обработки PGN текста")
-        print(f"[PGN-Text] Длина текста: {len(req.pgn)} символов")
-        print(f"[PGN-Text] Первые 200 символов: {req.pgn[:200]}")
+        print(f"[PGN-Text] Начало обработки, длина: {len(req.pgn)} символов")
 
         pgn_io = io.StringIO(req.pgn)
         game = chess.pgn.read_game(pgn_io)
@@ -107,8 +126,6 @@ def parse_pgn_text(req: PGNTextRequest):
         white = headers.get("White", "Unknown")
         black = headers.get("Black", "Unknown")
         result = headers.get("Result", "*")
-
-        print(f"[PGN-Text] Партия: {white} vs {black}, результат: {result}")
 
         board = game.board()
         moves_list = []
@@ -150,7 +167,6 @@ def parse_pgn_text(req: PGNTextRequest):
         })
 
         print(f"[PGN-Text] Всего ходов: {move_count}, позиций: {len(moves_list)}")
-
         return {
             "games_count": 1,
             "games": [{
@@ -171,12 +187,11 @@ def parse_pgn_text(req: PGNTextRequest):
         return {"error": f"Ошибка парсинга: {str(e)}"}
 
 
-@router.post("/api/parse-pgn")
+@router.post("/api/parse-pgn", dependencies=[Depends(expensive_rate_limit)])
 async def parse_pgn(file: UploadFile = File(...)):
     """Разбирает загруженный PGN-файл в структурированные данные партий."""
     try:
-        print(f"[PGN] Начало обработки файла: {file.filename}")
-        contents = await file.read()
+        contents = await read_upload_limited(file)
         print(f"[PGN] Файл прочитан: {len(contents)} байт")
 
         if isinstance(contents, bytes):
@@ -184,8 +199,6 @@ async def parse_pgn(file: UploadFile = File(...)):
                 contents = contents.decode("utf-8")
             except UnicodeDecodeError:
                 contents = contents.decode("latin-1")
-
-        print(f"[PGN] Содержимое:\n{contents[:500]}")
 
         pgn_io = io.StringIO(contents)
         games = []
@@ -201,8 +214,6 @@ async def parse_pgn(file: UploadFile = File(...)):
             white = headers.get("White", "Unknown")
             black = headers.get("Black", "Unknown")
             result = headers.get("Result", "*")
-
-            print(f"[PGN] Партия {game_num}: {white} vs {black}")
 
             board = game.board()
             moves_list = []
@@ -262,6 +273,8 @@ async def parse_pgn(file: UploadFile = File(...)):
 
         return {"games_count": len(games), "games": games}
 
+    except HTTPException:
+        raise
     except Exception as e:
         import traceback
         print(f"[PGN] ОШИБКА: {e}")

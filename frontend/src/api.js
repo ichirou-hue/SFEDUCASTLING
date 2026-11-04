@@ -453,6 +453,11 @@ export async function fetchMaiaAchievements() {
   return Array.isArray(data?.levels) ? data.levels : [];
 }
 
+export async function fetchAchievements() {
+  const { data } = await api.get("/api/game/achievements");
+  return Array.isArray(data?.achievements) ? data.achievements : [];
+}
+
 export async function fetchRandomOpening() {
   const { data } = await api.get("/api/knowledge/random-opening");
   return data;

@@ -1,9 +1,17 @@
 """Уроки внутри учебного модуля."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from sqlalchemy import Boolean, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.db.base import Base
+
+if TYPE_CHECKING:
+    from backend.models.training_module import TrainingModule
+    from backend.models.training_task import TrainingTask
 
 
 class TrainingLesson(Base):
@@ -26,8 +34,8 @@ class TrainingLesson(Base):
     sort_order: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
 
-    module: Mapped["TrainingModule"] = relationship(back_populates="lessons")
-    tasks: Mapped[list["TrainingTask"]] = relationship(
+    module: Mapped[TrainingModule] = relationship(back_populates="lessons")
+    tasks: Mapped[list[TrainingTask]] = relationship(
         back_populates="lesson",
         cascade="all, delete-orphan",
         order_by="TrainingTask.sort_order",

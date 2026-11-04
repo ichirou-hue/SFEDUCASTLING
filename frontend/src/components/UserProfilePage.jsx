@@ -11,6 +11,7 @@ import ChessAccountsSection from "./ChessAccountsSection.jsx";
 import ProgressWidget from "./ProgressWidget.jsx";
 import RatingBandProgress from "./RatingBandProgress.jsx";
 import UserRecordsWidget from "./UserRecordsWidget.jsx";
+import AchievementsWidget from "./AchievementsWidget.jsx";
 import PhaseAccuracyWidget from "./PhaseAccuracyWidget.jsx";
 import SiteFooter from "./SiteFooter.jsx";
 import "./UserProfilePage.css";
@@ -302,6 +303,7 @@ export default function UserProfilePage({ user, onUserChange }) {
       </section>
 
       <UserRecordsWidget />
+      <AchievementsWidget />
       <PhaseAccuracyWidget />
 
       <section className="user-profile-rating-section">

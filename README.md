@@ -14,6 +14,7 @@
 - **Онбординг** - анкета при первом входе, по ней подбираются уровень и персональные задачи.
 - **Чат с ИИ** - диалоговый помощник с учётом текущей позиции и истории ходов.
 - **Регистрация / профиль** - JWT-авторизация, шахматный профиль, аккаунты Lichess / Chess.com, виджет прогресса.
+- **Достижения** - разовые награды GigaCoin за первую партию, первый мат и первое поражение; результат партии проверяется повтором ходов на сервере.
 - **Админ-панель** - список пользователей, профили и статистика (`/admin`).
 
 ## 🛠 Стек
@@ -34,9 +35,10 @@
 ┌──────────────────────┐     ┌──────────────────────────────────────────────┐
 │      Frontend        │     │                     Backend                   │
 │  React 19 + Vite     │────▶│  FastAPI :8005 (грузит frontend/dist)        │
-│  (frontend/src)      │     │  └─ api_gateway/routes: 13 роутеров           │
+│  (frontend/src)      │     │  └─ api_gateway/routes: 16 роутеров           │
 │                      │     │     admin, analysis, analyze, auth, chat,    │
-│                      │     │     chess_profile, data, explanation, game,  │
+│                      │     │     chess_oauth, chess_profile, data,        │
+│                      │     │     explanation, game, gigacoins, health,    │
 │                      │     │     knowledge, learning, training, vision    │
 └──────────────────────┘ │  └─ services: adaptive/assessment/training_*    │
                              │  └─ llm: gigachess.py, explainer/             │
@@ -64,23 +66,29 @@
 ```plaintext
 ├── backend/                 # FastAPI backend
 │   ├── api_gateway/
-│   │   ├── routes/          #   13 роутеров: admin, analysis, analyze, auth,
-│   │   │                    #   chat, chess_profile, data, explanation, game,
-│   │   │                    #   knowledge, learning, training, vision
+│   │   ├── routes/          #   16 роутеров: admin, analysis, analyze, auth,
+│   │   │                    #   chat, chess_oauth, chess_profile, data, explanation,
+│   │   │                    #   game, gigacoins, health, knowledge, learning,
+│   │   │                    #   training, vision
 │   │   ├── state.py         #   singleton-менеджеры: Stockfish, Maia3, GigaChess,
 │   │   │                    #   базы дебютов и паззлов, LLaVA (отключена)
 │   │   ├── models.py        #   Pydantic-модели запросов/ответов
 │   │   ├── dependecies.py   #   зависимости: текущий пользователь, RBAC-роли
 │   │   ├── security.py      #   JWT-токены, bcrypt (cost 12)
+│   │   ├── config_guard.py  #   проверка конфигурации при старте
+│   │   ├── rate_limit.py    #   in-memory лимиты частоты запросов
+│   │   ├── security_headers.py  # CSP, HSTS, X-Frame-Options
+│   │   ├── uploads.py       #   чтение загрузок с лимитом размера
 │   │   └── sanitize.py      #   санитизация ввода
-│   ├── services/            #   adaptive_logic/adaptive_training, assessment,
-│   │                        #   dynamic_difficulty, course_topics, review_logic,
-│   │                        #   training_service/checker/seed/reviews/course_data,
-│   │                        #   game_recorder
-│   ├── models/              #   SQLAlchemy: user (+ chess_account, theme_difficulty),
-│   │                        #   game, chat_message, dataset_move, level_test,
-│   │                        #   puzzle_attempt, training_{module,lesson,task,attempt,review}
-│   ├── db/                  #   async SQLAlchemy (session, base)
+│   ├── services/            #   adaptive_logic/adaptive_training, achievements,
+│   │                        #   assessment, dynamic_difficulty, course_topics,
+│   │                        #   review_logic, training_service/checker/seed/reviews/
+│   │                        #   course_data, game_recorder
+│   ├── models/              #   SQLAlchemy: user (+ chess_account, theme_difficulty,
+│   │                        #   achievement), game, chat_message, dataset_move,
+│   │                        #   level_test, puzzle_attempt,
+│   │                        #   training_{module,lesson,task,attempt,review}
+│   ├── db/                  #   async SQLAlchemy (session, base, upsert)
 │   ├── config/              #   settings.py (pydantic-settings)
 │   ├── llm/                 #   gigachess.py (HTTP-клиент), chess_explainer.py (фасад),
 │   │                        #   explainer/ (пакет: факты, граундинг, валидация, ремонт)
@@ -93,7 +101,8 @@
 │   ├── src/
 │   │   ├── components/      #   Chessboard, MoveHistory, ChatPanel, EvalBar, FenBar,
 │   │   │                    #   PuzzlesPage, TrainingPage, LevelTestPage, AdminPage,
-│   │   │                    #   UserProfilePage, OnboardingModal, MiniProfilePopover,
+│   │   │                    #   UserProfilePage, AchievementsWidget,
+│   │   │                    #   OnboardingModal, MiniProfilePopover,
 │   │   │                    #   ProgressWidget, PuzzleRegisterGate, Sidebar, TopBar,
 │   │   │                    #   MiniBoard, RegisterModal
 │   │   ├── app.jsx          #   корневой компонент (роутинг)
@@ -109,10 +118,10 @@
 │   ├── rag_system_v1/       #   RAG по шахматной литературе (ChromaDB)
 │   └── synthesis_pipeline/  #   синтез тренерских SFT-датасетов
 ├── maia3/                   # git submodule: человекоподобный движок (UCI)
-├── alembic/                 # миграции (21 версия)
+├── alembic/                 # миграции (32 версии)
 ├── scripts/                 # create_admin.py, init_db.py
 ├── tests/                   # pytest: routes/, training/, learning/, auth/,
-│                            # knowledge/, analysis/, models/
+│                            # achievements/, security/, knowledge/, analysis/, models/
 ├── training_data/           # артефакты датасетов (parquet/jsonl)
 ├── analysis/                # классификатор ошибок, NAG-аннотаторы (stub)
 ├── input_gateway/           # мультимодальный ввод (stub)
@@ -120,9 +129,7 @@
 ├── reasoning/               # генерация объяснений (stub)
 ├── memory/                  # RAG поверх БД (stub)
 ├── evaluation/              # метрики и арена агентов (stub)
-├── docs/                    # user_guide.md, api/endpoints.md
-├── DESIGN.md                # дизайн-документ
-├── .env.example             # шаблон конфигурации (копируется в .env)
+├── docs/                    # user_guide.md, security.md, api/endpoints.md
 ├── start_llm.sh             # запуск Qwen3-8B через vLLM (порт 8000)
 ├── attach_llm.sh            # подключение LLM-сервиса
 ├── run.bat / run.sh         # установка и запуск (Windows / Linux)
@@ -156,7 +163,7 @@ run.bat
 bash run.sh
 ```
 
-Скрипт создаст venv, установит зависимости, скопирует `.env.example` в `.env`, прогонит миграции и запустит сервер на http://127.0.0.1:8005.
+Скрипт создаст venv, установит зависимости, создаст `.env` с локальной SQLite, прогонит миграции и запустит сервер на http://127.0.0.1:8005.
 
 ### Backend (вручную)
 
@@ -164,10 +171,10 @@ bash run.sh
 # 1. Python-окружение и зависимости
 pip install -r requirements.txt
 
-# 2. Конфигурация
-cp .env.example .env    # Windows: copy .env.example .env
+# 2. Конфигурация: создайте .env и задайте переменные
 # DATABASE_URL (по умолчанию SQLite), JWT_SECRET_KEY, MAIA3_*,
-# GIGACHESS_BASE_URL и т.д.; см. backend/config/settings.py
+# GIGACHESS_BASE_URL и т.д.; см. backend/config/settings.py.
+# Переменные для production: docs/security.md
 
 # 3. Миграции БД + наполнение учебного курса
 python -m scripts.init_db
@@ -202,10 +209,34 @@ python -m scripts.create_admin <login> <password> [--email me@example.com]
 ## 🧪 Тесты
 
 ```bash
-pytest tests/            # routes/, training/, learning/, auth/, knowledge/, analysis/, models/
+# Backend: полный набор с покрытием
+CI=true pytest
+
+# Только security- и achievement-регрессии
+CI=true pytest tests/security tests/achievements -q
+
+# Frontend: тесты и порог покрытия
+cd frontend
+npm test
+npm run test:coverage
 ```
 
-Покрытие настраивается в `pyproject.toml` (ruff + mypy + pytest).
+Общие fixtures для backend-тестов лежат в `tests/conftest.py`:
+`client`, `user_factory`, `auth_headers`, `admin_headers`. Фабрика сама
+создаёт пользователя через API и удаляет его зависимости после теста,
+поэтому тесты не зависят от порядка запуска и не засоряют БД.
+
+CI (`.github/workflows/ci.yml`) выполняет четыре группы проверок:
+
+* `ruff check --select E9,F63,F7,F82 backend tests` - синтаксис и
+  неопределённые имена;
+* `alembic upgrade head` и `alembic check` - миграции совпадают с моделями;
+* `pytest --cov-fail-under=50` - backend-тесты и минимальное покрытие;
+* `npm run test:coverage` и `npm run build` - тесты, порог покрытия и
+  сборка frontend.
+
+Покрытие backend настраивается в `pyproject.toml`, frontend - в
+`frontend/vite.config.js`.
 
 ## 👥 Команда
 

@@ -8,7 +8,7 @@ from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from backend.api_gateway.dependecies import get_optional_current_user
+from backend.api_gateway.dependecies import get_current_user, get_optional_current_user
 from backend.db.session import get_db
 from backend.api_gateway.models import (
     CapturedMaterialRequest,
@@ -28,6 +28,11 @@ from backend.api_gateway.state import (
     stockfish_lock,
 )
 from backend.services.game_recorder import record_game
+from backend.services.achievements import (
+    evaluate_game_achievements,
+    public_achievements,
+    unlock_achievements,
+)
 from backend.services.gigacoin_service import (
     MAIA_DRAW_COINS,
     MAIA_FAIR_GAP,
@@ -36,6 +41,7 @@ from backend.services.gigacoin_service import (
 )
 from backend.models.game import Game
 from backend.models.user import User
+from backend.models.user_achievement import UserAchievement
 
 router = APIRouter(tags=["game"])
 
@@ -537,6 +543,20 @@ async def maia_achievements(
     return {"levels": sorted(achieved)}
 
 
+@router.get("/api/game/achievements")
+async def game_achievements(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Каталог достижений пользователя с отметкой о разблокировке."""
+    rows = (
+        await db.scalars(
+            select(UserAchievement).where(UserAchievement.user_id == user.id)
+        )
+    ).all()
+    return {"achievements": public_achievements(rows)}
+
+
 @router.post("/api/game/finish")
 async def finish_game(
     req: FinishGameRequest,
@@ -556,8 +576,10 @@ async def finish_game(
         white, black = "player", "AI"
 
     coins_earned = 0
+    achievements_unlocked: list[dict] = []
     if user is not None:
         verified_result = _verified_maia_result(req)
+        ref = ""
         if verified_result is not None:
             ref_payload = f"{req.engine}:{req.elo}:{req.player_color}:{','.join(req.moves)}:{verified_result}"
             ref = hashlib.sha256(ref_payload.encode("utf-8")).hexdigest()
@@ -569,7 +591,15 @@ async def finish_game(
         requested_coins = MAIA_WIN_COINS.get(req.elo, 0) if player_won else MAIA_DRAW_COINS if player_drew else 0
         if requested_coins and fair_level:
             coins_earned += await award_gigacoins(db, user, "maia_game", ref, requested_coins)
-        if verified_result is not None:
+
+        # Достижения проверяются повтором партии, а не доверием к result/status.
+        achievement_codes = evaluate_game_achievements(
+            req.moves, req.result, req.player_color
+        )
+        achievements_unlocked = await unlock_achievements(db, user, achievement_codes)
+        coins_earned += sum(int(item["reward"]) for item in achievements_unlocked)
+
+        if verified_result is not None or achievements_unlocked:
             await db.commit()
 
     background_tasks.add_task(
@@ -589,6 +619,7 @@ async def finish_game(
         "status": "scheduled",
         "gigacoins_earned": coins_earned,
         "gigacoins_balance": int(user.gigacoins or 0) if user else 0,
+        "achievements": achievements_unlocked,
     }
 
 

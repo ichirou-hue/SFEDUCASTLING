@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   verify:
-    name: Backend tests, migrations, and frontend build
+    name: Backend quality gates, migrations, frontend tests and build
     runs-on: ubuntu-latest
     timeout-minutes: 30
     services:
@@ -55,11 +55,17 @@ jobs:
       - name: Check Python style
         run: ruff check backend/api_gateway/routes/health.py tests/routes/test_health.py
 
+      - name: Check Python syntax and undefined names
+        run: ruff check --select E9,F63,F7,F82 backend tests
+
       - name: Apply migrations to a clean PostgreSQL database
         run: python -m alembic upgrade head
 
+      - name: Check that models and migrations are in sync
+        run: python -m alembic check
+
       - name: Run backend test suite
-        run: pytest
+        run: pytest --cov-fail-under=50
 
       - name: Set up Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
@@ -71,6 +77,10 @@ jobs:
       - name: Install frontend dependencies
         working-directory: frontend
         run: npm ci
+
+      - name: Run frontend tests with coverage
+        working-directory: frontend
+        run: npm run test:coverage
 
       - name: Build frontend
         working-directory: frontend

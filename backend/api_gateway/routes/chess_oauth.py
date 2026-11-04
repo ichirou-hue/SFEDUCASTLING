@@ -28,7 +28,9 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.concurrency import run_in_threadpool
 
+from backend.api_gateway.config_guard import trusted_host_allowed
 from backend.api_gateway.dependecies import get_optional_current_user
+from backend.api_gateway.rate_limit import auth_rate_limit, expensive_rate_limit
 from backend.api_gateway.routes.auth import _issue_tokens
 from backend.api_gateway.routes.chess_profile import (
     _chesscom_profile,
@@ -99,8 +101,30 @@ def _safe_return_to(value: str | None) -> str:
 
 
 def _public_base_url(request: Request) -> str:
+    """Публичный адрес приложения.
+
+    В production он обязан быть задан явно (это проверяет config_guard),
+    поэтому заголовок Host никогда не влияет на redirect_uri. В development
+    допускается request.base_url, но только для доверенного Host.
+    """
     configured = settings.chess_oauth.public_base_url.strip()
-    return configured.rstrip("/") if configured else str(request.base_url).rstrip("/")
+    if configured:
+        return configured.rstrip("/")
+
+    if settings.is_production:
+        raise HTTPException(
+            status_code=500,
+            detail="OAUTH_PUBLIC_BASE_URL не настроен",
+        )
+
+    host = request.headers.get("host")
+    if settings.security.trusted_hosts and not trusted_host_allowed(
+        host,
+        settings.security.trusted_hosts,
+        is_production=False,
+    ):
+        raise HTTPException(status_code=400, detail="Недоверенный Host")
+    return str(request.base_url).rstrip("/")
 
 
 def _frontend_base_url(request: Request) -> str:
@@ -120,14 +144,22 @@ def _encode_flow(payload: dict[str, Any]) -> str:
         "iat": now,
         "exp": now + timedelta(seconds=settings.chess_oauth.flow_ttl_sec),
     }
-    return jwt.encode(body, settings.auth.jwt_secret, algorithm="HS256")
+    return jwt.encode(
+        body,
+        settings.chess_oauth.cookie_signing_secret(),
+        algorithm="HS256",
+    )
 
 
 def _decode_signed_cookie(raw: str | None, expected_type: str) -> dict[str, Any]:
     if not raw:
         raise HTTPException(status_code=400, detail="OAuth-сессия не найдена или истекла")
     try:
-        payload = jwt.decode(raw, settings.auth.jwt_secret, algorithms=["HS256"])
+        payload = jwt.decode(
+            raw,
+            settings.chess_oauth.cookie_signing_secret(),
+            algorithms=["HS256"],
+        )
     except jwt.PyJWTError as exc:
         raise HTTPException(status_code=400, detail="OAuth-сессия недействительна") from exc
     if payload.get("type") != expected_type:
@@ -582,7 +614,7 @@ async def oauth_providers():
     return _provider_capabilities()
 
 
-@router.post("/{provider}/start")
+@router.post("/{provider}/start", dependencies=[Depends(expensive_rate_limit)])
 async def oauth_start(
     provider: str,
     req: OAuthStartRequest,
@@ -650,6 +682,7 @@ async def oauth_start(
             "verifier": verifier,
             "intent": req.intent,
             "user_id": user.id if user else None,
+            "user_token_version": int(user.token_version) if user else None,
             "return_to": _safe_return_to(req.return_to),
             "popup": bool(req.popup),
             "redirect_uri": redirect_uri,
@@ -729,6 +762,12 @@ async def oauth_callback(
             user = await db.get(User, int(user_id)) if user_id is not None else None
             if user is None:
                 raise HTTPException(status_code=401, detail="Пользователь для привязки не найден")
+            expected_tv = flow.get("user_token_version")
+            if expected_tv is not None and int(expected_tv) != int(user.token_version):
+                raise HTTPException(
+                    status_code=401,
+                    detail="Сессия завершена, войдите заново",
+                )
             account = await _verified_link(db, user, provider, profile, external_user_id)
             apply_trusted_rating_to_user(user, account)
             await _mark_verification_success(db, flow, account, external_user_id)
@@ -752,10 +791,13 @@ async def oauth_callback(
                 "type": "chess_oauth_result",
                 "sub": str(user.id),
                 "provider": provider,
+                # Версия сессии: /complete откажется выдавать токены, если
+                # пользователь успел выйти после OAuth-callback.
+                "tv": int(user.token_version),
                 "iat": now,
                 "exp": now + timedelta(seconds=settings.chess_oauth.flow_ttl_sec),
             },
-            settings.auth.jwt_secret,
+            settings.chess_oauth.cookie_signing_secret(),
             algorithm="HS256",
         )
         return _finish_browser_response(
@@ -787,7 +829,7 @@ async def oauth_callback(
         )
 
 
-@router.post("/complete")
+@router.post("/complete", dependencies=[Depends(auth_rate_limit)])
 async def oauth_complete(request: Request, db: AsyncSession = Depends(get_db)):
     payload = _decode_signed_cookie(request.cookies.get(RESULT_COOKIE), "chess_oauth_result")
     try:
@@ -798,6 +840,10 @@ async def oauth_complete(request: Request, db: AsyncSession = Depends(get_db)):
     user = await db.get(User, user_id)
     if user is None:
         raise HTTPException(status_code=404, detail="Пользователь GigaChess не найден")
+    # Раньше здесь не проверялся token_version: подделанная/старая кука
+    # выдавала токены даже после выхода из аккаунта.
+    if payload.get("tv") != user.token_version:
+        raise HTTPException(status_code=401, detail="Сессия завершена, войдите заново")
 
     tokens = await _issue_tokens(db, user)
     response = JSONResponse({"message": "OAuth-вход завершён", **tokens})

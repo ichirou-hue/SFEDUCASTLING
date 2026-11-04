@@ -844,7 +844,11 @@ def puzzle_check(
     req: PuzzleAnswerRequest,
     _user: User = Depends(get_current_user),
 ):
-    """Проверка отдельного тренировочного паззла с показом решения."""
+    """Проверка отдельного тренировочного паззла.
+
+    Эталонный ход не возвращается: иначе клиент мог бы получить решение
+    до/вместо самостоятельного ответа.
+    """
     puzzle = _puzzle_lookup().get(req.puzzle_id)
     if puzzle is None:
         raise HTTPException(status_code=404, detail="Задача не найдена")
@@ -862,7 +866,6 @@ def puzzle_check(
     correct = user_move == solution
     return {
         "correct": bool(correct),
-        "solution": solution,
         "puzzle_rating": puzzle.get("rating", 0),
         "themes": puzzle.get("themes", []),
     }

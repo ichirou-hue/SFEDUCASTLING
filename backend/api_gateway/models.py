@@ -319,7 +319,7 @@ class PGNTextRequest(BaseModel):
     Attributes:
         pgn: PGN-текст партии.
     """
-    pgn: str
+    pgn: str = Field(..., max_length=5_000_000)
 
     @field_validator("pgn")
     @classmethod

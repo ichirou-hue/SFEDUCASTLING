@@ -39,8 +39,8 @@ fi
 
 # 3. Конфигурация
 if [ ! -f ".env" ]; then
-    cp .env.example .env
-    echo "Создан .env из .env.example"
+    echo "DATABASE_URL=sqlite+aiosqlite:///./backend.db" > .env
+    echo "Создан .env с локальной SQLite"
 fi
 
 # 4. База данных (миграции)
