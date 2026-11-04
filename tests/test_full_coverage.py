@@ -79,15 +79,6 @@ class TestGamePromotionAndStatus:
 # analysis.py — с моками Stockfish
 # ============================
 
-class MockResponse:
-    """Заглушка для requests.Response."""
-    def __init__(self, data, status_code=200):
-        self.status_code = status_code
-        self._data = data
-    def json(self):
-        return self._data
-
-
 class TestAnalysisWithMocks:
     """Покрываем success-пути analysis.py (Stockfish, similarity)."""
 
@@ -298,7 +289,7 @@ class TestVisionSuccess:
 
 
 # ============================
-# state.py — success-пути и get_opening_info
+# state.py - success-пути загрузки
 # ============================
 
 class TestStateSuccess:
@@ -339,27 +330,6 @@ class TestStateSuccess:
         result = st.load_knowledge()
         assert result is False
         st.KNOWLEDGE_PATH = original_path
-
-    def test_get_opening_info_success(self):
-        """Lichess API отвечает с дебютом и партиями."""
-        mock_resp = MockResponse({
-            "opening": {"name": "Italian Game"},
-            "topGames": [
-                {"white": {"name": "Carlsen"}, "black": {"name": "Nakamura"},
-                 "year": 2020, "winner": "white"}
-            ]
-        })
-        with patch("backend.api_gateway.state.requests.get", return_value=mock_resp):
-            result = st.get_opening_info(START_FEN)
-        assert result is not None
-        assert result["name"] == "Italian Game"
-
-    def test_get_opening_info_no_opening(self):
-        """Lichess API отвечает, но без дебюта."""
-        mock_resp = MockResponse({})
-        with patch("backend.api_gateway.state.requests.get", return_value=mock_resp):
-            result = st.get_opening_info(START_FEN)
-        assert result is None
 
     def test_extract_fen_from_image_success(self, tmp_path):
         """LLaVA возвращает FEN."""

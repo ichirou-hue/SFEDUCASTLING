@@ -8,14 +8,14 @@ const readFenFromFile = (name, text) => {
   const content = String(text || "").trim();
   if (!content) throw new Error("Файл пуст");
 
-  // PGN — берём позицию после последнего хода партии.
+  // PGN - берём позицию после последнего хода партии.
   if (/\.pgn$/i.test(name)) {
     const game = new Chess();
     game.loadPgn(content, { strict: false });
     return game.fen();
   }
 
-  // .fen / .txt — первая непустая строка файла.
+  // .fen / .txt - первая непустая строка файла.
   const line = content
     .split(/\r?\n/)
     .map((row) => row.trim())
@@ -39,7 +39,7 @@ const copyText = async (text) => {
       await navigator.clipboard.writeText(text);
       return true;
     } catch {
-      // Например, страница открыта по http — пробуем резервный способ.
+      // Например, страница открыта по http - пробуем резервный способ.
     }
   }
 
@@ -72,7 +72,7 @@ const downloadFile = (name, text, type) => {
 };
 
 /*
- * Меню «Позиция»: всё про импорт и экспорт в одном месте —
+ * Меню «Позиция»: всё про импорт и экспорт в одном месте -
  * загрузка FEN, импорт из файла, копирование и сохранение FEN/PGN.
  */
 export default function PositionMenu({ fen, onLoadFen, getPgn }) {

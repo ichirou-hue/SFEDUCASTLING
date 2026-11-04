@@ -219,7 +219,7 @@ def main() -> None:
         default=100_000,
         help="Пропустить первые строки базы (существующие пазлы берутся из начала файла)",
     )
-    parser.add_argument("--limit", type=int, default=0, help="Всего добавить (0 — без лимита)")
+    parser.add_argument("--limit", type=int, default=0, help="Всего добавить (0 - без лимита)")
     args = parser.parse_args()
 
     t0 = time.time()

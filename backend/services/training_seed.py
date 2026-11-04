@@ -48,7 +48,7 @@ async def _upsert_lesson(session, module: TrainingModule, data: dict) -> Trainin
 
     if lesson is None:
         # Переезд при слиянии модулей: урок с таким slug уже может лежать
-        # в другом (старом) модуле. Переносим его с сохранением id —
+        # в другом (старом) модуле. Переносим его с сохранением id -
         # иначе оборвутся training_attempts и сбросится прогресс.
         lesson = await session.scalar(
             select(TrainingLesson).where(
@@ -123,6 +123,47 @@ async def seed_training() -> None:
                 for task_data in lesson_data["tasks"]:
                     await _upsert_task(session, lesson, task_data)
                     task_total += 1
+
+                # Задания, которых больше нет в декларативных данных (например,
+                # урок дебюта переписан под развилки и старые sort_order
+                # исчезли), гасим, а не удаляем: попытки и повторения на них
+                # остаются в истории, но в уроке они не показываются.
+                keep_orders = {
+                    task_data["sort_order"] for task_data in lesson_data["tasks"]
+                }
+                stale_tasks = (
+                    await session.scalars(
+                        select(TrainingTask).where(
+                            TrainingTask.lesson_id == lesson.id,
+                            TrainingTask.sort_order.notin_(keep_orders),
+                            TrainingTask.enabled.is_(True),
+                        )
+                    )
+                ).all()
+                for stale_task in stale_tasks:
+                    stale_task.enabled = False
+
+            # Уроки, которых больше нет в программе модуля, скрываем, а не
+            # удаляем: на них могут ссылаться training_attempts. Прогресс по
+            # совпавшим slug сохраняется, потому что урок обновляется на месте.
+            keep_lesson_slugs = {
+                lesson_data["slug"] for lesson_data in lessons
+            }
+            stale_lessons = (
+                await session.scalars(
+                    select(TrainingLesson).where(
+                        TrainingLesson.module_id == module.id,
+                        TrainingLesson.slug.notin_(keep_lesson_slugs),
+                        TrainingLesson.enabled.is_(True),
+                    )
+                )
+            ).all()
+            for stale_lesson in stale_lessons:
+                stale_lesson.enabled = False
+                print(
+                    "[TrainingSeed] Урок "
+                    f"{stale_lesson.slug} скрыт: его нет в новой программе."
+                )
 
         # Снос опустевших старых модулей после слияния (10 -> 5).
         # Удаляем только модули вне нового состава И без уроков:

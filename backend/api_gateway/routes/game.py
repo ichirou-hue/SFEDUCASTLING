@@ -1,6 +1,7 @@
 """Игровые endpoint'ы: легальные ходы, выполнение хода, ход AI."""
 
 import hashlib
+import threading
 
 import chess
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
@@ -16,6 +17,7 @@ from backend.api_gateway.models import (
     FenRequest,
     FenSquare,
     FinishGameRequest,
+    GameReviewRequest,
     MoveRequest,
     NewGameRequest,
 )
@@ -24,10 +26,12 @@ from backend.api_gateway.state import (
     ensure_stockfish,
     get_maia3,
     maia3_lock,
+    reset_maia3,
     reset_stockfish,
     stockfish_lock,
 )
 from backend.services.game_recorder import record_game
+from backend.services.game_review import EngineUnavailable, review_game
 from backend.services.gigacoin_service import (
     MAIA_DRAW_COINS,
     MAIA_FAIR_GAP,
@@ -223,6 +227,13 @@ def ai_move(req: FenRequest):
                 with stockfish_lock:
                     sf.set_fen_position(board.fen())
                     evaluation = sf.get_evaluation(searchtime=1000)
+                # Движок отвечает от лица стороны, чей ход; шкала у доски
+                # ждёт оценку от лица белых, как и /api/eval.
+                if evaluation and board.turn == chess.BLACK:
+                    evaluation = {
+                        "type": evaluation.get("type"),
+                        "value": -(evaluation.get("value") or 0),
+                    }
             except Exception as e:
                 print(f"[Stockfish] Ошибка eval: {e}")
 
@@ -238,52 +249,165 @@ def ai_move(req: FenRequest):
     }
 
 
-def _maia3_move(req: FenRequest, board: chess.Board) -> chess.Move | None:
-    """Ход Maia3: человекоподобная игра на уровне req.elo."""
-    engine = get_maia3()
-    if engine is None:
-        print("[Maia3] Недоступна; ход не выполнен")
-        return None
+# Сколько ждём ход Maia3 и сколько раз пробуем.
+#
+# engine.play() ждёт bestmove без ограничения: зависший процесс держал бы
+# не только свой запрос, но и мьютекс движка, а за мьютексом вставали бы
+# все следующие ходы - партия «замирала» навсегда.
+MAIA3_PLAY_TIMEOUT = 30.0
+
+MAIA3_ATTEMPTS = 2
+
+
+def _same_position(left: chess.Board, right: chess.Board) -> bool:
+    """Совпадают ли позиции, если не смотреть на счётчики FEN.
+
+    Счётчики полуходов и номер хода на игру не влияют: Maia3 запущена с
+    include_time_info=False. Поле en passant разные библиотеки заполняют
+    по-своему. Сравнение по полной строке FEN из-за этого могло счесть
+    верную историю чужой и обнулить её - тогда движок играл вслепую.
+    """
+
+    return (
+        left.board_fen() == right.board_fen()
+        and left.turn == right.turn
+        and left.castling_xfen() == right.castling_xfen()
+    )
+
+
+def _history_board(req: FenRequest, board: chess.Board) -> chess.Board:
+    """Доска с историей партии: Maia3 запущена с --use-uci-history.
+
+    Контекст передаётся только стеком ходов доски: python-chess сам
+    превращает его в "position fen ... moves ...". Без стека движок видит
+    текущую позицию, повторённую 8 раз, и резко слабеет.
+    """
+
+    if not req.moves:
+        return board
+
     try:
-        import chess.engine
+        replay = chess.Board()
 
-        # Восстанавливаем историю партии из ходов (для --use-uci-history).
-        history_board = board
-        if req.moves:
-            try:
-                replay = chess.Board()
-                for uci in req.moves:
-                    replay.push_uci(uci)
-                if replay.fen() == board.fen():
-                    history_board = replay
-                else:
-                    print("[Maia3] History FEN mismatch, using board directly")
-            except ValueError:
-                pass
+        for uci in req.moves:
+            replay.push_uci(uci)
+    except ValueError as exc:
+        print(
+            f"[Maia3] Некорректная история ходов ({exc}); "
+            "играем без истории - качество хода будет ниже."
+        )
+        return board
 
-        with maia3_lock():
-            temperature = elo_to_temperature(req.elo)
-            print(f"[Maia3] Ход на Elo {req.elo}, temp={temperature}...")
+    if _same_position(replay, board):
+        return replay
+
+    print(
+        "[Maia3] История не сходится с позицией: "
+        f"{len(req.moves)} ходов дают {replay.fen()}, а доска {board.fen()}. "
+        "Играем без истории - качество хода будет ниже."
+    )
+    return board
+
+
+def _play_maia(engine, board: chess.Board, elo: int) -> chess.Move | None:
+    """Один ход на готовом движке, с жёстким таймаутом.
+
+    Ход считается в отдельном потоке: python-chess не умеет обрывать
+    ожидание bestmove, а зависший движок не должен блокировать сервер.
+    """
+
+    import chess.engine
+
+    temperature = elo_to_temperature(elo)
+    print(f"[Maia3] Ход на Elo {elo}, temp={temperature}...")
+
+    outcome: dict[str, object] = {}
+
+    def worker() -> None:
+        try:
             engine.configure({
-                "Elo": req.elo,
-                "SelfElo": req.elo,
-                "OppoElo": req.elo,
+                "Elo": elo,
+                "SelfElo": elo,
+                "OppoElo": elo,
                 "Temperature": temperature,
             })
-            result = engine.play(history_board, limit=chess.engine.Limit(time=3))
-            move = result.move
-        print(f"[Maia3] Ход: {move}")
-        if move is not None and move in board.legal_moves:
-            return move
-        if move is not None:
-            print(f"[Maia3] Ход {move} не легален в текущей позиции")
-    except Exception as e:
-        print(f"[Maia3] Ошибка хода: {e}")
+
+            outcome["move"] = engine.play(
+                board,
+                limit=chess.engine.Limit(time=3),
+            ).move
+        except Exception as exc:  # ошибку разбирает вызывающий код
+            outcome["error"] = exc
+
+    thread = threading.Thread(target=worker, daemon=True)
+    thread.start()
+    thread.join(MAIA3_PLAY_TIMEOUT)
+
+    if thread.is_alive():
+        raise TimeoutError(
+            f"Maia3 не ответила за {MAIA3_PLAY_TIMEOUT:.0f} с"
+        )
+
+    error = outcome.get("error")
+
+    if error is not None:
+        raise error
+
+    move = outcome.get("move")
+
+    return move if isinstance(move, chess.Move) else None
+
+
+def _ask_maia(board: chess.Board, elo: int) -> chess.Move | None:
+    """Ход Maia3 с перезапуском движка при сбое.
+
+    Смерть процесса раньше давала 503 на один ход и «висящую» партию:
+    мёртвый хэндл оставался в глобальной переменной до следующего
+    запроса. Теперь движок перезапускается тут же и ход повторяется.
+    Повтор безопасен: история партии приходит в самом запросе.
+    """
+
+    last_error: object = None
+
+    for attempt in range(1, MAIA3_ATTEMPTS + 1):
+
+        engine = get_maia3()
+
+        if engine is None:
+            print("[Maia3] Недоступна; ход не выполнен")
+            return None
+
         try:
-            engine.configure({"Elo": 1500, "SelfElo": 1500, "OppoElo": 1500, "Temperature": 1.0})
-        except Exception:
-            pass
+            with maia3_lock():
+                return _play_maia(engine, board, elo)
+        except Exception as exc:
+            last_error = exc
+            print(
+                f"[Maia3] Ошибка хода (попытка {attempt} из "
+                f"{MAIA3_ATTEMPTS}): {exc}"
+            )
+            # Процесс мог умереть (Windows-ошибка канала, OOM) или зависнуть.
+            # Держать такой хэндл дальше бессмысленно.
+            reset_maia3()
+
+    print(f"[Maia3] Ход не выполнен: {last_error}")
+    return None
+
+
+def _maia3_move(req: FenRequest, board: chess.Board) -> chess.Move | None:
+    """Ход Maia3: человекоподобная игра на уровне req.elo."""
+
+    move = _ask_maia(_history_board(req, board), req.elo)
+
+    if move is None:
         return None
+
+    print(f"[Maia3] Ход: {move}")
+
+    if move in board.legal_moves:
+        return move
+
+    print(f"[Maia3] Ход {move} не легален в текущей позиции")
     return None
 
 
@@ -296,77 +420,17 @@ def _maia3_move_strict(
     Нужен для hybrid-анализа, где важно отличать
     настоящий ход Maia3 от fallback-хода Stockfish.
     """
-    engine = get_maia3()
 
-    if engine is None:
-        print("[Maia3] Недоступна для strict analysis")
+    move = _ask_maia(_history_board(req, board), req.elo)
+
+    if move is None:
         return None
 
-    try:
-        import chess.engine
-
-        history_board = board
-
-        if req.moves:
-            try:
-                replay = chess.Board()
-
-                for uci in req.moves:
-                    replay.push_uci(uci)
-
-                if replay.fen() == board.fen():
-                    history_board = replay
-                else:
-                    print(
-                        "[Maia3] History FEN mismatch, "
-                        "using board directly"
-                    )
-            except ValueError:
-                print("[Maia3] Некорректная история ходов")
-
-        with maia3_lock():
-            temperature = elo_to_temperature(req.elo)
-
-            engine.configure({
-                "Elo": req.elo,
-                "SelfElo": req.elo,
-                "OppoElo": req.elo,
-                "Temperature": temperature,
-            })
-
-            result = engine.play(
-                history_board,
-                limit=chess.engine.Limit(time=3),
-            )
-
-            move = result.move
-
-        if move is None:
-            return None
-
-        if move not in board.legal_moves:
-            print(
-                f"[Maia3] Strict move {move} "
-                "is not legal"
-            )
-            return None
-
-        return move
-
-    except Exception as e:
-        print(f"[Maia3] Strict analysis error: {e}")
-
-        try:
-            engine.configure({
-                "Elo": 1500,
-                "SelfElo": 1500,
-                "OppoElo": 1500,
-                "Temperature": 1.0,
-            })
-        except Exception:
-            pass
-
+    if move not in board.legal_moves:
+        print(f"[Maia3] Strict move {move} is not legal")
         return None
+
+    return move
 
 
 def _stockfish_move(board: chess.Board) -> chess.Move | None:
@@ -549,7 +613,7 @@ async def finish_game(
     Классификация каждого хода через Stockfish (1с на ход) выполняется
     в фоне, чтобы не блокировать ответ фронтенду.
     """
-    # Игрок может играть и за чёрных: тогда AI — белые, а игрок — чёрные.
+    # Игрок может играть и за чёрных: тогда AI - белые, а игрок - чёрные.
     if req.player_color == "b":
         white, black = "AI", "player"
     else:
@@ -614,12 +678,12 @@ def new_game(req: NewGameRequest):
 def captured_material(req: CapturedMaterialRequest):
     """Съеденный материал по истории ходов партии (stateless).
 
-    Реплеит партию от ``req.fen`` (по умолчанию — начальная позиция) и
+    Реплеит партию от ``req.fen`` (по умолчанию - начальная позиция) и
     собирает взятые фигуры по сторонам, включая взятие на проходе.
     """
     board = chess.Board(req.fen) if req.fen else chess.Board()
 
-    # captured[turn] — фигуры, взятые стороной turn (взятые чужие фигуры).
+    # captured[turn] - фигуры, взятые стороной turn (взятые чужие фигуры).
     captured: dict[bool, list[int]] = {chess.WHITE: [], chess.BLACK: []}
 
     for index, token in enumerate(req.moves, start=1):
@@ -694,3 +758,29 @@ def captured_material(req: CapturedMaterialRequest):
         response["player_advantage"] = diff if req.player_color == "w" else -diff
 
     return response
+
+
+@router.post("/api/game/review")
+def review_finished_game(req: GameReviewRequest):
+    """Разбор партии движком: точность игры, звёзды и оценка ходов.
+
+    Оценивается позиция после каждого полухода (для истории с подписями),
+    а точность и классификация считаются только по ходам игрока. Звёзды
+    ограничены результатом: победа - до 3, ничья - до 2, поражение - до 1.
+    Запрос синхронный, поэтому FastAPI выполняет его в пуле потоков: разбор
+    партии на 40 ходов занимает до 40 секунд, и фронтенд показывает
+    индикатор ожидания.
+    """
+    if not req.moves:
+        raise HTTPException(status_code=400, detail="Нет ходов для разбора")
+
+    try:
+        return review_game(req.moves, player_color=req.player_color)
+    except EngineUnavailable:
+        raise HTTPException(
+            status_code=503,
+            detail="Stockfish недоступен, разбор партии временно невозможен",
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+

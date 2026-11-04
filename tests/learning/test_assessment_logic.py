@@ -1,5 +1,6 @@
 from backend.services.assessment import (
     GROUP_ALLOCATION,
+    RATING_FLOOR,
     allowed_rating_groups,
     calculate_performance_rating,
     max_puzzle_rating_for_user,
@@ -106,16 +107,48 @@ def test_max_puzzle_rating_is_rating_plus_200():
 
 
 def test_performance_rating_moves_in_expected_direction():
-    puzzles = {
-        f"p{i}": {"id": f"p{i}", "rating": 1500}
-        for i in range(10)
-    }
     correct = [{"puzzle_id": f"p{i}", "correct": True} for i in range(10)]
     wrong = [{"puzzle_id": f"p{i}", "correct": False} for i in range(10)]
 
-    assert calculate_performance_rating(
-        initial_rating=1200, answers=correct, puzzle_lookup=puzzles
-    ) > 1200
-    assert calculate_performance_rating(
-        initial_rating=1200, answers=wrong, puzzle_lookup=puzzles
-    ) < 1200
+    assert calculate_performance_rating(initial_rating=1200, answers=correct) > 1200
+    assert calculate_performance_rating(initial_rating=1200, answers=wrong) < 1200
+
+
+def test_performance_rating_depends_only_on_correct_count():
+    """Итог не зависит от того, какие именно задачи выпали в наборе."""
+    ratings = set()
+    for offset in range(10):
+        answers = [
+            {"puzzle_id": f"p{index}", "correct": False}
+            for index in range(10)
+        ]
+        # Все варианты дают 0 верных - итог обязан быть одинаковым.
+        assert not any(a["correct"] for a in answers)
+        ratings.add(calculate_performance_rating(initial_rating=800, answers=answers))
+    assert ratings == {500}
+
+
+def test_performance_rating_is_monotonic_in_correct_count():
+    previous = None
+    for correct_count in range(21):
+        answers = [
+            {"puzzle_id": f"p{index}", "correct": index < correct_count}
+            for index in range(20)
+        ]
+        rating = calculate_performance_rating(initial_rating=800, answers=answers)
+        if previous is not None:
+            assert rating >= previous
+        previous = rating
+
+
+def test_performance_rating_never_drops_below_floor():
+    """Ниже пола рейтинг не опускается: иначе нечего решать.
+
+    Самая лёгкая задача базы имеет рейтинг 505, практика выдаёт задачи с
+    потолком rating + 200, поэтому ниже ~305 набор пуст.
+    """
+    answers = [{"puzzle_id": f"p{i}", "correct": False} for i in range(20)]
+
+    assert calculate_performance_rating(initial_rating=300, answers=answers) == RATING_FLOOR
+    assert calculate_performance_rating(initial_rating=0, answers=answers) == RATING_FLOOR
+    assert RATING_FLOOR > 305

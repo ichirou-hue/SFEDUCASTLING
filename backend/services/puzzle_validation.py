@@ -111,7 +111,7 @@ def pieces_on_board(fen: str | None) -> set[int] | None:
 
 
 def target_piece_used_in_solution(puzzle: dict, symbol: str) -> bool | None:
-    """Участвует ли фигура symbol в решении. None — проверить нельзя."""
+    """Участвует ли фигура symbol в решении. None - проверить нельзя."""
     piece_type = PIECE_TYPE_BY_SYMBOL.get(symbol.upper())
     if piece_type is None:
         return None
@@ -129,7 +129,7 @@ def puzzle_themes_piece_ok(puzzle: dict) -> bool:
         return True
     used = pieces_used_in_solution(puzzle.get("fen"), puzzle.get("moves"))
     if used is None:
-        # Позицию разобрать нельзя — откатываемся к наличию фигуры на доске,
+        # Позицию разобрать нельзя - откатываемся к наличию фигуры на доске,
         # чтобы не отбраковывать данные из-за парсинга.
         on_board = pieces_on_board(puzzle.get("fen"))
         if on_board is None:
@@ -139,7 +139,7 @@ def puzzle_themes_piece_ok(puzzle: dict) -> bool:
 
 
 def validate_puzzle(puzzle: dict, check_piece: bool = True) -> list[str]:
-    """Возвращает список ошибок пазла (пусто — данные корректны).
+    """Возвращает список ошибок пазла (пусто - данные корректны).
 
     check_piece=False отключает проверку участия целевой фигуры: она строже
     требований Lichess и подходит не всем пазлам (например, тема мата может
@@ -181,7 +181,7 @@ def validate_puzzle(puzzle: dict, check_piece: bool = True) -> list[str]:
 
 
 def validate_training_task(task: dict) -> list[str]:
-    """Возвращает список ошибок учебного задания (пусто — корректно)."""
+    """Возвращает список ошибок учебного задания (пусто - корректно)."""
     errors: list[str] = []
 
     task_type = task.get("task_type")

@@ -83,6 +83,7 @@ def test_admin_users_ok_for_admin():
         "elo",
         "skill_band",
         "created_at",
+        # Привязанные шахматные аккаунты с рейтингами.
         "chess_accounts",
     }
 
@@ -136,6 +137,8 @@ def test_admin_user_stats_ok_for_admin():
         "attempts",
         "correct_attempts",
         "accuracy",
+        # Текущая серия пазлов: считается подряд и обнуляется любой ошибкой.
+        "puzzle_streak",
     }
     assert isinstance(body["training"]["modules"]["total"], int)
 

@@ -175,6 +175,7 @@
     grid-column: 1;
     grid-row: 1;
     min-width: 0;
+    gap: 6px;
   }
 
   .top-bar .logo-wrapper {
@@ -258,7 +259,8 @@
   }
 
   .top-bar .user-box,
-  .top-bar > .reg-btn {
+  .top-bar > .reg-btn,
+  .top-bar > .top-bar-actions {
     grid-column: 2;
     grid-row: 1;
     justify-self: end;
@@ -286,7 +288,12 @@
 
   .gigacoin-reward-toast {
     right: 14px;
+    left: 14px;
     bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+    width: auto;
+    min-width: 0;
+    max-width: none;
+    padding: 12px 14px 12px 12px;
   }
 
   .top-bar .onb-badge {
@@ -302,6 +309,20 @@
     min-height: 40px;
     padding: 0 12px;
     font-size: 11px;
+  }
+
+  .top-bar .theme-toggle {
+    width: 36px;
+    height: 36px;
+    flex: 0 0 36px;
+  }
+
+  .theme-toggle--mobile {
+    display: inline-flex;
+  }
+
+  .theme-toggle--desktop {
+    display: none;
   }
 
   .top-bar-logout-compact {
@@ -357,7 +378,7 @@
   }
 
   .site-footer {
-    display: none;
+    display: flex;
     position: relative;
     left: 50%;
     width: 100vw;
@@ -376,11 +397,20 @@
     margin-bottom: 0 !important;
   }
 
+  .site-footer-docs {
+    width: 100%;
+    gap: 4px 12px;
+  }
+
   .training-page > .site-footer,
   .admin-page > .site-footer,
   .user-profile-page > .site-footer,
   .level-test-page > .site-footer,
   .puzzles-layout > .site-footer {
+    /* На мобилке футер растягивается через 100vw, поэтому компенсация
+       боковых отступов страницы не нужна. */
+    margin-right: 0;
+    margin-left: 0;
     margin-bottom: 0;
   }
 
@@ -508,6 +538,15 @@
     max-width: 100%;
     padding: 8px;
     border-radius: 18px;
+  }
+
+  /* Легенда сравнения на телефоне: компактнее, чтобы вместе с доской
+     помещаться по высоте. */
+  .main-area .board-wrapper .compare-card {
+    padding: 8px 10px;
+    border-radius: 12px;
+    font-size: 13px;
+    line-height: 1.4;
   }
 
   .main-area > .game-history-column {
@@ -753,6 +792,16 @@
     box-shadow: 0 18px 48px rgba(0, 0, 0, 0.48);
   }
 
+  /* Свёрнутый чат на телефоне - компактная полоса, а не пустая
+     карточка на пол-экрана: высота развёрнутой панели здесь больше
+     базовой, поэтому переопределяем её отдельно. */
+  .main-area--mobile-chat > .chat-section--collapsed {
+    min-height: 58px;
+    height: 58px;
+    max-height: 58px;
+    flex: 0 0 58px;
+  }
+
   .main-area--mobile-chat > .chat-section .chat-messages {
     min-height: 0;
     flex: 1 1 auto;
@@ -889,6 +938,12 @@
     font-size: 11px;
   }
 
+  .learning-crosslink--compact {
+    max-width: 100%;
+    padding: 9px 14px;
+    font-size: 12px;
+  }
+
   .puzzle-board-section {
     min-width: 0;
     width: 100%;
@@ -989,10 +1044,14 @@
     padding: 16px 12px calc(92px + env(safe-area-inset-bottom, 0px));
   }
 
-  .training-page--grid,
-  .training-page--grid-with-due {
+  .training-page--course {
+    padding-bottom: calc(92px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .training-course-layout {
     grid-template-columns: minmax(0, 1fr);
     gap: 14px;
+    padding-bottom: 0;
   }
 
   .training-hero,
@@ -1096,14 +1155,21 @@
 
   .training-due-rail {
     width: 100%;
-    grid-column: 1 / -1;
-    grid-row: 2;
     position: static;
     max-height: none;
   }
 
-  .training-due-rail--collapsed .training-due-toggle {
-    min-height: 48px;
+  .training-due-toggle {
+    min-height: 56px;
+    padding: 10px 12px;
+  }
+
+  .training-due-panel {
+    max-height: none;
+  }
+
+  .training-due-list {
+    max-height: 60vh;
   }
 
   /* Profile, placement test and admin tools use the full phone width. */
@@ -1232,6 +1298,19 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
+  .auth-card--link {
+    max-height: none;
+    padding: 26px 16px 22px;
+  }
+
+  .auth-link-panel {
+    min-width: 0;
+  }
+
+  .auth-link-actions {
+    max-width: none;
+  }
+
   .auth-side {
     min-width: 0;
     padding: 24px 18px;
@@ -1240,30 +1319,8 @@
   .auth-section,
   .auth-fields,
   .auth-side--brand,
-  .auth-side--form,
-  .auth-oauth-block {
+  .auth-side--form {
     min-width: 0;
-  }
-
-  .auth-oauth-block {
-    padding: 12px;
-  }
-
-  .auth-oauth-buttons {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-  }
-
-  .auth-oauth-btn {
-    min-width: 0;
-    gap: 6px;
-    padding: 10px 6px;
-    font-size: 14px;
-    white-space: nowrap;
-  }
-
-  .auth-oauth-note {
-    overflow-wrap: anywhere;
   }
 
   .auth-section-head {

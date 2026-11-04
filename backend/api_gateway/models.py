@@ -107,7 +107,7 @@ class MoveRequest(BaseModel):
             if piece is None:
                 raise ValueError(f"Нет фигуры на поле '{self.from_sq}'")
             if piece.color != board.turn:
-                raise ValueError(f"Сейчас ход {'белых' if board.turn else 'чёрных'}, но фигура на '{self.from_sq}' — {'чёрная' if piece.color else 'белая'}")
+                raise ValueError(f"Сейчас ход {'белых' if board.turn else 'чёрных'}, а фигура на '{self.from_sq}' {'чёрная' if piece.color else 'белая'}")
             promo_map = {"q": chess.QUEEN, "r": chess.ROOK, "b": chess.BISHOP, "n": chess.KNIGHT}
             promo = None
             if piece.piece_type == chess.PAWN and chess.square_rank(to_sq) in (0, 7):
@@ -212,6 +212,29 @@ class FinishGameRequest(BaseModel):
         return normalize_player_color(v)
 
 
+class GameReviewRequest(BaseModel):
+    """Запрос: разбор завершённой партии движком.
+
+    Attributes:
+        moves: Полная история партии в нотации UCI от начальной позиции.
+        player_color: Сторона игрока ("w" или "b"). Разбираются только
+            ходы этой стороны.
+    """
+
+    moves: list[str] = Field(default_factory=list, max_length=600)
+    player_color: str = "w"
+
+    @field_validator("moves")
+    @classmethod
+    def moves_must_not_be_empty(cls, v: list[str]) -> list[str]:
+        return [move.strip() for move in v if move.strip()]
+
+    @field_validator("player_color")
+    @classmethod
+    def player_color_must_be_valid(cls, v: str) -> str:
+        return normalize_player_color(v)
+
+
 class NewGameRequest(BaseModel):
     """Запрос: начать новую партию за выбранную сторону.
 
@@ -233,10 +256,10 @@ class CapturedMaterialRequest(BaseModel):
 
     Attributes:
         moves: Ходы партии в нотации UCI от начальной позиции (например
-            ["e2e4", "d7d5", "e4d5"]). Пустой список — начальная позиция.
+            ["e2e4", "d7d5", "e4d5"]). Пустой список - начальная позиция.
         fen: Начальная позиция. По умолчанию стандартная.
         player_color: Сторона игрока (опционально). Если задана, в ответе
-            появляется player_advantage — баланс материала для игрока.
+            появляется player_advantage - баланс материала для игрока.
     """
 
     moves: list[str] = []

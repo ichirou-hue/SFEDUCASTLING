@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# SFEDUCASTLING — установка и запуск (Linux / macOS).
+# SFEDUCASTLING - установка и запуск (Linux / macOS).
 # Использование:  ./run.sh
 set -e
 cd "$(dirname "$0")"
 
-echo "=== SFEDUCASTLING — установка и запуск ==="
+echo "=== SFEDUCASTLING - установка и запуск ==="
 
 PY=python3
 command -v "$PY" >/dev/null 2>&1 || PY=python

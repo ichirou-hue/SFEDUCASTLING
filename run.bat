@@ -21,7 +21,7 @@ if exist .git if not exist maia3\pyproject.toml (
     echo Initializing maia3 submodule...
     git submodule update --init maia3 >nul 2>&1
 )
-python -c "import fastapi, alembic, sqlalchemy, aiosqlite, dotenv" >nul 2>&1
+python -c "import fastapi, alembic, sqlalchemy, aiosqlite, dotenv, slowapi" >nul 2>&1
 if errorlevel 1 (
     echo Installing dependencies...
     python -m pip install --upgrade pip

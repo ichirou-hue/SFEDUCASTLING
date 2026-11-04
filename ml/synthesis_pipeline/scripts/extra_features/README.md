@@ -4,10 +4,10 @@
 
 ## Структура модуля
 
-* `stockfish_eval.py` — расчет MultiPV, дельты сантипешек (`centipawn_loss`) и фиксация упущенного мата.
-* `make_nag.py` — классификация хода по стандарту Lichess/Chess.com (`brilliant`, `great`, `best`, `blunder`, etc.).
-* `board_flags.py` — расчет предикатов `python-chess` (связки, висячие фигуры, тип движения, баланс центра, детекция жертвы).
-* `run_extra_features.py` — оркестратор пакета. Читает `data/01_raw/raw_dataset.jsonl` и сохраняет результат в `data/02_engine_analyzed/master_analyzed.jsonl`.
+* `stockfish_eval.py` - расчет MultiPV, дельты сантипешек (`centipawn_loss`) и фиксация упущенного мата.
+* `make_nag.py` - классификация хода по стандарту Lichess/Chess.com (`brilliant`, `great`, `best`, `blunder`, etc.).
+* `board_flags.py` - расчет предикатов `python-chess` (связки, висячие фигуры, тип движения, баланс центра, детекция жертвы).
+* `run_extra_features.py` - оркестратор пакета. Читает `data/01_raw/raw_dataset.jsonl` и сохраняет результат в `data/02_engine_analyzed/master_analyzed.jsonl`.
 
 ## Запуск из корня репозитория
 

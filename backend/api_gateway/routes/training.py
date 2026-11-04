@@ -23,7 +23,6 @@ from backend.models.user import User
 from backend.services.gigacoin_service import (
     TRAINING_FIRST_CORRECT,
     TRAINING_REPEAT,
-    active_day_streak,
     award_gigacoins,
     moscow_today,
 )
@@ -144,10 +143,14 @@ async def training_progress(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    """Прогресс текущего пользователя по учебному курсу."""
-    progress = await get_training_progress(db, user.id)
-    progress["streak"] = await active_day_streak(db, user.id)
-    return progress
+    """Прогресс текущего пользователя по учебному курсу.
+
+    Серию дней считает ``get_training_progress`` по правилу курса: день
+    засчитывается за 3 разных решённых пазла или хотя бы одно решённое
+    задание модуля. Дни визитов и награды GigaCoin в серию не входят,
+    поэтому ``progress["streak"]`` здесь НЕ перезаписывается.
+    """
+    return await get_training_progress(db, user.id)
 
 
 @router.get("/due")
@@ -226,6 +229,7 @@ async def training_lesson(
             "title": lesson.title,
             "theory": lesson.theory,
             "sort_order": lesson.sort_order,
+            "variations": lesson.variations or [],
         },
         "tasks": _tasks_public(tasks),
     }

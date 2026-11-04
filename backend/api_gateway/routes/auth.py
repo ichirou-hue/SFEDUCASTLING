@@ -9,21 +9,23 @@
 - POST /api/auth/onboarding {answers} → сохранение анкеты, user.onboarding
 - GET  /api/auth/admin/users, PATCH .../role → управление ролями (admin)
 
-Ошибки — единый формат {"detail": "..."} с кодами 400/401/409/422.
+Ошибки - единый формат {"detail": "..."} с кодами 400/401/409/422.
 """
 
 from __future__ import annotations
 
+import math
 import re
 from datetime import UTC, datetime
 from typing import Any, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api_gateway.dependecies import get_current_admin, get_current_user
+from backend.api_gateway.rate_limit import limiter
 from backend.api_gateway.security import (
     create_access_token,
     generate_refresh_token,
@@ -32,6 +34,7 @@ from backend.api_gateway.security import (
     refresh_expiry,
     verify_password,
 )
+from backend.config.settings import settings
 from backend.db.session import get_db
 from backend.models.user import ROLE_ADMIN, ROLE_LEARNER, RefreshToken, User
 from backend.models.user_chess_account import (
@@ -39,10 +42,50 @@ from backend.models.user_chess_account import (
     VERIFICATION_VERIFIED,
 )
 from backend.services.assessment import onboarding_rating
+from backend.services.login_throttle import LoginThrottle
 from backend.services.user_activity import record_user_visit
 from backend.services.gigacoin_service import ONBOARDING_REWARD, award_gigacoins
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+
+# Защита входа. Ключ «IP + логин» не даёт заблокировать чужой аккаунт с
+# другого адреса (обычная проблема глобального локаута по логину), а
+# отдельный ключ на IP мешает перебирать разные логины с одного места.
+_login_throttle = LoginThrottle(
+    after_failures=settings.auth.login_backoff_after,
+    base_delay=settings.auth.login_backoff_base_sec,
+    max_delay=settings.auth.login_backoff_max_sec,
+    ttl=settings.auth.login_failure_ttl_sec,
+)
+_ip_throttle = LoginThrottle(
+    after_failures=settings.auth.login_ip_backoff_after,
+    base_delay=settings.auth.login_backoff_base_sec,
+    max_delay=settings.auth.login_backoff_max_sec,
+    ttl=settings.auth.login_failure_ttl_sec,
+)
+
+
+def _login_key(raw: str) -> str:
+    """Ключ попыток: логин/email без регистра и лишних пробелов."""
+    return f"login:{(raw or '').strip().lower()}"
+
+
+def _ip_key(request: Request) -> str:
+    host = request.client.host if request.client else "unknown"
+    return f"ip:{host}"
+
+
+def _too_many_attempts(retry_after: float) -> HTTPException:
+    """429 с Retry-After: клиент ждёт сам, сервер не блокирует воркер."""
+    seconds = max(1, math.ceil(retry_after))
+    return HTTPException(
+        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        detail=(
+            "Слишком много неудачных попыток входа. "
+            f"Повторите через {seconds} с."
+        ),
+        headers={"Retry-After": str(seconds)},
+    )
 
 
 class RegisterRequest(BaseModel):
@@ -106,8 +149,8 @@ class RefreshRequest(BaseModel):
 
 # === Онбординг-анкета Q1-Q8 (раздел 1 методики) =============================
 #
-# Ответы хранятся кодами (stables), а не текстами — тексты меняются,
-# коды нет. Сырые ответы лежат в users.onboarding; признак заполнения —
+# Ответы хранятся кодами (stables), а не текстами - тексты меняются,
+# коды нет. Сырые ответы лежат в users.onboarding; признак заполнения -
 # users.onboarding IS NOT NULL.
 
 Q1_CHOICES = {"never", "know_moves", "sometimes", "regular", "tournaments"}
@@ -122,7 +165,7 @@ Q8_CHOICES = {"coach", "friends", "internet", "school"}
 # (onboarding_rating): там же учтена привязка внешнего рейтинга и ограничение
 # самооценки без привязки.
 
-# TODO(BACKEND): методика, раздел 1 — сверка и доработка по мере развития.
+# TODO(BACKEND): методика, раздел 1 - сверка и доработка по мере развития.
 #
 # 1) Q2 сейчас принимается на веру: рейтинг присылает фронт. По методике его
 #    нужно проверять через GET /api/chess-profile (Lichess / Chess.com):
@@ -134,12 +177,12 @@ Q8_CHOICES = {"coach", "friends", "internet", "school"}
 #    users.rating_scale (напр. "lichess_blitz"), а не только в onboarding JSON.
 #
 # 2) Отдельные колонки вместо вложенности в users.onboarding:
-#      users.prior_band   int 1..4   — считается здесь, но должен жить в колонке;
-#      users.rating_estimate int     — шкала Lichess blitz;
-#      users.rating_scale str        — происхождение шкалы;
-#      users.pedagogy     str        — ответ Q6 (подсказки);
-#      users.skill_band   int 0..4   — пишет входной тест, не анкета.
-#    Пока эти колонок нет — источник истины users.onboarding (см. public()).
+#      users.prior_band   int 1..4   - считается здесь, но должен жить в колонке;
+#      users.rating_estimate int     - шкала Lichess blitz;
+#      users.rating_scale str        - происхождение шкалы;
+#      users.pedagogy     str        - ответ Q6 (подсказки);
+#      users.skill_band   int 0..4   - пишет входной тест, не анкета.
+#    Пока эти колонок нет - источник истины users.onboarding (см. public()).
 #
 # 3) parental_consent: сейчас только валидация ответа в JSON. Нужно:
 #      - отдельный флаг + контакт для PII-логики (раздел 8 методики);
@@ -149,7 +192,7 @@ Q8_CHOICES = {"coach", "friends", "internet", "school"}
 #
 # 4) prior_band используется ТОЛЬКО для флага расхождения с результатом
 #    входного теста (|assess - prior| >= 3 -> «перепройти», кулдаун 7 дней).
-#    Для отбора задач он НЕ применяется — тест фиксированный.
+#    Для отбора задач он НЕ применяется - тест фиксированный.
 
 
 class Q2Answer(BaseModel):
@@ -202,7 +245,7 @@ class OnboardingRequest(BaseModel):
     @field_validator("q5")
     @classmethod
     def _q5(cls, v: list[str]) -> list[str]:
-        # «ранжировать» — все три варианта, каждый ровно один раз
+        # «ранжировать» - все три варианта, каждый ровно один раз
         if sorted(v) != sorted(Q5_CHOICES):
             raise ValueError(f"q5: нужен полный порядок из {sorted(Q5_CHOICES)}")
         return v
@@ -230,7 +273,7 @@ class OnboardingRequest(BaseModel):
 
     @model_validator(mode="after")
     def _check_parental_consent(self) -> OnboardingRequest:
-        # Младше 13 (группа «до 10») — обязательно согласие родителя/опекуна.
+        # Младше 13 (группа «до 10») - обязательно согласие родителя/опекуна.
         if self.q7 == "u10":
             if not self.parental_consent:
                 raise ValueError("parental_consent обязателен для возрастной группы «до 10»")
@@ -298,12 +341,39 @@ async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/login")
-async def login(req: LoginRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit(settings.auth.login_rate_limit)
+async def login(
+    request: Request,
+    req: LoginRequest,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+):
+    login_key = _login_key(req.login)
+    ip_key = _ip_key(request)
+
+    # Уже в ожидании — сразу 429, не тратя bcrypt и запрос к БД.
+    blocked_for = max(
+        _login_throttle.retry_after(login_key),
+        _ip_throttle.retry_after(ip_key),
+    )
+    if blocked_for > 0:
+        raise _too_many_attempts(blocked_for)
+
     user = await db.scalar(
         select(User).where((User.login == req.login) | (User.email == req.login))
     )
     if not user or not verify_password(req.password, user.password_hash):
+        delay = max(
+            _login_throttle.record_failure(login_key),
+            _ip_throttle.record_failure(ip_key),
+        )
+        if delay > 0:
+            raise _too_many_attempts(delay)
         raise HTTPException(status_code=401, detail="Неверный логин или пароль")
+
+    # Успех снимает блокировку логина. IP-счётчик не сбрасываем: иначе
+    # перебор можно было бы «обнулять» входом в свой же аккаунт.
+    _login_throttle.record_success(login_key)
     await record_user_visit(db, user.id)
     return {"message": "Вход выполнен", **(await _issue_tokens(db, user))}
 
@@ -323,7 +393,7 @@ async def refresh(req: RefreshRequest, db: AsyncSession = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=401, detail="Пользователь не найден")
 
-    # Возврат пользователя с валидным refresh-токеном — тоже визит.
+    # Возврат пользователя с валидным refresh-токеном - тоже визит.
     await record_user_visit(db, user.id)
 
     # Старый refresh больше использовать нельзя; новая пара получает новый TTL.
@@ -366,7 +436,7 @@ async def me(
 async def _linked_rating(db: AsyncSession, user_id: int) -> dict[str, Any] | None:
     """Последний подтверждённый внешний рейтинг для стартовой оценки.
 
-    Возвращает ``{"rating", "scale", "usable"}`` или None. Привязка — единственный
+    Возвращает ``{"rating", "scale", "usable"}`` или None. Привязка - единственный
     способ получить стартовую оценку выше ограничения самооценки.
     """
     account = await db.scalar(
@@ -401,10 +471,10 @@ async def save_onboarding(
     """Сохраняет ответы онбординг-анкеты Q1-Q8.
 
     Повторный вызов перезаписывает ответы (анкету можно пройти заново).
-    После успеха user.onboarding != null — фронтенд прячет плашку
+    После успеха user.onboarding != null - фронтенд прячет плашку
     «Заполните анкету».
 
-    TODO(BACKEND): контракт с фронтендом стабилен и менять его не нужно —
+    TODO(BACKEND): контракт с фронтендом стабилен и менять его не нужно -
     фронт отправляет коды ответов (q1..q8), а не тексты. Доработать внутри:
     разложить ответы по колонкам (prior_band / rating_estimate / rating_scale /
     pedagogy), проверить Q2 через /api/chess-profile, вынести parental consent
@@ -412,7 +482,7 @@ async def save_onboarding(
     """
     payload = req.model_dump(mode="json")
     # Стартовая оценка: внешний привязанный рейтинг (если есть) или самооценка
-    # Q1 с ограничением SELF_REPORT_CAP. Пишем и в JSON, и в отдельные колонки —
+    # Q1 с ограничением SELF_REPORT_CAP. Пишем и в JSON, и в отдельные колонки -
     # подбор пазлов и стартовая сложность опираются на колонки.
     linked = await _linked_rating(db, user.id)
     rating_estimate, rating_scale, prior_band = onboarding_rating(payload, linked=linked)

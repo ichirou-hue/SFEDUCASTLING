@@ -72,7 +72,7 @@
   overflow-y: auto;
   overflow-x: clip;
   padding: 26px 26px 0;
-  /* Без собственного фона — как у остальных страниц: виден общий мрамор body. */
+  /* Без собственного фона - как у остальных страниц: виден общий мрамор body. */
   box-sizing: border-box;
   /* Колонка ради футера (см. .training-page). */
   display: flex;
@@ -188,7 +188,7 @@
   box-shadow: 0 12px 35px rgba(31, 42, 31, .10);
 }
 
-/* Рамка вокруг доски — как у остальных досок сайта
+/* Рамка вокруг доски - как у остальных досок сайта
    (.board-wrapper, .puzzle-board-wrapper, .training-board-wrapper). */
 .level-test-board-wrap {
   padding: 14px;

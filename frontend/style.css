@@ -139,10 +139,26 @@ textarea {
   transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease, transform 0.16s ease;
 }
 
-.maia-level-chip:hover {
+.maia-level-chip:not(:disabled):hover {
   border-color: rgba(180, 135, 44, 0.72);
   color: #493914;
   transform: translateY(-1px);
+}
+
+.maia-level-chip:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* Уровень зафиксирован на партию: подсказка под заголовком вместо
+   обычного hover-подъёма чипов. */
+.maia-level-progress-title .maia-level-progress-lock {
+  display: block;
+  margin-top: 2px;
+  color: #8a7a58;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: none;
 }
 
 .maia-level-chip.is-earned {
@@ -201,8 +217,60 @@ textarea {
 }
 
 .top-bar > .user-box,
-.top-bar > .reg-btn {
+.top-bar > .reg-btn,
+.top-bar > .top-bar-actions {
   justify-self: end;
+}
+
+/* Правая группа гостя: переключатель темы и кнопка регистрации. */
+.top-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 1px solid rgba(201, 169, 110, 0.45);
+  border-radius: 50%;
+  background: transparent;
+  color: #d8bd88;
+  cursor: pointer;
+  transition:
+    background 0.16s ease,
+    border-color 0.16s ease,
+    color 0.16s ease;
+}
+
+.theme-toggle svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.theme-toggle:hover,
+.theme-toggle:focus-visible {
+  border-color: rgba(228, 197, 141, 0.82);
+  background: rgba(213, 180, 118, 0.14);
+}
+
+.theme-toggle:focus-visible {
+  outline: 2px solid #C9A96E;
+  outline-offset: 3px;
+}
+
+/* На мобиле кнопка переезжает к логотипу, чтобы не переполнять правую группу. */
+.theme-toggle--mobile {
+  display: none;
 }
 
 .logo-wrapper {
@@ -246,14 +314,15 @@ textarea {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 18px;
+  flex-wrap: wrap;
+  gap: 6px 18px;
   padding: 7px 16px;
   border-top: 1px solid rgba(180, 135, 44, 0.35);
   background: rgba(255, 255, 255, 0.55);
   font-size: 12px;
   color: #888;
   /* В колонке скролл-контейнера вжимается вниз: на коротких страницах
-     стоит у нижнего края экрана, на длинных — уезжает под контент. */
+     стоит у нижнего края экрана, на длинных - уезжает под контент. */
   margin-top: auto;
 }
 
@@ -262,12 +331,21 @@ textarea {
   letter-spacing: 0.04em;
 }
 
+.site-footer-docs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px 18px;
+}
+
 .site-footer-link {
   color: #2f5c36;
   font-weight: 600;
   text-decoration: underline;
   text-underline-offset: 2px;
   cursor: pointer;
+  text-align: center;
 }
 
 .site-footer-link:hover {
@@ -275,9 +353,14 @@ textarea {
 }
 
 /* Футер должен стоять строго у нижнего края, без полоски фона под ним.
-   Контейнеры страниц имеют нижний padding — компенсируем его отрицательным
+   Контейнеры страниц имеют нижний padding - компенсируем его отрицательным
    margin-bottom (значения связаны с padding-bottom каждого контейнера). */
 .training-page > .site-footer {
+  /* Футер на всю ширину страницы: отрицательные поля компенсируют
+     горизонтальный padding .training-page (28px). */
+  align-self: stretch;
+  margin-right: -28px;
+  margin-left: -28px;
   margin-bottom: -36px; /* training-page: padding 40px 28px 36px */
 }
 
@@ -362,6 +445,150 @@ textarea {
   opacity: 0.75;
   font-size: 10px;
   font-weight: 500;
+}
+
+/* Плашка награды GigaCoin - та же тёмная карточка с золотым акцентом,
+   что и панели игры/магазина. Фиксированная, поэтому не сдвигает
+   содержимое страницы и не мешает шапке. */
+.gigacoin-reward-toast {
+  position: fixed;
+  z-index: 2000;
+  right: clamp(16px, 3vw, 28px);
+  bottom: clamp(16px, 3vw, 28px);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 252px;
+  max-width: min(380px, calc(100vw - 32px));
+  padding: 12px 16px 12px 13px;
+  border: 1px solid rgba(213, 180, 118, 0.46);
+  border-left: 3px solid #d5b476;
+  border-radius: 16px;
+  background:
+    radial-gradient(120% 150% at 0% 0%, rgba(213, 180, 118, 0.16), transparent 48%),
+    linear-gradient(145deg, rgba(7, 18, 22, 0.97), rgba(10, 25, 27, 0.96));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 253, 248, 0.08),
+    0 18px 42px rgba(0, 0, 0, 0.42);
+  color: #f6f4ef;
+  font: 500 13px/1.35 Inter, sans-serif;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  animation:
+    gigacoin-toast-in 240ms cubic-bezier(0.2, 0.8, 0.2, 1) both,
+    gigacoin-toast-out 280ms ease-in 3.72s forwards;
+}
+
+.gigacoin-reward-toast__icon {
+  display: inline-flex;
+  flex: 0 0 38px;
+  width: 38px;
+  height: 38px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(213, 180, 118, 0.42);
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 34% 28%,
+    rgba(233, 205, 151, 0.3),
+    rgba(213, 180, 118, 0.08) 66%,
+    rgba(213, 180, 118, 0.02)
+  );
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 253, 248, 0.06),
+    0 0 18px rgba(213, 180, 118, 0.16);
+  color: #e9cd97;
+  animation: gigacoin-toast-icon-pop 420ms cubic-bezier(0.34, 1.56, 0.64, 1) 110ms both;
+}
+
+.gigacoin-reward-toast__icon svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.gigacoin-reward-toast__copy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.gigacoin-reward-toast__copy strong {
+  display: block;
+  color: #fffdf8;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.gigacoin-reward-toast__label {
+  color: rgba(246, 244, 239, 0.58);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.gigacoin-reward-toast__amount {
+  color: #e9cd97;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.gigacoin-reward-toast__copy small {
+  color: rgba(246, 244, 239, 0.55);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.gigacoin-reward-toast__copy small b {
+  color: #f6f4ef;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes gigacoin-toast-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes gigacoin-toast-out {
+  to {
+    opacity: 0;
+    transform: translate3d(0, 6px, 0) scale(0.99);
+  }
+}
+
+@keyframes gigacoin-toast-icon-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gigacoin-reward-toast,
+  .gigacoin-reward-toast__icon {
+    animation: none;
+  }
 }
 
 /* Кнопка «Выйти» в шапке нужна только там, где меню профиля скрыто
@@ -506,8 +733,80 @@ textarea {
   background: #b89a5e;
 }
 
+.gameover-btn:disabled {
+  cursor: default;
+  opacity: 0.65;
+}
+
+/* Кнопка разбора - светлее основной: это второе действие, после него
+   в карточке появляются звёзды и точность. */
+.gameover-btn--review {
+  background: #f1e6cf;
+  border: 1px solid rgba(180, 135, 44, 0.8);
+}
+
+.gameover-btn--review:hover {
+  background: #e8d9b8;
+}
+
+/* Кнопки карточки итога: после разбора их две - «Разбор по ходам»
+   и «Новая игра». На узком экране переносятся на вторую строку. */
+.gameover-actions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Итог разбора: три звезды, точность и счётчики ходов игрока. */
+.gameover-review {
+  margin-top: 14px;
+}
+
+.gameover-stars {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  font-size: 26px;
+  line-height: 1;
+}
+
+.gameover-star {
+  color: rgba(180, 135, 44, 0.28);
+}
+
+.gameover-star--on {
+  color: #e0a52a;
+  text-shadow: 0 1px 3px rgba(74, 50, 32, 0.35);
+}
+
+.gameover-review-accuracy {
+  margin-top: 8px;
+  font-family: "Calypso", serif;
+  font-size: 18px;
+  color: #333;
+}
+
+.gameover-review-detail {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #666;
+}
+
+.gameover-review-note {
+  margin-top: 8px;
+  font-family: "Inter", sans-serif;
+  font-size: 12px;
+  color: #837053;
+}
+
+.gameover-review-note--error {
+  color: #b3543a;
+}
+
 /* Выбор стороны при входе на главную: та же карточка, что и итог
-   партии, только вместо одной кнопки — две «медали» сторон. */
+   партии, только вместо одной кнопки - две «медали» сторон. */
 .gameover-card--side {
   min-width: 330px;
 }
@@ -697,6 +996,12 @@ textarea {
   box-shadow: 0 1px 3px rgba(74, 50, 32, 0.22);
 }
 
+/* Шкала в режиме движка: золотая риска границы становится ярче, чтобы
+   режим отличался от материального без дополнительных подписей. */
+.eval-bar--engine .eval-bar-fill {
+  border-top-color: rgba(201, 154, 62, 1);
+}
+
 .player-bar {
   width: 100%;
   padding: 4px 4px;
@@ -704,12 +1009,6 @@ textarea {
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-}
-
-.rating-label {
-  font-size: 13px;
-  color: #8b7340;
-  letter-spacing: 0.5px;
 }
 
 .maia-engine-error {
@@ -763,6 +1062,58 @@ textarea {
   flex: 1;
 }
 
+/* Легенда сравнения Stockfish и Maia под доской. Раньше была собрана
+   на inline-стилях и в тёмной теме давала светлый текст на светлой
+   плашке. Теперь это обычная карточка в палитре страницы: бумажная
+   поверхность, золотая окантовка и приглушённая подпись. */
+.compare-card {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  /* Отступы и шрифт те же, что были у inline-версии: высота карточки
+     участвует в расчёте размера доски, менять её нельзя. */
+  margin-top: 10px;
+  padding: 10px 14px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.87);
+  /* Окантовка рисуется тенью, а не border: так не добавляется 2px
+     к высоте и доска не пересчитывается. */
+  box-shadow:
+    inset 0 0 0 1px rgba(180, 135, 44, 0.55),
+    0 2px 6px rgba(0, 0, 0, 0.12);
+  color: #333;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.compare-card__dot {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin-right: 7px;
+  vertical-align: middle;
+}
+
+.compare-card__dot--stockfish {
+  background: #2f8a45;
+}
+
+.compare-card__dot--maia {
+  background: #c9781c;
+}
+
+.compare-card__label {
+  color: #5f4a24;
+}
+
+.compare-card__note {
+  margin-top: 4px;
+  color: #6b6b6b;
+}
+
 .ctrl-btn {
   padding: 6px 16px;
   color: #333;
@@ -775,6 +1126,42 @@ textarea {
   height: 34px;
   line-height: 1;
   text-align: center;
+}
+
+/* Постоянная кнопка разбора под доской: итоговую карточку можно
+   закрыть кликом по фону, а разбор должен остаться доступным. */
+.ctrl-btn--review {
+  background: #f1e6cf;
+  border: 1px solid rgba(180, 135, 44, 0.8);
+}
+
+.ctrl-btn--review:hover {
+  background: #e8d9b8;
+}
+
+.ctrl-btn--review:disabled {
+  cursor: default;
+  opacity: 0.65;
+}
+
+/* Переключатель шкалы: «Материал / Движок». Живёт в панели управления
+   доской - на самой шкале кнопка больше не нужна. */
+.ctrl-btn--eval-mode {
+  display: inline-block;
+}
+
+@media (max-width: 1150px) {
+  /* Кнопки под доской на узком экране переносятся, а не вылезают
+     за край: к переключателю шкалы добавляется ещё одна плашка. */
+  .controls-row {
+    flex-wrap: wrap;
+  }
+
+  .ctrl-btn--eval-mode {
+    min-width: 0;
+    padding: 6px 12px;
+    font-size: 15px;
+  }
 }
 
 .fen-bar {
@@ -862,7 +1249,7 @@ textarea {
   /* РЈР±СЂР°Р»Рё gap, С‚Р°Рє РєР°Рє Р»РёРЅРёРё РјРµР¶РґСѓ С…РѕРґР°РјРё Р»СѓС‡С€Рµ РґРµР»Р°С‚СЊ С‡РµСЂРµР· border-bottom */
   overflow-y: auto;
 
-  flex: 1 1 auto; /* Р—Р°СЃС‚Р°РІР»СЏРµРј СЃРїРёСЃРѕРє РіРёР±РєРѕ Р·Р°РЅРёРјР°С‚СЊ РІСЃС‘ СЃРІРѕР±РѕРґРЅРѕРµ РјРµСЃС‚Рѕ */
+  flex: 1 1 auto; /* Р-Р°СЃС‚Р°РІР»СЏРµРј СЃРїРёСЃРѕРє РіРёР±РєРѕ Р·Р°РЅРёРјР°С‚СЊ РІСЃС‘ СЃРІРѕР±РѕРґРЅРѕРµ РјРµСЃС‚Рѕ */
   min-height: 0; /* Р’РђР–РќРћ: РјР°РіРёС‡РµСЃРєРѕРµ СЃРІРѕР№СЃС‚РІРѕ, РєРѕС‚РѕСЂРѕРµ С‡РёРЅРёС‚ Р±Р°Рі СЃРєСЂРѕР»Р»Р° РІРѕ Flexbox! */
 
   padding-right: 8px; /* РћС‚СЃС‚СѓРї РґР»СЏ СЃРєСЂРѕР»Р»Р±Р°СЂР° */
@@ -903,7 +1290,7 @@ textarea {
   color: #333;
 }
 
-/* Полоску между ходами рисует .move-pair::after (см. ниже) — здесь
+/* Полоску между ходами рисует .move-pair::after (см. ниже) - здесь
    только снимаем старую зелёную рамку у последнего хода. */
 
 .move-pair .num {
@@ -1541,7 +1928,7 @@ textarea {
   flex-shrink: 0;
   box-sizing: border-box;
 }
-/* Р—РґРµСЃСЊ РјРѕР¶РЅРѕ РґРѕР±Р°РІРёС‚СЊ СЃС‚РёР»Рё С€СЂРёС„С‚РѕРІ РґР»СЏ .player-names РїРѕ РґР°РЅРЅС‹Рј РёР· Dev Mode */
+/* Р-РґРµСЃСЊ РјРѕР¶РЅРѕ РґРѕР±Р°РІРёС‚СЊ СЃС‚РёР»Рё С€СЂРёС„С‚РѕРІ РґР»СЏ .player-names РїРѕ РґР°РЅРЅС‹Рј РёР· Dev Mode */
 
 /* --- РЎРїРёСЃРѕРє С…РѕРґРѕРІ (С‡РµСЂРµРґРѕРІР°РЅРёРµ С†РІРµС‚РѕРІ РєР°Рє РЅР° РјР°РєРµС‚Рµ) --- */
 .move-pair {
@@ -1555,7 +1942,7 @@ textarea {
 }
 
 /*
- * Разделитель между ходами — та же золотая линия, что под заголовком
+ * Разделитель между ходами - та же золотая линия, что под заголовком
  * «История ходов» и в рамке панели: тонкий волосок, растворяющийся
  * к краям. Рисуем псевдоэлементом, чтобы не трогать высоту строки
  * и не смещать текст.
@@ -1615,6 +2002,123 @@ textarea {
   text-align: right; /* Р§РµСЂРЅС‹Рµ С…РѕРґС‹ РїСЂРёР¶Р°С‚С‹ РІРїСЂР°РІРѕ (РїРѕРґ Maia 2) */
   padding-inline: 4px;
 }
+
+/* Пока открыта карточка выбора стороны, ходы только читаются:
+   клики и hover-подсветка выключены, но список по-прежнему скроллится. */
+.move-list--locked .move-w,
+.move-list--locked .move-b {
+  pointer-events: none;
+  cursor: default;
+  opacity: 0.72;
+}
+
+.move-list--locked .move-w:hover,
+.move-list--locked .move-b:hover {
+  background: transparent;
+}
+
+/* --- Разбор партии: ход + оценка + значок качества ---------------------- */
+
+.review-hint {
+  margin: -2px 0 8px;
+  font-family: "Inter", sans-serif;
+  font-size: 11px;
+  color: #837053;
+}
+
+.review-move {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 6px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #333;
+  font-family: "Calypso", serif;
+  font-size: 18px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.review-move:hover {
+  background: rgba(131, 183, 135, 0.18);
+}
+
+.review-move.is-active {
+  background-color: #dcecd9;
+}
+
+.review-move-num {
+  flex: 0 0 28px;
+  color: #555;
+  font-size: 14px;
+  text-align: right;
+}
+
+.review-move.is-black .review-move-san {
+  padding-left: 18px;
+}
+
+.review-move-san {
+  flex: 1;
+  min-width: 0;
+}
+
+.review-move-mark {
+  margin-left: 3px;
+  font-family: "Inter", sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.review-move-san--inaccuracy {
+  color: #a98417;
+}
+
+.review-move-san--mistake {
+  color: #c26a3a;
+}
+
+.review-move-san--blunder {
+  color: #b3543a;
+}
+
+/*
+ * Оценка - компактная плашка в стиле шахматных сайтов: светлая при
+ * перевесе белых, тёмная при перевесе чёрных.
+ */
+.review-move-eval {
+  flex: 0 0 auto;
+  min-width: 46px;
+  padding: 2px 5px;
+  border-radius: 6px;
+  font-family: "Inter", sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.review-move-eval.is-white {
+  background: #f7f5ee;
+  box-shadow: inset 0 0 0 1px rgba(74, 50, 32, 0.18);
+  color: #2f4f3a;
+}
+
+.review-move-eval.is-black {
+  background: #3b3b39;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+  color: #f3f0e6;
+}
+
+.review-move-eval.is-equal {
+  background: rgba(74, 50, 32, 0.08);
+  color: #666;
+}
 /* --- РќР°РІРёРіР°С†РёСЏ СЃРѕ СЃС‚СЂРµР»РєР°РјРё --- */
 /* Р’С‹СЃС‚СЂР°РёРІР°РµРј РєРЅРѕРїРєРё Рё СЃС‡РµС‚С‡РёРє СЃС‚СЂРѕРіРѕ РїРѕ С†РµРЅС‚СЂСѓ РЅР° СЂР°РІРЅРѕРј СѓРґР°Р»РµРЅРёРё */
 .nav-row {
@@ -1647,6 +2151,19 @@ textarea {
 /* РќРµР±РѕР»СЊС€РѕР№ С‚СЂСЋРє: РґРµР»Р°РµРј С„РѕРЅ SVG С‡СѓС‚СЊ СЏСЂС‡Рµ РїСЂРё РЅР°РІРµРґРµРЅРёРё РјС‹С€РєРѕР№ */
 .arrow-btn:hover rect {
   fill-opacity: 0.5;
+}
+
+/* Недоступная стрелка не должна реагировать на наведение. */
+.arrow-btn:disabled {
+  cursor: default;
+}
+
+.arrow-btn:disabled:hover {
+  transform: none;
+}
+
+.arrow-btn:disabled:hover rect {
+  fill-opacity: 0.3;
 }
 
 /* --- РќРёР¶РЅРёРµ РєРЅРѕРїРєРё --- */
@@ -2349,8 +2866,13 @@ textarea {
   transition: background 0.2s;
   box-shadow: 0 6px 16px rgba(94, 148, 99, 0.35);
 }
-.auth-submit:hover {
+.auth-submit:hover:not(:disabled) {
   background: #76a87a;
+}
+.auth-submit:disabled {
+  opacity: 0.5;
+  cursor: default;
+  box-shadow: none;
 }
 
 .auth-footer {
@@ -2368,17 +2890,112 @@ textarea {
   text-decoration: underline;
 }
 
-/* Ссылка на документ внизу формы регистрации (новая вкладка) */
-.auth-reg-doc {
-  display: block;
-  margin-top: 12px;
-  font-size: 13px;
-  color: #83b787;
-  text-align: center;
-  text-decoration: none;
+/* Обязательное согласие с документами при регистрации */
+.auth-consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid rgba(150, 190, 160, 0.7);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.55);
 }
-.auth-reg-doc:hover {
+.auth-consent-input {
+  width: 18px;
+  height: 18px;
+  margin: 1px 0 0;
+  flex-shrink: 0;
+  accent-color: #83b787;
+  cursor: pointer;
+}
+.auth-consent-text {
+  font-size: 13px;
+  line-height: 1.45;
+  color: #5f6f57;
+}
+.auth-consent-text label {
+  cursor: pointer;
+}
+.auth-consent-text a {
+  color: #5e9463;
   text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.auth-consent-text a:hover {
+  color: #3f7a46;
+}
+
+/* --- Шаг привязки шахматного аккаунта после регистрации --- */
+.auth-card--link {
+  grid-template-columns: minmax(0, 1fr);
+  width: 760px;
+  min-height: 0;
+  max-height: calc(100vh - 48px);
+  padding: 34px 38px 30px;
+  overflow-y: auto;
+}
+
+.auth-link-panel {
+  width: 100%;
+  max-width: 680px;
+  min-width: 0;
+  margin: 0 auto;
+}
+
+.auth-link-head {
+  margin-bottom: 18px;
+}
+
+.auth-link-head .auth-brand {
+  margin-bottom: 16px;
+}
+
+.auth-link-head .auth-subtitle {
+  margin-bottom: 0;
+}
+
+.auth-link-notice {
+  margin: 0 0 14px;
+  padding: 11px 14px;
+  border-radius: 12px;
+  font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.auth-link-notice--ok {
+  border: 1px solid rgba(76, 137, 86, 0.35);
+  background: rgba(131, 183, 135, 0.16);
+  color: #2f5c36;
+}
+
+.auth-link-notice--error {
+  border: 1px solid rgba(179, 84, 58, 0.28);
+  background: rgba(211, 124, 96, 0.12);
+  color: #9a4630;
+}
+
+.auth-link-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  max-width: 420px;
+  margin: 20px auto 0;
+}
+
+.auth-link-actions .auth-submit {
+  margin-top: 0;
+}
+
+.auth-link-hint {
+  margin: 0;
+  font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #7c8b70;
+  text-align: center;
 }
 
 @media (max-width: 760px) {
@@ -2570,7 +3187,8 @@ textarea {
 }
 
 .puzzles-layout {
-  /* Keep the puzzle info, board, and coach aligned in one shared row. */
+  /* Жёсткие 3 колонки: инфо | доска | чат. Чат всегда справа и никогда
+     не переносится вниз - переполнение чинилось именно переносом. */
   display: grid;
   grid-template-columns: minmax(300px, clamp(310px, 22vw, 370px)) minmax(0, 1fr) minmax(320px, min(28vw, 520px));
   gap: 24px;
@@ -3297,6 +3915,9 @@ textarea {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  /* Резервируем место под скроллбар: появление блока результата не
+     должно менять ширину страницы и вызывать перерисовку фона. */
+  scrollbar-gutter: stable;
   /* Сверху больше воздуха под шапкой, чтобы карточки не липли к логотипу. */
   padding: 40px 28px 36px;
   font-family: var(--font-ui);
@@ -3352,6 +3973,12 @@ textarea {
   font-size: 16px;
   line-height: 1.55;
   color: #444;
+}
+
+/* Карточка уровня на экране «Практика для вашего уровня»: сам экран
+   выровнен по центру, поэтому карточку тоже держим по центру. */
+.training-register-wall .rating-band-progress {
+  margin: 14px auto 4px;
 }
 
 .training-hero,
@@ -3521,6 +4148,23 @@ textarea {
   color: #666;
 }
 
+/* Метка уровня из программы курса: только подсказка, доступ не ограничивает. */
+.training-module-level {
+  align-self: flex-start;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(47, 92, 54, 0.28);
+  background: rgba(47, 92, 54, 0.08);
+  color: #2f5c36;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.training-module-level--header {
+  margin: 6px 0 4px;
+}
+
 .training-module-meta {
   align-self: flex-start;
   padding: 7px 12px;
@@ -3621,8 +4265,8 @@ textarea {
 }
 
 /* Тулбар в ширину контентного блока ниже, чтобы крайние кнопки
-   стояли ровно над ним: в уроке — над раскладкой 1460px (кнопка
-   «← Уроки модуля» слева над теорией), в списке уроков — над
+   стояли ровно над ним: в уроке - над раскладкой 1460px (кнопка
+   «← Уроки модуля» слева над теорией), в списке уроков - над
    тропинкой 900px. */
 .training-page--lesson .training-toolbar {
   max-width: 1460px;
@@ -3670,8 +4314,8 @@ textarea {
 }
 
 /* Дуолинго-тропинка уроков: баннеры разделов + змейка узлов.
-   Состояния узлов: done — пройден, current — текущий (пульс),
-   todo — дальше по порядку. Запирания нет, цвет лишь подсказывает. */
+   Состояния узлов: done - пройден, current - текущий (пульс),
+   todo - дальше по порядку. Запирания нет, цвет лишь подсказывает. */
 .training-path {
   width: 100%;
   max-width: 900px;
@@ -3963,6 +4607,99 @@ textarea {
   color: #999;
 }
 
+/* Развилка дебюта: карточки вариантов в панели теории. */
+.training-variations {
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px dashed rgba(180, 135, 44, 0.55);
+  display: grid;
+  gap: 10px;
+}
+
+.training-variations-lead {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #64748b;
+}
+
+.training-variation-list {
+  display: grid;
+  gap: 8px;
+}
+
+.training-variation-card {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid #c9a96e;
+  background: rgba(255, 255, 255, 0.8);
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.training-variation-card:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 1);
+  border-color: #b4872c;
+}
+
+.training-variation-card--active,
+.training-variation-card--active:hover:not(:disabled) {
+  background: #f3e9d2;
+  border-color: #5e9463;
+}
+
+.training-variation-card:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.training-variation-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #2f5c36;
+}
+
+.training-variation-line {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  color: #555;
+}
+
+.training-variation-description {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #555;
+}
+
+/* Плашка выбранной ветки над доской. */
+.training-branch-banner {
+  display: grid;
+  gap: 3px;
+  margin-bottom: 12px;
+  padding: 9px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(180, 135, 44, 0.68);
+  background: rgba(243, 233, 210, 0.9);
+}
+
+.training-branch-banner-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #2f5c36;
+}
+
+.training-branch-banner-line {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 13px;
+  color: #555;
+}
+
 /* Прогресс-бары обучения. Повторяем визуал .progress-meter из
    ProgressWidget, чтобы процент выглядел одинаково в профиле и здесь. */
 .training-progress-bar {
@@ -3982,7 +4719,7 @@ textarea {
 }
 
 .training-course-progress {
-  margin-top: 18px;
+  margin: 18px auto 0;
   max-width: 520px;
 }
 
@@ -4092,7 +4829,7 @@ textarea {
   margin-top: 16px;
 }
 
-/* Кнопка «Подсказка» после ряда «Проверить/Сбросить» — отлипаем её. */
+/* Кнопка «Подсказка» после ряда «Проверить/Сбросить» - отлипаем её. */
 .training-actions + .training-secondary-btn {
   margin-top: 12px;
 }
@@ -4277,21 +5014,181 @@ textarea {
   opacity: 0.78;
 }
 
-/* === Секция «Пора повторить» (spaced repetition) на странице курса === */
+/* === Курс: сетка контента и рейл повторений ============================== */
 
-.training-due-section {
-  margin-bottom: 26px;
-  padding: 18px 20px;
-  border: 1px solid rgba(180, 135, 44, 0.3);
+.training-page--course {
+  /* Нижний отступ переезжает на сетку контента, чтобы футер мог встать
+     ровно у нижней границы страницы. */
+  padding-bottom: 0;
+}
+
+.training-course-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  align-items: start;
+  gap: 22px;
+  width: 100%;
+  max-width: 1500px;
+  margin: 0 auto;
+  padding-bottom: 36px;
+}
+
+.training-course-main {
+  min-width: 0;
+}
+
+/* Футер - последний flex-ребёнок страницы: на коротких страницах
+   прижимается к низу экрана, на длинных уходит под контент. */
+.training-page--course > .site-footer {
+  margin-top: auto;
+  margin-bottom: 0;
+}
+
+.training-due-rail {
+  position: sticky;
+  top: 12px;
+  z-index: 1;
+  display: flex;
+  min-width: 0;
+  max-height: calc(100vh - 120px);
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  align-self: start;
+}
+
+.training-due-toggle {
+  display: flex;
+  width: 100%;
+  min-height: 64px;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid rgba(180, 135, 44, 0.4);
   border-radius: 18px;
-  background: #fdf8ec;
+  background: rgba(253, 248, 236, 0.96);
+  box-shadow: 0 8px 22px rgba(35, 44, 38, 0.12);
+  color: #284333;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+
+.training-due-toggle:hover {
+  border-color: rgba(180, 135, 44, 0.68);
+  background: #fffaf0;
+  box-shadow:
+    0 12px 28px rgba(35, 44, 38, 0.18),
+    0 0 0 1px rgba(180, 135, 44, 0.22);
+  transform: translateY(-2px);
+}
+
+.training-due-toggle:active {
+  box-shadow: 0 8px 22px rgba(35, 44, 38, 0.16);
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .training-due-toggle {
+    transition: none;
+  }
+
+  .training-due-toggle:hover,
+  .training-due-toggle:active {
+    transform: none;
+  }
+}
+
+.training-due-toggle:focus-visible {
+  outline: 2px solid #8b6822;
+  outline-offset: 2px;
+}
+
+.training-due-toggle-icon {
+  display: inline-flex;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(201, 169, 110, 0.2);
+  color: #8d6d31;
+  font-size: 21px;
+  line-height: 1;
+}
+
+.training-due-toggle-copy {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.training-due-toggle-label {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.training-due-toggle-hint {
+  overflow: hidden;
+  color: #708073;
+  font-size: 12px;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.training-due-toggle-count {
+  display: inline-flex;
+  min-width: 30px;
+  height: 30px;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: #e9d8ae;
+  color: #5c4720;
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.training-due-toggle-chevron {
+  width: 18px;
+  flex-shrink: 0;
+  color: #8d6d31;
+  font-size: 16px;
+  line-height: 1;
+  text-align: center;
+}
+
+.training-due-panel {
+  display: flex;
+  min-height: 0;
+  max-height: calc(100vh - 190px);
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid rgba(180, 135, 44, 0.35);
+  border-radius: 18px;
+  background: rgba(253, 248, 236, 0.97);
+  box-shadow: 0 12px 32px rgba(35, 44, 38, 0.16);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 .training-due-heading {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  margin-bottom: 14px;
+  flex: 0 0 auto;
+  padding: 16px 16px 13px;
+  border-bottom: 1px solid rgba(180, 135, 44, 0.18);
 }
 
 .training-due-heading strong,
@@ -4299,41 +5196,53 @@ textarea {
   display: block;
 }
 
-.training-due-heading span:not(.training-due-icon) {
-  margin-top: 3px;
-  font-size: 13px;
-  opacity: 0.7;
+.training-due-heading strong {
+  color: #284333;
+  font-size: 16px;
+  line-height: 1.3;
 }
 
-.training-due-icon {
-  font-size: 22px;
+.training-due-heading span {
+  margin-top: 5px;
+  color: #66746b;
+  font-size: 13px;
+  line-height: 1.45;
 }
 
 .training-due-list {
   display: flex;
+  min-height: 0;
+  max-height: calc(100vh - 300px);
   flex-direction: column;
   gap: 8px;
+  overflow-y: auto;
+  padding: 10px;
 }
 
 .training-due-card {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
   width: 100%;
-  padding: 10px 14px;
+  padding: 11px 12px;
   border: 1px solid rgba(180, 135, 44, 0.25);
   border-radius: 13px;
   background: #fff;
   color: #20332d;
   font: inherit;
-  cursor: pointer;
   text-align: left;
+  cursor: pointer;
   transition: background 0.15s ease, border-color 0.15s ease;
 }
 
 .training-due-card:hover {
-  background: #fdf3dd;
   border-color: rgba(180, 135, 44, 0.5);
+  background: #fdf3dd;
+}
+
+.training-due-card:focus-visible {
+  outline: 2px solid #8b6822;
+  outline-offset: 2px;
 }
 
 .training-due-card-main {
@@ -4347,28 +5256,50 @@ textarea {
 }
 
 .training-due-card-main strong {
-  overflow: hidden;
+  overflow-wrap: anywhere;
   font-size: 14px;
+  line-height: 1.3;
+}
+
+.training-due-card-main span {
+  margin-top: 3px;
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.35;
+  opacity: 0.62;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.training-due-card-main span {
-  margin-top: 2px;
-  font-size: 12px;
-  opacity: 0.62;
+.training-due-card-meta {
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  text-align: right;
 }
 
-.training-due-card-meta {
-  flex-shrink: 0;
-  font-size: 12px;
-  opacity: 0.7;
+.training-due-card-due {
+  color: #8a5e26;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+.training-due-card-reps {
+  color: #7a877d;
+  font-size: 11px;
+  line-height: 1.3;
+  white-space: nowrap;
 }
 
 .training-due-card-arrow {
   flex-shrink: 0;
   font-size: 16px;
   opacity: 0.6;
+  transition: transform 0.15s ease;
 }
 
 /* === OAuth Lichess / Chess.com ============================================ */
@@ -4419,6 +5350,11 @@ textarea {
   color: #788178;
 }
 
+.training-due-card:hover .training-due-card-arrow {
+  transform: translateX(2px);
+}
+
+/* === OAuth callback ======================================================= */
 .oauth-callback-page {
   min-height: calc(100vh - 70px);
   display: flex;
@@ -4445,39 +5381,49 @@ textarea {
 }
 
 .training-due-empty {
-  padding: 0 16px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 22px 18px 24px;
   color: #66746b;
+  text-align: center;
+}
+
+.training-due-empty-icon {
+  display: inline-flex;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(94, 148, 99, 0.14);
+  color: #3f7a4a;
+  font-size: 20px;
+}
+
+.training-due-empty p {
+  max-width: 240px;
   font-size: 13px;
+  line-height: 1.45;
 }
 
 @media (max-width: 1150px) {
-  .training-page--grid-with-due {
+  .training-course-layout {
     grid-template-columns: minmax(0, 1fr);
-    transition: none;
+    gap: 18px;
   }
 
   .training-due-rail {
     position: static;
-    grid-column: 1;
-    grid-row: 2;
     max-height: none;
   }
 
-  .training-due-rail--collapsed .training-due-toggle {
-    width: 100%;
-    justify-content: flex-start;
-    padding: 11px 14px;
-  }
-
-  .training-due-rail--collapsed .training-due-toggle-label {
-    display: block;
-  }
-
   .training-due-panel {
-    max-height: 60vh;
+    max-height: none;
   }
 
   .training-due-list {
-    max-height: calc(60vh - 110px);
+    max-height: 60vh;
   }
 }
