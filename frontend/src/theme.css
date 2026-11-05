@@ -1688,11 +1688,6 @@
   color: var(--sf-error);
 }
 
-:root[data-theme="dark"] .progress-widget__kicker,
-:root[data-theme="dark"] .progress-widget__topics-title {
-  color: var(--sf-gold);
-}
-
 :root[data-theme="dark"] .progress-widget__streak {
   background: var(--sf-gold-soft);
 }
