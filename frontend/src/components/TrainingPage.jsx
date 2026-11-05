@@ -463,11 +463,23 @@ export default function TrainingPage({ user, onRegister }) {
     return () => clearTimeout(timer);
   }, [taskResult?.correct, taskIndex, visibleTasks.length]);
 
+  // Подсказка для закрытого модуля. Без пройденного теста уровня рейтинга
+  // ещё нет, поэтому обещать «откроется при Elo N» неверно: сначала тест.
+  const lockedModuleHint = useCallback(
+    (module) =>
+      user?.elo == null
+        ? `Модуль откроется после теста уровня: нужен Elo ${module.required_elo}+`
+        : `Откроется с Elo ${module.required_elo}+`,
+    [user?.elo],
+  );
+
   const openModule = useCallback(async (module) => {
     if (!module.enabled) return;
     if (module.locked) {
       setError(
-        `Модуль откроется при рейтинге Elo ${module.required_elo} и выше.`,
+        user?.elo == null
+          ? `Модуль откроется после теста уровня: нужен рейтинг Elo ${module.required_elo} и выше.`
+          : `Модуль откроется при рейтинге Elo ${module.required_elo} и выше.`,
       );
       return;
     }
@@ -493,7 +505,8 @@ export default function TrainingPage({ user, onRegister }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+    // Текст ошибки зависит от наличия Elo, поэтому подписка на него.
+  }, [user?.elo]);
 
   useEffect(() => {
     if (!requestedModuleSlug || modules.length === 0) return;
@@ -1059,7 +1072,9 @@ export default function TrainingPage({ user, onRegister }) {
                   if (!module.enabled) return;
                   if (module.locked) {
                     setError(
-                      `Модуль откроется при рейтинге Elo ${module.required_elo} и выше.`,
+                      user?.elo == null
+                        ? `Модуль откроется после теста уровня: нужен рейтинг Elo ${module.required_elo} и выше.`
+                        : `Модуль откроется при рейтинге Elo ${module.required_elo} и выше.`,
                     );
                     return;
                   }
@@ -1069,9 +1084,7 @@ export default function TrainingPage({ user, onRegister }) {
                 }}
                 disabled={!module.enabled || module.locked}
                 title={
-                  module.locked
-                    ? `Откроется с Elo ${module.required_elo}+`
-                    : undefined
+                  module.locked ? lockedModuleHint(module) : undefined
                 }
               >
                 <span className="training-module-node-icon" aria-hidden="true">
@@ -1112,7 +1125,7 @@ export default function TrainingPage({ user, onRegister }) {
                   )}
                   {module.enabled && module.locked && (
                     <span className="training-module-meta training-module-meta--locked">
-                      🔒 Откроется с Elo {module.required_elo}+
+                      🔒 {lockedModuleHint(module)}
                     </span>
                   )}
                 </span>
