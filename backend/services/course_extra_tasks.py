@@ -840,7 +840,7 @@ EXTRA_TASKS_BY_LESSON: dict[str, list[dict]] = {
     'special-rules': [
         {
             'task_type': 'make_move',
-            'title': 'Рокировка из партии: длинная, 15-й ход',
+            'title': 'Рокировка из партии: длинная',
             'instruction': 'Сделайте рокировку: король уходит из центра, ладья вступает в игру.',
             'fen': 'r3kbnr/pp3pp1/7p/4P3/3N2QP/8/PP3P2/R3KB1q w Qkq - 0 15',
             'source_square': 'e1',
@@ -854,7 +854,7 @@ EXTRA_TASKS_BY_LESSON: dict[str, list[dict]] = {
         },
         {
             'task_type': 'make_move',
-            'title': 'Рокировка из партии: длинная, 11-й ход',
+            'title': 'Рокировка из партии: длинная',
             'instruction': 'Сделайте рокировку: король уходит из центра, ладья вступает в игру.',
             'fen': 'r1bk3r/ppp2pp1/7p/4p3/1b2nP2/2N5/PPP1N1PP/R3KB1R w KQ - 0 11',
             'source_square': 'e1',
@@ -868,7 +868,7 @@ EXTRA_TASKS_BY_LESSON: dict[str, list[dict]] = {
         },
         {
             'task_type': 'make_move',
-            'title': 'Рокировка из партии: длинная, 11-й ход',
+            'title': 'Рокировка из партии: длинная',
             'instruction': 'Сделайте рокировку: король уходит из центра, ладья вступает в игру.',
             'fen': 'rn2k1nr/ppp2ppp/8/4P3/1BP5/2N1P1Pb/PP2Q2P/R3KBq1 w Qkq - 2 11',
             'source_square': 'e1',
@@ -882,7 +882,7 @@ EXTRA_TASKS_BY_LESSON: dict[str, list[dict]] = {
         },
         {
             'task_type': 'make_move',
-            'title': 'Рокировка из партии: длинная, 13-й ход',
+            'title': 'Рокировка из партии: длинная',
             'instruction': 'Сделайте рокировку: король уходит из центра, ладья вступает в игру.',
             'fen': 'rn1k2nr/5ppp/4p3/p7/1b2b3/1PN5/1B3PPP/R3KBNR w KQ - 0 13',
             'source_square': 'e1',
@@ -896,7 +896,7 @@ EXTRA_TASKS_BY_LESSON: dict[str, list[dict]] = {
         },
         {
             'task_type': 'make_move',
-            'title': 'Рокировка из партии: длинная, 11-й ход',
+            'title': 'Рокировка из партии: длинная',
             'instruction': 'Сделайте рокировку: король уходит из центра, ладья вступает в игру.',
             'fen': 'rn2k1nr/1pp1bppp/p7/3P4/3P1B1N/2N4b/PPP1Q2P/R3KB1q w Qkq - 2 11',
             'source_square': 'e1',
@@ -910,7 +910,7 @@ EXTRA_TASKS_BY_LESSON: dict[str, list[dict]] = {
         },
         {
             'task_type': 'make_move',
-            'title': 'Рокировка из партии: короткая, 16-й ход',
+            'title': 'Рокировка из партии: короткая',
             'instruction': 'Сделайте рокировку: король уходит из центра, ладья вступает в игру.',
             'fen': 'r2r4/ppp2k1p/2n3p1/8/8/2P2b2/P1P1N2P/R1B1K2R w KQ - 0 16',
             'source_square': 'e1',

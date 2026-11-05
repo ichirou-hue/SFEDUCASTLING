@@ -290,7 +290,7 @@ class RoleUpdateRequest(BaseModel):
 
 
 class NicknameChangeRequest(BaseModel):
-    nickname: str = Field(min_length=1, max_length=64)
+    nickname: str = Field(min_length=3, max_length=32)
 
 
 def _as_utc(value: datetime) -> datetime:
@@ -456,9 +456,9 @@ async def change_nickname(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Меняет отображаемый никнейм за GigaCoin.
+    """Меняет логин и отображаемое имя за GigaCoin.
 
-    Логин не затрагивается: это идентификатор входа. Цена удваивается
+    Старый логин после успешной транзакции освобождается. Цена удваивается
     после каждой смены (10, 20, 40, ...). Баланс, счётчик смен и запись
     в журнале GigaCoin обновляются в одной транзакции под блокировкой
     строки пользователя.
@@ -473,12 +473,31 @@ async def change_nickname(
         raise HTTPException(status_code=401, detail="Пользователь не найден")
 
     current_nickname = locked.nickname or locked.login
-    if new_nickname.casefold() == current_nickname.casefold():
-        raise HTTPException(status_code=400, detail="Новый никнейм совпадает с текущим")
 
-    # Никнейм не должен повторять ни чужой никнейм, ни чужой логин:
-    # логин остаётся идентификатором входа и не должен выглядеть как
-    # чужое отображаемое имя.
+    # Записи, сделанные до исправления смены логина: отображаемое имя уже
+    # новое, а ``users.login`` остался прежним, поэтому новый логин занят
+    # собственным никнеймом. Досинхронизируем его бесплатно и без счётчика
+    # смен: иначе пользователь не сможет ни войти по новому логину, ни
+    # зарегистрировать его.
+    if (
+        new_nickname.casefold() == current_nickname.casefold()
+        and new_nickname.casefold() != locked.login.casefold()
+    ):
+        locked.login = new_nickname
+        locked.nickname = new_nickname
+        await db.commit()
+        await db.refresh(locked)
+        return {
+            "ok": True,
+            **await _issue_tokens(db, locked),
+            "price_paid": 0,
+            "next_price": nickname_change_price(int(locked.nickname_changes or 0)),
+        }
+
+    if new_nickname.casefold() == locked.login.casefold():
+        raise HTTPException(status_code=400, detail="Новый логин совпадает с текущим")
+
+    # Новый логин не должен повторять чужой логин или отображаемое имя.
     conflict = await db.scalar(
         select(User.id)
         .where(
@@ -491,7 +510,7 @@ async def change_nickname(
         .limit(1)
     )
     if conflict is not None:
-        raise HTTPException(status_code=409, detail="Этот никнейм уже занят")
+        raise HTTPException(status_code=409, detail="Этот логин уже занят")
 
     changes = int(locked.nickname_changes or 0)
     price = nickname_change_price(changes)
@@ -504,6 +523,7 @@ async def change_nickname(
 
     now = datetime.now(UTC)
     locked.gigacoins = balance - price
+    locked.login = new_nickname
     locked.nickname = new_nickname
     locked.nickname_changes = changes + 1
     locked.nickname_changed_at = now
@@ -522,11 +542,12 @@ async def change_nickname(
         # Параллельная смена на тот же никнейм: уникальный индекс БД
         # остаётся последней линией защиты.
         await db.rollback()
-        raise HTTPException(status_code=409, detail="Этот никнейм уже занят") from exc
+        raise HTTPException(status_code=409, detail="Этот логин уже занят") from exc
     await db.refresh(locked)
+    tokens = await _issue_tokens(db, locked)
     return {
         "ok": True,
-        "user": locked.public(),
+        **tokens,
         "price_paid": price,
         "next_price": nickname_change_price(changes + 1),
     }

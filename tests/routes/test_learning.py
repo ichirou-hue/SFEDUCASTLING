@@ -55,17 +55,17 @@ RATING_FEN = "k7/8/8/8/8/8/8/1R4K1 w - - 0 1"
 RATING_MOVES = "b1b8 a8a7 b8b7 a7a8 b7b1"
 RATING_PUZZLES = {
     "puzzles": [
-        # группа 1 (0-1000)
+        # группа 1 (0-999)
         {"id": "low1", "fen": RATING_FEN, "moves": RATING_MOVES, "rating": 500, "themes": ["fork"]},
         {"id": "low2", "fen": RATING_FEN, "moves": RATING_MOVES, "rating": 900, "themes": ["fork"]},
-        # группа 2 (1001-1500) - своя для рейтинга 1200
+        # группа 2 (1000-1499) - своя для рейтинга 1200
         {"id": "mid1", "fen": RATING_FEN, "moves": RATING_MOVES, "rating": 1200, "themes": ["pin"]},
         {"id": "mid2", "fen": RATING_FEN, "moves": RATING_MOVES, "rating": 1350, "themes": ["pin"]},
         {"id": "mid3", "fen": RATING_FEN, "moves": RATING_MOVES, "rating": 1400, "themes": ["fork"]},
-        # группа 3 (1501-1900) - соседняя, но выше потолка 1200+200=1400
+        # группа 3 (1500-1899) - соседняя, но выше потолка 1200+200=1400
         {"id": "high1", "fen": RATING_FEN, "moves": RATING_MOVES, "rating": 1600, "themes": ["sacrifice"]},
         {"id": "high2", "fen": RATING_FEN, "moves": RATING_MOVES, "rating": 1800, "themes": ["sacrifice"]},
-        # группа 4 (1901+) - отсекается и диапазоном, и потолком
+        # группа 4 (1900+) - отсекается и диапазоном, и потолком
         {"id": "top1", "fen": RATING_FEN, "moves": RATING_MOVES, "rating": 2100, "themes": ["sacrifice"]},
     ]
 }
@@ -104,7 +104,7 @@ def _level_test_pool() -> dict:
     """
     puzzles: list[dict] = []
     plan = [(1, 12), (2, 5), (3, 2), (4, 1)]
-    bounds = {1: (500, 1000), 2: (1001, 1500), 3: (1501, 1900), 4: (1901, 2000)}
+    bounds = {1: (500, 999), 2: (1000, 1499), 3: (1500, 1899), 4: (1900, 2000)}
     for group, count in plan:
         low, high = bounds[group]
         step = max(1, (high - low) // max(1, count))

@@ -108,6 +108,8 @@ function formatAccuracy(accuracy) {
  */
 const MIN_RELIABLE_MOVES = 8;
 
+const AI_MOVE_DELAY_MS = 450;
+
 /*
  * Описание итога партии для карточки. На мате ход принадлежит
  * проигравшей стороне: если это сторона игрока - поражение, иначе победа.
@@ -1870,7 +1872,7 @@ const fetchBestMove = useCallback(
         const gen = gameGenRef.current;
         setTimeout(() => {
           if (gen === gameGenRef.current) makeAiMove();
-        }, 0);
+        }, AI_MOVE_DELAY_MS);
       }
 
       return true;
@@ -1905,7 +1907,7 @@ const fetchBestMove = useCallback(
     const gen = gameGenRef.current;
     const timer = setTimeout(() => {
       if (gen === gameGenRef.current) makeAiMove();
-    }, 0);
+    }, AI_MOVE_DELAY_MS);
 
     return () => clearTimeout(timer);
   }, [

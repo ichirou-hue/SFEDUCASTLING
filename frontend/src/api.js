@@ -338,10 +338,7 @@ export async function saveOnboarding(answers) {
 
 export async function changeNickname(nickname) {
   const { data } = await api.patch("/api/auth/nickname", { nickname });
-  const user = data?.user;
-  if (user) {
-    localStorage.setItem(USER_KEY, JSON.stringify(user));
-  }
+  if (data?.access_token && data?.refresh_token && data?.user) saveAuth(data);
   return data;
 }
 

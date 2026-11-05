@@ -727,7 +727,6 @@ def _nav(
     difficulty: int = 1,
 ) -> dict:
     """Задание «переведите фигуру с поля X на поле Y» - тренировка координат."""
-    board = chess.Board(fen)
     move = chess.Move.from_uci(source + target)
     return _move(
         title,
@@ -885,11 +884,8 @@ def _material_tasks(pool, used_fens) -> list[dict]:
 def basic_tasks(pool, used_fens) -> dict[str, list[dict]]:
     start = chess.STARTING_FEN
     mid = "r2q1rk1/pp3ppp/2n1bn2/2bp4/8/1PN1PN2/PB1PBPPP/R2Q1RK1 w - - 0 10"
-    board = chess.Board(mid)
     result: dict[str, list[dict]] = {}
 
-    king_sq = chess.square_name(board.king(chess.WHITE))
-    black_king_sq = chess.square_name(board.king(chess.BLACK))
     result["board-coordinates"] = [
         _choose(
             "Цвет поля d5",
@@ -1186,7 +1182,7 @@ def special_tasks(pool, used_fens) -> dict[str, list[dict]]:
             side = "короткая" if board.is_kingside_castling(move) else "длинная"
             castling.append(
                 _move(
-                    f"Рокировка из партии: {side}, {board.fullmove_number}-й ход",
+                    f"Рокировка из партии: {side}",
                     "Сделайте рокировку: король уходит из центра, ладья вступает в игру.",
                     puzzle["fen"],
                     chess.square_name(move.from_square),

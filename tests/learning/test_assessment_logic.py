@@ -5,19 +5,34 @@ from backend.services.assessment import (
     calculate_performance_rating,
     max_puzzle_rating_for_user,
     onboarding_rating,
+    rating_band_progress,
     rating_for_selection,
     rating_group_for,
 )
 
 
 def test_rating_group_boundaries():
-    assert rating_group_for(0)["key"] == "0-1000"
-    assert rating_group_for(1000)["key"] == "0-1000"
-    assert rating_group_for(1001)["key"] == "1001-1500"
-    assert rating_group_for(1500)["key"] == "1001-1500"
-    assert rating_group_for(1501)["key"] == "1501-1900"
-    assert rating_group_for(1900)["key"] == "1501-1900"
-    assert rating_group_for(1901)["key"] == "1901+"
+    assert rating_group_for(0)["key"] == "0-999"
+    assert rating_group_for(999)["key"] == "0-999"
+    assert rating_group_for(1000)["key"] == "1000-1499"
+    assert rating_group_for(1499)["key"] == "1000-1499"
+    assert rating_group_for(1500)["key"] == "1500-1899"
+    assert rating_group_for(1899)["key"] == "1500-1899"
+    assert rating_group_for(1900)["key"] == "1900+"
+
+
+def test_lover_band_starts_at_1000():
+    """Любительский начинается с 1000, поэтому с 500 до него 500 пунктов."""
+    progress = rating_band_progress(500)
+    assert progress["current_band"]["title"] == "Начальный"
+    assert progress["next_band"]["title"] == "Любительский"
+    assert progress["next_threshold"] == 1000
+    assert progress["points_to_next"] == 500
+
+    at_threshold = rating_band_progress(1000)
+    assert at_threshold["current_band"]["title"] == "Любительский"
+    assert at_threshold["points_to_next"] == 500
+    assert at_threshold["progress_percent"] == 0.0
 
 
 def test_each_personalized_allocation_contains_20_questions():

@@ -20,11 +20,14 @@ from backend.services.adaptive_training import build_weakness_profile
 from backend.services.course_topics import COURSE_TOPIC_META, primary_course_topic_for_puzzle
 
 
+# Границы групп: следующая начинается ровно с круглого порога. Так
+# «Любительский» стартует с 1000, и при рейтинге 500 до него остаётся 500
+# пунктов, а не 501.
 RATING_GROUPS: list[dict[str, Any]] = [
-    {"id": 1, "key": "0-1000", "title": "Начальный", "min": 0, "max": 1000},
-    {"id": 2, "key": "1001-1500", "title": "Любительский", "min": 1001, "max": 1500},
-    {"id": 3, "key": "1501-1900", "title": "Клубный", "min": 1501, "max": 1900},
-    {"id": 4, "key": "1901+", "title": "Продвинутый", "min": 1901, "max": 9999},
+    {"id": 1, "key": "0-999", "title": "Начальный", "min": 0, "max": 999},
+    {"id": 2, "key": "1000-1499", "title": "Любительский", "min": 1000, "max": 1499},
+    {"id": 3, "key": "1500-1899", "title": "Клубный", "min": 1500, "max": 1899},
+    {"id": 4, "key": "1900+", "title": "Продвинутый", "min": 1900, "max": 9999},
 ]
 
 # Распределение 20 задач по диапазонам для каждого стартового уровня.

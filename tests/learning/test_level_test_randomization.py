@@ -28,12 +28,12 @@ def _puzzle(pid: str, rating: int, themes: tuple[str, ...] = ()) -> dict:
 
 
 def _wide_pool() -> list[dict]:
-    """8 задач на каждую из четырёх рейтинговых групп."""
+    """Не меньше 8 задач на каждую из четырёх рейтинговых групп."""
     by_group = [
-        range(600, 1001, 50),       # 0-1000
-        range(1050, 1501, 50),      # 1001-1500
-        range(1550, 1901, 50),      # 1501-1900
-        range(1950, 2301, 50),      # 1901+
+        range(600, 1000, 50),       # 0-999
+        range(1000, 1500, 50),      # 1000-1499
+        range(1500, 1900, 50),      # 1500-1899
+        range(1900, 2300, 50),      # 1900+
     ]
     puzzles: list[dict] = []
     for group_index, ratings in enumerate(by_group):
@@ -87,7 +87,7 @@ def test_returns_20_unique_questions_with_metrics():
     source_ids = {p["id"] for p in base["puzzles"]}
     assert set(ids) <= source_ids
     # rating_estimate=1200 → группа 2 → аллокация [4, 10, 4, 2].
-    assert metrics["rating_group"] == "1001-1500"
+    assert metrics["rating_group"] == "1000-1499"
     assert metrics["target_allocation"] == [4, 10, 4, 2]
     assert sum(metrics["actual_allocation"]) == 20
 

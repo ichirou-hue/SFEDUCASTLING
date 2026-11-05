@@ -938,7 +938,11 @@ export default function TrainingPage({ user, onRegister }) {
   ]);
 
   const nextTask = () => {
-    if (taskIndex < visibleTasks.length - 1) {
+    // Нельзя перескочить стрелкой через нерешённое задание. Кружочки
+    // используют то же правило: открыта только текущая или уже пройденная
+    // задача.
+    const currentSolved = currentTask && solvedTaskIds.has(currentTask.id);
+    if (currentSolved && taskIndex < visibleTasks.length - 1) {
       setTaskIndex((index) => index + 1);
     }
   };
@@ -1395,10 +1399,18 @@ export default function TrainingPage({ user, onRegister }) {
             <button
               type="button"
               className="training-progress-nav"
-              onClick={() => setTaskIndex((index) => Math.min(visibleTasks.length - 1, index + 1))}
-              disabled={taskIndex >= visibleTasks.length - 1}
+              onClick={nextTask}
+              disabled={
+                taskIndex >= visibleTasks.length - 1 ||
+                !currentTask ||
+                !solvedTaskIds.has(currentTask.id)
+              }
               aria-label="Следующее задание"
-              title="Следующее задание"
+              title={
+                currentTask && !solvedTaskIds.has(currentTask.id)
+                  ? "Сначала решите текущее задание"
+                  : "Следующее задание"
+              }
             >
               →
             </button>

@@ -184,11 +184,11 @@ function LinkedAccountsSection() {
 }
 
 /*
- * Смена отображаемого никнейма за GigaCoin. Логин для входа не меняется.
+ * Смена логина и отображаемого имени за GigaCoin. Старый логин освобождается.
  * Каждая следующая смена дороже: цену и счётчик смен считает сервер.
  */
 function NicknameSection({ profile, onChanged }) {
-  const currentNickname = profile?.nickname || profile?.login || "";
+  const currentNickname = profile?.login || profile?.nickname || "";
   const price = Number(profile?.nickname_change_price ?? 10);
   const balance = Number(profile?.gigacoins || 0);
   const changes = Number(profile?.nickname_changes || 0);
@@ -215,10 +215,10 @@ function NicknameSection({ profile, onChanged }) {
     try {
       const result = await changeNickname(trimmed);
       onChanged?.(result.user);
-      setNickname(result.user?.nickname || trimmed);
+      setNickname(result.user?.login || result.user?.nickname || trimmed);
       setNotice({
         type: "ok",
-        text: `Никнейм изменён. Списано ${result.price_paid} GigaCoin, следующая смена будет стоить ${result.next_price}.`,
+        text: `Логин изменён. Вход теперь выполняется по новому логину. Списано ${result.price_paid} GigaCoin, следующая смена будет стоить ${result.next_price}.`,
       });
     } catch (err) {
       setNotice({
@@ -237,12 +237,12 @@ function NicknameSection({ profile, onChanged }) {
     <section className="user-profile-section">
       <div className="user-profile-section-heading">
         <div>
-          <div className="user-profile-kicker">Имя в игре</div>
-          <h2>Никнейм</h2>
+          <div className="user-profile-kicker">Вход в аккаунт</div>
+          <h2>Логин</h2>
         </div>
         <p>
-          Смена никнейма стоит GigaCoin. Логин для входа не меняется, а цена
-          каждой следующей смены удваивается.
+          Смена логина стоит GigaCoin. После смены вход выполняется по новому
+          логину, а старый логин освобождается. Цена каждой следующей смены удваивается.
         </p>
       </div>
 
@@ -251,8 +251,8 @@ function NicknameSection({ profile, onChanged }) {
           type="text"
           value={nickname}
           onChange={(e) => setNickname(e.target.value)}
-          placeholder="Новый никнейм"
-          aria-label="Новый никнейм"
+          placeholder="Новый логин"
+          aria-label="Новый логин"
           maxLength={32}
           disabled={busy}
         />

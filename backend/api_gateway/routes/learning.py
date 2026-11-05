@@ -72,12 +72,12 @@ router = APIRouter(tags=["learning"])
 
 
 # Общие рейтинговые корзины для обычной страницы паззлов. Границы совпадают
-# с новой стартовой оценкой: 0–1000 / 1001–1500 / 1501–1900 / 1901+.
+# с RATING_GROUPS: 0-999 / 1000-1499 / 1500-1899 / 1900+.
 LEVEL_BUCKETS = [
-    {"min_puzzle_rating": 0, "max_puzzle_rating": 1001},
-    {"min_puzzle_rating": 1001, "max_puzzle_rating": 1501},
-    {"min_puzzle_rating": 1501, "max_puzzle_rating": 1901},
-    {"min_puzzle_rating": 1901, "max_puzzle_rating": 10000},
+    {"min_puzzle_rating": 0, "max_puzzle_rating": 1000},
+    {"min_puzzle_rating": 1000, "max_puzzle_rating": 1500},
+    {"min_puzzle_rating": 1500, "max_puzzle_rating": 1900},
+    {"min_puzzle_rating": 1900, "max_puzzle_rating": 10000},
 ]
 
 # Пробный доступ до анкеты. Зарегистрированный, но ещё не прошедший анкету

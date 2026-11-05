@@ -1,10 +1,9 @@
-"""Правила смены никнейма и цена в GigaCoin.
+"""Правила смены логина (он же отображаемое имя) и цена в GigaCoin.
 
-Никнейм - отображаемое имя пользователя. Логин (`users.login`) остаётся
-идентификатором для входа и не меняется: JWT, OAuth-привязки и проверки
-уникальности продолжают работать как раньше.
+Смена меняет и `users.login`, и `users.nickname`: вход после неё выполняется
+по новому логину, а прежний логин освобождается для новой регистрации.
 
-Смена никнейма платная, цена растёт экспоненциально: 10, 20, 40, 80, ...
+Смена платная, цена растёт экспоненциально: 10, 20, 40, 80, ...
 Первая смена стоит 10 GigaCoin. Верхняя граница нужна только для того,
 чтобы цена оставалась в пределах int32 при большом числе смен.
 """
@@ -33,16 +32,16 @@ def normalize_nickname(raw: str) -> str:
 
 
 def validate_nickname(raw: str) -> str:
-    """Проверяет и нормализует никнейм. Бросает ValueError с текстом для API."""
+    """Проверяет и нормализует новый логин. Бросает ValueError для API."""
     value = normalize_nickname(raw)
     if len(value) < NICKNAME_MIN_LENGTH:
-        raise ValueError(f"Никнейм: минимум {NICKNAME_MIN_LENGTH} символа")
+        raise ValueError(f"Логин: минимум {NICKNAME_MIN_LENGTH} символа")
     if len(value) > NICKNAME_MAX_LENGTH:
-        raise ValueError(f"Никнейм: максимум {NICKNAME_MAX_LENGTH} символов")
+        raise ValueError(f"Логин: максимум {NICKNAME_MAX_LENGTH} символов")
     if not any(char.isalnum() for char in value):
-        raise ValueError("Никнейм: нужны хотя бы одна буква или цифра")
+        raise ValueError("Логин: нужны хотя бы одна буква или цифра")
     if any(not (char.isalnum() or char in NICKNAME_ALLOWED_SEPARATORS) for char in value):
         raise ValueError(
-            "Никнейм: только буквы, цифры, пробел и символы _ - ."
+            "Логин: только буквы, цифры, пробел и символы _ - ."
         )
     return value
