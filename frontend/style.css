@@ -4785,3 +4785,18 @@ textarea {
     max-height: calc(60vh - 110px);
   }
 }
+
+/* Disable native image dragging on all chessboards. Board drag remains handled by react-chessboard. */
+img[src^="/pieces/"] {
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
+.eval-board-surface,
+.chat-board,
+.puzzle-board-wrapper,
+.training-board-wrapper,
+.level-test-board-wrap {
+  -webkit-user-select: none;
+  user-select: none;
+}

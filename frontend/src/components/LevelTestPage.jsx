@@ -31,7 +31,7 @@ const PIECE_IMAGES = {
 const customPieces = Object.fromEntries(
   Object.entries(PIECE_IMAGES).map(([code, src]) => [
     code,
-    () => <img src={src} alt="" style={{ width: "100%", height: "100%" }} />,
+    () => <img draggable={false} src={src} alt="" style={{ width: "100%", height: "100%" }} />,
   ]),
 );
 

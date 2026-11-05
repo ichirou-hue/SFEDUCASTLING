@@ -2459,6 +2459,7 @@ const fetchBestMove = useCallback(
             customPieces={{
               wK: () => (
                 <img
+                  draggable={false}
                   src="/pieces/white_king.svg"
                   style={{
                     width: "100%",
@@ -2469,6 +2470,7 @@ const fetchBestMove = useCallback(
 
               wQ: () => (
                 <img
+                  draggable={false}
                   src="/pieces/white_queen.svg"
                   style={{
                     width: "100%",
@@ -2479,6 +2481,7 @@ const fetchBestMove = useCallback(
 
               wR: () => (
                 <img
+                  draggable={false}
                   src="/pieces/white_rook.svg"
                   style={{
                     width: "100%",
@@ -2489,6 +2492,7 @@ const fetchBestMove = useCallback(
 
               wB: () => (
                 <img
+                  draggable={false}
                   src="/pieces/white_bishop.svg"
                   style={{
                     width: "100%",
@@ -2499,6 +2503,7 @@ const fetchBestMove = useCallback(
 
               wN: () => (
                 <img
+                  draggable={false}
                   src="/pieces/white_knight.svg"
                   style={{
                     width: "100%",
@@ -2509,6 +2514,7 @@ const fetchBestMove = useCallback(
 
               wP: () => (
                 <img
+                  draggable={false}
                   src="/pieces/white_pawn.svg"
                   style={{
                     width: "100%",
@@ -2519,6 +2525,7 @@ const fetchBestMove = useCallback(
 
               bK: () => (
                 <img
+                  draggable={false}
                   src="/pieces/black_king.svg"
                   style={{
                     width: "100%",
@@ -2529,6 +2536,7 @@ const fetchBestMove = useCallback(
 
               bQ: () => (
                 <img
+                  draggable={false}
                   src="/pieces/black_queen.svg"
                   style={{
                     width: "100%",
@@ -2539,6 +2547,7 @@ const fetchBestMove = useCallback(
 
               bR: () => (
                 <img
+                  draggable={false}
                   src="/pieces/black_rook.svg"
                   style={{
                     width: "100%",
@@ -2549,6 +2558,7 @@ const fetchBestMove = useCallback(
 
               bB: () => (
                 <img
+                  draggable={false}
                   src="/pieces/black_bishop.svg"
                   style={{
                     width: "100%",
@@ -2559,6 +2569,7 @@ const fetchBestMove = useCallback(
 
               bN: () => (
                 <img
+                  draggable={false}
                   src="/pieces/black_knight.svg"
                   style={{
                     width: "100%",
@@ -2569,6 +2580,7 @@ const fetchBestMove = useCallback(
 
               bP: () => (
                 <img
+                  draggable={false}
                   src="/pieces/black_pawn.svg"
                   style={{
                     width: "100%",
@@ -2645,6 +2657,7 @@ const fetchBestMove = useCallback(
                   >
                     <img
                       className="side-pick-piece"
+                      draggable={false}
                       src="/pieces/white_king.svg"
                       alt=""
                     />
@@ -2659,6 +2672,7 @@ const fetchBestMove = useCallback(
                   >
                     <img
                       className="side-pick-piece"
+                      draggable={false}
                       src="/pieces/black_king.svg"
                       alt=""
                     />
