@@ -6,7 +6,9 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
+from starlette.concurrency import run_in_threadpool
 
+from backend.api_gateway.state import ensure_stockfish, stockfish_lock
 from backend.db.session import engine
 
 router = APIRouter(tags=["health"])
@@ -21,8 +23,21 @@ async def health_check() -> dict[str, str]:
     except SQLAlchemyError as exc:
         raise HTTPException(status_code=503, detail="Database unavailable") from exc
 
+    if not await run_in_threadpool(stockfish_ready):
+        raise HTTPException(status_code=503, detail="Stockfish unavailable")
+
     manifest = Path(__file__).resolve().parents[3] / "release.json"
     result = {"status": "ok"}
     if manifest.is_file():
         result["sha"] = json.loads(manifest.read_text())["sha"]
     return result
+
+
+def stockfish_ready() -> bool:
+    """Verify the real UCI process responds without changing game position."""
+    try:
+        with stockfish_lock:
+            stockfish = ensure_stockfish()
+            return stockfish is not None and bool(stockfish.get_fen_position())
+    except Exception:
+        return False

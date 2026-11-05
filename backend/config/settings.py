@@ -28,7 +28,12 @@ class CorsSettings(BaseModel):
     allow_headers: list[str] = Field(["*"], alias="ALLOW_HEADERS")
 
 
-class ModelsSettings(BaseModel):
+class ModelsSettings(BaseSettings):
+    # Read documented flat variables as well as MODELS__... overrides.
+    model_config = SettingsConfigDict(
+        env_file=BASE_DIR / ".env", env_file_encoding="utf-8", extra="ignore",
+    )
+
     stockfish_path: Path | None = Field(None, alias="STOCKFISH_PATH")
     stockfish_depth: int = Field(20, alias="STOCKFISH_DEPTH")
     stockfish_top_moves: int = Field(5, alias="STOCKFISH_TOP_MOVES")

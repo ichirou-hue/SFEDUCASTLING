@@ -16,3 +16,4 @@ python-chess>=1.999
 httpx>=0.24.0
 Pillow>=8.4.0
 zstandard>=0.20.0
+stockfish>=3.28.0
