@@ -25,6 +25,33 @@ ACTIVE_STREAK_BONUS = 10
 STREAK_CAP_EXEMPT = True
 PUZZLE_STREAK_REWARDS = {5: 3, 10: 5, 20: 10, 30: 15}
 
+# Ежедневная цель: либо одно правильно выполненное задание курса,
+# либо три РАЗНЫХ правильно решённых пазла за местный календарный день.
+DAILY_GOAL_REWARD = 5
+DAILY_GOAL_PUZZLES = 3
+
+# Полный учебный модуль оплачивается один раз благодаря уникальному
+# (user_id, reason, ref) в gigacoin_events.
+MODULE_COMPLETE_REWARD = 10
+
+# Первое прохождение каждого уровня Maia 800..2600 даёт отдельный
+# одноразовый бонус. Обычная награда за отдельные честные победы
+# MAIA_WIN_COINS остаётся без изменений.
+MAIA_LEVEL_CLEAR_REWARD = 5
+MAIA_LEVEL_MIN = 800
+MAIA_LEVEL_MAX = 2600
+MAIA_LEVEL_STEP = 100
+
+
+def maia_level_clear_reward(rating: int | None) -> int:
+    value = int(rating or 0)
+    if (
+        MAIA_LEVEL_MIN <= value <= MAIA_LEVEL_MAX
+        and (value - MAIA_LEVEL_MIN) % MAIA_LEVEL_STEP == 0
+    ):
+        return MAIA_LEVEL_CLEAR_REWARD
+    return 0
+
 
 def puzzle_reward(rating: int | None) -> int:
     value = max(0, int(rating or 0))
@@ -121,6 +148,97 @@ async def _record_activity_day(
     ))
     await db.flush()
     return True
+
+
+async def daily_learning_goal_status(
+    db: AsyncSession,
+    user_id: int,
+    *,
+    now: datetime | None = None,
+) -> dict:
+    """Статус учебного дейлика на текущий местный день.
+
+    Выполнение:
+    - хотя бы одно ПРАВИЛЬНО выполненное задание курса; ИЛИ
+    - не меньше DAILY_GOAL_PUZZLES разных правильно решённых пазлов.
+
+    Простой вход, неверное задание и повторы одного пазла цель не закрывают.
+    """
+    from backend.models.puzzle_attempt import PuzzleAttempt
+    from backend.models.training_attempt import TrainingAttempt
+
+    now = now or datetime.now(timezone.utc)
+    start, end, today = _utc_bounds(now)
+
+    # training_attempts/puzzle_attempts исторически созданы как
+    # TIMESTAMP WITHOUT TIME ZONE. asyncpg не позволяет сравнивать их
+    # с aware datetime, поэтому границы UTC переводим в naive-форму
+    # только для этих двух старых таблиц.
+    activity_start = start.replace(tzinfo=None)
+    activity_end = end.replace(tzinfo=None)
+
+    training_done = await db.scalar(
+        select(TrainingAttempt.id)
+        .where(
+            TrainingAttempt.user_id == user_id,
+            TrainingAttempt.correct.is_(True),
+            TrainingAttempt.created_at >= activity_start,
+            TrainingAttempt.created_at < activity_end,
+        )
+        .limit(1)
+    ) is not None
+
+    solved_puzzles = int(
+        await db.scalar(
+            select(func.count(func.distinct(PuzzleAttempt.puzzle_id))).where(
+                PuzzleAttempt.user_id == user_id,
+                PuzzleAttempt.correct.is_(True),
+                PuzzleAttempt.created_at >= activity_start,
+                PuzzleAttempt.created_at < activity_end,
+            )
+        )
+        or 0
+    )
+
+    claimed = await db.scalar(
+        select(GigacoinEvent.id)
+        .where(
+            GigacoinEvent.user_id == user_id,
+            GigacoinEvent.reason == "daily_goal",
+            GigacoinEvent.ref == today.isoformat(),
+        )
+        .limit(1)
+    ) is not None
+
+    return {
+        "date": today.isoformat(),
+        "reward": DAILY_GOAL_REWARD,
+        "required_puzzles": DAILY_GOAL_PUZZLES,
+        "solved_puzzles": solved_puzzles,
+        "training_completed": training_done,
+        "completed": training_done or solved_puzzles >= DAILY_GOAL_PUZZLES,
+        "claimed": claimed,
+    }
+
+
+async def award_daily_learning_goal(
+    db: AsyncSession,
+    user: User,
+    *,
+    now: datetime | None = None,
+) -> int:
+    """Начислить награду за дейлик, если его условие уже выполнено."""
+    status = await daily_learning_goal_status(db, user.id, now=now)
+    if not status["completed"]:
+        return 0
+    return await award_gigacoins(
+        db,
+        user,
+        "daily_goal",
+        status["date"],
+        DAILY_GOAL_REWARD,
+        now=now,
+    )
 
 
 async def award_gigacoins(

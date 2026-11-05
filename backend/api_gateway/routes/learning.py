@@ -66,6 +66,7 @@ from backend.services.user_records import build_user_records
 from backend.services.gigacoin_service import (
     LEVEL_TEST_REWARD,
     PUZZLE_STREAK_REWARDS,
+    award_daily_learning_goal,
     award_gigacoins,
     puzzle_reward,
 )
@@ -650,6 +651,11 @@ async def record_puzzle_attempt(
             db, user, "puzzle_streak", str(attempt.id), streak_reward
         )
         coins_earned += streak_bonus
+
+    # Третий РАЗНЫЙ правильно решённый пазл дня закрывает дейлик.
+    if req.correct:
+        coins_earned += await award_daily_learning_goal(db, user)
+
     await db.commit()
     await db.refresh(attempt)
 

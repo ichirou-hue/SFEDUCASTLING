@@ -21,8 +21,10 @@ from backend.models.training_lesson import TrainingLesson
 from backend.models.training_module import TrainingModule
 from backend.models.user import User
 from backend.services.gigacoin_service import (
+    MODULE_COMPLETE_REWARD,
     TRAINING_FIRST_CORRECT,
     TRAINING_REPEAT,
+    award_daily_learning_goal,
     award_gigacoins,
     moscow_today,
 )
@@ -350,8 +352,15 @@ async def check_task(
             )).all())
             if module_task_ids and module_task_ids.issubset(solved_task_ids):
                 gigacoins_earned += await award_gigacoins(
-                    db, user, "module_complete", str(module.id), 10
+                    db,
+                    user,
+                    "module_complete",
+                    str(module.id),
+                    MODULE_COMPLETE_REWARD,
                 )
+
+        # Правильно выполненное задание курса закрывает учебный дейлик.
+        gigacoins_earned += await award_daily_learning_goal(db, user)
         await db.commit()
     else:
         gigacoins_earned += await award_gigacoins(

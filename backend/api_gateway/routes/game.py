@@ -37,6 +37,7 @@ from backend.services.gigacoin_service import (
     MAIA_FAIR_GAP,
     MAIA_WIN_COINS,
     award_gigacoins,
+    maia_level_clear_reward,
 )
 from backend.models.game import Game
 from backend.models.user import User
@@ -553,6 +554,11 @@ def _verified_maia_result(req: FinishGameRequest) -> str | None:
     return _replay_maia_result(req, MAIA_WIN_COINS)
 
 
+def _verified_maia_level_clear(req: FinishGameRequest) -> str | None:
+    """Проверка валютной награды за первое прохождение уровня Maia."""
+    return _replay_maia_result(req, MAIA_PROGRESS_LEVELS, minimum_moves=8)
+
+
 def _verified_maia_achievement(req: FinishGameRequest) -> str | None:
     return _replay_maia_result(req, MAIA_PROGRESS_LEVELS, minimum_moves=1)
 
@@ -643,19 +649,54 @@ async def finish_game(
 
     coins_earned = 0
     if user is not None:
-        verified_result = _verified_maia_result(req)
-        if verified_result is not None:
-            ref_payload = f"{req.engine}:{req.elo}:{req.player_color}:{','.join(req.moves)}:{verified_result}"
+        # Старая повторяемая награда за отдельную партию.
+        verified_game_result = _verified_maia_result(req)
+
+        # Новое одноразовое прохождение любого уровня 800..2600.
+        verified_level_result = _verified_maia_level_clear(req)
+        verified_activity_result = verified_level_result or verified_game_result
+
+        ref = None
+        if verified_activity_result is not None:
+            ref_payload = (
+                f"{req.engine}:{req.elo}:{req.player_color}:"
+                f"{','.join(req.moves)}:{verified_activity_result}"
+            )
             ref = hashlib.sha256(ref_payload.encode("utf-8")).hexdigest()
-            coins_earned = await award_gigacoins(db, user, "game_activity", ref, 0)
-        player_won = verified_result == ("1-0" if req.player_color == "w" else "0-1")
-        player_drew = verified_result == "1/2-1/2"
+            coins_earned = await award_gigacoins(
+                db, user, "game_activity", ref, 0
+            )
+
+        expected_win = "1-0" if req.player_color == "w" else "0-1"
+
+        player_won = verified_game_result == expected_win
+        player_drew = verified_game_result == "1/2-1/2"
         player_rating = int(user.elo or user.rating_estimate or 1000)
         fair_level = req.elo is not None and req.elo + MAIA_FAIR_GAP >= player_rating
-        requested_coins = MAIA_WIN_COINS.get(req.elo, 0) if player_won else MAIA_DRAW_COINS if player_drew else 0
-        if requested_coins and fair_level:
-            coins_earned += await award_gigacoins(db, user, "maia_game", ref, requested_coins)
-        if verified_result is not None:
+        requested_coins = (
+            MAIA_WIN_COINS.get(req.elo, 0)
+            if player_won
+            else MAIA_DRAW_COINS if player_drew else 0
+        )
+        if requested_coins and fair_level and ref is not None:
+            coins_earned += await award_gigacoins(
+                db, user, "maia_game", ref, requested_coins
+            )
+
+        # Уникальный ref по Elo не позволяет получить бонус прохождения
+        # одного и того же уровня второй раз.
+        level_cleared = verified_level_result == expected_win
+        level_reward = maia_level_clear_reward(req.elo) if level_cleared else 0
+        if level_reward:
+            coins_earned += await award_gigacoins(
+                db,
+                user,
+                "maia_level_complete",
+                str(req.elo),
+                level_reward,
+            )
+
+        if verified_activity_result is not None:
             await db.commit()
 
     background_tasks.add_task(

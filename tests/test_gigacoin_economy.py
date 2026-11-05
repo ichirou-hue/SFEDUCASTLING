@@ -12,12 +12,20 @@ from backend.api_gateway.models import FinishGameRequest
 from backend.api_gateway.routes.game import _verified_maia_result
 from backend.db.base import Base
 from backend.models.gigacoin_event import GigacoinEvent
+from backend.models.puzzle_attempt import PuzzleAttempt
 from backend.models.user import User
 from backend.services.gigacoin_service import (
     DAILY_CAP,
+    DAILY_GOAL_PUZZLES,
+    DAILY_GOAL_REWARD,
+    MAIA_LEVEL_CLEAR_REWARD,
     MAIA_WIN_COINS,
+    MODULE_COMPLETE_REWARD,
     PUZZLE_DAILY_CAP,
+    award_daily_learning_goal,
     award_gigacoins,
+    daily_learning_goal_status,
+    maia_level_clear_reward,
     maia_win_reward,
     puzzle_reward,
 )
@@ -47,6 +55,16 @@ def test_reward_tables_match_the_proposed_difficulty_curve():
     assert maia_win_reward(1100) == 2
     assert maia_win_reward(2600) == 14
     assert maia_win_reward(3600) == 0  # Stockfish isn't one of Maia's levels.
+
+    assert DAILY_GOAL_REWARD == 5
+    assert DAILY_GOAL_PUZZLES == 3
+    assert MODULE_COMPLETE_REWARD == 10
+    assert MAIA_LEVEL_CLEAR_REWARD == 5
+    assert maia_level_clear_reward(800) == 5
+    assert maia_level_clear_reward(1200) == 5
+    assert maia_level_clear_reward(2600) == 5
+    assert maia_level_clear_reward(2700) == 0
+    assert maia_level_clear_reward(850) == 0
 
 
 def test_game_reward_requires_a_replayed_terminal_result():
@@ -104,3 +122,97 @@ async def test_each_seventh_active_day_adds_a_streak_bonus(db):
     assert rewards[:6] == [2] * 6
     assert rewards[6] == 12  # 2 for the activity and 10 for the seven-day streak.
     assert user.gigacoins == 24
+
+
+@pytest.mark.asyncio
+async def test_daily_goal_requires_three_distinct_solved_puzzles_and_pays_once(db):
+    session, user = db
+    now = datetime(2026, 11, 5, 9, tzinfo=timezone.utc)
+
+    for puzzle_id in ("daily-a", "daily-b"):
+        session.add(PuzzleAttempt(
+            user_id=user.id,
+            puzzle_id=puzzle_id,
+            correct=True,
+            created_at=now,
+        ))
+    await session.flush()
+
+    status = await daily_learning_goal_status(session, user.id, now=now)
+    assert status["completed"] is False
+    assert status["solved_puzzles"] == 2
+    assert await award_daily_learning_goal(session, user, now=now) == 0
+
+    session.add(PuzzleAttempt(
+        user_id=user.id,
+        puzzle_id="daily-c",
+        correct=True,
+        created_at=now,
+    ))
+    await session.flush()
+
+    status = await daily_learning_goal_status(session, user.id, now=now)
+    assert status["completed"] is True
+    assert status["solved_puzzles"] == 3
+
+    assert await award_daily_learning_goal(session, user, now=now) == DAILY_GOAL_REWARD
+    assert await award_daily_learning_goal(session, user, now=now) == 0
+
+    status = await daily_learning_goal_status(session, user.id, now=now)
+    assert status["claimed"] is True
+    assert user.gigacoins == DAILY_GOAL_REWARD
+
+
+@pytest.mark.asyncio
+async def test_repeating_same_puzzle_does_not_complete_daily_goal(db):
+    session, user = db
+    now = datetime(2026, 11, 5, 9, tzinfo=timezone.utc)
+
+    for _ in range(3):
+        session.add(PuzzleAttempt(
+            user_id=user.id,
+            puzzle_id="same-puzzle",
+            correct=True,
+            created_at=now,
+        ))
+    await session.flush()
+
+    status = await daily_learning_goal_status(session, user.id, now=now)
+    assert status["solved_puzzles"] == 1
+    assert status["completed"] is False
+    assert await award_daily_learning_goal(session, user, now=now) == 0
+
+
+@pytest.mark.asyncio
+async def test_maia_level_completion_reward_is_once_per_level(db):
+    session, user = db
+    now = datetime(2026, 11, 5, 9, tzinfo=timezone.utc)
+
+    assert await award_gigacoins(
+        session,
+        user,
+        "maia_level_complete",
+        "1200",
+        maia_level_clear_reward(1200),
+        now=now,
+    ) == MAIA_LEVEL_CLEAR_REWARD
+
+    assert await award_gigacoins(
+        session,
+        user,
+        "maia_level_complete",
+        "1200",
+        maia_level_clear_reward(1200),
+        now=now,
+    ) == 0
+
+    assert await award_gigacoins(
+        session,
+        user,
+        "maia_level_complete",
+        "1300",
+        maia_level_clear_reward(1300),
+        now=now,
+    ) == MAIA_LEVEL_CLEAR_REWARD
+
+    assert user.gigacoins == MAIA_LEVEL_CLEAR_REWARD * 2
