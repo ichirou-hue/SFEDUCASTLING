@@ -83,12 +83,23 @@ export default function ProgressWidget() {
   // И сильные («70% слабые · 30% сильные» иначе не из чего собирать).
   // Без истории бэкенд присылает фабрикат: нижние 3 темы с нейтральными
   // 50% и attempts=0 (см. rank_topic_profile).
-  const hasRealProfile = useMemo(() => {
+  const hasCourseProfile = useMemo(() => {
     const observed = (topic) => topic.observed || (topic.attempts || 0) > 0;
     const hasWeak = (weakness?.weak_topics || []).some(observed);
     const hasStrong = (weakness?.strong_topics || []).some(observed);
     return hasWeak && hasStrong;
   }, [weakness]);
+
+  const gameInsights = weakness?.games || null;
+  const weakPieces = gameInsights?.weak_pieces || [];
+  const reliablePhases = (gameInsights?.phases || []).filter(
+    (phase) => phase.accuracy_percent != null && Number(phase.moves_scored || 0) >= 3,
+  );
+  const weakestPhase = [...reliablePhases].sort(
+    (a, b) => Number(a.accuracy_percent) - Number(b.accuracy_percent),
+  )[0] || null;
+  const hasGameProfile = weakPieces.length > 0 || Boolean(weakestPhase);
+  const hasRealProfile = hasCourseProfile || hasGameProfile;
 
   const selectionRule = weakness?.selection_rule;
   const weakShare = Number(selectionRule?.weak_share ?? 0) * 100;
@@ -179,16 +190,60 @@ export default function ProgressWidget() {
           <div>
             <strong>Персональная тренировка</strong>
             <span>
-              {Number.isFinite(weakShare) && Number.isFinite(strongShare)
+              {hasCourseProfile && Number.isFinite(weakShare) && Number.isFinite(strongShare)
                 ? `${Math.round(weakShare)}% задач по слабым темам, ${Math.round(
                     strongShare,
-                  )}% - закрепление сильных.`
-                : "Тренируем слабые темы, закрепляем сильные."}
+                  )}% - закрепление сильных; партии Maia уточняют фигуры и этапы.`
+                : "Подбор учитывает слабые фигуры и этапы из партий против Maia."}
             </span>
           </div>
           <button type="button" onClick={() => navigate("/puzzles?adaptive=1")}>
             Потренировать слабые места →
           </button>
+        </div>
+      )}
+
+      {gameInsights?.games_analyzed > 0 && (
+        <div className="progress-widget__game-insights">
+          <div className="progress-widget__topics-title">
+            Слабые места в партиях против Maia · {gameInsights.games_analyzed}
+          </div>
+          <div className="progress-game-insights-grid">
+            <article className="progress-game-insight">
+              <strong>Фигуры</strong>
+              {weakPieces.length > 0 ? (
+                <div className="progress-game-insight__rows">
+                  {weakPieces.map((piece) => (
+                    <span key={piece.key}>
+                      <b>{piece.label}</b>
+                      <em>{percent(piece.accuracy_percent)}</em>
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <small>Нужно минимум 5 оценённых ходов одной фигурой.</small>
+              )}
+            </article>
+            <article className="progress-game-insight">
+              <strong>Слабейший этап</strong>
+              {weakestPhase ? (
+                <div className="progress-game-insight__phase">
+                  <b>{weakestPhase.label}</b>
+                  <em>{percent(weakestPhase.accuracy_percent)}</em>
+                </div>
+              ) : (
+                <small>Пока недостаточно оценённых ходов.</small>
+              )}
+            </article>
+            <article className="progress-game-insight">
+              <strong>Ошибки</strong>
+              <div className="progress-game-insight__errors">
+                <span>Неточности <b>{gameInsights.quality?.inaccuracy ?? 0}</b></span>
+                <span>Ошибки <b>{gameInsights.quality?.mistake ?? 0}</b></span>
+                <span>Зевки <b>{gameInsights.quality?.blunder ?? 0}</b></span>
+              </div>
+            </article>
+          </div>
         </div>
       )}
 

@@ -53,6 +53,7 @@ def build_user_records(
 
     best_weekly_elo = None
     longest_win_streak = current_win_streak = 0
+    brilliant_moves = 0
     daily_games = {
         (chart_start + timedelta(days=offset)).isoformat(): {
             "wins": 0, "draws": 0, "losses": 0,
@@ -64,6 +65,17 @@ def build_user_records(
         outcome = _player_outcome(game)
         if outcome is None:
             continue
+
+        white = str(getattr(game, "white", "player") or "player").casefold()
+        black = str(getattr(game, "black", "ai") or "ai").casefold()
+        player_turn = "b" if black in {"player", "user"} and white not in {"player", "user"} else "w"
+        if str(getattr(game, "engine", "maia3") or "maia3").casefold() == "maia3":
+            for move in getattr(game, "moves", []) or []:
+                if getattr(move, "turn", None) != player_turn:
+                    continue
+                raw = move.eval_raw if isinstance(getattr(move, "eval_raw", None), dict) else {}
+                if raw.get("brilliant") is True:
+                    brilliant_moves += 1
 
         if outcome == "win":
             current_win_streak += 1
@@ -104,6 +116,7 @@ def build_user_records(
             "weekly_starts_on": week_start.isoformat(),
             "longest_win_streak": longest_win_streak,
             "best_puzzle_streak": longest_puzzle_streak,
+            "brilliant_moves": brilliant_moves,
             # Текущая серия: сколько пазлов решено подряд без ошибок.
             "current_puzzle_streak": current_puzzle_streak,
         },

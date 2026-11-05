@@ -274,3 +274,74 @@
     width: 100%;
   }
 }
+
+/* Maia insights V1 */
+.progress-widget__game-insights {
+  margin-top: 17px;
+  padding-top: 15px;
+  border-top: 1px solid rgba(34, 90, 115, 0.12);
+}
+
+.progress-game-insights-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.progress-game-insight {
+  min-width: 0;
+  padding: 12px 13px;
+  border: 1px solid rgba(71, 112, 85, 0.14);
+  border-radius: 13px;
+  background: #f7faf7;
+}
+
+.progress-game-insight > strong {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.progress-game-insight small {
+  color: #718078;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.progress-game-insight__rows,
+.progress-game-insight__errors {
+  display: grid;
+  gap: 5px;
+}
+
+.progress-game-insight__rows span,
+.progress-game-insight__phase,
+.progress-game-insight__errors span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: #627168;
+  font-size: 12px;
+}
+
+.progress-game-insight__rows b,
+.progress-game-insight__phase b,
+.progress-game-insight__errors b {
+  color: #30483c;
+  font-weight: 700;
+}
+
+.progress-game-insight__rows em,
+.progress-game-insight__phase em {
+  color: #8a6330;
+  font-style: normal;
+  font-weight: 700;
+}
+
+@media (max-width: 760px) {
+  .progress-game-insights-grid {
+    grid-template-columns: 1fr;
+  }
+}

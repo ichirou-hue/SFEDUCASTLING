@@ -5,11 +5,14 @@ from __future__ import annotations
 import random
 from collections.abc import Iterable
 
+import chess
+
 from backend.services.course_topics import primary_course_topic_for_puzzle
 from backend.services.difficulty_logic import (
     DEFAULT_DIFFICULTY,
     puzzle_matches_difficulty,
 )
+from backend.services.puzzle_validation import player_pieces_used_in_solution
 
 
 def allocation_for_count(count: int) -> tuple[int, int]:
@@ -154,6 +157,143 @@ def _phase_focus_puzzles(
     return picked, metadata
 
 
+PIECE_KEY_TO_TYPE = {
+    "pawn": chess.PAWN,
+    "knight": chess.KNIGHT,
+    "bishop": chess.BISHOP,
+    "rook": chess.ROOK,
+    "queen": chess.QUEEN,
+    "king": chess.KING,
+}
+
+
+def _piece_focus_puzzles(
+    puzzles: list[dict],
+    piece_stats: list[dict] | None,
+    *,
+    count: int,
+    topic_difficulties: dict[str, int] | None,
+) -> tuple[list[dict], dict]:
+    """Reserve up to 15% of a set for reliably weak pieces from Maia games."""
+    count = max(0, int(count))
+    piece_slots = int(round(count * 0.15))
+    reliable = [
+        piece for piece in (piece_stats or [])
+        if piece.get("key") in PIECE_KEY_TO_TYPE
+        and piece.get("accuracy_percent") is not None
+        and int(piece.get("moves_scored") or 0) >= 5
+    ]
+    reliable.sort(key=lambda piece: (
+        float(piece["accuracy_percent"]),
+        -int(piece.get("error_score") or 0),
+        piece["key"],
+    ))
+    metadata = {
+        "enabled": False,
+        "reason": "insufficient_history" if not reliable else "no_piece_slots",
+        "min_scored_moves": 5,
+        "max_share": 0.15,
+        "requested_slots": piece_slots,
+        "selected": 0,
+        "focus_piece": reliable[0]["key"] if reliable else None,
+        "pieces": [
+            {
+                "key": piece["key"],
+                "accuracy_percent": piece["accuracy_percent"],
+                "moves_scored": piece["moves_scored"],
+                "error_score": piece.get("error_score", 0),
+                "available": 0,
+                "selected": 0,
+            }
+            for piece in reliable
+        ],
+    }
+    if not reliable or piece_slots == 0:
+        return [], metadata
+
+    weights = [max(1.0, 101.0 - float(piece["accuracy_percent"])) for piece in reliable]
+    weight_sum = sum(weights)
+    raw_quotas = [piece_slots * weight / weight_sum for weight in weights]
+    quotas = [int(value) for value in raw_quotas]
+    for index in sorted(
+        range(len(reliable)),
+        key=lambda i: (-(raw_quotas[i] - quotas[i]), i),
+    )[: piece_slots - sum(quotas)]:
+        quotas[index] += 1
+
+    pools: list[list[dict]] = []
+    for index, piece in enumerate(reliable):
+        piece_type = PIECE_KEY_TO_TYPE[piece["key"]]
+        matching = []
+        for puzzle in puzzles:
+            used = player_pieces_used_in_solution(puzzle.get("fen"), puzzle.get("moves"))
+            if used and piece_type in used and puzzle.get("id"):
+                matching.append(puzzle)
+        metadata["pieces"][index]["available"] = len(matching)
+        preferred, other = [], []
+        for puzzle in matching:
+            slug = primary_course_topic_for_puzzle(puzzle)
+            difficulty = int((topic_difficulties or {}).get(slug, DEFAULT_DIFFICULTY))
+            (preferred if puzzle_matches_difficulty(puzzle, difficulty) else other).append(puzzle)
+        random.shuffle(preferred)
+        random.shuffle(other)
+        pools.append(other + preferred)
+
+    selected_ids: set[str] = set()
+    selected_by_piece = [0] * len(reliable)
+    picked: list[dict] = []
+
+    def add_candidate(index: int) -> bool:
+        pool = pools[index]
+        while pool:
+            puzzle = pool.pop()
+            puzzle_id = str(puzzle.get("id") or "")
+            if not puzzle_id or puzzle_id in selected_ids:
+                continue
+            selected_ids.add(puzzle_id)
+            slug = primary_course_topic_for_puzzle(puzzle)
+            difficulty = int((topic_difficulties or {}).get(slug, DEFAULT_DIFFICULTY))
+            picked.append({
+                **puzzle,
+                "adaptive_group": "piece_focus",
+                "adaptive_topic": slug,
+                "adaptive_piece": reliable[index]["key"],
+                "adaptive_difficulty": difficulty,
+                "difficulty_match": puzzle_matches_difficulty(puzzle, difficulty),
+            })
+            selected_by_piece[index] += 1
+            return True
+        return False
+
+    for index, quota in enumerate(quotas):
+        for _ in range(quota):
+            add_candidate(index)
+
+    while len(picked) < piece_slots:
+        progressed = False
+        for index in range(len(reliable)):
+            if add_candidate(index):
+                progressed = True
+                break
+        if not progressed:
+            break
+
+    for index in range(len(reliable)):
+        metadata["pieces"][index]["selected"] = selected_by_piece[index]
+    metadata.update({
+        "enabled": bool(picked),
+        "reason": "applied" if picked else "no_matching_puzzles",
+        "selected": len(picked),
+        "focus_piece": reliable[0]["key"],
+        "explanation": (
+            "Слабые по реальным партиям фигуры получают отдельную квоту задач."
+            if picked else
+            "Для надёжно слабых фигур не нашлось подходящих задач."
+        ),
+    })
+    return picked, metadata
+
+
 def rank_topic_profile(topics: list[dict]) -> tuple[list[dict], list[dict]]:
     """Выбирает нижние 3 и верхние 3 темы среди реально пройденных.
 
@@ -264,9 +404,51 @@ def select_adaptive_puzzles(
     count: int,
     topic_difficulties: dict[str, int] | None = None,
     phase_stats: list[dict] | None = None,
+    piece_stats: list[dict] | None = None,
 ) -> tuple[list[dict], dict]:
-    """Формирует 70/30 выборку, по возможности сохраняя квоты."""
+    """Form the adaptive set with piece/phase focus before the normal 70/30 topics."""
     count = max(1, int(count))
+
+    piece_picked, piece_meta = _piece_focus_puzzles(
+        puzzles,
+        piece_stats,
+        count=count,
+        topic_difficulties=topic_difficulties,
+    )
+    if piece_picked:
+        selected_ids = {str(puzzle["id"]) for puzzle in piece_picked}
+        remaining = [puzzle for puzzle in puzzles if str(puzzle.get("id") or "") not in selected_ids]
+        rest_count = count - len(piece_picked)
+        rest_picked, rest_meta = select_adaptive_puzzles(
+            remaining,
+            weak_topics=weak_topics,
+            strong_topics=strong_topics,
+            count=rest_count,
+            topic_difficulties=topic_difficulties,
+            phase_stats=phase_stats,
+            piece_stats=None,
+        ) if rest_count > 0 else ([], {
+            "weak_quota": 0,
+            "strong_quota": 0,
+            "weak_selected": 0,
+            "strong_selected": 0,
+            "fallback_selected": 0,
+            "difficulty_matched": 0,
+            "difficulty_fallback": 0,
+            "phase_adjustment": {
+                "enabled": False, "reason": "no_phase_slots", "selected": 0,
+                "requested_slots": 0, "focus_phase": None, "phases": [],
+            },
+        })
+        picked = piece_picked + rest_picked
+        random.shuffle(picked)
+        picked.sort(key=lambda puzzle: puzzle.get("difficulty_match") is not True)
+        return picked[:count], {
+            **rest_meta,
+            "requested": count,
+            "piece_adjustment": piece_meta,
+        }
+
     phase_picked, phase_meta = _phase_focus_puzzles(
         puzzles,
         phase_stats,
@@ -282,6 +464,8 @@ def select_adaptive_puzzles(
             strong_topics=strong_topics,
             count=count - len(phase_picked),
             topic_difficulties=topic_difficulties,
+            phase_stats=None,
+            piece_stats=None,
         ) if len(phase_picked) < count else ([], {
             "weak_quota": 0,
             "strong_quota": 0,
@@ -300,11 +484,11 @@ def select_adaptive_puzzles(
             "requested": count,
             "topic_requested": count - len(phase_picked),
             "phase_adjustment": phase_meta,
+            "piece_adjustment": piece_meta,
         }
 
     weak_quota, strong_quota = allocation_for_count(count)
     selected_ids: set[str] = set()
-
     weak_slugs = [item["slug"] for item in weak_topics]
     strong_slugs = [item["slug"] for item in strong_topics]
 
@@ -327,8 +511,6 @@ def select_adaptive_puzzles(
         topic_difficulties=topic_difficulties,
     )
 
-    # Если целевые темы бедны, добираем подходящую сложность из всей базы.
-    # Для новичка это важнее строгого соблюдения квоты по темам.
     picked = weak + strong
     fallback_count = 0
     if len(picked) < count:
@@ -347,19 +529,15 @@ def select_adaptive_puzzles(
             selected_ids.add(puzzle_id)
             slug = primary_course_topic_for_puzzle(puzzle)
             difficulty = int((topic_difficulties or {}).get(slug, DEFAULT_DIFFICULTY))
-            picked.append(
-                {
-                    **puzzle,
-                    "adaptive_group": "fallback",
-                    "adaptive_topic": slug,
-                    "adaptive_difficulty": difficulty,
-                    "difficulty_match": True,
-                }
-            )
+            picked.append({
+                **puzzle,
+                "adaptive_group": "fallback",
+                "adaptive_topic": slug,
+                "adaptive_difficulty": difficulty,
+                "difficulty_match": True,
+            })
             fallback_count += 1
 
-    # Лишь после исчерпания подходящих по сложности задач берём соседние
-    # диапазоны в целевых темах, а затем из всей базы.
     if len(weak) < weak_quota:
         extra = _take_round_robin(
             puzzles,
@@ -395,20 +573,16 @@ def select_adaptive_puzzles(
             selected_ids.add(puzzle_id)
             slug = primary_course_topic_for_puzzle(puzzle)
             difficulty = int((topic_difficulties or {}).get(slug, DEFAULT_DIFFICULTY))
-            picked.append(
-                {
-                    **puzzle,
-                    "adaptive_group": "fallback",
-                    "adaptive_topic": slug,
-                    "adaptive_difficulty": difficulty,
-                    "difficulty_match": puzzle_matches_difficulty(puzzle, difficulty),
-                }
-            )
+            picked.append({
+                **puzzle,
+                "adaptive_group": "fallback",
+                "adaptive_topic": slug,
+                "adaptive_difficulty": difficulty,
+                "difficulty_match": puzzle_matches_difficulty(puzzle, difficulty),
+            })
             fallback_count += 1
 
     random.shuffle(picked)
-    # В начале набора всегда показываем задачи подходящей сложности. Это
-    # особенно важно для новичка, у которого пока нет истории решений.
     picked.sort(key=lambda puzzle: puzzle.get("difficulty_match") is not True)
     final = picked[:count]
     difficulty_matched = sum(1 for p in final if p.get("difficulty_match") is True)
@@ -422,4 +596,5 @@ def select_adaptive_puzzles(
         "difficulty_matched": difficulty_matched,
         "difficulty_fallback": len(final) - difficulty_matched,
         "phase_adjustment": phase_meta,
+        "piece_adjustment": piece_meta,
     }

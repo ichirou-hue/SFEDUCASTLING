@@ -42,7 +42,7 @@
 
 .user-records__metrics {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
   margin-top: 18px;
 }
@@ -72,6 +72,12 @@
   --record-border: rgba(62, 119, 144, 0.17);
   --record-bg: linear-gradient(145deg, #eff6f8, #fbfdfe);
   --record-accent: #3f7285;
+}
+
+.user-record-card--purple {
+  --record-border: rgba(122, 92, 154, 0.2);
+  --record-bg: linear-gradient(145deg, #f7f1fb, #fdfbff);
+  --record-accent: #765493;
 }
 
 .user-record-card__top {
@@ -442,5 +448,12 @@
 
   .user-records--home .user-records__heading h2 {
     font-size: 20px;
+  }
+}
+
+/* Maia insights V1: medium-width achievement grid */
+@media (max-width: 1080px) and (min-width: 761px) {
+  .user-records__metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

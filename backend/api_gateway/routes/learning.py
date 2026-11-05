@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import distinct, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from backend.api_gateway import state
 from backend.api_gateway.dependecies import get_current_user
@@ -59,6 +60,7 @@ from backend.services.dynamic_difficulty import (
     update_theme_difficulty_after_attempt,
 )
 from backend.services.difficulty_logic import difficulty_for_rating
+from backend.services.game_insights import load_user_game_insights
 from backend.services.phase_accuracy import load_user_phase_accuracy
 from backend.services.user_records import build_user_records
 from backend.services.gigacoin_service import (
@@ -693,6 +695,7 @@ async def learning_user_records(
     """Возвращает личные рекорды и активность за последние 14 дней."""
     games = await db.scalars(
         select(Game)
+        .options(selectinload(Game.moves))
         .where(Game.user_id == user.id)
         .order_by(Game.created_at, Game.id)
     )
@@ -757,11 +760,13 @@ async def learning_weaknesses(
     """Профиль сильных/слабых тем по объединённым учебным попыткам."""
     if not state.puzzle_base:
         raise HTTPException(status_code=503, detail="База паззлов не загружена")
-    return await build_weakness_profile(
+    profile = await build_weakness_profile(
         db,
         user_id=user.id,
         puzzle_base=state.puzzle_base,
     )
+    profile["games"] = await load_user_game_insights(db, user_id=user.id)
+    return profile
 
 
 @router.get("/api/learning/puzzles/adaptive")
@@ -815,14 +820,15 @@ async def get_adaptive_puzzles(
             valid_puzzles = capped_pool
         elif own_pool:
             valid_puzzles = own_pool
-    phase_profile = await load_user_phase_accuracy(db, user_id=user.id)
+    game_profile = await load_user_game_insights(db, user_id=user.id)
     picked, allocation = select_adaptive_puzzles(
         valid_puzzles,
         weak_topics=profile["weak_topics"],
         strong_topics=profile["strong_topics"],
         count=count,
         topic_difficulties=topic_difficulties,
-        phase_stats=phase_profile["phases"],
+        phase_stats=game_profile["phases"],
+        piece_stats=game_profile["pieces"],
     )
 
     result = [
@@ -835,6 +841,7 @@ async def get_adaptive_puzzles(
             "adaptive_group": p.get("adaptive_group"),
             "adaptive_topic": p.get("adaptive_topic"),
             "adaptive_phase": p.get("adaptive_phase"),
+            "adaptive_piece": p.get("adaptive_piece"),
             "adaptive_difficulty": p.get("adaptive_difficulty"),
             "difficulty_match": p.get("difficulty_match"),
         }
@@ -858,6 +865,7 @@ async def get_adaptive_puzzles(
         "difficulty_profile": public_difficulty_profile(profile, topic_difficulties),
         "allocation": allocation,
         "phase_adjustment": allocation["phase_adjustment"],
+        "piece_adjustment": allocation["piece_adjustment"],
         "selection_rule": profile["selection_rule"],
         "max_puzzle_rating": max_puzzle_rating,
     }

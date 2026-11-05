@@ -213,6 +213,13 @@ export default function UserRecordsWidget({ variant = "profile" }) {
           detail={records.best_puzzle_streak ? "решено подряд · личный максимум" : "реши задачу, чтобы начать серию"}
           accent="blue"
         />
+        <MetricCard
+          icon="✦"
+          label="Бриллиантовые ходы"
+          value={records.brilliant_moves ?? 0}
+          detail={records.brilliant_moves ? "найдено в партиях против Maia" : "сильные жертвы появятся после новых партий"}
+          accent="purple"
+        />
       </div>
 
       <div className="user-records__activity">

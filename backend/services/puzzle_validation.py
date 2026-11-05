@@ -102,6 +102,27 @@ def pieces_used_in_solution(fen: str | None, moves: Any) -> set[int] | None:
     return used
 
 
+def player_pieces_used_in_solution(fen: str | None, moves: Any) -> set[int] | None:
+    """Types moved by the puzzle solver (moves 1, 3, 5...) in the solution."""
+    board = board_from_fen(fen)
+    parsed = parse_uci_moves(moves)
+    if board is None or not parsed:
+        return None
+
+    used: set[int] = set()
+    for index, move in enumerate(parsed):
+        piece = board.piece_at(move.from_square)
+        if piece is None:
+            return None
+        if index % 2 == 0:
+            used.add(piece.piece_type)
+        try:
+            board.push(move)
+        except Exception:
+            return None
+    return used
+
+
 def pieces_on_board(fen: str | None) -> set[int] | None:
     """Типы фигур, присутствующие на доске (цвет не важен)."""
     board = board_from_fen(fen)
