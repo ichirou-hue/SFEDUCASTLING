@@ -91,9 +91,13 @@ def _start(loop, sock):
     callback(*args)
 
 
-def _abort_error():
+def _abort_error(winerror=64):
     # WinError 64 приходит обычным OSError: errno 22, winerror 64.
-    return OSError(22, "netname deleted", None, 64, None)
+    # На POSIX четвёртый аргумент OSError игнорируется, поэтому атрибут
+    # winerror выставляем явно: CI гоняет эти тесты на Linux.
+    error = OSError(22, "netname deleted")
+    error.winerror = winerror
+    return error
 
 
 class TestAbortDoesNotKillListener:
@@ -177,7 +181,8 @@ class TestAbortDetection:
 
     @pytest.mark.parametrize("winerror", [64, 995, 10053, 10054])
     def test_connection_abort_codes(self, winerror):
-        error = OSError(22, "abort", None, winerror, None)
+        error = OSError(22, "abort")
+        error.winerror = winerror
         assert windows_accept.is_connection_abort(error) is True
 
     def test_other_errors_are_not_aborts(self):
