@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect, useLayoutEffect } from "react";
 import { askLLM, fetchOpeningByFen } from "../api.js";
+import formatMarkdown from "../formatMarkdown.js";
+import useChatAutoScroll from "../useChatAutoScroll.js";
 import MiniBoard from "./MiniBoard.jsx";
 import ChatCollapsedStrip from "./ChatCollapsedStrip.jsx";
 
@@ -44,38 +46,6 @@ function buildHintArrows(hintMessage) {
   return arrows;
 }
 
-function escapeHtml(str) {
-  return String(str ?? "")
-    .replace(/[\u2012\u2013\u2014\u2015]/g, "-")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
-
-function formatMarkdown(text) {
-  let s = escapeHtml(text);
-
-  s = s.replace(
-    /^### (.+)$/gm,
-    '<div style="font-weight:700;color:#79b180;margin-top:8px;">$1</div>',
-  );
-  s = s.replace(
-    /^## (.+)$/gm,
-    '<div style="font-weight:700;color:#79b180;font-size:15px;margin-top:8px;">$1</div>',
-  );
-  s = s.replace(
-    /^# (.+)$/gm,
-    '<div style="font-weight:700;color:#79b180;font-size:16px;margin-top:8px;">$1</div>',
-  );
-  s = s.replace(/\*\*(.+?)\*\*/g, '<b style="color:#333;">$1</b>');
-  s = s.replace(/\*(.+?)\*/g, "<i>$1</i>");
-  s = s.replace(/^[-•] (.+)$/gm, '<div style="padding-left:12px;">• $1</div>');
-  s = s.replace(/\n/g, "<br>");
-  return s;
-}
-
 export default function ChatPanel({
   onAnalyze,
   onLoadOpening,
@@ -94,7 +64,7 @@ export default function ChatPanel({
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const messagesEndRef = useRef(null);
+  const messagesListRef = useChatAutoScroll(messages);
   const lastHintMessageIdRef = useRef(null);
   const rootRef = useRef(null);
   // Ширина панели в развёрнутом виде: с неё начинается анимация сворачивания.
@@ -256,10 +226,6 @@ export default function ChatPanel({
   }, [collapsed]);
 
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
   /*
    * ============================================================
    * ПОДСКАЗКА STOCKFISH
@@ -413,7 +379,7 @@ export default function ChatPanel({
         </button>
       </div>
 
-      <div className="chat-messages">
+      <div className="chat-messages" ref={messagesListRef}>
         {messages.map((msg, i) => (
           <div
             className={`chat-msg ${msg.role === "user" ? "user" : ""}`}
@@ -447,7 +413,6 @@ export default function ChatPanel({
             <div className="msg-body">Думаю...</div>
           </div>
         )}
-        <div ref={messagesEndRef} />
       </div>
 
       <div className="chat-input-area">

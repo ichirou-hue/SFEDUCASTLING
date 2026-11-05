@@ -306,7 +306,6 @@ export default function PhaseAccuracyWidget() {
     return (
       <section className="phase-accuracy phase-accuracy--message" aria-labelledby="phase-accuracy-title">
         <div>
-          <div className="user-profile-kicker">Разбор партий</div>
           <h2 id="phase-accuracy-title">Точность по этапам</h2>
           <span>Войдите в аккаунт, чтобы загрузить анализ ваших партий.</span>
         </div>
@@ -317,7 +316,6 @@ export default function PhaseAccuracyWidget() {
     return (
       <section className="phase-accuracy phase-accuracy--loading" aria-labelledby="phase-accuracy-title">
         <div>
-          <div className="user-profile-kicker">Разбор партий</div>
           <h2 id="phase-accuracy-title">Точность по этапам</h2>
           <span>Загружаем оценки ходов…</span>
         </div>
@@ -335,7 +333,6 @@ export default function PhaseAccuracyWidget() {
     return (
       <section className="phase-accuracy phase-accuracy--message">
         <div>
-          <div className="user-profile-kicker">Разбор партий</div>
           <h2 id="phase-accuracy-title">Точность по этапам</h2>
           <span>{errorMessage}</span>
         </div>
@@ -347,7 +344,6 @@ export default function PhaseAccuracyWidget() {
     return (
       <section className="phase-accuracy phase-accuracy--message" aria-labelledby="phase-accuracy-title">
         <div>
-          <div className="user-profile-kicker">Разбор партий</div>
           <h2 id="phase-accuracy-title">Точность по этапам</h2>
           <span>Пока нет данных для графика. Завершите партию - после её сохранения появятся оценки ходов.</span>
         </div>
@@ -363,7 +359,6 @@ export default function PhaseAccuracyWidget() {
     <section className="phase-accuracy" aria-labelledby="phase-accuracy-title">
       <header className="phase-accuracy__header">
         <div>
-          <div className="user-profile-kicker">Разбор партий</div>
           <h2 id="phase-accuracy-title">Точность по этапам</h2>
           <p>Насколько точно вы играете в разных частях партии</p>
         </div>

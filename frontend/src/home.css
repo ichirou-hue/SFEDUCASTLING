@@ -26,7 +26,7 @@
 }
 .top-nav-link {
   color:#ffffffb8;
-  font:600 12px/1 Inter,sans-serif;
+  font:600 12px/1 var(--font-ui);
   letter-spacing:.11em;
   text-decoration:none;
   text-transform:uppercase;
@@ -43,7 +43,7 @@
   border:1px solid #c9a96eb3;
   color:#d8bd88;
   background:transparent;
-  font:600 12px/1 Inter,sans-serif;
+  font:600 12px/1 var(--font-ui);
   letter-spacing:.04em;
   padding:10px 17px
 }
@@ -127,7 +127,7 @@
   max-width:470px;
   margin-top:18px;
   color:#f6f4efc7;
-  font:400 15px/1.7 Inter,sans-serif
+  font:400 15px/1.7 var(--font-ui)
 }
 .home-actions {
   display:flex;
@@ -144,7 +144,7 @@
   padding:0 21px;
   border:1px solid #d5b476;
   border-radius:3px;
-  font:600 13px/1 Inter,sans-serif;
+  font:600 13px/1 var(--font-ui);
   text-decoration:none;
   cursor:pointer;
   transition:transform .16s,background .16s
@@ -169,7 +169,7 @@
   gap:11px;
   margin-top:28px;
   color:#f6f4ef9e;
-  font:500 11px/1.5 Inter,sans-serif;
+  font:500 11px/1.5 var(--font-ui);
   letter-spacing:.04em
 }
 .home-proof-mark {
@@ -215,11 +215,11 @@
 .home-stats-guest h2 {
   margin:5px 0 8px;
   color:#fbfaf6;
-  font:500 20px/1.2 Inter,sans-serif
+  font:500 20px/1.2 var(--font-ui)
 }
 .home-stats-guest p {
   color:#f6f4efb8;
-  font:400 12px/1.55 Inter,sans-serif
+  font:400 12px/1.55 var(--font-ui)
 }
 .home-stats-guest__button {
   display:inline-flex;
@@ -232,7 +232,7 @@
   border-radius:4px;
   color:#161a16;
   background:#d5b476;
-  font:600 11px Inter,sans-serif;
+  font:600 11px var(--font-ui);
   cursor:pointer
 }
 .home-page .site-footer {

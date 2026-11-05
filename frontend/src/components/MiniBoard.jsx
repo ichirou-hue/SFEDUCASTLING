@@ -70,7 +70,7 @@ export default function MiniBoard({
         showBoardNotation={false}
         customNotationStyle={{
           fontSize: `${Math.max(8, Math.round(width * 0.0214))}px`,
-          fontFamily: "Inter, sans-serif",
+          fontFamily: "var(--font-ui)",
           fontWeight: "500",
           color: "#4a3220",
         }}
