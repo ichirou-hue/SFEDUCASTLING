@@ -76,12 +76,29 @@ async def test_award_is_idempotent_and_puzzle_rewards_have_their_own_cap(db):
         )
     assert puzzle_total == PUZZLE_DAILY_CAP
 
-    # All ordinary activities share the 50-coin cap; puzzles are included in it.
-    assert await award_gigacoins(session, user, "maia_game", "game-1", 30, now=now) == DAILY_CAP - PUZZLE_DAILY_CAP
+    # Puzzles have a separate daily budget: their coins do not eat into
+    # the 50-coin cap for other activities, and other activities do not
+    # block puzzle rewards before their own 30-coin cap is reached.
+    assert await award_gigacoins(session, user, "maia_game", "game-1", 60, now=now) == DAILY_CAP
     assert await award_gigacoins(session, user, "maia_game", "game-2", 3, now=now) == 0
-    assert user.gigacoins == DAILY_CAP
+    assert user.gigacoins == PUZZLE_DAILY_CAP + DAILY_CAP
     event_count = await session.scalar(select(func.count(GigacoinEvent.id)))
     assert event_count == 22  # 21 reward ledger rows + one daily activity marker.
+
+
+@pytest.mark.asyncio
+async def test_puzzles_keep_rewarding_after_other_daily_cap(db):
+    """Puzzles have their own 30-coin budget, independent of the 50 cap."""
+    session, user = db
+    now = datetime(2026, 10, 21, 9, tzinfo=timezone.utc)
+
+    assert await award_gigacoins(
+        session, user, "training_first", "task-1", DAILY_CAP, now=now
+    ) == DAILY_CAP
+    assert await award_gigacoins(
+        session, user, "puzzle", "puzzle-after-cap", 3, now=now
+    ) == 3
+    assert user.gigacoins == DAILY_CAP + 3
 
 
 @pytest.mark.asyncio

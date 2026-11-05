@@ -57,13 +57,15 @@ def _utc_bounds(now: datetime) -> tuple[datetime, datetime, date]:
 
 
 async def _earned_between(db: AsyncSession, user_id: int, start: datetime, end: datetime) -> int:
+    # Обычные награды пазлов идут отдельным дневным бюджетом
+    # (PUZZLE_DAILY_CAP), поэтому общий лимит их не учитывает.
     return int(await db.scalar(
         select(func.coalesce(func.sum(GigacoinEvent.amount), 0)).where(
             GigacoinEvent.user_id == user_id,
             GigacoinEvent.created_at >= start,
             GigacoinEvent.created_at < end,
             GigacoinEvent.amount > 0,
-            GigacoinEvent.reason.not_in(("active_streak", "shop_purchase")),
+            GigacoinEvent.reason.not_in(("active_streak", "shop_purchase", "puzzle")),
         )
     ) or 0)
 
@@ -147,8 +149,11 @@ async def award_gigacoins(
     requested = max(0, int(amount))
     credited = 0 if existing is not None else requested
     if credited and not exempt_daily_cap:
-        credited = min(requested, max(0, DAILY_CAP - await _earned_between(db, user.id, start, end)))
         if reason == "puzzle":
+            # У обычных наград за пазлы свой дневной лимит. Общий лимит
+            # на них не распространяется: иначе после курса или партий
+            # пазлы переставали бы приносить монеты задолго до своего
+            # собственного потолка.
             puzzle_earned = int(await db.scalar(select(func.coalesce(func.sum(GigacoinEvent.amount), 0)).where(
                 GigacoinEvent.user_id == user.id,
                 GigacoinEvent.reason == "puzzle",
@@ -156,7 +161,9 @@ async def award_gigacoins(
                 GigacoinEvent.created_at < end,
                 GigacoinEvent.amount > 0,
             )) or 0)
-            credited = min(credited, max(0, PUZZLE_DAILY_CAP - puzzle_earned))
+            credited = min(requested, max(0, PUZZLE_DAILY_CAP - puzzle_earned))
+        else:
+            credited = min(requested, max(0, DAILY_CAP - await _earned_between(db, user.id, start, end)))
 
     if existing is None:
         db.add(GigacoinEvent(user_id=user.id, reason=reason, ref=str(ref)[:128], amount=credited, created_at=now))

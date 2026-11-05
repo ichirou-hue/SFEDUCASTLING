@@ -1,20 +1,13 @@
 import { useEffect, useRef } from "react";
 
 /*
- * Шкала двух режимов:
+ * Шкала оценки движка: оценка Stockfish переводится в вероятность
+ * победы по кривой Lichess. Разница в пешку почти не двигает шкалу,
+ * а разгромная позиция прижимает её к краю.
  *
- * - "material" - материальный перевес в пешках (как раньше);
- * - "engine"   - оценка Stockfish, переведённая в вероятность победы
- *                по кривой Lichess: разница в пешку почти не двигает
- *                шкалу, а разгромная позиция прижимает её к краю.
- *
- * Сам переключатель живёт не на шкале, а в панели управления доской:
- * на капсуле кнопка занимала место у доски и на узком экране мешала
- * читать оценку.
+ * Материального режима нет: материал движок уже учитывает в своей
+ * оценке, отдельный пересчёт только дублировал бы его.
  */
-
-// Материальный перевес, при котором шкала упирается в край.
-const MAX_MATERIAL = 10;
 
 // Оценка в сантипешках -> доля позиции от -1 (чёрные выигрывают) до 1.
 function engineAdvantage(engineEval) {
@@ -74,19 +67,11 @@ function engineLabelTitle(engineEval) {
 }
 
 export default function EvalBar({
-  diff = 0,
   engineEval = null,
-  mode = "material",
   flipped,
   height,
 }) {
   const barRef = useRef(null);
-
-  // Выбор пользователя и фактический режим шкалы расходятся, пока не
-  // пришла оценка движка: пустая капсула выглядела бы как сломанная,
-  // поэтому до первого ответа показываем материал.
-  const showEngine = mode === "engine" && Boolean(engineEval);
-  const signed = Number.isFinite(diff) ? diff : 0;
 
   /*
    * Низ шкалы - та сторона, которая стоит внизу доски: её цвет и её
@@ -94,28 +79,15 @@ export default function EvalBar({
    * тёмный мрамор (нижняя сторона) уходит вниз, бумага наверх.
    * Поэтому и цифра считается от нижней стороны.
    */
-  let bottomAdv;
-  let fillPct;
-  let label;
+  const whiteAdv = engineAdvantage(engineEval);
+  const hasEval = whiteAdv !== null;
+  const bottomAdv = hasEval ? (flipped ? -whiteAdv : whiteAdv) : 0;
+  const fillPct = hasEval ? 50 + bottomAdv * 50 : 50;
+  const label = hasEval ? engineLabel(engineEval, flipped ? -1 : 1) : "";
 
-  if (showEngine) {
-    const whiteAdv = engineAdvantage(engineEval) ?? 0;
-    bottomAdv = flipped ? -whiteAdv : whiteAdv;
-    fillPct = 50 + bottomAdv * 50;
-    label = engineLabel(engineEval, flipped ? -1 : 1);
-  } else {
-    const clamped = Math.max(-MAX_MATERIAL, Math.min(MAX_MATERIAL, signed));
-    bottomAdv = flipped ? -clamped : clamped;
-    fillPct = 50 + (bottomAdv / MAX_MATERIAL) * 50;
-    const rounded = Math.round(bottomAdv);
-    label = rounded === 0 ? "" : rounded > 0 ? `+${rounded}` : `${rounded}`;
-  }
-
-  const title = showEngine
+  const title = hasEval
     ? `Оценка движка: ${engineLabelTitle(engineEval) || "0,0"}`
-    : mode === "engine"
-      ? "Оценка движка недоступна - показан материальный перевес"
-      : `Материальный перевес: ${label || "0"}`;
+    : "Оценка движка недоступна";
 
   /*
    * Шкала держится за игровое поле, а не за карточку целиком: сверху в
@@ -203,9 +175,9 @@ export default function EvalBar({
   return (
     <div
       ref={barRef}
-      className={`eval-bar${
+      className={`eval-bar eval-bar--engine${
         flipped ? " eval-bar--bottom-black" : ""
-      }${showEngine ? " eval-bar--engine" : ""}`}
+      }`}
       style={{ height: height || undefined, "--eval-fill": `${fillPct}%` }}
       title={title}
       aria-label={title}

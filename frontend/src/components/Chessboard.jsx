@@ -269,12 +269,7 @@ function playMoveSound() {
 }
 
 const ChessboardComponent = forwardRef(function ChessboardComponent(
-  {
-    onStateChange,
-    chatCollapsed = false,
-    evalMode = "material",
-    onToggleEvalMode,
-  },
+  { onStateChange, chatCollapsed = false },
   ref,
 ) {
   const gameRef = useRef(new Chess());
@@ -360,6 +355,9 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
   const [review, setReview] = useState(null);
   const [reviewError, setReviewError] = useState("");
   const [reviewLoading, setReviewLoading] = useState(false);
+  // Разбор только что пришёл: доску нужно вернуть к начальной позиции,
+  // чтобы ходы листались сначала, а не с финальной позиции партии.
+  const resetForReviewRef = useRef(false);
 
   /*
    * Две независимые стрелки:
@@ -719,6 +717,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
     reviewGame(uciMoves, playerColor)
       .then((data) => {
         if (gen === gameGenRef.current) {
+          resetForReviewRef.current = true;
           setReview(data);
         }
       })
@@ -899,6 +898,29 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
     },
     [moveHistory, applyReviewEval],
   );
+
+  /*
+   * Разбор пришёл: показываем доску в начальной позиции, чтобы листать
+   * партию с первого хода. Раньше доска оставалась на финальной позиции,
+   * и разбор начинался с конца.
+   */
+  useEffect(() => {
+    if (!review || !resetForReviewRef.current) return;
+
+    resetForReviewRef.current = false;
+    showPosition(-1);
+  }, [review, showPosition]);
+
+  /*
+   * «Разбор по ходам»: закрываем карточку итога и всегда возвращаемся
+   * к началу партии - даже если разбор был открыт повторно с середины.
+   */
+  const openReviewMoves = useCallback(() => {
+    setResultCardDismissed(true);
+    if (review) {
+      showPosition(-1);
+    }
+  }, [review, showPosition]);
 
   const onNavigate = useCallback(
     (direction) => {
@@ -1675,25 +1697,12 @@ const fetchBestMove = useCallback(
   ]);
 
   /*
-   * Первичная оценка позиции.
+   * Оценка позиции для шкалы. Шкала всегда показывает движок: материал
+   * он уже учитывает в оценке, поэтому отдельный материальный режим
+   * больше не нужен.
    */
   useEffect(() => {
-    fetchEval(game.fen())
-      .then((data) => {
-        if (data.evaluation) {
-          setEvalScore(data.evaluation);
-        }
-      })
-      .catch(() => {});
-  }, []);
-
-  /*
-   * Если шкалу переключили на движок, а оценки ещё нет (первый запрос
-   * не удался или прошёл до переключения), запрашиваем её для текущей
-   * позиции. Без этого капсула осталась бы материальной.
-   */
-  useEffect(() => {
-    if (evalMode !== "engine" || evalScore) return undefined;
+    if (evalScore) return undefined;
 
     let cancelled = false;
 
@@ -1708,7 +1717,7 @@ const fetchBestMove = useCallback(
     return () => {
       cancelled = true;
     };
-  }, [evalMode, evalScore, game]);
+  }, [evalScore, game]);
 
   /*
    * Передаём evaluation наверх.
@@ -2753,7 +2762,7 @@ const fetchBestMove = useCallback(
                     <button
                       type="button"
                       className="gameover-btn gameover-btn--review"
-                      onClick={() => setResultCardDismissed(true)}
+                      onClick={openReviewMoves}
                     >
                       Разбор по ходам
                     </button>
@@ -2825,21 +2834,6 @@ const fetchBestMove = useCallback(
                   : "Разобрать партию"}
             </button>
           )}
-
-          {/*
-           * На узком экране шкала становится тонкой полосой, и
-           * переключатель внутри неё не помещается: там режим
-           * меняется этой кнопкой. На широком экране она скрыта -
-           * переключатель есть в самой шкале.
-           */}
-          <button
-            type="button"
-            className="ctrl-btn ctrl-btn--eval-mode"
-            onClick={onToggleEvalMode}
-            disabled={!onToggleEvalMode}
-          >
-            {evalMode === "engine" ? "Оценка: движок" : "Оценка: материал"}
-          </button>
 
           {/*
            * Перевес нижней стороны — в её строке под доской,
