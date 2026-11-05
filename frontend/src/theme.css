@@ -368,6 +368,25 @@
   border-color: var(--sf-gold-bright);
 }
 
+:root[data-theme="dark"] .ctrl-btn--resign {
+  border-color: rgba(211, 112, 91, 0.58);
+  background: rgba(179, 84, 58, 0.18);
+  color: #efb2a5;
+}
+
+:root[data-theme="dark"] .ctrl-btn--resign:hover:not(:disabled) {
+  border-color: rgba(239, 178, 165, 0.78);
+  background: rgba(179, 84, 58, 0.3);
+  color: #ffd0c6;
+}
+
+:root[data-theme="dark"] .ctrl-btn--resign:disabled {
+  background: rgba(179, 84, 58, 0.1);
+  color: rgba(239, 178, 165, 0.62);
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Вторичные кнопки: прозрачные, с золотым кантом. */
 :root[data-theme="dark"] .training-back-btn,
 :root[data-theme="dark"] .training-secondary-btn,

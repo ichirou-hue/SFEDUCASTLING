@@ -16,7 +16,7 @@ function parsePgn(source) {
   const game = new Chess();
   game.loadPgn(source.trim());
   const history = game.history({ verbose: true });
-  if (history.length < 2) throw new Error("В партии должно быть хотя бы два хода.");
+  if (history.length < 1) throw new Error("В партии нет ходов.");
   const replay = new Chess();
   const positions = [replay.fen()];
   const moves = history.map((move) => {

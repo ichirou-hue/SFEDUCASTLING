@@ -1133,6 +1133,22 @@ textarea {
   text-align: center;
 }
 
+.ctrl-btn--resign {
+  border: 1px solid rgba(179, 84, 58, 0.55);
+  background: #f7e7e2;
+  color: #8b3d2c;
+}
+
+.ctrl-btn--resign:hover:not(:disabled) {
+  border-color: rgba(179, 84, 58, 0.85);
+  background: #f1d7d0;
+}
+
+.ctrl-btn--resign:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
 /* Постоянная кнопка разбора под доской: итоговую карточку можно
    закрыть кликом по фону, а разбор должен остаться доступным. */
 .ctrl-btn--review {
