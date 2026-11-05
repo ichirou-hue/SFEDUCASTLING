@@ -50,7 +50,9 @@ textarea {
   gap: 24px;
   width: auto;
   margin: 10px 24px 0;
-  transition: grid-template-columns 340ms cubic-bezier(0.4, 0, 0.2, 1);
+  /* Ширину колонок при сворачивании чата анимирует ChatPanel.jsx
+     через Web Animations API. CSS-transition здесь нельзя: переход
+     между minmax() и 48px браузер делает дискретным скачком. */
   /* Воздух между контентом и футером (футер прибит к низу). */
   padding-bottom: 12px;
   flex: 0 0 auto;
@@ -301,6 +303,9 @@ textarea {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  /* Резервируем место под скроллбар: во время анимации чата высота
+     страницы меняется, и без этого ширина колонок скачет на ~15px. */
+  scrollbar-gutter: stable;
   display: flex;
   flex-direction: column;
 }
@@ -1383,6 +1388,11 @@ textarea {
    ширина доехала, новое содержимое мягко проявляется. */
 .chat-section--sliding > * {
   opacity: 0;
+}
+
+/* Пока панель едет, клики по её промежуточному содержимому не нужны. */
+.chat-section--sliding {
+  pointer-events: none;
 }
 
 .chat-section--reveal > * {
@@ -4116,6 +4126,75 @@ textarea {
   align-self: flex-end;
 }
 
+/* Обёртка нужна, чтобы повесить значок повторений в угол карточки,
+   не вкладывая кнопку в кнопку. */
+.training-module-node-shell {
+  position: relative;
+  width: min(560px, 84%);
+}
+
+.training-module-node-shell--left {
+  align-self: flex-start;
+}
+
+.training-module-node-shell--right {
+  align-self: flex-end;
+}
+
+.training-module-node-shell .training-module-node {
+  width: 100%;
+}
+
+.training-module-due-badge {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  z-index: 4;
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: linear-gradient(160deg, #ef5350, #c62828);
+  box-shadow:
+    0 6px 16px rgba(198, 40, 40, 0.38),
+    0 0 0 3px rgba(198, 40, 40, 0.1);
+  color: #fff;
+  font: 800 18px/1 var(--font-ui);
+  cursor: pointer;
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+
+.training-module-due-badge:hover {
+  transform: translateY(-1px) scale(1.06);
+  box-shadow:
+    0 9px 22px rgba(198, 40, 40, 0.46),
+    0 0 0 3px rgba(198, 40, 40, 0.14);
+}
+
+.training-module-due-badge:active {
+  transform: scale(0.98);
+}
+
+.training-module-due-badge:focus-visible {
+  outline: 2px solid #8b1d1d;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .training-module-due-badge {
+    transition: none;
+  }
+
+  .training-module-due-badge:hover,
+  .training-module-due-badge:active {
+    transform: none;
+  }
+}
+
 .training-module-node:hover:not(:disabled) {
   transform: translateY(-3px);
   border-color: #5e9463;
@@ -5022,7 +5101,7 @@ textarea {
   opacity: 0.78;
 }
 
-/* === Курс: сетка контента и рейл повторений ============================== */
+/* === Курс: сетка контента и повторения ================================== */
 
 .training-page--course {
   /* Нижний отступ переезжает на сетку контента, чтобы футер мог встать
@@ -5032,7 +5111,7 @@ textarea {
 
 .training-course-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 340px;
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
   gap: 22px;
   width: 100%;
@@ -5052,179 +5131,133 @@ textarea {
   margin-bottom: 0;
 }
 
-.training-due-rail {
-  position: sticky;
-  top: 12px;
-  z-index: 1;
+/* Окно повторений: центрированная карточка на десктопе, шторка снизу
+   на телефоне. Список переиспользует стили .training-due-card. */
+.training-due-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
   display: flex;
-  min-width: 0;
-  max-height: calc(100vh - 120px);
-  flex-direction: column;
-  align-items: stretch;
-  gap: 10px;
-  align-self: start;
-}
-
-.training-due-toggle {
-  display: flex;
-  width: 100%;
-  min-height: 64px;
   align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
-  border: 1px solid rgba(180, 135, 44, 0.4);
-  border-radius: 18px;
-  background: rgba(253, 248, 236, 0.96);
-  box-shadow: 0 8px 22px rgba(35, 44, 38, 0.12);
-  color: #284333;
-  font: inherit;
-  text-align: left;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(18, 30, 22, 0.46);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  animation: training-due-modal-fade 0.16s ease-out;
+}
+
+.training-due-modal-card {
+  position: relative;
+  display: flex;
+  width: min(540px, 100%);
+  max-height: min(78vh, 680px);
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid rgba(180, 135, 44, 0.45);
+  border-radius: 22px;
+  background: rgba(253, 248, 236, 0.98);
+  box-shadow: 0 28px 70px rgba(20, 35, 25, 0.32);
+  animation: training-due-modal-pop 0.18s ease-out;
+}
+
+.training-due-modal-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1;
+  display: inline-flex;
+  width: 34px;
+  height: 34px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid rgba(180, 135, 44, 0.3);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.82);
+  color: #6b5a37;
+  font: 600 15px/1 var(--font-ui);
   cursor: pointer;
-  transition:
-    background 0.18s ease,
-    border-color 0.18s ease,
-    box-shadow 0.2s ease,
-    transform 0.2s ease;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
-.training-due-toggle:hover {
-  border-color: rgba(180, 135, 44, 0.68);
-  background: #fffaf0;
-  box-shadow:
-    0 12px 28px rgba(35, 44, 38, 0.18),
-    0 0 0 1px rgba(180, 135, 44, 0.22);
-  transform: translateY(-2px);
+.training-due-modal-close:hover {
+  border-color: rgba(180, 135, 44, 0.55);
+  background: #fff;
+  color: #284333;
 }
 
-.training-due-toggle:active {
-  box-shadow: 0 8px 22px rgba(35, 44, 38, 0.16);
-  transform: translateY(0);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .training-due-toggle {
-    transition: none;
-  }
-
-  .training-due-toggle:hover,
-  .training-due-toggle:active {
-    transform: none;
-  }
-}
-
-.training-due-toggle:focus-visible {
+.training-due-modal-close:focus-visible {
   outline: 2px solid #8b6822;
   outline-offset: 2px;
 }
 
-.training-due-toggle-icon {
-  display: inline-flex;
-  width: 38px;
-  height: 38px;
-  flex: 0 0 38px;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: rgba(201, 169, 110, 0.2);
-  color: #8d6d31;
-  font-size: 21px;
-  line-height: 1;
-}
-
-.training-due-toggle-copy {
-  display: flex;
-  flex: 1;
-  min-width: 0;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.training-due-toggle-label {
-  font-size: 15px;
-  font-weight: 700;
-  line-height: 1.2;
-}
-
-.training-due-toggle-hint {
-  overflow: hidden;
-  color: #708073;
-  font-size: 12px;
-  line-height: 1.3;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.training-due-toggle-count {
-  display: inline-flex;
-  min-width: 30px;
-  height: 30px;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  padding: 0 8px;
-  border-radius: 999px;
-  background: #e9d8ae;
-  color: #5c4720;
-  font-size: 13px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-.training-due-toggle-chevron {
-  width: 18px;
-  flex-shrink: 0;
-  color: #8d6d31;
-  font-size: 16px;
-  line-height: 1;
-  text-align: center;
-}
-
-.training-due-panel {
-  display: flex;
-  min-height: 0;
-  max-height: calc(100vh - 190px);
-  flex-direction: column;
-  overflow: hidden;
-  border: 1px solid rgba(180, 135, 44, 0.35);
-  border-radius: 18px;
-  background: rgba(253, 248, 236, 0.97);
-  box-shadow: 0 12px 32px rgba(35, 44, 38, 0.16);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-}
-
-.training-due-heading {
+.training-due-modal-head {
   flex: 0 0 auto;
-  padding: 16px 16px 13px;
+  padding: 22px 24px 16px;
   border-bottom: 1px solid rgba(180, 135, 44, 0.18);
 }
 
-.training-due-heading strong,
-.training-due-heading span {
+.training-due-modal-kicker {
   display: block;
+  color: #8d6d31;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
-.training-due-heading strong {
-  color: #284333;
-  font-size: 16px;
-  line-height: 1.3;
+.training-due-modal-head h2 {
+  margin: 4px 38px 6px 0;
+  color: #2f5c36;
+  font-family: var(--font-display);
+  font-size: 25px;
+  font-weight: normal;
+  line-height: 1.15;
 }
 
-.training-due-heading span {
-  margin-top: 5px;
+.training-due-modal-head p {
+  margin: 0;
   color: #66746b;
   font-size: 13px;
   line-height: 1.45;
 }
 
-.training-due-list {
+.training-due-modal-list {
   display: flex;
   min-height: 0;
-  max-height: calc(100vh - 300px);
   flex-direction: column;
   gap: 8px;
   overflow-y: auto;
-  padding: 10px;
+  padding: 12px 14px 16px;
+  overscroll-behavior: contain;
+}
+
+@keyframes training-due-modal-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes training-due-modal-pop {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .training-due-modal,
+  .training-due-modal-card {
+    animation: none;
+  }
 }
 
 .training-due-card {
@@ -5276,30 +5309,6 @@ textarea {
   line-height: 1.35;
   opacity: 0.62;
   text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.training-due-card-meta {
-  display: flex;
-  flex-shrink: 0;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 2px;
-  text-align: right;
-}
-
-.training-due-card-due {
-  color: #8a5e26;
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1.3;
-  white-space: nowrap;
-}
-
-.training-due-card-reps {
-  color: #7a877d;
-  font-size: 11px;
-  line-height: 1.3;
   white-space: nowrap;
 }
 
@@ -5388,50 +5397,4 @@ textarea {
   color: #2f6b3a;
 }
 
-.training-due-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  padding: 22px 18px 24px;
-  color: #66746b;
-  text-align: center;
-}
 
-.training-due-empty-icon {
-  display: inline-flex;
-  width: 44px;
-  height: 44px;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: rgba(94, 148, 99, 0.14);
-  color: #3f7a4a;
-  font-size: 20px;
-}
-
-.training-due-empty p {
-  max-width: 240px;
-  font-size: 13px;
-  line-height: 1.45;
-}
-
-@media (max-width: 1150px) {
-  .training-course-layout {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 18px;
-  }
-
-  .training-due-rail {
-    position: static;
-    max-height: none;
-  }
-
-  .training-due-panel {
-    max-height: none;
-  }
-
-  .training-due-list {
-    max-height: 60vh;
-  }
-}

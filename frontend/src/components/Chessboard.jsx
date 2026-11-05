@@ -713,18 +713,16 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
     const containerW = mainEl?.clientWidth || window.innerWidth;
 
     /*
-     * Пока чат едет, его текущая ширина ещё не итоговая. Берём целевую
-     * из инлайнового width (его ставит ChatPanel) и переносим разницу на
-     * колонку доски: так доска сразу получает финальный размер и плавно
+     * Пока чат едет, его текущая ширина ещё не итоговая. Целевую ширину
+     * пишет ChatPanel в data-атрибут, а разницу переносим на колонку
+     * доски: так доска сразу получает финальный размер и плавно
      * переезжает вместе с чатом, без скачка в конце анимации.
      */
     let chatTargetW = chatEl ? chatEl.getBoundingClientRect().width : 0;
     if (chatEl?.classList.contains("chat-section--sliding")) {
-      const inlineW = parseFloat(chatEl.style.width);
-      if (inlineW > 0) {
-        chatTargetW = chatEl.classList.contains("chat-section--collapsed")
-          ? 48
-          : inlineW;
+      const targetW = parseFloat(chatEl.dataset.chatTargetWidth);
+      if (targetW > 0) {
+        chatTargetW = targetW;
       }
     }
 

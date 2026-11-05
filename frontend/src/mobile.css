@@ -1095,6 +1095,13 @@
     left: 18px;
   }
 
+  .training-module-node-shell,
+  .training-module-node-shell--left,
+  .training-module-node-shell--right {
+    width: 100%;
+    align-self: stretch;
+  }
+
   .training-module-node,
   .training-module-node--left,
   .training-module-node--right {
@@ -1103,6 +1110,11 @@
     gap: 11px;
     padding: 13px;
     border-radius: 18px;
+  }
+
+  .training-module-due-badge {
+    top: -8px;
+    right: -8px;
   }
 
   .training-page--lesson {
@@ -1153,23 +1165,30 @@
     gap: 8px;
   }
 
-  .training-due-rail {
+  .training-due-modal {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .training-due-modal-card {
     width: 100%;
-    position: static;
-    max-height: none;
+    max-height: 82dvh;
+    border-right: none;
+    border-bottom: none;
+    border-left: none;
+    border-radius: 22px 22px 0 0;
   }
 
-  .training-due-toggle {
-    min-height: 56px;
-    padding: 10px 12px;
+  .training-due-modal-head {
+    padding: 20px 18px 14px;
   }
 
-  .training-due-panel {
-    max-height: none;
+  .training-due-modal-head h2 {
+    font-size: 22px;
   }
 
-  .training-due-list {
-    max-height: 60vh;
+  .training-due-modal-list {
+    padding: 10px 12px calc(16px + env(safe-area-inset-bottom, 0px));
   }
 
   /* Profile, placement test and admin tools use the full phone width. */
