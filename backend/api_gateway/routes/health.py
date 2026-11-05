@@ -9,7 +9,6 @@ from sqlalchemy.exc import SQLAlchemyError
 from starlette.concurrency import run_in_threadpool
 
 from backend.api_gateway.state import ensure_stockfish, stockfish_lock
-
 from backend.db.session import engine
 
 router = APIRouter(tags=["health"])
