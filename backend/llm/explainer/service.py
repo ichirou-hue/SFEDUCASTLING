@@ -55,7 +55,7 @@ def explain_move(
     fen_before = board.fen()
 
     # ========================================================
-    # ХОД ПОЛЬЗОВАТЕЛЯ — только для API-ответа
+    # ХОД ПОЛЬЗОВАТЕЛЯ - только для API-ответа
     # ========================================================
     actual_played_move = played_move or getattr(req, "move", None)
     played_move_info = None
@@ -80,7 +80,7 @@ def explain_move(
         played_move_info = _move_info(board, played_chess_move)
 
     # ========================================================
-    # STOCKFISH — единственный источник объясняемого хода
+    # STOCKFISH - единственный источник объясняемого хода
     # ========================================================
     stockfish = _stockfish_analysis(board)
     if not stockfish.get("available"):
@@ -151,7 +151,7 @@ def explain_move(
     print(f"[ChessExplainer] FEN after={fen_after}")
 
     # ========================================================
-    # MAIA3 — не влияет на объясняемый ход
+    # MAIA3 - не влияет на объясняемый ход
     # ========================================================
     try:
         maia_move = _maia3_move_strict(req, board.copy())

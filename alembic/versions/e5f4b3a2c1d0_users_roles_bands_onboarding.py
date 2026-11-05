@@ -20,7 +20,7 @@ down_revision: str | None = "d8b41a2c6f70"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
-# Переносимый тип: PostgreSQL — JSONB, SQLite — JSON (см. fb22cbd6384b).
+# Переносимый тип: PostgreSQL - JSONB, SQLite - JSON (см. fb22cbd6384b).
 _JSON = sa.JSON().with_variant(postgresql.JSONB(astext_type=sa.Text()), "postgresql")
 
 

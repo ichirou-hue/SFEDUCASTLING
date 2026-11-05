@@ -453,6 +453,11 @@ export async function finishGame({ moves, elo, engine, result, status, playerCol
   return data;
 }
 
+export async function fetchLocalGameHistory() {
+  const { data } = await api.get("/api/game/local-history");
+  return data;
+}
+
 /*
  * Разбор партии движком: точность ходов игрока и звёзды (3/2/1).
  * Запрос синхронный: на партию из 40 ходов сервер отвечает не дольше

@@ -14,8 +14,8 @@
 |------|-----------|
 | `src/schemas.py` | Pydantic-схемы: `RawPosition`, `MultiPVLine`, `AnalyzedPosition`, `CoachExplanation`, `SimilarExample`. |
 | `src/prompts.py` | `SYSTEM_PROMPT` тренера + `build_user_prompt()` (FEN, данные движка, RAG-контекст). |
-| `src/llm_api.py` | `ChessLLMClient` — OpenAI-совместимый клиент (OpenRouter/Groq/OpenAI). |
-| `src/chess_engine.py` | `StockfishAnalyzer` — анализ позиции (глубина 22, MultiPV=3, centipawn loss). |
+| `src/llm_api.py` | `ChessLLMClient` - OpenAI-совместимый клиент (OpenRouter/Groq/OpenAI). |
+| `src/chess_engine.py` | `StockfishAnalyzer` - анализ позиции (глубина 22, MultiPV=3, centipawn loss). |
 | `src/board_features.py` | Детерминированные факты о позиции: висячие фигуры, нападения, атаки. |
 | `scripts/` | 5 шагов конвейера + обогащение признаков (`extra_features/`). |
 | `rag_module_chessclip/` | Векторный поиск шахматных аналогий на эмбеддингах ChessCLIP. |
@@ -45,7 +45,7 @@ data/04_validated/master_validated.jsonl
 data/08_final_split/{train,val,test}.jsonl
 ```
 
-Зарезервированные слоты расширения: `05_llm_judged` (LLM-as-a-Judge), `06_deduplicated`, `07_balanced` — см. `PROJECT_STRUCTURE.txt`.
+Зарезервированные слоты расширения: `05_llm_judged` (LLM-as-a-Judge), `06_deduplicated`, `07_balanced` - см. `PROJECT_STRUCTURE.txt`.
 
 ---
 
@@ -56,8 +56,8 @@ data/08_final_split/{train,val,test}.jsonl
 | Файл | Назначение |
 |------|-----------|
 | `board_converter.py` | FEN → память из **112 бинарных плоскостей** LCZero `(1, 112, 8, 8)`. |
-| `clip_encoder.py` | `ChessPositionEncoder` — FiLM-ResNet → **512-d** вектор (L2-нормализация). Конфиг `chessclip-quickgelu.json`. |
-| `vector_store.py` | `ChessVectorStore` — обёртка над ChromaDB (upsert/query, cosine). |
+| `clip_encoder.py` | `ChessPositionEncoder` - FiLM-ResNet → **512-d** вектор (L2-нормализация). Конфиг `chessclip-quickgelu.json`. |
+| `vector_store.py` | `ChessVectorStore` - обёртка над ChromaDB (upsert/query, cosine). |
 | `chessclip/` | Копия форка OpenCLIP (Waterhorse) с реализацией ChessCLIP (`src/open_clip`, `src/training`). |
 
 > Веса энкодера ожидаются в `~/SFEDUCASTLING/ml/models/chessclip/chessclip.pt`.
@@ -107,6 +107,6 @@ python -m pytest tests/
 
 ## 📄 См. также
 
-- [`PROJECT_STRUCTURE.txt`](PROJECT_STRUCTURE.txt) — полная целевая схема каталогов и номеров шагов.
-- [`scripts/extra_features/README.md`](scripts/extra_features/README.md) — обогащение позиций доп. признаками (NAG, флаги, оценка путей).
-- [`rag_module_chessclip/chessclip/README.md`](rag_module_chessclip/chessclip/README.md) — upstream-документация ChessCLIP/OpenCLIP.
+- [`PROJECT_STRUCTURE.txt`](PROJECT_STRUCTURE.txt) - полная целевая схема каталогов и номеров шагов.
+- [`scripts/extra_features/README.md`](scripts/extra_features/README.md) - обогащение позиций доп. признаками (NAG, флаги, оценка путей).
+- [`rag_module_chessclip/chessclip/README.md`](rag_module_chessclip/chessclip/README.md) - upstream-документация ChessCLIP/OpenCLIP.

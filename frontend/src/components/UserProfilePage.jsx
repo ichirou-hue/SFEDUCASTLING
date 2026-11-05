@@ -43,7 +43,7 @@ function LinkedAccountsSection() {
   const [notice, setNotice] = useState(null);
 
   const load = useCallback(async () => {
-    // Без токена эндпоинт вернёт 401 — не дёргаем его для гостей.
+    // Без токена эндпоинт вернёт 401 - не дёргаем его для гостей.
     if (!getAccessToken()) {
       setAccounts([]);
       setLoading(false);
@@ -274,6 +274,9 @@ export default function UserProfilePage({ user, onUserChange }) {
           </div>
 
           <div className="user-profile-actions">
+            <button type="button" className="user-profile-level-test-btn" onClick={() => navigate("/review")}>
+              Мои партии против бота
+            </button>
             {/* Кнопка нужна только ученикам, которые ещё не проходили
                 проверку уровня: после submit бэкенд ставит
                 assessment_completed_at, и public() отдаёт

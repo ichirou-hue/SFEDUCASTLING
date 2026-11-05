@@ -7,7 +7,7 @@
 Запуск:
     python -m backend.knowledge.build_endgame_puzzles --add-per-bucket 50
 
-Источник — официальная база database.lichess.org (тот же формат, что и в
+Источник - официальная база database.lichess.org (тот же формат, что и в
 build_puzzles.py: FEN до хода соперника, Moves содержит ход соперника первым).
 """
 

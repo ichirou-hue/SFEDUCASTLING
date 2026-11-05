@@ -111,7 +111,7 @@ class ChessChunker:
     @classmethod
     def clean_text(cls, text: str) -> str:
         text = re.sub(r'\[\d+\]', '', text)
-        text = re.sub(r'[\<\>\:\#\$\%\&\|\@\(\)\{\}\[\]\*\=\\\_\—\–\-\+]{3,}', ' ', text)
+        text = re.sub(r'[\<\>\:\#\$\%\&\|\@\(\)\{\}\[\]\*\=\\\_\u2014\–\-\+]{3,}', ' ', text)
         text = re.sub(r'(\w+)-\n(\w+)', r'\1\2', text)
         text = re.sub(r'[ \t]+', ' ', text)
         return text.strip()

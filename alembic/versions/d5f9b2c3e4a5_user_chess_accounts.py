@@ -14,7 +14,7 @@ down_revision = "c4e8a1b2d3f4"
 branch_labels = None
 depends_on = None
 
-# Переносимый тип: PostgreSQL — JSONB, SQLite — JSON (см. fb22cbd6384b).
+# Переносимый тип: PostgreSQL - JSONB, SQLite - JSON (см. fb22cbd6384b).
 _JSON = sa.JSON().with_variant(postgresql.JSONB(astext_type=sa.Text()), "postgresql")
 
 

@@ -3,13 +3,17 @@ import {
   useRef,
   useCallback,
   useEffect,
+  useMemo,
   forwardRef,
   useId,
   useImperativeHandle,
 } from "react";
 import { Chessboard as ReactChessboard } from "react-chessboard";
 import { Chess } from "chess.js";
+import { Link } from "react-router-dom";
+import { saveLocalBotGame } from "../localBotGames.js";
 
+import { getCheckState, getKingCheckStyle } from "../chessStatus.js";
 import {
   fetchMaiaMove,
   fetchEval,
@@ -24,7 +28,7 @@ import {
 /*
  * id залогиненного пользователя (число) или null для анонима.
  * Ходы и партии анонимов уходят в БД с user_id = NULL.
- * Используем getStoredUser из api.js: ключ хранения — gigachess_user.
+ * Используем getStoredUser из api.js: ключ хранения - gigachess_user.
  */
 function getCurrentUserId() {
   const id = getStoredUser()?.id;
@@ -34,8 +38,9 @@ function getCurrentUserId() {
 let gameId = "game_" + Date.now();
 
 /*
- * Имена файлов фигур в public/pieces. Ключи — как в chess.js
- * (piece.type). Нужны, чтобы рисовать иконки съеденного материала.
+ * Имена файлов фигур в public/pieces. Ключи - как в chess.js
+ * (piece.type). Нужны, чтобы рисовать иконки съеденного материала
+ * и «призрак» фигуры на клетке предхода.
  */
 const PIECE_FILE_NAMES = {
   p: "pawn",
@@ -43,7 +48,15 @@ const PIECE_FILE_NAMES = {
   b: "bishop",
   r: "rook",
   q: "queen",
+  k: "king",
 };
+
+/*
+ * Небольшая задержка перед выполнением предхода: даём доске
+ * проиграть анимацию ответа Maia3, чтобы игрок успел увидеть,
+ * на что именно он отвечает.
+ */
+const PREMOVE_EXECUTION_DELAY = 220;
 
 /*
  * Порядок иконок в плашке перевеса: от пешки к ферзю, как в списке
@@ -52,7 +65,7 @@ const PIECE_FILE_NAMES = {
 const MATERIAL_PIECE_ORDER = ["p", "n", "b", "r", "q"];
 
 /*
- * Начальная позиция: по ней понимаем, что партия только началась —
+ * Начальная позиция: по ней понимаем, что партия только началась -
  * нужно для первого хода Maia3, когда играем чёрными.
  */
 const START_POSITION =
@@ -296,12 +309,20 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
   const [turn, setTurn] = useState("w");
 
   /*
+   * Сколько ходов сделал сам игрок. Нужен для фиксации уровня Maia3:
+   * за белых это первый ход партии, за чёрных - второй (первый делает
+   * Maia3), поэтому привязываться к длине истории нельзя.
+   */
+  const [playerMovesPlayed, setPlayerMovesPlayed] = useState(0);
+
+  /*
    * Итог партии для оверлея «Победа / Поражение / Ничья»:
-   * null — партия идёт, иначе { outcome: "win"|"loss"|"draw", reason }.
+   * null - партия идёт, иначе { outcome: "win"|"loss"|"draw", reason }.
    * Игрок играет выбранной стороной (см. playerColor), поэтому мат при
-   * ходе игрока — поражение, мат при ходе соперника — победа.
+   * ходе игрока - поражение, мат при ходе соперника - победа.
    */
   const [gameResult, setGameResult] = useState(null);
+  const [reviewArchiveId, setReviewArchiveId] = useState(null);
   /*
    * Карточку итога можно закрыть кликом по фону, чтобы рассмотреть
    * финальную позицию. Признак хранится отдельно от gameResult: иначе
@@ -313,7 +334,28 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
   const [elo, setElo] = useState(1500);
 
   /*
-   * Сторона игрока: "w" — белые, "b" — чёрные. При открытии главной
+   * Уровень Maia3 фиксируется после первого хода игрока: за белых это
+   * первый ход партии, за чёрных - второй, после ответа Maia3. Иначе
+   * можно доиграть на 800 и перед матом поставить 2600, а победа
+   * засчитается как победа над 2600.
+   */
+  const levelLocked = playerMovesPlayed > 0;
+
+  /*
+   * Уровень, с которым реально шла партия. Запоминаем его, пока игрок
+   * ещё не сделал первый ход; на завершении партии отправляем именно
+   * это значение, а не текущее состояние слайдера.
+   */
+  const gameLevelRef = useRef(elo);
+
+  useEffect(() => {
+    if (!levelLocked) {
+      gameLevelRef.current = elo;
+    }
+  }, [levelLocked, elo]);
+
+  /*
+   * Сторона игрока: "w" - белые, "b" - чёрные. При открытии главной
    * страницы показываем меню выбора (та же карточка, что и итог партии),
    * поэтому по умолчанию выбраны белые, а меню открыто.
    */
@@ -331,6 +373,23 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
 
   const [selectedSquare, setSelectedSquare] = useState(null);
   const [legalMovesForSelected, setLegalMovesForSelected] = useState([]);
+
+  /*
+   * Клетка и фигура, с которой началось перетаскивание: { square, piece }.
+   * react-chessboard прячет фигуру на исходной клетке (opacity: 0),
+   * поэтому подсвечиваем её и рисуем полупрозрачного «призрака».
+   */
+  const [dragFrom, setDragFrom] = useState(null);
+
+  /*
+   * Предход: ход, который игрок ставит заранее, пока думает Maia3.
+   * Храним максимум один предход - новый заменяет предыдущий.
+   *
+   * Ref нужен для отложенного выполнения: к моменту ответа Maia3
+   * замыкание эффекта может содержать устаревшее состояние.
+   */
+  const [premove, setPremove] = useState(null);
+  const premoveRef = useRef(null);
 
   const [boardWidth, setBoardWidth] = useState(560);
   const boardBoxRef = useRef(null);
@@ -396,13 +455,166 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
    * состоянии (currentPosition) и обновляет её эффектом от пропа position
    * через анимацию длиной animationDuration. При резкой внешней смене
    * позиции (новая партия после мата, загрузка FEN) это состояние может
-   * остаться от прежней позиции — фигуры не обновляются. Смена key
+   * остаться от прежней позиции - фигуры не обновляются. Смена key
    * пересоздаёт доску, и она монтируется сразу с нужной позицией
    * (currentPosition берётся из пропа при монтировании).
    */
   const [boardKey, setBoardKey] = useState(0);
 
   const game = gameRef.current;
+
+  /*
+   * Шах и мат считаем по отображаемому FEN: при листании истории
+   * доска показывает произвольный кадр партии, и подсветка должна
+   * соответствовать именно ему.
+   */
+  const checkState = useMemo(() => getCheckState(fen), [fen]);
+
+  /*
+   * ============================================================
+   * ПРЕДХОДЫ
+   * ============================================================
+   *
+   * Предход проверяется только по геометрии фигуры: занятость клеток
+   * и шахи на момент постановки не учитываются. Иначе нельзя было бы
+   * поставить типовой предход-перебой на клетку, где сейчас стоит своя
+   * фигура, или ход пешкой, путь которой пока перекрыт.
+   *
+   * Окончательную легальность проверяет chess.js после ответа Maia3:
+   * если ход невозможен, processPlayerMove вернёт false и предход
+   * будет снят.
+   */
+  const setPremoveMove = useCallback((next) => {
+    premoveRef.current = next;
+    setPremove(next);
+  }, []);
+
+  const clearPremove = useCallback(() => {
+    premoveRef.current = null;
+    setPremove(null);
+  }, []);
+
+  const isPremoveGeometryLegal = useCallback(
+    (from, to) => {
+      if (!from || !to || from === to) return false;
+
+      const piece = game.get(from);
+
+      if (!piece || piece.color !== playerColor) return false;
+
+      /*
+       * Короля нельзя «съесть» ни в каком предходе: такая клетка
+       * не может быть целью нормального хода.
+       */
+      const targetPiece = game.get(to);
+      if (targetPiece?.type === "k") return false;
+
+      const dx = to.charCodeAt(0) - from.charCodeAt(0);
+      const dy = Number(to[1]) - Number(from[1]);
+      const absX = Math.abs(dx);
+      const absY = Math.abs(dy);
+
+      switch (piece.type) {
+        case "p": {
+          const direction = piece.color === "w" ? 1 : -1;
+          const startRank = piece.color === "w" ? "2" : "7";
+
+          if (dx === 0 && dy === direction) return true;
+
+          if (
+            dx === 0 &&
+            dy === 2 * direction &&
+            from[1] === startRank
+          ) {
+            return true;
+          }
+
+          return absX === 1 && dy === direction;
+        }
+        case "n":
+          return (
+            (absX === 1 && absY === 2) ||
+            (absX === 2 && absY === 1)
+          );
+        case "b":
+          return absX === absY && absX > 0;
+        case "r":
+          return (dx === 0 || dy === 0) && absX + absY > 0;
+        case "q":
+          return (
+            (dx === 0 || dy === 0 || absX === absY) &&
+            absX + absY > 0
+          );
+        case "k": {
+          if (absX <= 1 && absY <= 1 && absX + absY > 0) {
+            return true;
+          }
+
+          /*
+           * Рокировка: только с начальной клетки короля и только
+           * при сохранённом праве на неё. Саму возможность рокировки
+           * (пути, шах) окончательно проверит chess.js.
+           */
+          if (absY !== 0 || absX !== 2) return false;
+
+          const rank = piece.color === "w" ? "1" : "8";
+          if (from !== `e${rank}`) return false;
+
+          const kingSide = to === `g${rank}`;
+          const queenSide = to === `c${rank}`;
+
+          if (!kingSide && !queenSide) return false;
+
+          const castling =
+            game.fen().split(" ")[2] || "-";
+          const right =
+            piece.color === "w"
+              ? kingSide
+                ? "K"
+                : "Q"
+              : kingSide
+                ? "k"
+                : "q";
+
+          return castling.includes(right);
+        }
+        default:
+          return false;
+      }
+    },
+    [game, playerColor],
+  );
+
+  /*
+   * Все клетки, куда геометрически может пойти выбранная фигура.
+   * Используется для подсветки кликового предхода.
+   */
+  const getPremoveTargets = useCallback(
+    (from) => {
+      const targets = [];
+
+      for (let file = 0; file < 8; file += 1) {
+        for (let rank = 1; rank <= 8; rank += 1) {
+          const to = "abcdefgh"[file] + rank;
+          const targetPiece = game.get(to);
+
+          /*
+           * Клик по своей фигуре - это выбор другой фигуры,
+           * а не взятие. Кольцо на такой клетке только путало бы;
+           * перебой мышью всё равно ставится перетаскиванием.
+           */
+          if (targetPiece?.color === playerColor) continue;
+
+          if (isPremoveGeometryLegal(from, to)) {
+            targets.push(to);
+          }
+        }
+      }
+
+      return targets;
+    },
+    [game, playerColor, isPremoveGeometryLegal],
+  );
 
   useEffect(() => {
     if (typeof onStateChange === "function") {
@@ -412,6 +624,34 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
       }));
     }
   }, [boardFlipped, onStateChange]);
+
+  /*
+   * Пока открыта карточка выбора стороны, история ходов должна быть
+   * недоступна: иначе поверх «За кого играем?» можно откатить партию
+   * назад. Флаг уходит в общее состояние страницы, чтобы панель истории
+   * погасила стрелки и клики по ходам.
+   */
+  useEffect(() => {
+    if (typeof onStateChange === "function") {
+      onStateChange((prev) => ({
+        ...prev,
+        sidePickerOpen,
+      }));
+    }
+  }, [sidePickerOpen, onStateChange]);
+
+  /*
+   * Фиксация уровня Maia3 тоже живёт в общем состоянии страницы:
+   * чипы уровней отрисовываются в левой колонке, вне доски.
+   */
+  useEffect(() => {
+    if (typeof onStateChange === "function") {
+      onStateChange((prev) => ({
+        ...prev,
+        levelLocked,
+      }));
+    }
+  }, [levelLocked, onStateChange]);
 
   useEffect(() => {
     if (!boardBoxRef.current) return;
@@ -473,18 +713,16 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
     const containerW = mainEl?.clientWidth || window.innerWidth;
 
     /*
-     * Пока чат едет, его текущая ширина ещё не итоговая. Берём целевую
-     * из инлайнового width (его ставит ChatPanel) и переносим разницу на
-     * колонку доски: так доска сразу получает финальный размер и плавно
+     * Пока чат едет, его текущая ширина ещё не итоговая. Целевую ширину
+     * пишет ChatPanel в data-атрибут, а разницу переносим на колонку
+     * доски: так доска сразу получает финальный размер и плавно
      * переезжает вместе с чатом, без скачка в конце анимации.
      */
     let chatTargetW = chatEl ? chatEl.getBoundingClientRect().width : 0;
     if (chatEl?.classList.contains("chat-section--sliding")) {
-      const inlineW = parseFloat(chatEl.style.width);
-      if (inlineW > 0) {
-        chatTargetW = chatEl.classList.contains("chat-section--collapsed")
-          ? 48
-          : inlineW;
+      const targetW = parseFloat(chatEl.dataset.chatTargetWidth);
+      if (targetW > 0) {
+        chatTargetW = targetW;
       }
     }
 
@@ -499,13 +737,13 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
       : sectionW - boardChromeW - evalAndGapW;
 
     /*
-     * Высота — замером живых элементов, а не гаданием по window:
+     * Высота - замером живых элементов, а не гаданием по window:
      * clientHeight .main-area уже исключает топбар, футер, отступы
      * и хром браузера. Из него вычитаем всё, что лежит в карточке
      * доски кроме самой доски: верхнюю панель, кнопки, карточку
      * сравнения, ФЕН-панель, паддинги и рамку. Именно замером, потому
      * что карточка сравнения появляется только после подсказки и
-     * добавляет ~100px — иначе доска перестаёт помещаться на экране.
+     * добавляет ~100px - иначе доска перестаёт помещаться на экране.
      *
      * Через scrollHeight, а не offsetHeight: когда содержимого больше,
      * чем места, карточка сжимается по высоте колонки и offsetHeight
@@ -522,7 +760,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
           boardBox.getBoundingClientRect().height
         : 0;
 
-    // Минимум — панель противника + кнопки + ФЕН-панель + рамка
+    // Минимум - панель противника + кнопки + ФЕН-панель + рамка
     // с паддингами, когда карточки сравнения ещё нет. Реальный хром
     // карточки — около 100px, поэтому не занижаем доску лишними 50px.
     const chromeH = measuredChrome > 0 ? measuredChrome : 104;
@@ -545,7 +783,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
 
     /*
      * Топбар, футер, подгрузка шрифтов и анимация чата меняют ширину
-     * или высоту колонки уже после первого замера — пересчитываем по
+     * или высоту колонки уже после первого замера - пересчитываем по
      * изменению .main-area и самой колонки доски. Петли нет: ширина
      * колонки задана флексом и от размера доски не зависит.
      */
@@ -586,7 +824,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
   }, [updateBoardSize, chatCollapsed]);
 
   /*
-   * Карточка сравнения появляется/меняет высоту после подсказки —
+   * Карточка сравнения появляется/меняет высоту после подсказки -
    * пересчитываем размер доски, чтобы карточка и ФЕН-панель влезали.
    */
   useEffect(() => {
@@ -600,7 +838,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
 
   /*
    * Автосохранение завершённой партии: как только на доске
-   * мат / пат / ничья, отправляем всю партию в /api/game/finish —
+   * мат / пат / ничья, отправляем всю партию в /api/game/finish -
    * бэкенд в фоне классифицирует ходы через Stockfish и
    * сохраняет games + game_moves.
    */
@@ -652,7 +890,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
         ...prev,
         maiaVictory: {
           id: `${gameGenRef.current}-${Date.now()}`,
-          elo,
+          elo: gameLevelRef.current ?? elo,
           userId: getCurrentUserId(),
         },
       }));
@@ -679,11 +917,23 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
      */
     const uciMoves = toUciMoves(moveHistory);
 
-    if (uciMoves.length === 0) return;
+    if (uciMoves.length === 0 || uciMoves.length !== moveHistory.length) return;
+
+    const archiveId = `${Date.now()}-${gameGenRef.current}`;
+    saveLocalBotGame({
+      id: archiveId,
+      userId: getCurrentUserId(),
+      pgn: g.pgn(),
+      playedAt: new Date().toISOString(),
+      playerColor,
+      elo: gameLevelRef.current ?? elo,
+      result,
+    });
+    setReviewArchiveId(archiveId);
 
     finishGame({
       moves: uciMoves,
-      elo,
+      elo: gameLevelRef.current ?? elo,
       engine: "maia3",
       result,
       status,
@@ -902,6 +1152,22 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
 
   const onNavigate = useCallback(
     (direction) => {
+      /*
+       * Под карточкой выбора стороны навигация запрещена. Это вторая
+       * линия защиты: панель истории тоже гасит кнопки, но onNavigate
+       * можно вызвать и через boardRef.
+       */
+      if (sidePickerOpen) return;
+
+      /*
+       * Переход по истории меняет позицию на доске. Предход,
+       * поставленный к текущей партии, к просматриваемому кадру
+       * отношения не имеет.
+       */
+      clearPremove();
+      setSelectedSquare(null);
+      setLegalMovesForSelected([]);
+
       const history = moveHistory;
 
       if (history.length === 0) return;
@@ -930,7 +1196,14 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
 
       showPosition(currentIndex);
     },
-    [moveHistory, isViewMode, viewIndex, showPosition],
+    [
+      moveHistory,
+      isViewMode,
+      viewIndex,
+      sidePickerOpen,
+      clearPremove,
+      showPosition,
+    ],
   );
 
   /*
@@ -978,13 +1251,14 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
    * Новая игра.
    */
   const handleNewGame = useCallback(() => {
+    clearPremove();
     game.reset();
 
     const startFen = game.fen();
 
     /*
      * Партия начата заново: отложенный ответ движка больше не применять,
-     * а доску пересоздать — иначе react-chessboard может оставить
+     * а доску пересоздать - иначе react-chessboard может оставить
      * на ней прежнюю позицию.
      */
     gameGenRef.current += 1;
@@ -992,7 +1266,9 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
 
     setFen(startFen);
     setMoveHistory([]);
+    setPlayerMovesPlayed(0);
     setGameResult(null);
+    setReviewArchiveId(null);
     setResultCardDismissed(false);
     setPositionSnapshots([startFen]);
 
@@ -1037,12 +1313,12 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
         isComparing: false,
       }));
     }
-  }, [game, onStateChange]);
+  }, [game, onStateChange, clearPremove]);
 
   /*
    * Выбор стороны в меню при входе на страницу: доска разворачивается
    * так, чтобы игрок был внизу, и партия начинается заново. Если выбраны
-   * чёрные, первый ход сделает Maia3 (эффект ниже — по начальной позиции
+   * чёрные, первый ход сделает Maia3 (эффект ниже - по начальной позиции
    * с пустой историей).
    */
   const handleChooseSide = useCallback(
@@ -1058,19 +1334,24 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
   /*
    * «Новая игра» сначала спрашивает сторону: меню открывается и при
    * входе на страницу, и по кнопке. Карточку итога прячем, чтобы два
-   * оверлея не накладывались друг на друга.
+   * оверлея не накладывались друг на друга. Если игрок успел отмотать
+   * партию назад, возвращаем доску к последнему ходу: под меню должна
+   * быть актуальная позиция, а не случайный просмотренный кадр.
    */
   const openSidePicker = useCallback(() => {
+    onNavigate("last");
     setGameResult(null);
     setResultCardDismissed(false);
     setSidePickerOpen(true);
-  }, []);
+  }, [onNavigate]);
 
   /*
    * Загрузка FEN.
    */
   const handleLoadFen = useCallback(
     (newFen) => {
+      clearPremove();
+
       try {
         game.load(newFen);
 
@@ -1085,6 +1366,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
 
         setFen(validFen);
         setMoveHistory([]);
+        setPlayerMovesPlayed(0);
         setGameResult(null);
         setPositionSnapshots([validFen]);
 
@@ -1134,7 +1416,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
         return false;
       }
     },
-    [game, onStateChange],
+    [game, onStateChange, clearPremove],
   );
 
   /*
@@ -1339,7 +1621,7 @@ const fetchBestMove = useCallback(
         }
 
         /*
-         * Если готового UCI нет — собираем его из from/to.
+         * Если готового UCI нет - собираем его из from/to.
          */
         if (!stockfishUci) {
           stockfishUci =
@@ -1415,7 +1697,7 @@ const fetchBestMove = useCallback(
              *
              * Уникальный id нужен для того, чтобы пользователь
              * мог нажать "Лучший ход" повторно даже в той же
-             * позиции — ChatPanel воспримет это как новое
+             * позиции - ChatPanel воспримет это как новое
              * сообщение.
              */
             if (
@@ -1545,7 +1827,7 @@ const fetchBestMove = useCallback(
     if (game.isGameOver() || game.isDraw()) return;
 
     /*
-     * Номер партии на момент вызова: после ответа движка сверяем —
+     * Номер партии на момент вызова: после ответа движка сверяем -
      * если партия успела смениться, ход применять нельзя.
      */
     const gen = gameGenRef.current;
@@ -1582,11 +1864,13 @@ const fetchBestMove = useCallback(
 
       /*
        * Пока движок думал, могли начать новую партию или загрузить
-       * другой FEN — тогда этот ход уже не для текущей позиции.
+       * другой FEN - тогда этот ход уже не для текущей позиции.
        */
       if (gen !== gameGenRef.current) return;
 
       if (data.error) {
+        // Хода соперника не будет - ждать предходу нечего.
+        clearPremove();
         setMaiaError(data.error);
         return;
       }
@@ -1598,6 +1882,7 @@ const fetchBestMove = useCallback(
       });
 
       if (!move) {
+        clearPremove();
         setMaiaError("Maia3 вернула нелегальный ход. Позиция не изменена.");
         return;
       }
@@ -1616,6 +1901,13 @@ const fetchBestMove = useCallback(
         takeSnapshot();
         updateStatus();
         showGameOverCard();
+
+        /*
+         * Позиция сменилась - подсветка выбора и псевдолегальные
+         * клетки от старой позиции больше не актуальны.
+         */
+        setSelectedSquare(null);
+        setLegalMovesForSelected([]);
 
         playMoveSound();
 
@@ -1647,6 +1939,7 @@ const fetchBestMove = useCallback(
       console.error("Maia3 ошибка:", err);
       const detail = err?.response?.data?.detail;
       if (gen === gameGenRef.current) {
+        clearPremove();
         if (typeof detail === "string") {
           setMaiaError(detail);
         } else if (err?.code === "ECONNABORTED") {
@@ -1670,6 +1963,7 @@ const fetchBestMove = useCallback(
     takeSnapshot,
     updateStatus,
     onStateChange,
+    clearPremove,
     fetchEvalForPosition,
     showGameOverCard,
   ]);
@@ -1771,6 +2065,19 @@ const fetchBestMove = useCallback(
         return false;
       }
 
+      /*
+       * Любой реальный ход отменяет ожидающий предход: либо он уже
+       * выполняется (и эффект снял его заранее), либо игрок решил
+       * сходить сам.
+       */
+      clearPremove();
+
+      /*
+       * Игрок сделал ход: с этого момента уровень Maia3 зафиксирован
+       * до конца партии (за чёрных - начиная со второго хода партии).
+       */
+      setPlayerMovesPlayed((count) => count + 1);
+
       const currentFen = game.fen();
 
       /*
@@ -1852,7 +2159,7 @@ const fetchBestMove = useCallback(
 
       /*
        * После хода игрока Maia3 отвечает. Если за это время партию
-       * начали заново — ответ не запрашиваем.
+       * начали заново - ответ не запрашиваем.
        */
       if (
         !game.isGameOver() &&
@@ -1874,14 +2181,67 @@ const fetchBestMove = useCallback(
       fetchEvalForPosition,
       makeAiMove,
       onStateChange,
+      clearPremove,
       showGameOverCard,
     ],
   );
 
   /*
+   * Автоматическое выполнение предхода.
+   *
+   * Эффект срабатывает, когда ответ Maia3 уже применён к партии
+   * (chess.js переключил turn на игрока). Небольшая задержка нужна,
+   * чтобы доска успела проиграть анимацию хода соперника.
+   *
+   * Если ход окажется нелегальным (шах, связка, фигура съедена),
+   * processPlayerMove вернёт false - предход просто исчезнет.
+   */
+  useEffect(() => {
+    const pending = premoveRef.current;
+
+    if (!pending) return undefined;
+    if (isViewMode || sidePickerOpen || isAiThinking) return undefined;
+    if (game.turn() !== playerColor) return undefined;
+
+    if (game.isGameOver() || game.isDraw()) {
+      clearPremove();
+      return undefined;
+    }
+
+    const timer = setTimeout(() => {
+      /*
+       * За время задержки предход могли отменить или заменить,
+       * а игрок - успеть сходить вручную.
+       */
+      if (premoveRef.current !== pending) return;
+      if (game.turn() !== playerColor || isAiThinking) return;
+      if (game.isGameOver() || game.isDraw()) {
+        clearPremove();
+        return;
+      }
+
+      clearPremove();
+      processPlayerMove(pending.from, pending.to);
+    }, PREMOVE_EXECUTION_DELAY);
+
+    return () => clearTimeout(timer);
+  }, [
+    fen,
+    turn,
+    premove,
+    isAiThinking,
+    isViewMode,
+    sidePickerOpen,
+    playerColor,
+    game,
+    processPlayerMove,
+    clearPremove,
+  ]);
+
+  /*
    * Играем чёрными: партия начинается с хода Maia3 за белых.
    *
-   * Условия — начальная позиция, пустая история и закрытое меню выбора
+   * Условия - начальная позиция, пустая история и закрытое меню выбора
    * стороны. Запускаем один раз на партию (aiFirstMoveGenRef), чтобы
    * неудачный запрос не превратился в бесконечный цикл повторов.
    */
@@ -1910,29 +2270,133 @@ const fetchBestMove = useCallback(
   ]);
 
   /*
+   * Клик по клеткам во время хода Maia3 ставит предход.
+   * Цели подсвечиваются по геометрии фигуры, а не по chess.js:
+   * так работают типовые предходы-перебои и ходы через временно
+   * перекрытые клетки.
+   */
+  const handlePremoveSquareClick = useCallback(
+    (square) => {
+      if (game.isGameOver() || game.isDraw()) return;
+
+      /*
+       * Клик по уже подсвеченной цели снимает предход - удобная
+       * отмена и на мобильных, где нет правого клика.
+       */
+      if (premove && square === premove.to) {
+        clearPremove();
+        return;
+      }
+
+      const piece = game.get(square);
+
+      if (selectedSquare) {
+        if (square === selectedSquare) {
+          setSelectedSquare(null);
+          setLegalMovesForSelected([]);
+          return;
+        }
+
+        if (piece && piece.color === playerColor) {
+          setSelectedSquare(square);
+          setLegalMovesForSelected(getPremoveTargets(square));
+          return;
+        }
+
+        if (isPremoveGeometryLegal(selectedSquare, square)) {
+          const movingPiece = game.get(selectedSquare);
+
+          setPremoveMove({
+            from: selectedSquare,
+            to: square,
+            color: movingPiece.color,
+            type: movingPiece.type,
+          });
+          setSelectedSquare(null);
+          setLegalMovesForSelected([]);
+          return;
+        }
+
+        setSelectedSquare(null);
+        setLegalMovesForSelected([]);
+        return;
+      }
+
+      if (piece && piece.color === playerColor) {
+        clearPremove();
+        setSelectedSquare(square);
+        setLegalMovesForSelected(getPremoveTargets(square));
+        return;
+      }
+
+      /*
+       * Клик мимо своих фигур отменяет незавершённый выбор
+       * и уже поставленный предход.
+       */
+      clearPremove();
+      setSelectedSquare(null);
+      setLegalMovesForSelected([]);
+    },
+    [
+      game,
+      premove,
+      selectedSquare,
+      playerColor,
+      isPremoveGeometryLegal,
+      getPremoveTargets,
+      setPremoveMove,
+      clearPremove,
+    ],
+  );
+
+  /*
    * Drag & Drop.
    */
   const onDrop = useCallback(
     (sourceSquare, targetSquare) => {
-      if (
-        isViewMode ||
-        isAiThinking ||
-        game.turn() !== playerColor
-      ) {
+      if (isViewMode || sidePickerOpen) return false;
+      if (game.isGameOver() || game.isDraw()) return false;
+
+      /*
+       * Свой ход - обычная обработка. Предход на этот момент
+       * уже не нужен.
+       */
+      if (game.turn() === playerColor) {
+        clearPremove();
+        return processPlayerMove(sourceSquare, targetSquare);
+      }
+
+      /*
+       * Ход Maia3: запоминаем предход. Возвращаем false, чтобы
+       * react-chessboard не двигал фигуру - позицию изменит
+       * processPlayerMove после ответа соперника.
+       */
+      if (!isPremoveGeometryLegal(sourceSquare, targetSquare)) {
         return false;
       }
 
-      return processPlayerMove(
-        sourceSquare,
-        targetSquare,
-      );
+      const movingPiece = game.get(sourceSquare);
+
+      setPremoveMove({
+        from: sourceSquare,
+        to: targetSquare,
+        color: movingPiece.color,
+        type: movingPiece.type,
+      });
+      setSelectedSquare(null);
+      setLegalMovesForSelected([]);
+
+      return false;
     },
     [
       game,
       isViewMode,
-      isAiThinking,
+      sidePickerOpen,
       playerColor,
+      isPremoveGeometryLegal,
       processPlayerMove,
+      setPremoveMove,
+      clearPremove,
     ],
   );
 
@@ -1941,10 +2405,22 @@ const fetchBestMove = useCallback(
    */
   const onSquareClick = useCallback(
     (square) => {
-      if (isViewMode) return;
-      if (isAiThinking) return;
-      if (sidePickerOpen) return;
-      if (game.turn() !== playerColor) return;
+      if (isViewMode || sidePickerOpen) return;
+      if (game.isGameOver() || game.isDraw()) return;
+
+      /*
+       * Пока ходит Maia3, клики ставят предход.
+       */
+      if (game.turn() !== playerColor) {
+        handlePremoveSquareClick(square);
+        return;
+      }
+
+      /*
+       * Начало ручного хода отменяет ожидающий предход: он мог
+       * ждать короткую задержку перед автоматическим выполнением.
+       */
+      clearPremove();
 
       const piece = game.get(square);
 
@@ -2018,11 +2494,71 @@ const fetchBestMove = useCallback(
       game,
       selectedSquare,
       isViewMode,
-      isAiThinking,
       playerColor,
       sidePickerOpen,
+      handlePremoveSquareClick,
       processPlayerMove,
+      clearPremove,
     ],
+  );
+
+  /*
+   * Если игрок начинает тянуть фигуру на своём ходу, ожидающий
+   * предход уже не должен выполниться сам.
+   */
+  const handlePieceDragBegin = useCallback(
+    (piece, sourceSquare) => {
+      if (game.turn() === playerColor) {
+        clearPremove();
+      }
+
+      setDragFrom({
+        square: sourceSquare,
+        piece,
+      });
+    },
+    [game, playerColor, clearPremove],
+  );
+
+  const handlePieceDragEnd = useCallback(() => {
+    setDragFrom(null);
+  }, []);
+
+  const handleSquareRightClick = useCallback(() => {
+    clearPremove();
+  }, [clearPremove]);
+
+  const isDraggablePiece = useCallback(
+    ({ piece }) =>
+      !isViewMode &&
+      !sidePickerOpen &&
+      piece?.[0] === playerColor,
+    [isViewMode, sidePickerOpen, playerColor],
+  );
+
+  /*
+   * Стандартная проверка превращения из react-chessboard, но во время
+   * хода Maia3 диалог не нужен: это предход, а он всё равно
+   * превращается в ферзя в processPlayerMove.
+   */
+  const handlePromotionCheck = useCallback(
+    (sourceSquare, targetSquare, piece) => {
+      if (game.turn() !== playerColor) return false;
+
+      return (
+        ((piece === "wP" &&
+          sourceSquare[1] === "7" &&
+          targetSquare[1] === "8") ||
+          (piece === "bP" &&
+            sourceSquare[1] === "2" &&
+            targetSquare[1] === "1")) &&
+        Math.abs(
+          sourceSquare.charCodeAt(0) -
+            targetSquare.charCodeAt(0),
+        ) <= 1
+      );
+    },
+    [game, playerColor],
   );
 
   const handlePromotionPieceSelect =
@@ -2032,6 +2568,13 @@ const fetchBestMove = useCallback(
 
   const setMaiaLevel = useCallback(
     (level) => {
+      /*
+       * Пока партия идёт, уровень зафиксирован. Проверка стоит здесь,
+       * а не только на элементах управления: так её нельзя обойти
+       * вызовом setMaiaLevel через boardRef.
+       */
+      if (levelLocked) return;
+
       const nextElo = Math.max(
         800,
         Math.min(2600, Math.round(Number(level) / 100) * 100),
@@ -2044,7 +2587,7 @@ const fetchBestMove = useCallback(
         onStateChange((prev) => ({ ...prev, maiaRating: nextElo }));
       }
     },
-    [onStateChange],
+    [onStateChange, levelLocked],
   );
 
   /*
@@ -2064,7 +2607,7 @@ const fetchBestMove = useCallback(
         return "";
       }
     },
-    // Кнопка «Подсказка» живёт в ChatPanel — дёргает анализ через ref.
+    // Кнопка «Подсказка» живёт в ChatPanel - дёргает анализ через ref.
     requestBestMove: () => fetchBestMove(),
   }));
 
@@ -2086,7 +2629,7 @@ const fetchBestMove = useCallback(
 
     /*
      * Полный комплект на начало партии: разница с тем, что стоит на
-     * доске, — это съеденные фигуры.
+     * доске, - это съеденные фигуры.
      */
     const fullSet = {
       p: 8,
@@ -2124,57 +2667,71 @@ const fetchBestMove = useCallback(
     });
 
     const diff = white - black;
-    const excess = {};
 
     /*
      * Перевес показываем по реально съеденным фигурам, а не раскладкой
      * численной разницы на «удобные» фигуры: если с доски ушёл ферзь,
      * в перевесе будет ферзь, а не слон с ладьёй.
      *
-     * По каждому типу фигур считаем, сколько взял лидер и сколько взял
-     * отстающий, взаимные взятия одного типа сокращаем — остаётся то,
-     * что лидер взял сверх соперника.
+     * Считаем перевес по каждому типу отдельно для обеих сторон:
+     * даже отстающий по общему материалу игрок может иметь лишнюю
+     * фигуру конкретного типа (например, ладью). Взаимные взятия
+     * одного типа сокращаем.
      */
-    if (diff !== 0) {
-      const leader = diff > 0 ? "w" : "b";
+    const surplus = {
+      w: {},
+      b: {},
+    };
 
-      MATERIAL_PIECE_ORDER.forEach((type) => {
-        const leaderLeft =
-          (leader === "w" ? whitePieces : blackPieces)[type] || 0;
+    MATERIAL_PIECE_ORDER.forEach((type) => {
+      /*
+       * Ограничение полным комплектом - страховка от превращения
+       * пешки: «лишняя» фигура превращения не должна считаться
+       * съеденной у соперника.
+       */
+      const whiteCount = Math.min(
+        whitePieces[type] || 0,
+        fullSet[type],
+      );
 
-        const loserLeft =
-          (leader === "w" ? blackPieces : whitePieces)[type] || 0;
+      const blackCount = Math.min(
+        blackPieces[type] || 0,
+        fullSet[type],
+      );
 
-        /*
-         * Math.max(0, ...) — страховка от превращения пешки: взятая
-         * «лишняя» фигура превращения съеденной не считается.
-         */
-        const takenByLeader = Math.max(
-          0,
-          fullSet[type] - Math.max(0, loserLeft),
-        );
-
-        const takenByLoser = Math.max(
-          0,
-          fullSet[type] - Math.max(0, leaderLeft),
-        );
-
-        const extra = takenByLeader - takenByLoser;
-
-        if (extra > 0) {
-          excess[type] = extra;
-        }
-      });
-    }
+      if (whiteCount > blackCount) {
+        surplus.w[type] = whiteCount - blackCount;
+      } else if (blackCount > whiteCount) {
+        surplus.b[type] = blackCount - whiteCount;
+      }
+    });
 
     return {
       diff,
-      excess,
+      surplus,
     };
   }, [game]);
 
   const materialAdv =
     getMaterialAdvantage();
+
+  /*
+   * Данные для строк игроков: строка показывает лишние фигуры той
+   * стороны, которая в ней сидит, а цвет иконок - цвет соперника,
+   * ведь это его фигуры были взяты.
+   */
+  const materialByColor = {
+    w: {
+      diff: materialAdv.diff,
+      pieces: materialAdv.surplus.w,
+      pieceColor: "black",
+    },
+    b: {
+      diff: -materialAdv.diff,
+      pieces: materialAdv.surplus.b,
+      pieceColor: "white",
+    },
+  };
 
   useEffect(() => {
     if (typeof onStateChange === "function") {
@@ -2189,50 +2746,53 @@ const fetchBestMove = useCallback(
   ]);
 
   /*
-   * Материальный перевес: рядом с числом — иконки конкретных фигур,
-   * которые лидер съел сверх соперника. Цвет иконок — цвет отстающей
-   * стороны: это её фигуры и были съедены.
+   * Материальный перевес: иконки конкретных фигур, которые сторона
+   * взяла сверх соперника, и число - только у лидера по общему
+   * материалу. Цвет иконок - цвет соперника: это его фигуры съедены.
    */
   const MaterialDisplay = ({
-    diff,
-    excess = {},
-    leading = "w",
+    diff = 0,
+    pieces = {},
+    pieceColor = "black",
   }) => {
-    if (diff <= 0) return null;
-
-    const capturedColor =
-      leading === "w" ? "black" : "white";
-
     const captured = [];
 
     MATERIAL_PIECE_ORDER.forEach((type) => {
-      const count = excess[type] || 0;
+      const count = pieces[type] || 0;
 
       for (let i = 0; i < count; i += 1) {
         captured.push(type);
       }
     });
 
+    if (captured.length === 0 && diff <= 0) return null;
+
     return (
       <div
         className="material-display"
-        title={`Материальный перевес: +${diff}`}
+        title={
+          diff > 0
+            ? `Материальный перевес: +${diff}`
+            : "Взятые фигуры"
+        }
       >
         <span className="material-pieces">
           {captured.map((type, index) => (
             <img
               key={`${type}-${index}`}
               className="material-piece"
-              src={`/pieces/${capturedColor}_${PIECE_FILE_NAMES[type]}.svg`}
+              src={`/pieces/${pieceColor}_${PIECE_FILE_NAMES[type]}.svg`}
               alt=""
               aria-hidden="true"
             />
           ))}
         </span>
 
-        <span className="material-diff">
-          +{diff}
-        </span>
+        {diff > 0 && (
+          <span className="material-diff">
+            +{diff}
+          </span>
+        )}
       </div>
     );
   };
@@ -2327,14 +2887,49 @@ const fetchBestMove = useCallback(
   }
 
   /*
+   * Предход рисуем последним, чтобы он перекрывал подсветку
+   * последнего хода и выбранной клетки.
+   */
+  if (premove) {
+    customSquareStyles[premove.from] = {
+      ...(customSquareStyles[premove.from] || {}),
+      backgroundColor: "rgba(179, 84, 58, 0.5)",
+    };
+
+    customSquareStyles[premove.to] = {
+      ...(customSquareStyles[premove.to] || {}),
+      backgroundColor: "rgba(179, 84, 58, 0.72)",
+    };
+  }
+
+  /*
+   * Шах рисуем последним: красная подсветка короля должна быть видна
+   * поверх подсветки последнего хода, выбранной клетки и предхода.
+   */
+  if (checkState.kingSquare) {
+    customSquareStyles[checkState.kingSquare] = {
+      ...(customSquareStyles[checkState.kingSquare] || {}),
+      ...getKingCheckStyle(checkState.isCheckmate),
+    };
+  }
+
+  /*
    * Две стрелки одновременно.
    *
    * Если оба движка выбрали один и тот же ход,
    * показываем одну зелёную стрелку.
    *
-   * Если ходы разные — показываем обе.
+   * Если ходы разные - показываем обе.
    */
   const boardArrows = [];
+
+  if (premove) {
+    boardArrows.push([
+      premove.from,
+      premove.to,
+      "rgba(179, 84, 58, 0.9)",
+    ]);
+  }
 
   if (stockfishArrow) {
     boardArrows.push(stockfishArrow);
@@ -2349,6 +2944,85 @@ const fetchBestMove = useCallback(
     boardArrows.push(maiaArrow);
   }
 
+  /*
+   * «Призрак» фигуры на целевой клетке предхода. Абсолютный слой
+   * внутри boardBox, поэтому на расчёт размера доски не влияет.
+   */
+  const premoveGhost = (() => {
+    if (!premove) return null;
+
+    const file = premove.to.charCodeAt(0) - 97;
+    const rank = Number(premove.to[1]);
+    const squareSize = boardWidth / 8;
+    const left =
+      (boardFlipped ? 7 - file : file) * squareSize;
+    const top =
+      (boardFlipped ? rank - 1 : 8 - rank) * squareSize;
+    const colorName =
+      premove.color === "w" ? "white" : "black";
+
+    return (
+      <img
+        src={`/pieces/${colorName}_${PIECE_FILE_NAMES[premove.type]}.svg`}
+        alt=""
+        aria-hidden="true"
+        draggable={false}
+        style={{
+          position: "absolute",
+          left,
+          top,
+          width: squareSize,
+          height: squareSize,
+          opacity: 0.55,
+          pointerEvents: "none",
+          zIndex: 8,
+        }}
+      />
+    );
+  })();
+
+  /*
+   * «Призрак» фигуры на клетке, откуда её тянут. react-chessboard
+   * скрывает оригинал, и без такого слоя теряется точка старта.
+   */
+  const dragGhost = (() => {
+    if (!dragFrom) return null;
+
+    const { square, piece } = dragFrom;
+    const file = square.charCodeAt(0) - 97;
+    const rank = Number(square[1]);
+    const squareSize = boardWidth / 8;
+    const left =
+      (boardFlipped ? 7 - file : file) * squareSize;
+    const top =
+      (boardFlipped ? rank - 1 : 8 - rank) * squareSize;
+    const colorName =
+      piece[0] === "w" ? "white" : "black";
+    const pieceName =
+      PIECE_FILE_NAMES[piece[1]?.toLowerCase()];
+
+    if (!pieceName) return null;
+
+    return (
+      <img
+        src={`/pieces/${colorName}_${pieceName}.svg`}
+        alt=""
+        aria-hidden="true"
+        draggable={false}
+        style={{
+          position: "absolute",
+          left,
+          top,
+          width: squareSize,
+          height: squareSize,
+          opacity: 0.4,
+          pointerEvents: "none",
+          zIndex: 7,
+        }}
+      />
+    );
+  })();
+
   return (
     <div className="board-section">
       <div className="board-wrapper" data-logo-anchor>
@@ -2357,39 +3031,12 @@ const fetchBestMove = useCallback(
             Верхняя панель
         ====================================================== */}
         <div className="player-bar">
-          <div className="rating-label">
-            Противник (Maia3):{" "}
-            <span>{elo}</span> ELO
-          </div>
-
-          <input
-            type="range"
-            min="800"
-            max="2600"
-            step="100"
-            value={elo}
-            onChange={(e) => setMaiaLevel(parseInt(e.target.value, 10))}
-            style={{
-              width: 100,
-              accentColor: "#C9A96E",
-              cursor: "pointer",
-            }}
-          />
-
           {/*
            * Перевес верхней стороны живёт в её же строке, а не плашкой
            * поверх доски: так он ничего не перекрывает.
            */}
           <MaterialDisplay
-            diff={
-              boardFlipped
-                ? materialAdv.diff
-                : -materialAdv.diff
-            }
-            excess={materialAdv.excess}
-            leading={
-              materialAdv.diff > 0 ? "w" : "b"
-            }
+            {...materialByColor[boardFlipped ? "w" : "b"]}
           />
         </div>
 
@@ -2423,6 +3070,11 @@ const fetchBestMove = useCallback(
             position={fen}
             onPieceDrop={onDrop}
             onSquareClick={onSquareClick}
+            onPieceDragBegin={handlePieceDragBegin}
+            onPieceDragEnd={handlePieceDragEnd}
+            onSquareRightClick={handleSquareRightClick}
+            onPromotionCheck={handlePromotionCheck}
+            isDraggablePiece={isDraggablePiece}
             boardWidth={boardWidth}
             animationDuration={200}
             boardOrientation={
@@ -2629,8 +3281,12 @@ const fetchBestMove = useCallback(
             }
           />
 
+          {dragGhost}
+
+          {premoveGhost}
+
           {/*
-           * Выбор стороны — та же карточка, что и итог партии.
+           * Выбор стороны - та же карточка, что и итог партии.
            * Открывается при входе на главную и по кнопке «Новая игра»;
            * клик по фону оставляет текущую сторону и партию.
            */}
@@ -2714,28 +3370,14 @@ const fetchBestMove = useCallback(
                  * Разбор партии: до нажатия - кнопка, после ответа
                  * сервера - звёзды, точность и счётчик ходов.
                  */}
-                {review ? (
-                  <GameReviewSummary review={review} />
-                ) : (
-                  <>
-                    <button
-                      type="button"
-                      className="gameover-btn gameover-btn--review"
-                      onClick={handleReviewGame}
-                      disabled={reviewLoading}
-                    >
-                      {reviewLoading
-                        ? "Разбираем партию..."
-                        : "Разобрать партию"}
-                    </button>
-                    {reviewLoading && (
-                      <div className="gameover-review-note">
-                        Движок проверяет каждый ваш ход, это может занять
-                        до 40 секунд
-                      </div>
-                    )}
-                  </>
-                )}
+                <Link
+                  className="gameover-btn gameover-btn--review"
+                  to={reviewArchiveId ? `/review/game/${reviewArchiveId}` : "/review"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Разобрать партию по ходам
+                </Link>
 
                 {reviewError && (
                   <div className="gameover-review-note gameover-review-note--error">
@@ -2792,7 +3434,7 @@ const fetchBestMove = useCallback(
 
           {/*
            * «Новая игра» открывает меню выбора стороны: партия начнётся
-           * сразу после выбора. Клик по фону — отмена, текущая партия
+           * сразу после выбора. Клик по фону - отмена, текущая партия
            * остаётся.
            */}
           <button
@@ -2812,18 +3454,14 @@ const fetchBestMove = useCallback(
            * кликом по фону: кнопка открывает её снова и запускает разбор.
            */}
           {gameResult && (
-            <button
-              type="button"
+            <Link
               className="ctrl-btn ctrl-btn--review"
-              onClick={openReviewCard}
-              disabled={reviewLoading}
+              to={reviewArchiveId ? `/review/game/${reviewArchiveId}` : "/review"}
+              target="_blank"
+              rel="noopener noreferrer"
             >
-              {reviewLoading
-                ? "Разбираем..."
-                : review
-                  ? "Итог партии"
-                  : "Разобрать партию"}
-            </button>
+              Разобрать партию
+            </Link>
           )}
 
           {/*
@@ -2842,19 +3480,11 @@ const fetchBestMove = useCallback(
           </button>
 
           {/*
-           * Перевес нижней стороны — в её строке под доской,
+           * Перевес нижней стороны - в её строке под доской,
            * а не плашкой поверх поля.
            */}
           <MaterialDisplay
-            diff={
-              boardFlipped
-                ? -materialAdv.diff
-                : materialAdv.diff
-            }
-            excess={materialAdv.excess}
-            leading={
-              materialAdv.diff > 0 ? "w" : "b"
-            }
+            {...materialByColor[boardFlipped ? "b" : "w"]}
           />
         </div>
 
@@ -2862,72 +3492,27 @@ const fetchBestMove = useCallback(
             Легенда сравнения
         ====================================================== */}
         {compareData && (
-          <div
-            style={{
-              marginTop: "10px",
-              padding: "10px 14px",
-              borderRadius: "10px",
-              background:
-                "rgba(255,255,255,0.75)",
-              fontFamily:
-                "Inter, sans-serif",
-              fontSize: "15px",
-              lineHeight: 1.5,
-            }}
-          >
-            <div>
+          <div className="compare-card" role="status">
+            <div className="compare-card__row">
               <span
-                style={{
-                  display:
-                    "inline-block",
-                  width: "12px",
-                  height: "12px",
-                  borderRadius:
-                    "50%",
-                  background:
-                    "rgba(0, 150, 50, 0.85)",
-                  marginRight: "7px",
-                }}
+                className="compare-card__dot compare-card__dot--stockfish"
+                aria-hidden="true"
               />
-
-              <strong>
-                Stockfish:
-              </strong>{" "}
-              {compareData.stockfish?.san ||
-                "0"}
+              <strong className="compare-card__label">Stockfish:</strong>{" "}
+              {compareData.stockfish?.san || "0"}
             </div>
 
-            <div>
+            <div className="compare-card__row">
               <span
-                style={{
-                  display:
-                    "inline-block",
-                  width: "12px",
-                  height: "12px",
-                  borderRadius:
-                    "50%",
-                  background:
-                    "rgba(220, 120, 20, 0.9)",
-                  marginRight: "7px",
-                }}
+                className="compare-card__dot compare-card__dot--maia"
+                aria-hidden="true"
               />
-
-              <strong>
-                Maia3:
-              </strong>{" "}
-              {compareData.maia3?.san ||
-                "0"}{" "}
-              ({elo} ELO)
+              <strong className="compare-card__label">Maia3:</strong>{" "}
+              {compareData.maia3?.san || "0"} ({elo} ELO)
             </div>
 
-            {typeof compareData.same_move ===
-              "boolean" && (
-              <div
-                style={{
-                  marginTop: "4px",
-                  opacity: 0.75,
-                }}
-              >
+            {typeof compareData.same_move === "boolean" && (
+              <div className="compare-card__note">
                 {compareData.same_move
                   ? "Maia3 выбрала оптимальный ход Stockfish."
                   : "Maia3 выбрала другой ход - это и есть различие между оптимальной и человекоподобной игрой."}

@@ -1,7 +1,7 @@
 /*
  * Тема оформления сайта.
  *
- * Основная тема — тёмная. Выбор хранится в localStorage и применяется
+ * Основная тема - тёмная. Выбор хранится в localStorage и применяется
  * атрибутом data-theme на <html>; сами цвета живут в theme.css.
  */
 export const THEME_STORAGE_KEY = "sfedu_theme";

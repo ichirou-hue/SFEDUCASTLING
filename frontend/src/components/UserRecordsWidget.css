@@ -26,7 +26,7 @@
 }
 
 .user-records__heading h2 {
-  margin: 3px 0 0;
+  margin: 0;
   font-size: 24px;
 }
 
@@ -36,7 +36,7 @@
   border-radius: 999px;
   background: #f4f7f1;
   color: #647466;
-  font-size: 12px;
+  font: 12px/1.2 Inter, sans-serif;
   white-space: nowrap;
 }
 
@@ -76,24 +76,24 @@
 
 .user-record-card__top {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
-  min-height: 25px;
+  min-height: 34px;
 }
 
 .user-record-card__icon {
   color: var(--record-accent);
   font-family: var(--font-ui);
   font-size: 20px;
+  line-height: 1.2;
 }
 
 .user-record-card__label {
-  overflow: hidden;
+  flex: 1;
+  min-width: 0;
   color: #5d6d64;
-  font-size: 12px;
-  font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font: 600 12px/1.3 Inter, sans-serif;
+  overflow-wrap: anywhere;
 }
 
 .user-record-card__value {
@@ -109,8 +109,7 @@
   display: block;
   margin-top: 5px;
   color: #748078;
-  font-size: 11px;
-  line-height: 1.35;
+  font: 11px/1.35 Inter, sans-serif;
 }
 
 .user-records__activity {

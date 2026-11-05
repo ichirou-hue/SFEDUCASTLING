@@ -22,7 +22,7 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     op.execute("UPDATE users SET role = 'learner' WHERE role = 'user'")
-    # batch_alter_table: SQLite не умеет ALTER COLUMN — таблица пересоздаётся,
+    # batch_alter_table: SQLite не умеет ALTER COLUMN - таблица пересоздаётся,
     # на PostgreSQL batch выполняет обычные ALTER.
     with op.batch_alter_table("users") as batch_op:
         batch_op.alter_column(

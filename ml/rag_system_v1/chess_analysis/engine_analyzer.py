@@ -40,7 +40,7 @@ class ChessEngineAnalyzer:
         )
         queens = len(board.pieces(chess.QUEEN, chess.WHITE)) + len(board.pieces(chess.QUEEN, chess.BLACK))
         
-        # Если фигур мало или нет ферзей при небольшом материале — это эндшпиль
+        # Если фигур мало или нет ферзей при небольшом материале - это эндшпиль
         if material <= 14 or (queens == 0 and material <= 20):
             return "endgame"
         if material >= 30 and queens == 2:

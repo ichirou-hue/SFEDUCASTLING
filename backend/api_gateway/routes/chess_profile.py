@@ -156,7 +156,7 @@ def _chesscom_profile(username: str):
         rec = block.get("record", {}) or {}
         games = int(rec.get("win") or 0) + int(rec.get("loss") or 0) + int(rec.get("draw") or 0)
         ratings[key] = {
-            # Chess.com отдаёт last.rating даже без партий — скрываем рейтинг,
+            # Chess.com отдаёт last.rating даже без партий - скрываем рейтинг,
             # пока не сыграна хотя бы одна партия (как в Lichess-профиле).
             "rating": last.get("rating") if games else None,
             "games": games,
