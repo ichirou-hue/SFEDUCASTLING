@@ -1,4 +1,4 @@
-import { useState, useEffect, useId, useRef, useCallback, useLayoutEffect } from "react";
+import { useState, useEffect, useId, useRef, useCallback, useLayoutEffect, useMemo } from "react";
 import { Chessboard as ReactChessboard } from "react-chessboard";
 import { Chess } from "chess.js";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -14,6 +14,7 @@ import ChatCollapsedStrip from "./ChatCollapsedStrip.jsx";
 import PuzzleRegisterGate from "./PuzzleRegisterGate.jsx";
 import PuzzlePreviewGate from "./PuzzlePreviewGate.jsx";
 import SiteFooter from "./SiteFooter.jsx";
+import { getCheckState, getKingCheckStyle } from "../chessStatus.js";
 import { getCourseTopicForPuzzle, getCourseTopicMeta } from "../learningLinks.js";
 import "./LearningCrossLinks.css";
 
@@ -204,6 +205,12 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
   const [lastMove, setLastMove] = useState(null);
   const [selectedSquare, setSelectedSquare] = useState(null);
   const [legalMovesForSelected, setLegalMovesForSelected] = useState([]);
+  /*
+   * Клетка и фигура, с которой началось перетаскивание: { square, piece }.
+   * react-chessboard прячет фигуру на исходной клетке (opacity: 0),
+   * поэтому подсвечиваем её и рисуем полупрозрачного «призрака».
+   */
+  const [dragFrom, setDragFrom] = useState(null);
   const [waitingForOpponent, setWaitingForOpponent] = useState(false);
   const [showSolution, setShowSolution] = useState(false);
   const [resultMessage, setResultMessage] = useState(null);
@@ -435,6 +442,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
   }, [chatCollapsed]);
 
   const gameRef = useRef(new Chess());
+  const checkState = useMemo(() => getCheckState(fen), [fen]);
   const solutionMovesRef = useRef([]);
   const playerMovesRef = useRef([]);
   const solutionIndexRef = useRef(0);
@@ -451,10 +459,10 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
   useEffect(() => {
     // Замеряем только готовую раскладку: на экране загрузки её нет
     // в DOM (другая ветка), querySelector вернул бы null и размер
-    // посчитался бы от окна — с переполнением и без пересчёта.
+    // посчитался бы от окна - с переполнением и без пересчёта.
     if (loading) return;
     const updateSize = () => {
-      // Ширина — по формуле от окна (колонки грида фиксированы).
+      // Ширина - по формуле от окна (колонки грида фиксированы).
       // Свёрнутый чат занимает 48px полосы + 24px отступа, остальное
       // достаётся доске (см. .puzzles-layout--chat-collapsed).
       const isMobile = window.matchMedia("(max-width: 760px)").matches;
@@ -465,7 +473,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
       const availW = isMobile
         ? (layoutEl?.clientWidth || window.innerWidth) - hGaps
         : window.innerWidth - infoW - chatReserve - hGaps;
-      // Высота — видимая область страницы (без топбара и футера), а не
+      // Высота - видимая область страницы (без топбара и футера), а не
       // высота самой раскладки: она теперь растягивается по содержимому,
       // и замер её clientHeight дал бы петлю (доска растит саму себя).
       const belowBoard = 175;
@@ -523,6 +531,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
       setPendingPromotion(null);
       setSelectedSquare(null);
       setLegalMovesForSelected([]);
+      setDragFrom(null);
       setWaitingForOpponent(false);
       setShowSolution(false);
       setResultMessage(null);
@@ -622,7 +631,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
   const themeInfo = currentPuzzle
     ? getThemeInfo(currentPuzzle)
     : { key: null, label: "Тактика", icon: "♟" };
-  // Сторона, за которую нужно найти ходы, — это очередь хода из FEN
+  // Сторона, за которую нужно найти ходы, - это очередь хода из FEN
   // (в lichess-паззлах игрок всегда ходит первым). boardOrientation
   // выставляется по тому же признаку в loadPuzzle.
   const sideToMove = currentPuzzle?.fen?.split(" ")?.[1] === "b" ? "b" : "w";
@@ -642,10 +651,10 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
     Boolean(previewInfo) && (previewInfo.locked || previewGate);
 
   // Гейт анкеты показываем на последнем ходу ТРЕТЬЕЙ решённой за сегодня
-  // задачи, а не на последней задаче в списке. previewInfo.remaining —
+  // задачи, а не на последней задаче в списке. previewInfo.remaining -
   // сколько ещё можно решить сегодня с учётом прошлых заходов, поэтому
   // в этой сессии гейт включается после (remaining - 1) новых решений.
-  // Какую именно из оставшихся задач пользователь решит третьей — не важно.
+  // Какую именно из оставшихся задач пользователь решит третьей - не важно.
   const previewGateAfterSolved = previewInfo
     ? Math.max(0, previewInfo.remaining - 1)
     : null;
@@ -656,9 +665,9 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
     solvedCount >= previewGateAfterSolved &&
     !(currentPuzzle?.id && solvedPuzzleIdsRef.current.has(currentPuzzle.id));
 
-  // «Позже» в пробном гейте: если задача на доске есть — просто закрываем
+  // «Позже» в пробном гейте: если задача на доске есть - просто закрываем
   // напоминание, доска остаётся на последнем ходу без сделанного хода.
-  // Если задач нет (дневной лимит выбран на загрузке) — уходим на главную.
+  // Если задач нет (дневной лимит выбран на загрузке) - уходим на главную.
   const handlePreviewLater = useCallback(() => {
     if (puzzlesRef.current.length > 0) {
       setPreviewGate(false);
@@ -775,7 +784,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
         }
 
         // Предпоследний ход игрока сделан (остался ответ соперника и финальный
-        // ход) — незарегистрированный обязан зарегистрироваться, дальше нельзя.
+        // ход) - незарегистрированный обязан зарегистрироваться, дальше нельзя.
         if (remaining === 2 && !user) setRegGate(true);
 
         if (
@@ -876,6 +885,14 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
     },
     [handleMove],
   );
+
+  const handlePieceDragBegin = useCallback((piece, sourceSquare) => {
+    setDragFrom({ square: sourceSquare, piece });
+  }, []);
+
+  const handlePieceDragEnd = useCallback(() => {
+    setDragFrom(null);
+  }, []);
 
   const handlePromotionChoice = useCallback(
     (piece) => {
@@ -980,7 +997,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
 
   // Автопереключение после решения: даём полюбоваться оверлеем «Задача
   // решена!» и переходим к следующей. На последней задаче таймер не
-  // ставим — оверлей остаётся, пользователь решает сам. Ручное навигирование
+  // ставим - оверлей остаётся, пользователь решает сам. Ручное навигирование
   // (кнопки «→»/«←») меняет currentIndex → таймер отменяется, а новая
   // задача сбрасывает puzzleSolved в loadPuzzle.
   useEffect(() => {
@@ -1034,7 +1051,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
 
   const customSquareStyles = {};
 
-  // Подсветка последнего хода — базовая. Точки возможных ходов накладываем
+  // Подсветка последнего хода - базовая. Точки возможных ходов накладываем
   // поверх неё, иначе клетка, совпавшая с ходом соперника, теряет точку.
   if (lastMove) {
     customSquareStyles[lastMove.from] = {
@@ -1070,6 +1087,56 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
         };
     customSquareStyles[sq] = { ...(customSquareStyles[sq] || {}), ...dotStyle };
   }
+
+  /*
+   * Красная подсветка короля накладывается последней, чтобы не теряться
+   * под подсветкой последнего хода и точками возможных ходов.
+   */
+  if (checkState.kingSquare) {
+    customSquareStyles[checkState.kingSquare] = {
+      ...(customSquareStyles[checkState.kingSquare] || {}),
+      ...getKingCheckStyle(checkState.isCheckmate),
+    };
+  }
+
+  /*
+   * «Призрак» фигуры на клетке, откуда её тянут. react-chessboard
+   * скрывает оригинал, и без такого слоя теряется точка старта.
+   */
+  const dragGhost = (() => {
+    if (!dragFrom) return null;
+
+    const { square, piece } = dragFrom;
+    const src = PIECE_IMAGES[piece];
+
+    if (!src) return null;
+
+    const file = square.charCodeAt(0) - 97;
+    const rank = Number(square[1]);
+    const squareSize = boardWidth / 8;
+    const flipped = boardOrientation === "black";
+    const left = (flipped ? 7 - file : file) * squareSize;
+    const top = (flipped ? rank - 1 : 8 - rank) * squareSize;
+
+    return (
+      <img
+        src={src}
+        alt=""
+        aria-hidden="true"
+        draggable={false}
+        style={{
+          position: "absolute",
+          left,
+          top,
+          width: squareSize,
+          height: squareSize,
+          opacity: 0.4,
+          pointerEvents: "none",
+          zIndex: 7,
+        }}
+      />
+    );
+  })();
 
   if (loading) {
     return (
@@ -1114,7 +1181,6 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
             <span className="puzzle-theme-label">ТЕМА ЗАДАЧИ</span>
             <h2 className="puzzle-theme-name">{themeInfo.label}</h2>
           </div>
-          <span className="puzzle-theme-icon" aria-hidden="true">{themeInfo.icon}</span>
         </div>
 
         <div className="puzzle-instruction">Найдите лучший ход</div>
@@ -1170,7 +1236,6 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
             <strong className={streak > 0 ? "puzzle-streak-value--hot" : ""}>
               🔥 {streak}
             </strong>
-            <small className="puzzle-quick-stat-hint">решено подряд</small>
           </div>
         </div>
 
@@ -1244,7 +1309,10 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
               )
             }
           >
-            Пройти урок по теме →
+            Пройти урок по теме{" "}
+            <span className="learning-crosslink-arrow" aria-hidden="true">
+              →
+            </span>
           </button>
         )}
 
@@ -1252,52 +1320,57 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
 
       <div className="puzzle-board-section">
         <div className={`puzzle-board-wrapper ${puzzleSolved ? "puzzle-board-wrapper--solved" : ""}`} data-logo-anchor>
-          <ReactChessboard
-            id={boardId}
-            position={fen}
-            onPieceDrop={handleBoardPieceDrop}
-            onPromotionCheck={() => false}
-            onSquareClick={onSquareClick}
-            boardWidth={boardWidth}
-            animationDuration={200}
-            boardOrientation={boardOrientation}
-            showPromotionDialog={false}
-            showBoardNotation={true}
-            customNotationStyle={{
-              fontSize: "12px",
-              fontFamily: "Inter, sans-serif",
-              fontWeight: "500",
-              color: "#4a3220",
-            }}
-            areArrowsAllowed={true}
-            customArrows={boardArrows}
-            customArrowColor="rgba(0, 150, 50, 0.85)"
-            customPieces={customPieces}
-            customBoardStyle={{
-              borderRadius: "15px",
-              backgroundImage:
-                "linear-gradient(0deg, rgba(74, 178, 45, 0.43) 0%, rgba(74, 178, 45, 0.43) 100%), url(/textures/green-marble.png)",
-              backgroundPosition: "-0.111px 0px",
-              backgroundSize: "100.027% 100%",
-              backgroundRepeat: "no-repeat",
-              backgroundColor: "lightgray",
-            }}
-            customDarkSquareStyle={{
-              boxShadow:
-                "inset 1px 0 0 rgba(226, 213, 124, 0.5), inset 0 1px 0 rgba(226, 213, 124, 0.5)",
-              backgroundColor: "rgba(223, 239, 252, 0.20)",
-            }}
-            customLightSquareStyle={{
-              boxShadow:
-                "inset 1px 0 0 rgba(226, 213, 124, 0.5), inset 0 1px 0 rgba(226, 213, 124, 0.5)",
-              backgroundImage: "url(/textures/white-marble.png)",
-              backgroundPosition: "50%",
-              backgroundSize: "cover",
-              backgroundRepeat: "no-repeat",
-              backgroundColor: "rgba(255, 255, 255, 0.75)",
-            }}
-            customSquareStyles={customSquareStyles}
-          />
+          <div className="puzzle-board-surface">
+            <ReactChessboard
+              id={boardId}
+              position={fen}
+              onPieceDrop={handleBoardPieceDrop}
+              onPieceDragBegin={handlePieceDragBegin}
+              onPieceDragEnd={handlePieceDragEnd}
+              onPromotionCheck={() => false}
+              onSquareClick={onSquareClick}
+              boardWidth={boardWidth}
+              animationDuration={200}
+              boardOrientation={boardOrientation}
+              showPromotionDialog={false}
+              showBoardNotation={true}
+              customNotationStyle={{
+                fontSize: "12px",
+                fontFamily: "Inter, sans-serif",
+                fontWeight: "500",
+                color: "#4a3220",
+              }}
+              areArrowsAllowed={true}
+              customArrows={boardArrows}
+              customArrowColor="rgba(0, 150, 50, 0.85)"
+              customPieces={customPieces}
+              customBoardStyle={{
+                borderRadius: "15px",
+                backgroundImage:
+                  "linear-gradient(0deg, rgba(74, 178, 45, 0.43) 0%, rgba(74, 178, 45, 0.43) 100%), url(/textures/green-marble.png)",
+                backgroundPosition: "-0.111px 0px",
+                backgroundSize: "100.027% 100%",
+                backgroundRepeat: "no-repeat",
+                backgroundColor: "lightgray",
+              }}
+              customDarkSquareStyle={{
+                boxShadow:
+                  "inset 1px 0 0 rgba(226, 213, 124, 0.5), inset 0 1px 0 rgba(226, 213, 124, 0.5)",
+                backgroundColor: "rgba(223, 239, 252, 0.20)",
+              }}
+              customLightSquareStyle={{
+                boxShadow:
+                  "inset 1px 0 0 rgba(226, 213, 124, 0.5), inset 0 1px 0 rgba(226, 213, 124, 0.5)",
+                backgroundImage: "url(/textures/white-marble.png)",
+                backgroundPosition: "50%",
+                backgroundSize: "cover",
+                backgroundRepeat: "no-repeat",
+                backgroundColor: "rgba(255, 255, 255, 0.75)",
+              }}
+              customSquareStyles={customSquareStyles}
+            />
+            {dragGhost}
+          </div>
           {pendingPromotion && (
             <div className="puzzle-promotion-overlay">
               <section

@@ -10,23 +10,23 @@
 
 Поэтому перевод собран из нескольких уровней, от точного к общему:
 
-1. ``FAMILIES``    — 141 базовая семья («Sicilian Defense» → «Сицилианская
+1. ``FAMILIES``    - 141 базовая семья («Sicilian Defense» → «Сицилианская
    защита»). Словарь конечен, переведён вручную.
-2. ``COMPONENTS``  — частые подварианты целиком («Main Line» → «Основная
+2. ``COMPONENTS``  - частые подварианты целиком («Main Line» → «Основная
    линия»), включая составные без типа («Old Benoni»).
-3. ``DESCRIPTORS`` — прилагательные-головы («French» → «Французский»).
+3. ``DESCRIPTORS`` - прилагательные-головы («French» → «Французский»).
    Согласуются в роде с типом дебюта: «French Defense» → «Французская
    защита», «French Variation» → «Французский вариант».
-4. ``EONYMS``      — имена игроков в родительном падеже («Najdorf» →
+4. ``EONYMS``      - имена игроков в родительном падеже («Najdorf» →
    «Найдорфа»): «вариант Найдорфа», «защита Морфи».
-5. Транслитерация — для неизвестных имён («Krause» → «вариант Краусе»).
+5. Транслитерация - для неизвестных имён («Krause» → «вариант Краусе»).
    Это осознанный фолбэк: лучше родное по звучанию «вариант Краусе», чем
    английское Krause Variation. Список имён бесконечен (1387 голов), так
    что полный словарь вручную нереально поддерживать.
-6. ``with <ход>`` — ходы переводятся буквой фигуры: «with Nf3» → «с Kf3».
+6. ``with <ход>`` - ходы переводятся буквой фигуры: «with Nf3» → «с Kf3».
 
 Если хоть один компонент перевести не удалось, функция возвращает
-``None`` — потребитель показывает оригинальное английское имя. Покрытие
+``None`` - потребитель показывает оригинальное английское имя. Покрытие
 расширяется досыпкой словарей, остальной код не меняется.
 """
 
@@ -71,17 +71,17 @@ _KIND_GENDER = {
     "начало": "n",
 }
 
-# «Accepted/Declined» — в русской традиции это пояснение в скобках.
+# «Accepted/Declined» - в русской традиции это пояснение в скобках.
 _ACCEPTED_DECLINED = {
     "Accepted": "принятый",
     "Declined": "отклонённый",
 }
 
-# «with Nf3», «with e3», «with Bc4» — ход или продвижение.
+# «with Nf3», «with e3», «with Bc4» - ход или продвижение.
 _WITH_RE = re.compile(r"^with\s+(.+)$")
 _MOVE_CHARS = re.compile(r"^\.?[KQRBNabcdefgh1-8x ]+$")
 
-# Тип дебюта в творительном падеже — нужно после предлога «с»:
+# Тип дебюта в творительном падеже - нужно после предлога «с»:
 # «with Max Lange Defense» → «с защитой Макса Ланге».
 _KIND_INSTRUMENTAL = {
     "вариант": "вариантом",
@@ -104,7 +104,7 @@ _PIECE_LETTERS = {"N": "К", "B": "С", "R": "Л", "Q": "Ф", "K": "К"}
 
 # Слова-префиксы, отрезаемые от прилагательной головы:
 # «Anglo-Scandinavian Defense» → «англоскандинавская защита».
-# Работают только когда хвост — прилагательное из DESCRIPTORS.
+# Работают только когда хвост - прилагательное из DESCRIPTORS.
 _PREFIXES: dict[str, str] = {
     "Neo-": "нео",
     "Neo ": "нео",
@@ -127,7 +127,7 @@ _PREFIXES: dict[str, str] = {
 
 
 # ---------------------------------------------------------------------------
-# Базовые семьи дебютов — все 141 имя из openings.json.
+# Базовые семьи дебютов - все 141 имя из openings.json.
 # ---------------------------------------------------------------------------
 
 FAMILIES: dict[str, str] = {
@@ -146,16 +146,16 @@ FAMILIES: dict[str, str] = {
     "Benoni Defense": "Защита Бенони",
     "Bird Opening": "Начало Бёрда",
     "Bishop's Opening": "Начало слона",
-    "Blackmar-Diemer Gambit": "Гамбит Блэкмар — Димера",
-    "Blackmar-Diemer Gambit Accepted": "Гамбит Блэкмар — Димера (принятый)",
-    "Blackmar-Diemer Gambit Declined": "Гамбит Блэкмар — Димера (отклонённый)",
+    "Blackmar-Diemer Gambit": "Гамбит Блэкмар-Димера",
+    "Blackmar-Diemer Gambit Accepted": "Гамбит Блэкмар-Димера (принятый)",
+    "Blackmar-Diemer Gambit Declined": "Гамбит Блэкмар-Димера (отклонённый)",
     "Blumenfeld Countergambit": "Контргамбит Блюменфельда",
     "Blumenfeld Countergambit Accepted": "Контргамбит Блюменфельда (принятый)",
     "Bogo-Indian Defense": "Бого-индийская защита",
     "Bongcloud Attack": "Атака «Бонгклауд»",
     "Borg Defense": "Защита Борга",
     "Canard Opening": "Начало Канара",
-    "Caro-Kann Defense": "Защита Каро — Канна",
+    "Caro-Kann Defense": "Защита Каро-Канна",
     "Carr Defense": "Защита Карра",
     "Catalan Opening": "Каталанское начало",
     "Center Game": "Центральная партия",
@@ -217,7 +217,7 @@ FAMILIES: dict[str, str] = {
     "Montevideo Defense": "Защита Монтевидео",
     "Neo-Grünfeld Defense": "Защита нео-Грюнфельда",
     "Nimzo-Indian Defense": "Защита Нимцовича",
-    "Nimzo-Larsen Attack": "Атака Нимцовича — Ларсена",
+    "Nimzo-Larsen Attack": "Атака Нимцовича-Ларсена",
     "Nimzowitsch Defense": "Защита Нимцовича",
     "Old Indian Defense": "Староиндийская защита",
     "Owen Defense": "Защита Оуэна",
@@ -238,9 +238,9 @@ FAMILIES: dict[str, str] = {
     "Queen's Indian Defense": "Ферзево-индийская защита",
     "Queen's Pawn": "Ферзевая пешка",
     "Queen's Pawn Game": "Партия ферзевой пешки",
-    "Rapport-Jobava System": "Система Раппорта — Джобавы",
+    "Rapport-Jobava System": "Система Раппорта-Джобавы",
     "Rat Defense": "Защита «крыса»",
-    "Richter-Veresov Attack": "Атака Рихтера — Вересова",
+    "Richter-Veresov Attack": "Атака Рихтера-Вересова",
     "Robatsch Defense": "Защита Робача",
     "Rubinstein Opening": "Начало Рубинштейна",
     "Ruy Lopez": "Испанская партия",
@@ -268,7 +268,7 @@ FAMILIES: dict[str, str] = {
     "Wade Defense": "Защита Уэйда",
     "Ware Opening": "Начало Уэра",
     "Ware Defense": "Защита Уэра",
-    "Yusupov-Rubinstein System": "Система Юсупова — Рубинштейна",
+    "Yusupov-Rubinstein System": "Система Юсупова-Рубинштейна",
     "Zaire Defense": "Защита Заира",
     "Zukertort Opening": "Начало Цукерторта",
     "Zukertort Defense": "Защита Цукерторта",
@@ -284,7 +284,7 @@ COMPONENTS: dict[str, str] = {
     "Accelerated London System": "Ускоренная лондонская система",
     "Accelerated Panov Attack": "Ускоренная атака Панова",
     "Agincourt Defense": "Защита Азенкура",
-    "Alekhine-Chatard Attack": "Атака Алехина — Шатара",
+    "Alekhine-Chatard Attack": "Атака Алехина-Шатара",
     "Albin Countergambit": "Контргамбит Альбина",
     "Anglo-Grünfeld Variation": "Англогрюнфельдский вариант",
     "Anglo-Indian Defense": "Англо-индийская защита",
@@ -348,12 +348,12 @@ COMPONENTS: dict[str, str] = {
     "Hanham Variation": "вариант Хэмхема",
     "Harrwitz Attack": "Атака Харвица",
     "Henneberger Variation": "вариант Хеннебергера",
-    "Ilyin-Zhenevsky Variation": "вариант Ильина — Женевского",
+    "Ilyin-Zhenevsky Variation": "вариант Ильина-Женевского",
     "Jaenisch Counterattack": "Контратака Яниша",
     "Janowski Variation": "вариант Яновского",
     "Kan Variation": "вариант Кана",
     "Karpov Variation": "вариант Карпова",
-    "Kasparov-Petrosian Variation": "вариант Каспарова — Петросяна",
+    "Kasparov-Petrosian Variation": "вариант Каспарова-Петросяна",
     "Kazan Variation": "вариант Казани",
     "Kennedy Variation": "вариант Кеннеди",
     "Keres Variation": "вариант Кереса",
@@ -363,7 +363,7 @@ COMPONENTS: dict[str, str] = {
     "King's Pawn Line": "Линия королевской пешки",
     "Krause Variation": "вариант Краусе",
     "Lasker Defense": "защита Ласкера",
-    "Lasker-Pelikan Variation": "вариант Ласкера — Пеликана",
+    "Lasker-Pelikan Variation": "вариант Ласкера-Пеликана",
     "Lasker Variation": "вариант Ласкера",
     "Levenfish Variation": "вариант Левенфиша",
     "Lemberger Countergambit": "Контргамбит Лембергера",
@@ -381,8 +381,8 @@ COMPONENTS: dict[str, str] = {
     "McCutcheon Variation": "вариант МакКатчона",
     "McDonnell Attack": "Атака Мак-Доннелла",
     "Meran Variation": "вариант Мерана",
-    "Milner-Barry Gambit": "Гамбит Милнер — Барри",
-    "Mikenas-Carls Variation": "вариант Микенаса — Карлса",
+    "Milner-Barry Gambit": "Гамбит Милнер-Барри",
+    "Mikenas-Carls Variation": "вариант Микенаса-Карлса",
     "Modern": "Современная",
     "Modern Attack": "Современная атака",
     "Modern Line": "Современная линия",
@@ -424,7 +424,7 @@ COMPONENTS: dict[str, str] = {
     "Reshevsky Variation": "вариант Решевского",
     "Retreat Variation": "Вариант с отступлением",
     "Reversed Closed Sicilian": "Обращённая закрытая сицилианская",
-    "Richter-Rauzer Variation": "вариант Рихтера — Раузера",
+    "Richter-Rauzer Variation": "вариант Рихтера-Раузера",
     "Romanishin Variation": "вариант Романишина",
     "Rubinstein System": "Система Рубинштейна",
     "Rubinstein Variation": "вариант Рубинштейна",
@@ -439,8 +439,8 @@ COMPONENTS: dict[str, str] = {
     "Semi-Tarrasch Defense": "Полутаррашева защита",
     "Sicilian": "Сицилианская",
     "Smyslov Variation": "вариант Смыслова",
-    "Smith-Morra Gambit Accepted": "Гамбит Смита — Морры (принятый)",
-    "Smith-Morra Gambit Declined": "Гамбит Смита — Морры (отклонённый)",
+    "Smith-Morra Gambit Accepted": "Гамбит Смита-Морры (принятый)",
+    "Smith-Morra Gambit Declined": "Гамбит Смита-Морры (отклонённый)",
     "Sokolsky Variation": "вариант Сокольского",
     "Spassky Variation": "вариант Спасского",
     "Spielmann Variation": "вариант Шпильманна",
@@ -605,7 +605,7 @@ COMPONENTS: dict[str, str] = {
     "Modern Pterodactyl": "Современный птеродактиль",
     "Modern Sharp Variation": "Современный острый вариант",
     "Modern Transfer": "Переход в современную защиту",
-    "Moeller-Bayonet Attack": "Атака Мёллера — Байонета",
+    "Moeller-Bayonet Attack": "Атака Мёллера-Байонета",
     "Monkey's Bum": "Атака «Обезьяний зад»",
     "Monticelli Trap": "Ловушка Монтителли",
     "Mortimer Trap": "Ловушка Мортимера",
@@ -680,7 +680,7 @@ COMPONENTS: dict[str, str] = {
     "Sicilian Two Knights": "Сицилианская защита с двумя конями",
     "Slav Invitation": "Славянское приглашение",
     "Small Center Defense": "Защита с малым центром",
-    "Smyslov-Breyer-Zaitsev Hybrid": "Гибрид Смыслова — Брейера — Зайцева",
+    "Smyslov-Breyer-Zaitsev Hybrid": "Гибрид Смыслова-Брейера-Зайцева",
     "Spassky System3": "Система Спасского 3",
     "Speers": "Спирс",
     "Spanish Wing Gambit": "Испанский крыльевой гамбит",
@@ -851,7 +851,7 @@ EONYMS: dict[str, str] = {
     "Harrwitz": "Харвица",
     "Henneberger": "Хеннебергера",
     "Horwitz": "Горвица",
-    "Ilyin-Zhenevsky": "Ильина — Женевского",
+    "Ilyin-Zhenevsky": "Ильина-Женевского",
     "Jaenisch": "Яниша",
     "Janowski": "Яновского",
     "Jobava": "Джобавы",
@@ -879,7 +879,7 @@ EONYMS: dict[str, str] = {
     "Meran": "Мерана",
     "Mieses": "Мизеса",
     "Mikenas": "Микенаса",
-    "Milner-Barry": "Милнера — Барри",
+    "Milner-Barry": "Милнера-Барри",
     "Morphy": "Морфи",
     "Najdorf": "Найдорфа",
     "Nimzo": "Нимцовича",
@@ -1040,7 +1040,7 @@ def _agree_adjective(adj: str, kind: str) -> str:
 def _with_kind(descriptor: str, kind: str) -> str:
     """«Классический» + «защита» → «Классическая защита».
 
-    Фразы («С отступлением», «Королевской пешки») возвращаются как есть —
+    Фразы («С отступлением», «Королевской пешки») возвращаются как есть -
     к ним тип дебюта уже подобран вручную.
     """
     agreed = _agree_adjective(descriptor, kind)
@@ -1078,12 +1078,12 @@ def _translate_head(head: str, kind: str) -> str | None:
     if not text:
         return None
 
-    # 1. Прилагательное — согласуем в роде и добавляем тип дебюта.
+    # 1. Прилагательное - согласуем в роде и добавляем тип дебюта.
     #    Фразы вроде «С отступлением» тип не берут.
     if text in DESCRIPTORS:
         return _with_kind(DESCRIPTORS[text], kind)
 
-    # 2. Префикс («Anglo-Scandinavian», «Pseudo-Spanish») — хвост обязан быть
+    # 2. Префикс («Anglo-Scandinavian», «Pseudo-Spanish») - хвост обязан быть
     #    прилагательным, иначе составное имя не переводим.
     for prefix, ru_prefix in _PREFIXES.items():
         if text.startswith(prefix):
@@ -1096,7 +1096,7 @@ def _translate_head(head: str, kind: str) -> str | None:
                 return f"{joined} {kind}"
             return None
 
-    # 3. Имя игрока в словаре — родительный падеж.
+    # 3. Имя игрока в словаре - родительный падеж.
     name = text[:-2] if text.endswith("'s") else text
     if name in EONYMS:
         return f"{kind} {EONYMS[name]}"
@@ -1107,9 +1107,9 @@ def _translate_head(head: str, kind: str) -> str | None:
         if any(p in DESCRIPTORS for p in parts):
             return None
         genitives = [_genitive(_cap(_transliterate(p))) for p in parts]
-        return f"{kind} {' — '.join(genitives)}"
+        return f"{kind} {'-'.join(genitives)}"
 
-    # 5. Неизвестное односложное имя — транслитерируем.
+    # 5. Неизвестное односложное имя - транслитерируем.
     if len(name) > 1 and name[0].isupper() and "'" not in name:
         return f"{kind} {_genitive(_cap(_transliterate(name)))}"
 
@@ -1117,7 +1117,7 @@ def _translate_head(head: str, kind: str) -> str | None:
 
 
 def _translate_component(component: str) -> str | None:
-    """Переводит один компонент имени. ``None`` — перевести не удалось."""
+    """Переводит один компонент имени. ``None`` - перевести не удалось."""
     text = component.strip()
     if not text:
         return ""
@@ -1126,7 +1126,7 @@ def _translate_component(component: str) -> str | None:
     if text in COMPONENTS:
         return COMPONENTS[text]
 
-    # 2. Базовая семья дебюта — первый компонент имени.
+    # 2. Базовая семья дебюта - первый компонент имени.
     if text in FAMILIES:
         return FAMILIES[text]
 
@@ -1135,7 +1135,7 @@ def _translate_component(component: str) -> str | None:
         translated = _translate_component(text[: -len(" Deferred")].strip())
         return f"{translated} (отложенная)" if translated else None
 
-    # 4. «with ...» — ход, серия ходов или фраза с типом дебюта.
+    # 4. «with ...» - ход, серия ходов или фраза с типом дебюта.
     with_match = _WITH_RE.match(text)
     if with_match:
         rest = with_match.group(1).strip()
@@ -1174,7 +1174,7 @@ def _translate_component(component: str) -> str | None:
         return _translate_moves(text)
 
     # 9. Одиночное имя без типа дебюта: «Allgaier» → «Алльгайер».
-    #    Известные имена игроков лежат в COMPONENTS — здесь только неизвестные.
+    #    Известные имена игроков лежат в COMPONENTS - здесь только неизвестные.
     if 1 < len(text) <= 30 and text[0].isupper() and all(
         c.isalpha() or c in "'’-" for c in text
     ):
@@ -1186,7 +1186,7 @@ def _translate_component(component: str) -> str | None:
 def translate_opening_name(name: str | None) -> str | None:
     """Переводит полное название дебюта на русский.
 
-    Возвращает ``None``, если хотя бы один компонент не удалось перевести —
+    Возвращает ``None``, если хотя бы один компонент не удалось перевести -
     тогда потребитель показывает оригинальное английское имя.
     """
     if not name or not name.strip():
@@ -1198,7 +1198,7 @@ def translate_opening_name(name: str | None) -> str | None:
     for token in tokens:
         if not token:
             continue
-        # Разделители (": " / ", ") — переносим как есть.
+        # Разделители (": " / ", ") - переносим как есть.
         if _SPLIT_RE.fullmatch(token):
             result.append(token)
             continue
@@ -1206,7 +1206,7 @@ def translate_opening_name(name: str | None) -> str | None:
         translated = _translate_component(token)
         if translated is None:
             return None
-        # Ходы («с e3», «.. d6») остаются со строчной, остальное — с заглавной.
+        # Ходы («с e3», «.. d6») остаются со строчной, остальное - с заглавной.
         if not translated.startswith(("с ", "..")):
             translated = translated[:1].upper() + translated[1:]
         result.append(translated)

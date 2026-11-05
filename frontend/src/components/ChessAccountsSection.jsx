@@ -18,10 +18,21 @@ function errorMessage(error, fallback) {
   return (typeof detail === "string" && detail) || error?.message || fallback;
 }
 
-export default function ChessAccountsSection({ user, embedded = false }) {
+export default function ChessAccountsSection({
+  user,
+  embedded = false,
+  initialPlatform,
+  initialUsername = "",
+}) {
   const [accounts, setAccounts] = useState([]);
   const [capabilities, setCapabilities] = useState(null);
-  const [inputs, setInputs] = useState({ lichess: "", chesscom: "" });
+  // Начальные значения нужны только в модалке регистрации: если авто-привязка
+  // по нику не удалась, пользователь не вводит ник заново. В профиле пропсы
+  // не передаются, поэтому поля остаются пустыми.
+  const [inputs, setInputs] = useState(() => ({
+    lichess: initialPlatform === "lichess" ? initialUsername : "",
+    chesscom: initialPlatform === "chesscom" ? initialUsername : "",
+  }));
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
 
@@ -165,18 +176,29 @@ export default function ChessAccountsSection({ user, embedded = false }) {
           const oauthAvailable =
             provider === "lichess" || capabilities?.[provider]?.oauth === true;
 
+          // Неподключённый провайдер использует ту же карточку, что и
+          // подключённый аккаунт: меняется только содержимое.
           return (
-            <div className="chess-account-add" key={provider}>
-              <div className="chess-account-add__provider">
-                <div
-                  className={`chess-account-add__mark chess-account-add__mark--${provider}`}
-                  aria-hidden="true"
-                >
-                  {icon}
-                </div>
-                <div className="chess-account-add__provider-text">
-                  <strong>{label}</strong>
-                  <span>Не подключён</span>
+            <div
+              className={`chess-account-card ${
+                embedded ? "chess-account-card--profile" : ""
+              } chess-account-card--add`}
+              key={provider}
+            >
+              <div className="chess-account-card__head">
+                <div className="chess-account-card__identity">
+                  <div
+                    className={`chess-account-card__platform-icon chess-account-card__platform-icon--${provider}`}
+                    aria-hidden="true"
+                  >
+                    {icon}
+                  </div>
+                  <div>
+                    <div className="chess-account-card__provider">{label}</div>
+                    <div className="chess-account-card__username">
+                      Не подключён
+                    </div>
+                  </div>
                 </div>
               </div>
 

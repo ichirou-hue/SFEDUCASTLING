@@ -88,7 +88,7 @@ def _alembic_config() -> Config:
 
 
 async def _fetch_revisions(url: str) -> list[str]:
-    """Читаем alembic_version напрямую — работает и для aiosqlite, и для asyncpg."""
+    """Читаем alembic_version напрямую - работает и для aiosqlite, и для asyncpg."""
     from sqlalchemy import text
     from sqlalchemy.ext.asyncio import create_async_engine
 
@@ -104,7 +104,7 @@ async def _fetch_revisions(url: str) -> list[str]:
 
 
 def current_revisions() -> list[str]:
-    """Текущие ревизии (пусто — таблицы alembic_version нет или она пуста)."""
+    """Текущие ревизии (пусто - таблицы alembic_version нет или она пуста)."""
     from backend.config.settings import settings
 
     return asyncio.run(_fetch_revisions(settings.database.url))

@@ -16,7 +16,7 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 # Переносимые типы: PostgreSQL получает BIGSERIAL/JSONB (как и раньше),
-# SQLite — INTEGER/JSON (иначе автоинкремент PK и JSON не работают).
+# SQLite - INTEGER/JSON (иначе автоинкремент PK и JSON не работают).
 # Миграции обязаны быть самодостаточными, поэтому типы описаны локально.
 _ID = sa.BigInteger().with_variant(sa.Integer(), "sqlite")
 _JSON = sa.JSON().with_variant(postgresql.JSONB(astext_type=sa.Text()), "postgresql")

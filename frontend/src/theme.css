@@ -2,7 +2,7 @@
    ТЁМНАЯ ТЕМА (основная)
    -------------------------------------------------------------------------
    Все правила включаются только при data-theme="dark" на <html>.
-   Светлая тема — это исходные стили без этого файла, поэтому её вид
+   Светлая тема - это исходные стили без этого файла, поэтому её вид
    не меняется.
 
    Палитра повторяет карточку «Личные рекорды»: тёмный бирюзово-зелёный
@@ -36,6 +36,10 @@
 
 :root[data-theme="dark"] body {
   background-color: #071116;
+  /* Базовый marble-bg.jpg - светлый. В тёмной теме он не должен
+     просвечивать при перерисовке страниц (например, когда в уроке
+     появляется блок результата). */
+  background-image: none;
   color: var(--sf-ink);
 }
 
@@ -68,7 +72,7 @@
    ИГРА
    ========================================================================= */
 
-/* Панель истории ходов — та же карточка, что «Личные рекорды». */
+/* Панель истории ходов - та же карточка, что «Личные рекорды». */
 :root[data-theme="dark"] .move-history-panel {
   border-color: var(--sf-line-strong);
   background: var(--sf-surface);
@@ -98,9 +102,13 @@
   color: var(--sf-muted);
 }
 
-:root[data-theme="dark"] .maia-level-chip:hover {
+:root[data-theme="dark"] .maia-level-chip:not(:disabled):hover {
   border-color: var(--sf-gold);
   color: var(--sf-ink-strong);
+}
+
+:root[data-theme="dark"] .maia-level-progress-title .maia-level-progress-lock {
+  color: var(--sf-muted-2);
 }
 
 :root[data-theme="dark"] .maia-level-chip.is-earned {
@@ -193,7 +201,7 @@
   color: var(--sf-muted);
 }
 
-/* Жетон игрока: слева свой зелёный тон, справа — нейтральный тёмный. */
+/* Жетон игрока: слева свой зелёный тон, справа - нейтральный тёмный. */
 :root[data-theme="dark"] .player-info {
   background: linear-gradient(
     90deg,
@@ -218,7 +226,6 @@
   color: var(--sf-ink);
 }
 
-:root[data-theme="dark"] .move-history-panel .rating-label,
 :root[data-theme="dark"] .move-history-panel .player-rating,
 :root[data-theme="dark"] .move-history-panel .bot-rating {
   color: var(--sf-gold);
@@ -249,6 +256,16 @@
   fill: var(--sf-gold-bright);
 }
 
+/* Заблокированные стрелки истории не подсвечиваются при наведении. */
+:root[data-theme="dark"] .arrow-btn:disabled:hover rect {
+  fill: rgba(213, 180, 118, 0.14);
+  fill-opacity: 1;
+}
+
+:root[data-theme="dark"] .arrow-btn:disabled:hover path {
+  fill: var(--sf-gold);
+}
+
 :root[data-theme="dark"] .move-counter {
   color: var(--sf-gold);
 }
@@ -268,7 +285,34 @@
   color: var(--sf-ink);
 }
 
-:root[data-theme="dark"] .board-wrapper .rating-label,
+/* Легенда сравнения ходов под доской: та же тёмная поверхность и
+   золотая окантовка, что у истории ходов и карточки уровней Maia. */
+:root[data-theme="dark"] .compare-card {
+  background: var(--sf-surface-raised);
+  box-shadow:
+    inset 0 0 0 1px var(--sf-line-strong),
+    0 12px 30px rgba(0, 0, 0, 0.26);
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .compare-card__label {
+  color: var(--sf-gold);
+}
+
+:root[data-theme="dark"] .compare-card__note {
+  color: var(--sf-muted);
+}
+
+:root[data-theme="dark"] .compare-card__dot--stockfish {
+  background: var(--sf-green);
+  box-shadow: 0 0 0 3px var(--sf-green-soft);
+}
+
+:root[data-theme="dark"] .compare-card__dot--maia {
+  background: #e8b07a;
+  box-shadow: 0 0 0 3px rgba(232, 176, 122, 0.14);
+}
+
 :root[data-theme="dark"] .board-wrapper .player-rating,
 :root[data-theme="dark"] .board-wrapper .bot-rating {
   color: var(--sf-gold);
@@ -297,8 +341,7 @@
 :root[data-theme="dark"] .auth-submit,
 :root[data-theme="dark"] .auth-import-btn,
 :root[data-theme="dark"] .prg-submit,
-:root[data-theme="dark"] .onb-submit,
-:root[data-theme="dark"] .mini-profile__theme-btn--active {
+:root[data-theme="dark"] .onb-submit {
   border-color: var(--sf-gold);
   background: var(--sf-gold);
   color: #141a16;
@@ -317,7 +360,7 @@
 :root[data-theme="dark"] .user-profile-account-form button:hover:not(:disabled),
 :root[data-theme="dark"] .admin-btn--primary:hover:not(:disabled),
 :root[data-theme="dark"] .modal-submit:hover,
-:root[data-theme="dark"] .auth-submit:hover,
+:root[data-theme="dark"] .auth-submit:hover:not(:disabled),
 :root[data-theme="dark"] .auth-import-btn:hover:not(:disabled),
 :root[data-theme="dark"] .prg-submit:hover,
 :root[data-theme="dark"] .onb-submit:hover:not(:disabled) {
@@ -926,6 +969,13 @@
   color: var(--sf-muted);
 }
 
+:root[data-theme="dark"] .training-module-due-badge {
+  border-color: var(--sf-surface-raised);
+  box-shadow:
+    0 6px 16px rgba(0, 0, 0, 0.42),
+    0 0 0 3px rgba(198, 40, 40, 0.16);
+}
+
 :root[data-theme="dark"] .training-module-meta {
   background: var(--sf-gold-soft);
   color: var(--sf-gold);
@@ -1005,8 +1055,8 @@
   color: var(--sf-muted-2);
 }
 
-/* Кружки уроков: не начатый — приглушённый, пройденный — зелёный,
-   текущий — золотой (как и раньше, только в тёмной палитре). */
+/* Кружки уроков: не начатый - приглушённый, пройденный - зелёный,
+   текущий - золотой (как и раньше, только в тёмной палитре). */
 :root[data-theme="dark"] .training-path-circle {
   border-color: rgba(246, 244, 239, 0.18);
   background: rgba(246, 244, 239, 0.08);
@@ -1209,42 +1259,48 @@
   color: var(--sf-ink-strong);
 }
 
-/* Блок «Повторить сегодня». */
-:root[data-theme="dark"] .training-due-toggle {
+/* Окно «Повторения». */
+:root[data-theme="dark"] .training-due-modal {
+  background: rgba(0, 0, 0, 0.62);
+}
+
+:root[data-theme="dark"] .training-due-modal-card {
   border-color: var(--sf-line);
   background: var(--sf-surface-raised);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.52);
+}
+
+:root[data-theme="dark"] .training-due-modal-close {
+  border-color: var(--sf-line);
+  background: var(--sf-soft);
+  color: var(--sf-muted);
+}
+
+:root[data-theme="dark"] .training-due-modal-close:hover {
+  border-color: var(--sf-line-strong);
+  background: var(--sf-soft-2);
   color: var(--sf-ink);
 }
 
-:root[data-theme="dark"] .training-due-toggle:hover {
-  border-color: var(--sf-line-strong);
-  background: rgba(213, 180, 118, 0.08);
-  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.34);
-}
-
-:root[data-theme="dark"] .training-due-toggle-count {
-  background: var(--sf-gold);
-  color: #141a16;
-}
-
-:root[data-theme="dark"] .training-due-toggle-chevron {
+:root[data-theme="dark"] .training-due-modal-kicker {
   color: var(--sf-gold);
 }
 
-:root[data-theme="dark"] .training-due-panel {
-  border-color: var(--sf-line);
-  background: var(--sf-surface-raised);
-  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.4);
+:root[data-theme="dark"] .training-due-modal-head {
+  border-bottom-color: var(--sf-line);
 }
 
-:root[data-theme="dark"] .training-due-heading strong {
-  color: var(--sf-ink);
+:root[data-theme="dark"] .training-due-modal-head h2 {
+  color: var(--sf-ink-strong);
 }
 
-:root[data-theme="dark"] .training-due-heading span,
-:root[data-theme="dark"] .training-due-empty {
+:root[data-theme="dark"] .training-due-modal-head p {
   color: var(--sf-muted-2);
+}
+
+:root[data-theme="dark"] .training-due-modal-close:focus-visible,
+:root[data-theme="dark"] .training-due-card:focus-visible {
+  outline-color: var(--sf-gold);
 }
 
 :root[data-theme="dark"] .training-due-card {
@@ -1276,6 +1332,34 @@
   border-color: var(--sf-line-strong);
   background: var(--sf-soft-2);
   box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28);
+}
+
+:root[data-theme="dark"] .learning-crosslink--compact {
+  border-color: var(--sf-line);
+  background: linear-gradient(
+    135deg,
+    rgba(213, 180, 118, 0.14),
+    rgba(154, 199, 223, 0.05)
+  );
+  color: var(--sf-ink-strong);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+:root[data-theme="dark"] .learning-crosslink--compact:hover {
+  border-color: var(--sf-gold);
+  background: linear-gradient(
+    135deg,
+    rgba(213, 180, 118, 0.22),
+    rgba(154, 199, 223, 0.08)
+  );
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+:root[data-theme="dark"] .learning-crosslink--compact:focus-visible {
+  box-shadow: 0 0 0 3px rgba(213, 180, 118, 0.4),
+    0 8px 22px rgba(0, 0, 0, 0.32);
 }
 
 :root[data-theme="dark"] .learning-topic-filter button {
@@ -1798,21 +1882,27 @@
 
 :root[data-theme="dark"] .modal-label,
 :root[data-theme="dark"] .auth-label-text,
+:root[data-theme="dark"] .auth-consent-text,
 :root[data-theme="dark"] .onb-row-label,
 :root[data-theme="dark"] .modal-footer,
 :root[data-theme="dark"] .auth-footer {
   color: var(--sf-muted);
 }
 
+:root[data-theme="dark"] .auth-consent {
+  border-color: var(--sf-line);
+  background: var(--sf-soft);
+}
+
 :root[data-theme="dark"] .modal-footer a,
 :root[data-theme="dark"] .auth-footer a,
-:root[data-theme="dark"] .auth-reg-doc {
+:root[data-theme="dark"] .auth-consent-text a {
   color: var(--sf-gold);
 }
 
 :root[data-theme="dark"] .modal-footer a:hover,
 :root[data-theme="dark"] .auth-footer a:hover,
-:root[data-theme="dark"] .auth-reg-doc:hover {
+:root[data-theme="dark"] .auth-consent-text a:hover {
   color: var(--sf-gold-bright);
 }
 
@@ -1916,6 +2006,23 @@
 :root[data-theme="dark"] .auth-profile-title {
   background: rgba(102, 180, 128, 0.5);
   color: var(--sf-ink-strong);
+}
+
+/* Шаг привязки шахматного аккаунта после регистрации. */
+:root[data-theme="dark"] .auth-link-notice--ok {
+  border-color: rgba(141, 199, 155, 0.3);
+  background: var(--sf-green-soft);
+  color: var(--sf-green);
+}
+
+:root[data-theme="dark"] .auth-link-notice--error {
+  border-color: rgba(220, 120, 100, 0.32);
+  background: var(--sf-error-soft);
+  color: var(--sf-error);
+}
+
+:root[data-theme="dark"] .auth-link-hint {
+  color: var(--sf-muted-2);
 }
 
 /* Онбординг. */
@@ -2038,8 +2145,7 @@
   color: var(--sf-ink);
 }
 
-:root[data-theme="dark"] .mini-profile__footer,
-:root[data-theme="dark"] .mini-profile__theme {
+:root[data-theme="dark"] .mini-profile__footer {
   border-top-color: rgba(213, 180, 118, 0.16);
 }
 
@@ -2067,25 +2173,6 @@
 :root[data-theme="dark"] .mini-profile__message--error,
 :root[data-theme="dark"] .mini-profile__message--warning {
   color: var(--sf-error);
-}
-
-:root[data-theme="dark"] .mini-profile__theme-options {
-  background: rgba(246, 244, 239, 0.06);
-}
-
-:root[data-theme="dark"] .mini-profile__theme-btn {
-  color: var(--sf-muted);
-}
-
-:root[data-theme="dark"] .mini-profile__theme-btn:hover {
-  background: var(--sf-soft-2);
-  color: var(--sf-ink);
-}
-
-:root[data-theme="dark"] .mini-profile__theme-btn--active {
-  background: var(--sf-gold);
-  color: #141a16;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
 }
 
 /* =========================================================================
@@ -2171,58 +2258,172 @@
   color: var(--sf-gold);
 }
 
-:root[data-theme="dark"] .chess-accounts-section .chess-account-add {
+/* --- Карточки шахматных аккаунтов -------------------------------------- */
+
+:root[data-theme="dark"] .chess-account-card {
   border-color: var(--sf-line);
   background: var(--sf-surface-raised);
-  box-shadow: inset 0 1px 0 rgba(246, 244, 239, 0.035);
   color: var(--sf-ink);
 }
 
-:root[data-theme="dark"] .chess-account-add__mark {
-  border-color: rgba(155, 208, 166, 0.24);
+:root[data-theme="dark"] .chess-account-card__provider {
+  color: var(--sf-muted-2);
+}
+
+:root[data-theme="dark"] .chess-account-card__username {
+  color: var(--sf-ink-strong);
+}
+
+:root[data-theme="dark"] .chess-account-card--add .chess-account-card__username {
+  color: var(--sf-muted);
+}
+
+:root[data-theme="dark"] .chess-account-card__platform-icon {
+  border-color: var(--sf-line);
+  background: var(--sf-soft);
+  color: var(--sf-green);
+}
+
+:root[data-theme="dark"] .chess-account-card__platform-icon--chesscom {
+  background: var(--sf-gold-soft);
+  color: var(--sf-gold);
+}
+
+:root[data-theme="dark"] .chess-account-card__rating {
+  color: var(--sf-muted);
+}
+
+:root[data-theme="dark"] .chess-account-card__rating strong {
+  color: var(--sf-ink-strong);
+}
+
+:root[data-theme="dark"] .chess-account-card__meta {
+  color: var(--sf-muted-2);
+}
+
+:root[data-theme="dark"] .chess-account-badge--verified {
+  border-color: rgba(141, 199, 155, 0.38);
   background: var(--sf-green-soft);
   color: var(--sf-green);
 }
 
-:root[data-theme="dark"] .chess-account-add__mark--chesscom {
+:root[data-theme="dark"] .chess-account-badge--pending,
+:root[data-theme="dark"] .chess-account-badge--warning {
   border-color: var(--sf-line);
   background: var(--sf-gold-soft);
-  color: #e1cd8c;
+  color: var(--sf-gold-bright);
 }
 
-:root[data-theme="dark"] .chess-account-add__provider-text strong {
-  color: var(--sf-ink-strong);
+:root[data-theme="dark"] .chess-account-badge--error {
+  border-color: rgba(190, 106, 88, 0.4);
+  background: var(--sf-error-soft);
+  color: var(--sf-error);
 }
 
-:root[data-theme="dark"] .chess-account-add__provider-text span {
+:root[data-theme="dark"] .chess-account-badge--neutral {
   border-color: var(--sf-line);
   background: var(--sf-soft);
   color: var(--sf-muted);
 }
 
-:root[data-theme="dark"] .chess-account-add__provider-text span::before {
-  background: var(--sf-gold);
+:root[data-theme="dark"] .chess-account-trust .is-trusted {
+  background: var(--sf-green-soft);
+  color: var(--sf-green);
 }
 
-:root[data-theme="dark"] .chess-account-add input {
+:root[data-theme="dark"] .chess-account-trust .is-untrusted {
+  background: var(--sf-soft);
+  color: var(--sf-muted);
+}
+
+:root[data-theme="dark"] .chess-account-action {
+  border-color: var(--sf-line);
+  background: var(--sf-soft);
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .chess-account-action:hover:not(:disabled) {
   border-color: var(--sf-line-strong);
-  background: var(--sf-input);
-  color: var(--sf-ink-strong);
+  background: var(--sf-soft-2);
 }
 
-:root[data-theme="dark"] .chess-account-add input::placeholder {
+:root[data-theme="dark"] .chess-account-action--primary {
+  border-color: var(--sf-gold);
+  background: var(--sf-gold);
+  color: #141a16;
+}
+
+:root[data-theme="dark"] .chess-account-action--primary:hover:not(:disabled) {
+  border-color: var(--sf-gold-bright);
+  background: var(--sf-gold-bright);
+}
+
+:root[data-theme="dark"] .chess-account-action--quiet {
+  border-color: transparent;
+  background: transparent;
+  color: var(--sf-muted);
+}
+
+:root[data-theme="dark"] .chess-account-action--quiet:hover:not(:disabled) {
+  border-color: var(--sf-line);
+  background: var(--sf-soft);
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .chess-account-action--danger {
+  border-color: transparent;
+  background: transparent;
+  color: var(--sf-error);
+}
+
+:root[data-theme="dark"] .chess-account-action--danger:hover:not(:disabled) {
+  border-color: rgba(190, 106, 88, 0.4);
+  background: var(--sf-error-soft);
+}
+
+:root[data-theme="dark"] .chess-account-card__warning {
+  border-color: var(--sf-line);
+  background: var(--sf-gold-soft);
+  color: var(--sf-gold-bright);
+}
+
+:root[data-theme="dark"] .chess-account-card__error {
+  border-color: rgba(190, 106, 88, 0.4);
+  background: var(--sf-error-soft);
+  color: var(--sf-error);
+}
+
+:root[data-theme="dark"] .chess-account-card__note,
+:root[data-theme="dark"] .chess-account-add__note {
+  border-color: var(--sf-line);
+  background: var(--sf-soft);
+  color: var(--sf-muted);
+}
+
+:root[data-theme="dark"] .chess-account-add__note > span {
+  background: var(--sf-gold-soft);
+  color: var(--sf-gold);
+}
+
+:root[data-theme="dark"] .chess-account-add__controls input {
+  border-color: var(--sf-line);
+  background: var(--sf-input);
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .chess-account-add__controls input::placeholder {
   color: var(--sf-muted-2);
 }
 
-:root[data-theme="dark"] .chess-account-add input:focus {
+:root[data-theme="dark"] .chess-account-add__controls input:focus {
   border-color: var(--sf-gold);
-  box-shadow: 0 0 0 3px rgba(213, 180, 118, 0.15);
+  box-shadow: 0 0 0 3px rgba(213, 180, 118, 0.14);
 }
 
 :root[data-theme="dark"] .chess-account-add__link-btn {
   border-color: var(--sf-gold);
   background: var(--sf-gold);
-  color: #17221d;
+  color: #141a16;
 }
 
 :root[data-theme="dark"] .chess-account-add__link-btn:hover:not(:disabled) {
@@ -2238,29 +2439,58 @@
 }
 
 :root[data-theme="dark"] .chess-account-add__oauth {
-  border-color: rgba(155, 208, 166, 0.28);
-  background: var(--sf-green-soft);
-  color: var(--sf-green);
+  color: var(--sf-gold);
 }
 
 :root[data-theme="dark"] .chess-account-add__oauth:hover:not(:disabled) {
-  border-color: rgba(155, 208, 166, 0.48);
-  background: rgba(102, 180, 128, 0.22);
-  color: #b9e4c1;
+  color: var(--sf-gold-bright);
 }
 
 :root[data-theme="dark"] .chess-account-add__oauth > span {
-  background: rgba(155, 208, 166, 0.16);
-  color: var(--sf-green);
+  background: var(--sf-gold-soft);
+  color: var(--sf-gold);
 }
 
-:root[data-theme="dark"] .chess-account-add__note {
-  border-color: var(--sf-line);
-  background: var(--sf-gold-soft);
+:root[data-theme="dark"] .chess-account-history {
+  border-top-color: var(--sf-line);
+}
+
+:root[data-theme="dark"] .chess-account-history__title {
+  color: var(--sf-ink);
+}
+
+:root[data-theme="dark"] .chess-account-history__empty,
+:root[data-theme="dark"] .chess-account-history__item {
   color: var(--sf-muted);
 }
 
-:root[data-theme="dark"] .chess-account-add__note > span {
-  background: rgba(213, 180, 118, 0.16);
+:root[data-theme="dark"] .chess-account-history__status.is-verified {
+  color: var(--sf-green);
+}
+
+:root[data-theme="dark"] .chess-account-history__status.is-error {
+  color: var(--sf-error);
+}
+
+:root[data-theme="dark"] .chess-account-history__status.is-warning,
+:root[data-theme="dark"] .chess-account-history__status.is-pending {
   color: var(--sf-gold-bright);
+}
+
+:root[data-theme="dark"] .chess-account-history__reason {
+  color: var(--sf-muted-2);
+}
+
+:root[data-theme="dark"] .chess-accounts-section__error {
+  border-color: rgba(190, 106, 88, 0.4);
+  background: var(--sf-error-soft);
+  color: var(--sf-error);
+}
+
+:root[data-theme="dark"] .chess-accounts-section__error button {
+  color: var(--sf-error);
+}
+
+:root[data-theme="dark"] .chess-accounts-section__error button:hover {
+  background: var(--sf-error-soft);
 }

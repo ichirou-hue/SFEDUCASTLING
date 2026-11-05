@@ -87,7 +87,7 @@ class DatabaseSettings(BaseSettings):
     """Настройки подключения к базе данных (async SQLAlchemy).
 
     URL задаётся через переменную окружения DATABASE_URL (или .env).
-    По умолчанию — локальный SQLite в корне проекта, чтобы приложение
+    По умолчанию - локальный SQLite в корне проекта, чтобы приложение
     запускалось «из коробки» и на Windows, и на Linux, без PostgreSQL.
     Для PostgreSQL используйте:
         postgresql+asyncpg://user:password@127.0.0.1:5432/dbname
@@ -117,7 +117,7 @@ class DatabaseSettings(BaseSettings):
 class AuthSettings(BaseSettings):
     """JWT и долговременные пользовательские сессии.
 
-    Access-токен живёт 7 дней, refresh-токен — 90 дней. При успешном
+    Access-токен живёт 7 дней, refresh-токен - 90 дней. При успешном
     refresh выдаётся новая пара токенов, поэтому активная сессия скользящая:
     пока пользователь возвращается в приложение хотя бы раз в 90 дней,
     повторный ввод пароля не требуется.

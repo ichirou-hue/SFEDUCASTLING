@@ -125,14 +125,14 @@ def build_llm_rag_prompt(
     context_blocks = []
     for idx, c in enumerate(found_chunks, 1):
         block = (
-            f"[{idx}] {c['author']} — «{c['book']}» (Тема: {c['concept'].upper()}):\n"
+            f"[{idx}] {c['author']} - «{c['book']}» (Тема: {c['concept'].upper()}):\n"
             f"    \"{c['text']}\""
         )
         context_blocks.append(block)
 
     formatted_context = "\n\n".join(context_blocks) if context_blocks else "Общие принципы гармонии фигур и безопасности короля."
 
-    prompt = f"""Ты — профессиональный шахматный тренер. Твоя задача — объяснить позицию ученику, связывая факты расчета движка с правилами классической литературы.
+    prompt = f"""Ты - профессиональный шахматный тренер. Твоя задача - объяснить позицию ученику, связывая факты расчета движка с правилами классической литературы.
 
 === 1. ФАКТИЧЕСКИЕ ДАННЫЕ (STOCKFISH) ===
 - Позиция (FEN): {fen}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Chessboard as ReactChessboard } from "react-chessboard";
 import { Chess } from "chess.js";
@@ -9,6 +9,7 @@ import {
   startLevelTest,
 } from "../api.js";
 import SiteFooter from "./SiteFooter.jsx";
+import { getCheckState, getKingCheckStyle } from "../chessStatus.js";
 import "./LevelTestPage.css";
 
 const START_FEN = "8/8/8/8/8/8/8/8 w - - 0 1";
@@ -98,6 +99,7 @@ export default function LevelTestPage({ onCompleted = null, autoStart = false, o
   const [personalization, setPersonalization] = useState(null);
 
   const gameRef = useRef(makeGame(START_FEN));
+  const checkState = useMemo(() => getCheckState(fen), [fen]);
   const questionStartedAtRef = useRef(Date.now());
   const autoStartedRef = useRef(false);
 
@@ -378,6 +380,17 @@ export default function LevelTestPage({ onCompleted = null, autoStart = false, o
   if (lastMove) {
     squareStyles[lastMove.from] = { backgroundColor: "rgba(201, 169, 110, 0.42)" };
     squareStyles[lastMove.to] = { backgroundColor: "rgba(201, 169, 110, 0.64)" };
+  }
+
+  /*
+   * Шах накладываем последним, чтобы красный король был виден
+   * поверх подсветки выбранной клетки и последнего хода.
+   */
+  if (checkState.kingSquare) {
+    squareStyles[checkState.kingSquare] = {
+      ...(squareStyles[checkState.kingSquare] || {}),
+      ...getKingCheckStyle(checkState.isCheckmate),
+    };
   }
 
   if (phase === "intro" || phase === "loading") {

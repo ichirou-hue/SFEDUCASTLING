@@ -4,8 +4,8 @@ Revision ID: c41a7d92e5f1
 Revises: fb22cbd6384b
 Create Date: 2026-08-23
 
-users.login — уникальный, users.email — уникальный (опционален).
-refresh_tokens.token_hash — sha256 от сырого токена, уникальный.
+users.login - уникальный, users.email - уникальный (опционален).
+refresh_tokens.token_hash - sha256 от сырого токена, уникальный.
 """
 from collections.abc import Sequence
 

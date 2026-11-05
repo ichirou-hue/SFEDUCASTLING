@@ -1,4 +1,4 @@
-"""SFEDUCASTLING API — точка входа в приложение.
+"""SFEDUCASTLING API - точка входа в приложение.
 
 Инициализирует общее состояние (ML-модели, движки) и подключает
 все модули маршрутов (routes).
@@ -127,7 +127,7 @@ class SPAStaticFiles(StaticFiles):
     не найденные роутерами, по-прежнему дают 404 (а не index.html).
 
     StaticFiles.get_response отсутствующий файл не возвращает, а ПОДНИМАЕТ
-    HTTPException(404) — поэтому fallback обязан ловить исключение.
+    HTTPException(404) - поэтому fallback обязан ловить исключение.
     Отсекаем /api/* по scope["path"]: аргумент `path` внутри StaticFiles
     на Windows может содержать обратные слэши.
     """

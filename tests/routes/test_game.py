@@ -61,7 +61,7 @@ class TestMakeMove:
         assert resp.status_code == 422
 
     def test_checkmate(self):
-        # Scholar's mate: после Qh5, Nc6, Bc4, Nf6 — Qxf7#
+        # Scholar's mate: после Qh5, Nc6, Bc4, Nf6 - Qxf7#
         fen = "r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4"
         resp = client.post("/api/move", json={
             "fen": fen, "from_sq": "h5", "to_sq": "f7"
@@ -86,7 +86,7 @@ class TestMakeMove:
 
 class TestAiMove:
     def test_game_over(self):
-        # Scholar's mate — чёрные получили мат, игра окончена
+        # Scholar's mate - чёрные получили мат, игра окончена
         fen = "r1bqkb1r/pppp1Qpp/2n2n2/4p3/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 0 4"
         resp = client.post("/api/stockfish-move", json={"fen": fen, "elo": 1500})
         assert resp.status_code == 200
@@ -435,7 +435,7 @@ class TestCapturedMaterial:
         assert data["counts"]["white"]["p"] == 1
 
     def test_promotion_capture_is_not_a_capture_of_own_piece(self):
-        # 1.d4 h5 2.c4 h4 3.Qd3 h3 4.Qxh3 — ферзь берёт пешку.
+        # 1.d4 h5 2.c4 h4 3.Qd3 h3 4.Qxh3 - ферзь берёт пешку.
         resp = client.post(
             "/api/game/captured-material",
             json={"moves": ["d2d4", "h7h5", "c2c4", "h5h4", "d1d3", "h4h3", "d3h3"]},

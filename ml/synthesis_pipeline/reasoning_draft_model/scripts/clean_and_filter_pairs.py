@@ -87,7 +87,7 @@ def clean_encoding_and_html(text: str) -> str:
   text = html.unescape(text)
   text = text.replace("“", '"').replace("”", '"')
   text = text.replace("‘", "'").replace("’", "'").replace("`", "'")
-  text = text.replace("—", " - ").replace("–", " - ").replace("…", "...")
+  text = text.replace("\u2014", " - ").replace("–", " - ").replace("…", "...")
   text = text.replace("\xa0", " ").replace("\t", " ")
   text = re.sub(r"[:;=8]['-]?[)D(\[\]{}pP/\\@*|><]", " ", text)
   return text

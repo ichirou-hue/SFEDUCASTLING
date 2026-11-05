@@ -133,9 +133,14 @@ async def get_due_training_reviews(
 
     result: list[dict] = []
     for review, task, lesson, module in rows:
+        # SQLite отдаёт DateTime без tzinfo, PostgreSQL - с tzinfo. Приводим
+        # обе формы к UTC, иначе вычитание aware/naive падает на локальной БД.
+        next_review_at = review.next_review_at
+        if next_review_at.tzinfo is None:
+            next_review_at = next_review_at.replace(tzinfo=UTC)
         overdue_seconds = max(
             0,
-            int((current - review.next_review_at).total_seconds()),
+            int((current - next_review_at).total_seconds()),
         )
         result.append(
             {

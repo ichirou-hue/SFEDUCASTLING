@@ -57,7 +57,7 @@ class TestModelManagerStockfish:
 
     def test_ensure_stockfish_already_loaded(self):
         mock = MagicMock()
-        # Процесс «жив» — ensure должен вернуть тот же экземпляр.
+        # Процесс «жив» - ensure должен вернуть тот же экземпляр.
         mock._stockfish.poll.return_value = None
         state.manager._stockfish = mock
 

@@ -2,7 +2,7 @@
 
 Визит фиксируется при регистрации, входе, обновлении сессии и открытии
 профиля (/api/auth/me). Серия дней строится по объединению этих дат с
-днями учебной активности — см. ``training_service._current_streak``.
+днями учебной активности - см. ``training_service._current_streak``.
 """
 
 from datetime import date
