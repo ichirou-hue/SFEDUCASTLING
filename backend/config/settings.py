@@ -3,7 +3,7 @@ from pathlib import Path
 import os
 from dotenv import load_dotenv
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -61,6 +61,15 @@ class GigachessSettings(BaseModel):
     temperature: float = 0.2
     top_p: float = 0.95
     max_tokens: int = 700
+
+
+class ChatFallbackSettings(BaseModel):
+    base_url: str = ""
+    api_key: SecretStr = SecretStr("")
+    model: str = ""
+    prefer: bool = True
+    connect_timeout: float = 15.0
+    read_timeout: float = 60.0
 
 
 class DatabaseSettings(BaseSettings):
@@ -188,6 +197,7 @@ class Settings(BaseSettings):
     data: DataSettings = DataSettings()
 
     gigachess: GigachessSettings = GigachessSettings()
+    chat_fallback: ChatFallbackSettings = ChatFallbackSettings()
     database: DatabaseSettings = DatabaseSettings()
     auth: AuthSettings = AuthSettings()
     chess_oauth: ChessOAuthSettings = ChessOAuthSettings()
