@@ -474,6 +474,67 @@
   color: #9a3f38;
 }
 
+.admin-topic-summary { margin-bottom: 2px; }
+
+.admin-topic-method {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid rgba(34, 90, 115, 0.12);
+  border-radius: 14px;
+  background: #f6faf6;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.admin-topic-method strong { font-size: 13px; }
+.admin-topic-method span { opacity: 0.78; }
+
+.admin-topic-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid rgba(34, 90, 115, 0.12);
+  border-radius: 14px;
+}
+
+.admin-topic-table {
+  width: 100%;
+  min-width: 860px;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.admin-topic-table th,
+.admin-topic-table td {
+  padding: 9px 10px;
+  border-bottom: 1px solid rgba(34, 90, 115, 0.09);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.admin-topic-table th {
+  background: rgba(238, 245, 239, 0.72);
+  font-size: 11px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #4f765e;
+}
+
+.admin-topic-table tbody tr:last-child td { border-bottom: none; }
+
+.admin-topic-status {
+  display: inline-flex;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #f1f3f2;
+}
+
+.admin-topic-status--weak { background: #fdf3f0; color: #9a3f38; }
+.admin-topic-status--strong { background: #eef5ef; color: #47705a; }
+.admin-topic-status--developing { background: #f8f3e7; color: #806524; }
+.admin-topic-status--insufficient { color: #68736c; }
+.admin-topic-source { color: #5d6b65; }
+
 .admin-muted {
   margin: 0;
   font-size: 13px;

@@ -41,6 +41,23 @@ function compactRatings(accounts = []) {
     .join(" · ");
 }
 
+const TOPIC_STATUS_LABELS = {
+  weak: "Слабая",
+  developing: "Развивается",
+  strong: "Сильная",
+  insufficient: "Мало данных",
+};
+
+const TOPIC_RELIABILITY_LABELS = {
+  insufficient: "Недостаточно",
+  medium: "Средняя",
+  high: "Высокая",
+};
+
+function topicPercent(value) {
+  return value == null ? "—" : `${Number(value).toFixed(1)}%`;
+}
+
 function isRecent(value, days) {
   if (!value) return false;
   const ts = new Date(value).getTime();
@@ -464,21 +481,42 @@ export default function AdminPage({ user, onUserChange }) {
                   <section className="admin-card">
                     <h3>Сильные и слабые темы</h3>
                     {(() => {
-                      // Показываем только настоящие темы - подтверждённые
-                      // попытками. Без истории бэкенд присылает фабрикат
-                      // (см. rank_topic_profile), его прячем.
-                      const observed = (t) => t.observed || (t.attempts || 0) > 0;
-                      const weak = (weaknesses.weak_topics || []).filter(observed);
-                      const strong = (weaknesses.strong_topics || []).filter(observed);
-                      if (!weak.length && !strong.length) {
+                      const topics = weaknesses.topics || [];
+                      const weak = weaknesses.weak_topics || [];
+                      const strong = weaknesses.strong_topics || [];
+                      const summary = weaknesses.summary || {};
+                      const method = weaknesses.calculation || {};
+
+                      if (!topics.some((topic) => topic.observed)) {
                         return (
                           <p className="admin-muted">
-                            Пока недостаточно попыток для оценки тем.
+                            Пока нет попыток, по которым можно оценить темы.
                           </p>
                         );
                       }
+
                       return (
                         <div className="admin-topics">
+                          <div className="admin-stats admin-topic-summary">
+                            <Stat label="Попыток по темам" value={summary.mapped_attempts ?? 0} />
+                            <Stat label="Общая точность" value={topicPercent(summary.overall_accuracy)} />
+                            <Stat label="Тем с данными" value={summary.observed_topics ?? 0} />
+                            <Stat label="Надёжно оценено" value={summary.reliable_topics ?? 0} />
+                          </div>
+
+                          <div className="admin-topic-method">
+                            <strong>Как определяется тема</strong>
+                            <span>
+                              Фактическая точность = верные / все попытки. Для
+                              классификации используется сглаженный score с{" "}
+                              {method.prior_attempts ?? 5} виртуальными попытками
+                              по {method.prior_accuracy ?? 50}%. Слабая тема: score
+                              ниже {method.weak_score_below ?? 60}%; сильная: от{" "}
+                              {method.strong_score_from ?? 75}%. Ярлык появляется
+                              только после {method.min_reliable_attempts ?? 5} попыток.
+                            </span>
+                          </div>
+
                           {weak.length > 0 && (
                             <div className="admin-topics-group">
                               <span className="admin-topics-title admin-topics-title--weak">
@@ -486,27 +524,71 @@ export default function AdminPage({ user, onUserChange }) {
                               </span>
                               <div className="admin-topic-chips">
                                 {weak.map((t) => (
-                                  <span
-                                    key={t.slug}
-                                    className="admin-topic-chip admin-topic-chip--weak"
-                                  >
-                                    {t.title}
+                                  <span key={t.slug} className="admin-topic-chip admin-topic-chip--weak">
+                                    {t.title} · {topicPercent(t.accuracy)} · score {topicPercent(t.rank_score)}
                                   </span>
                                 ))}
                               </div>
                             </div>
                           )}
+
                           {strong.length > 0 && (
                             <div className="admin-topics-group">
                               <span className="admin-topics-title">Сильные</span>
                               <div className="admin-topic-chips">
                                 {strong.map((t) => (
                                   <span key={t.slug} className="admin-topic-chip">
-                                    {t.title}
+                                    {t.title} · {topicPercent(t.accuracy)} · score {topicPercent(t.rank_score)}
                                   </span>
                                 ))}
                               </div>
                             </div>
+                          )}
+
+                          {!weak.length && !strong.length && (
+                            <p className="admin-muted">
+                              Есть история, но пока нет тем, которые надёжно
+                              попали в пороги «слабая» или «сильная».
+                            </p>
+                          )}
+
+                          <div className="admin-topic-table-wrap">
+                            <table className="admin-topic-table">
+                              <thead>
+                                <tr>
+                                  <th>Тема</th><th>Статус</th><th>Верно / попыток</th>
+                                  <th>Точность</th><th>Score</th><th>Вес данных</th>
+                                  <th>Надёжность</th><th>Источники</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {topics.map((topic) => (
+                                  <tr key={topic.slug}>
+                                    <td><strong>{topic.title}</strong></td>
+                                    <td>
+                                      <span className={`admin-topic-status admin-topic-status--${topic.classification || "insufficient"}`}>
+                                        {TOPIC_STATUS_LABELS[topic.classification] || "—"}
+                                      </span>
+                                    </td>
+                                    <td>{topic.correct ?? 0} / {topic.attempts ?? 0}</td>
+                                    <td>{topicPercent(topic.accuracy)}</td>
+                                    <td>{topicPercent(topic.rank_score)}</td>
+                                    <td>{topicPercent(topic.data_weight_percent)}</td>
+                                    <td>{TOPIC_RELIABILITY_LABELS[topic.reliability] || "—"}</td>
+                                    <td className="admin-topic-source">
+                                      Курс {topic.training?.correct ?? 0}/{topic.training?.attempts ?? 0}
+                                      {" · "}Пазлы {topic.puzzles?.correct ?? 0}/{topic.puzzles?.attempts ?? 0}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+
+                          {Number(weaknesses.unmapped_puzzle_attempts || 0) > 0 && (
+                            <p className="admin-muted">
+                              Не привязано к темам курса: {weaknesses.unmapped_puzzle_attempts} попыток пазлов.
+                            </p>
                           )}
                         </div>
                       );

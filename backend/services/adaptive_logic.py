@@ -15,6 +15,14 @@ from backend.services.difficulty_logic import (
 from backend.services.puzzle_validation import player_pieces_used_in_solution
 
 
+TOPIC_PRIOR_ATTEMPTS = 5
+TOPIC_PRIOR_ACCURACY = 50.0
+TOPIC_MIN_RELIABLE_ATTEMPTS = 5
+TOPIC_WEAK_SCORE_BELOW = 60.0
+TOPIC_STRONG_SCORE_FROM = 75.0
+TOPIC_HIGH_RELIABILITY_ATTEMPTS = 15
+
+
 def allocation_for_count(count: int) -> tuple[int, int]:
     """Возвращает квоты weak/strong с целевой пропорцией 70/30."""
     count = max(0, int(count))
@@ -294,48 +302,89 @@ def _piece_focus_puzzles(
     return picked, metadata
 
 
-def rank_topic_profile(topics: list[dict]) -> tuple[list[dict], list[dict]]:
-    """Выбирает нижние 3 и верхние 3 темы среди реально пройденных.
+def score_topic_profile(topics: list[dict]) -> list[dict]:
+    """Добавляет устойчивые и объяснимые метрики к каждой теме."""
+    scored: list[dict] = []
+    prior_correct = TOPIC_PRIOR_ATTEMPTS * TOPIC_PRIOR_ACCURACY / 100.0
 
-    Тема без попыток (observed=False) не может считаться ни слабой, ни
-    сильной: по ней ещё нет данных. Поэтому в weak_topics/strong_topics
-    попадают только темы с attempts > 0. При нулевом прогрессе оба списка
-    пусты - иначе витрина/админка показывала бы «слабые: пешка, конь, слон»
-    у пользователя без единой попытки.
-    """
-    enriched = []
-    for index, topic in enumerate(topics):
+    for topic in topics:
         item = dict(topic)
-        attempts = int(item.get("attempts") or 0)
+        attempts = max(0, int(item.get("attempts") or 0))
+        correct = max(0, min(attempts, int(item.get("correct") or 0)))
         accuracy = item.get("accuracy")
-        rank_accuracy = float(accuracy) if attempts > 0 and accuracy is not None else 50.0
-        item["rank_accuracy"] = rank_accuracy
-        item["observed"] = attempts > 0
-        item["_order"] = index
-        enriched.append(item)
+        if attempts > 0 and accuracy is None:
+            accuracy = round(correct * 100 / attempts, 1)
 
-    observed = [item for item in enriched if item["observed"]]
+        observed = attempts > 0
+        reliable = attempts >= TOPIC_MIN_RELIABLE_ATTEMPTS
+        rank_accuracy = float(accuracy) if observed and accuracy is not None else 50.0
+        rank_score = round(
+            (correct + prior_correct) * 100 / (attempts + TOPIC_PRIOR_ATTEMPTS),
+            1,
+        )
+        data_weight = (
+            round(attempts * 100 / (attempts + TOPIC_PRIOR_ATTEMPTS), 1)
+            if attempts
+            else 0.0
+        )
+
+        if not reliable:
+            classification = "insufficient"
+            reliability = "insufficient"
+        elif rank_score < TOPIC_WEAK_SCORE_BELOW:
+            classification = "weak"
+            reliability = "high" if attempts >= TOPIC_HIGH_RELIABILITY_ATTEMPTS else "medium"
+        elif rank_score >= TOPIC_STRONG_SCORE_FROM:
+            classification = "strong"
+            reliability = "high" if attempts >= TOPIC_HIGH_RELIABILITY_ATTEMPTS else "medium"
+        else:
+            classification = "developing"
+            reliability = "high" if attempts >= TOPIC_HIGH_RELIABILITY_ATTEMPTS else "medium"
+
+        item.update({
+            "accuracy": accuracy,
+            "rank_accuracy": rank_accuracy,
+            "rank_score": rank_score,
+            "observed": observed,
+            "reliable": reliable,
+            "reliability": reliability,
+            "data_weight_percent": data_weight,
+            "classification": classification,
+        })
+        scored.append(item)
+
+    return scored
+
+
+def rank_topic_profile(topics: list[dict]) -> tuple[list[dict], list[dict]]:
+    """До трёх подтверждённых слабых и сильных тем.
+
+    Слабая: >=5 попыток и rank_score < 60.
+    Сильная: >=5 попыток и rank_score >=75.
+    60..74.9 — developing. Меньше 5 попыток — insufficient.
+    """
+    scored = score_topic_profile(topics)
+    order = {str(item.get("slug")): index for index, item in enumerate(scored)}
 
     weak = sorted(
-        observed,
-        key=lambda x: (x["rank_accuracy"], -int(x.get("attempts") or 0), x["_order"]),
+        (item for item in scored if item.get("classification") == "weak"),
+        key=lambda x: (
+            float(x.get("rank_score") or 0),
+            -int(x.get("attempts") or 0),
+            order.get(str(x.get("slug")), 10_000),
+        ),
     )[:3]
 
-    weak_slugs = {item["slug"] for item in weak}
     strong = sorted(
-        (item for item in observed if item["slug"] not in weak_slugs),
-        key=lambda x: (-x["rank_accuracy"], -int(x.get("attempts") or 0), x["_order"]),
+        (item for item in scored if item.get("classification") == "strong"),
+        key=lambda x: (
+            -float(x.get("rank_score") or 0),
+            -int(x.get("attempts") or 0),
+            order.get(str(x.get("slug")), 10_000),
+        ),
     )[:3]
 
-    def public(items: Iterable[dict]) -> list[dict]:
-        result = []
-        for item in items:
-            copy = dict(item)
-            copy.pop("_order", None)
-            result.append(copy)
-        return result
-
-    return public(weak), public(strong)
+    return weak, strong
 
 
 def _take_round_robin(

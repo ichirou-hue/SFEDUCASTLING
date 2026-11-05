@@ -665,34 +665,37 @@ Refresh-токен одноразовый: предыдущий отзывает
 
 ### GET `/api/learning/weaknesses`
 
-Единый источник данных о точности по темам курса: объединяет попытки курса и пазлов. Результат используется виджетом прогресса и адаптивной раздачей, что обеспечивает согласованность отображаемых значений (аудит B-2).
+Единый источник метрик по темам курса. Профиль объединяет попытки учебных
+заданий и тактических пазлов; пользовательская витрина, админка и адаптивный
+подбор используют одни и те же числа.
 
-```json
-{
-  "topics": [
-    { "slug": "bishop", "title": "Слон", "attempts": 8, "correct": 5, "accuracy": 62.5,
-      "training": { "attempts": 5, "correct": 4 }, "puzzles": { "attempts": 3, "correct": 1 } }
-  ],
-  "weak_topics": [
-    { "slug": "bishop", "title": "Слон", "attempts": 8, "correct": 5, "accuracy": 62.5,
-      "training": { "attempts": 5, "correct": 4 }, "puzzles": { "attempts": 3, "correct": 1 },
-      "rank_accuracy": 62.5, "observed": true }
-  ],
-  "strong_topics": [
-    { "slug": "queen", "title": "Ферзь", "attempts": 12, "correct": 11, "accuracy": 91.7,
-      "training": { "attempts": 7, "correct": 6 }, "puzzles": { "attempts": 5, "correct": 5 },
-      "rank_accuracy": 91.7, "observed": true }
-  ],
-  "unmapped_puzzle_attempts": 0,
-  "selection_rule": { "weak_share": 0.70, "strong_share": 0.30, "weak_topic_count": 3 }
-}
-```
+Фактическая точность:
+`accuracy = correct / attempts * 100`.
 
-- `accuracy` темы = `(training.correct + puzzles.correct) / (training.attempts + puzzles.attempts)`; без попыток - `null`.
-- `weak_topics` - нижние 3 темы по `rank_accuracy`; `strong_topics` - верхние 3, но **только с реальными попытками** (`observed: true`). Тема без попыток не может считаться сильной (условие ранжирования).
-- `rank_accuracy` - у темы без попыток это нейтральные 50, но только для ранжирования внутри слабых; фактическая `accuracy` остаётся `null`.
-- `unmapped_puzzle_attempts` - попытки пазлов, которые не удалось привязать ни к одной теме курса.
-- `selection_rule` - пропорция 70/30, используемая адаптивной раздачей (описание ниже).
+Для устойчивой классификации используется:
+`rank_score = (correct + 2.5) / (attempts + 5) * 100`.
+
+Это эквивалентно пяти нейтральным виртуальным попыткам с точностью 50%.
+Фактический `accuracy` не меняется.
+
+Правила:
+- меньше 5 реальных попыток -> `insufficient`;
+- 5+ и `rank_score < 60` -> `weak`;
+- 5+ и `60 <= rank_score < 75` -> `developing`;
+- 5+ и `rank_score >= 75` -> `strong`.
+
+Дополнительные поля темы:
+- `rank_score`;
+- `data_weight_percent`;
+- `observed`;
+- `reliable`;
+- `reliability`;
+- `classification`;
+- разбивка `training` и `puzzles`.
+
+Ответ также содержит `summary` со сводными метриками пользователя и
+`calculation` с параметрами формулы. В `weak_topics`/`strong_topics` входит
+не более трёх подтверждённых тем соответствующего класса.
 
 ### GET `/api/learning/puzzles/adaptive?count=N`
 

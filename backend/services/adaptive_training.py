@@ -10,7 +10,16 @@ from backend.models.training_attempt import TrainingAttempt
 from backend.models.training_lesson import TrainingLesson
 from backend.models.training_module import TrainingModule
 from backend.models.training_task import TrainingTask
-from backend.services.adaptive_logic import rank_topic_profile
+from backend.services.adaptive_logic import (
+    TOPIC_HIGH_RELIABILITY_ATTEMPTS,
+    TOPIC_MIN_RELIABLE_ATTEMPTS,
+    TOPIC_PRIOR_ACCURACY,
+    TOPIC_PRIOR_ATTEMPTS,
+    TOPIC_STRONG_SCORE_FROM,
+    TOPIC_WEAK_SCORE_BELOW,
+    rank_topic_profile,
+    score_topic_profile,
+)
 from backend.services.course_topics import (
     COURSE_TOPIC_META,
     primary_course_topic_for_puzzle,
@@ -116,16 +125,51 @@ async def build_weakness_profile(
             }
         )
 
+    topics = score_topic_profile(topics)
     weak_topics, strong_topics = rank_topic_profile(topics)
+
+    mapped_attempts = sum(int(topic.get("attempts") or 0) for topic in topics)
+    mapped_correct = sum(int(topic.get("correct") or 0) for topic in topics)
+    overall_accuracy = (
+        round(mapped_correct * 100 / mapped_attempts, 1)
+        if mapped_attempts else None
+    )
+    classifications = {
+        key: sum(topic.get("classification") == key for topic in topics)
+        for key in ("weak", "developing", "strong", "insufficient")
+    }
+
     return {
         "topics": topics,
         "weak_topics": weak_topics,
         "strong_topics": strong_topics,
+        "summary": {
+            "mapped_attempts": mapped_attempts,
+            "mapped_correct": mapped_correct,
+            "overall_accuracy": overall_accuracy,
+            "observed_topics": sum(bool(topic.get("observed")) for topic in topics),
+            "reliable_topics": sum(bool(topic.get("reliable")) for topic in topics),
+            "weak_topics": classifications["weak"],
+            "developing_topics": classifications["developing"],
+            "strong_topics": classifications["strong"],
+            "insufficient_topics": classifications["insufficient"],
+        },
+        "calculation": {
+            "accuracy_formula": "correct / attempts * 100",
+            "rank_score_formula": "(correct + prior_correct) / (attempts + prior_attempts) * 100",
+            "prior_attempts": TOPIC_PRIOR_ATTEMPTS,
+            "prior_accuracy": TOPIC_PRIOR_ACCURACY,
+            "min_reliable_attempts": TOPIC_MIN_RELIABLE_ATTEMPTS,
+            "weak_score_below": TOPIC_WEAK_SCORE_BELOW,
+            "strong_score_from": TOPIC_STRONG_SCORE_FROM,
+            "high_reliability_attempts": TOPIC_HIGH_RELIABILITY_ATTEMPTS,
+        },
         "unmapped_puzzle_attempts": unmapped_puzzle_attempts,
         "selection_rule": {
             "weak_share": 0.70,
             "strong_share": 0.30,
             "weak_topic_count": 3,
+            "min_reliable_attempts": TOPIC_MIN_RELIABLE_ATTEMPTS,
         },
     }
 

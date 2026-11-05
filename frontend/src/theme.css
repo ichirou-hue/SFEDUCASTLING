@@ -1582,6 +1582,40 @@
   color: var(--sf-error);
 }
 
+:root[data-theme="dark"] .admin-topic-method,
+:root[data-theme="dark"] .admin-topic-table-wrap {
+  border-color: var(--sf-line);
+  background: var(--sf-soft);
+}
+
+:root[data-theme="dark"] .admin-topic-table th {
+  background: rgba(213, 180, 118, 0.08);
+  color: var(--sf-gold);
+}
+
+:root[data-theme="dark"] .admin-topic-table th,
+:root[data-theme="dark"] .admin-topic-table td {
+  border-bottom-color: rgba(246, 244, 239, 0.08);
+}
+
+:root[data-theme="dark"] .admin-topic-status {
+  background: rgba(246, 244, 239, 0.08);
+  color: var(--sf-muted);
+}
+:root[data-theme="dark"] .admin-topic-status--weak {
+  background: var(--sf-error-soft);
+  color: var(--sf-error);
+}
+:root[data-theme="dark"] .admin-topic-status--strong {
+  background: var(--sf-green-soft);
+  color: var(--sf-green);
+}
+:root[data-theme="dark"] .admin-topic-status--developing {
+  background: var(--sf-gold-soft);
+  color: var(--sf-gold);
+}
+:root[data-theme="dark"] .admin-topic-source { color: var(--sf-muted-2); }
+
 /* =========================================================================
    ТЕСТ УРОВНЯ
    ========================================================================= */

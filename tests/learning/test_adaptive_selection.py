@@ -1,6 +1,7 @@
 from backend.services.adaptive_logic import (
     allocation_for_count,
     rank_topic_profile,
+    score_topic_profile,
     select_adaptive_puzzles,
 )
 from backend.services.course_topics import primary_course_topic_for_puzzle
@@ -22,34 +23,51 @@ def test_allocation_is_70_30_for_twenty():
     assert allocation_for_count(20) == (14, 6)
 
 
-def test_rank_uses_bottom_three_and_top_two():
+def test_rank_uses_reliable_samples_and_absolute_thresholds():
     topics = [
-        _topic("pieces", 20),
-        _topic("king-safety", 30),
-        _topic("endgames", 40),
-        _topic("tactics", 60),
-        _topic("openings", 70),
+        _topic("pieces", 20, attempts=10),
+        _topic("king-safety", 70, attempts=10),
+        _topic("endgames", 100, attempts=10),
+        _topic("tactics", 0, attempts=1),
+        _topic("openings", None, attempts=0),
     ]
     weak, strong = rank_topic_profile(topics)
-    assert [x["slug"] for x in weak] == ["pieces", "king-safety", "endgames"]
-    assert [x["slug"] for x in strong] == ["openings", "tactics"]
+    assert [x["slug"] for x in weak] == ["pieces"]
+    assert [x["slug"] for x in strong] == ["endgames"]
+    assert weak[0]["rank_score"] == 30.0
+    assert strong[0]["rank_score"] == 83.3
 
 
-def test_unseen_topics_are_neither_weak_nor_strong():
-    topics = [
-        _topic("pieces", 10),
-        _topic("king-safety", None, attempts=0),
-        _topic("endgames", 30),
-        _topic("tactics", 60),
-        _topic("openings", 80),
-    ]
-    weak, strong = rank_topic_profile(topics)
-    # В слабые попадают только пройденные темы (низкие 3 из observed).
-    assert [x["slug"] for x in weak] == ["pieces", "endgames", "tactics"]
-    assert all(x["observed"] is True for x in weak)
-    assert [x["slug"] for x in strong] == ["openings"]
-    involved = {x["slug"] for x in weak + strong}
-    assert "king-safety" not in involved
+def test_small_sample_is_visible_but_not_classified():
+    scored = score_topic_profile([
+        _topic("pieces", 0, attempts=1),
+        _topic("king-safety", 100, attempts=1),
+    ])
+    by_slug = {item["slug"]: item for item in scored}
+    assert by_slug["pieces"]["observed"] is True
+    assert by_slug["pieces"]["reliable"] is False
+    assert by_slug["pieces"]["classification"] == "insufficient"
+    assert by_slug["pieces"]["rank_score"] == 41.7
+    assert by_slug["king-safety"]["classification"] == "insufficient"
+    assert by_slug["king-safety"]["rank_score"] == 58.3
+    weak, strong = rank_topic_profile(scored)
+    assert weak == []
+    assert strong == []
+
+
+def test_five_attempts_are_enough_for_reliable_classification():
+    scored = score_topic_profile([
+        _topic("pieces", 0, attempts=5),
+        _topic("king-safety", 60, attempts=5),
+        _topic("endgames", 100, attempts=5),
+    ])
+    by_slug = {item["slug"]: item for item in scored}
+    assert by_slug["pieces"]["classification"] == "weak"
+    assert by_slug["pieces"]["rank_score"] == 25.0
+    assert by_slug["king-safety"]["classification"] == "weak"
+    assert by_slug["king-safety"]["rank_score"] == 55.0
+    assert by_slug["endgames"]["classification"] == "strong"
+    assert by_slug["endgames"]["rank_score"] == 75.0
 
 
 def test_zero_attempts_has_no_weak_or_strong_topics():
@@ -58,23 +76,12 @@ def test_zero_attempts_has_no_weak_or_strong_topics():
         _topic("king-safety", None, attempts=0),
         _topic("endgames", None, attempts=0),
     ]
+    scored = score_topic_profile(topics)
+    assert all(item["classification"] == "insufficient" for item in scored)
+    assert all(item["observed"] is False for item in scored)
     weak, strong = rank_topic_profile(topics)
     assert weak == []
     assert strong == []
-
-
-def test_unseen_topic_never_enters_strong_topics():
-    topics = [
-        _topic("pieces", 58.3, attempts=12),
-        _topic("king-safety", 0, attempts=1),
-        _topic("endgames", 20, attempts=15),
-        _topic("tactics", 0, attempts=2),
-        _topic("openings", None, attempts=0),
-    ]
-    weak, strong = rank_topic_profile(topics)
-    assert [x["slug"] for x in weak] == ["tactics", "king-safety", "endgames"]
-    assert [x["slug"] for x in strong] == ["pieces"]
-    assert "openings" not in {x["slug"] for x in strong}
 
 
 def test_primary_topic_is_deterministic():
