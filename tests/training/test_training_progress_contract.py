@@ -11,7 +11,13 @@ import asyncio
 from datetime import datetime, time, timedelta
 
 from backend.services.local_time import LOCAL_TZ, local_today
-from backend.services.training_service import get_training_progress
+from backend.services.training_course_data import MODULES
+from backend.services.training_service import (
+    COURSE_MODULE_SLUGS,
+    get_module_by_slug,
+    get_training_progress,
+    list_modules,
+)
 
 
 def _local_noon(days_ago: int = 0) -> datetime:
@@ -29,10 +35,15 @@ class _Result:
 
 
 class _Module:
-    def __init__(self, id, slug, title):
+    def __init__(
+        self, id, slug, title, *, description=None, sort_order=0, enabled=True
+    ):
         self.id = id
         self.slug = slug
         self.title = title
+        self.description = description
+        self.sort_order = sort_order
+        self.enabled = enabled
 
 
 class _FakeDB:
@@ -56,7 +67,10 @@ class _FakeDB:
         ]
 
     async def scalars(self, stmt):
-        return _Result(self._modules)
+        modules = self._modules
+        if "slug IN" in str(stmt):
+            modules = [m for m in modules if m.slug in COURSE_MODULE_SLUGS]
+        return _Result(modules)
 
     async def execute(self, stmt):
         rows = self._exec_results.pop(0) if self._exec_results else []
@@ -67,9 +81,51 @@ def _run(coro):
     return asyncio.run(coro)
 
 
+def test_module_api_excludes_legacy_database_rows():
+    modules = [
+        _Module(
+            i,
+            data["slug"],
+            data["title"],
+            description=data.get("description"),
+            sort_order=data.get("sort_order", 99),
+            enabled=data.get("enabled", True),
+        )
+        for i, data in enumerate(
+            [*MODULES, {"slug": "legacy-pawn", "title": "Старый модуль пешки"}],
+            start=1,
+        )
+    ]
+
+    class _ModulesDB:
+        async def scalars(self, stmt):
+            assert "training_modules.slug IN" in str(stmt)
+            return _Result([m for m in modules if m.slug in COURSE_MODULE_SLUGS])
+
+        async def scalar(self, stmt):
+            return 0
+
+    result = _run(list_modules(_ModulesDB()))
+    assert [module["slug"] for module in result] == [
+        module["slug"] for module in MODULES
+    ]
+
+
+def test_legacy_module_cannot_be_opened_by_slug():
+    class _NoQueryDB:
+        async def scalar(self, stmt):
+            raise AssertionError("legacy slug should be rejected before querying DB")
+
+    assert _run(get_module_by_slug(_NoQueryDB(), "legacy-pawn")) is None
+
+
 def _progress(attempt_rows=()):
     db = _FakeDB(
-        modules=[_Module(1, "pawn", "Пешка"), _Module(2, "rook", "Ладья")],
+        modules=[
+            _Module(1, "pieces", "Шахматная азбука"),
+            _Module(2, "tactics", "Тактические приёмы"),
+            _Module(3, "legacy-pawn", "Старый модуль пешки"),
+        ],
         task_rows=[(100, 10, 1), (101, 20, 2)],
         lesson_rows=[(10, 1), (20, 2)],
         attempt_rows=attempt_rows,
@@ -111,7 +167,10 @@ def test_streak_counts_days_with_three_distinct_puzzles():
     now = _local_noon()
     yesterday = _local_noon(days_ago=1)
     db = _FakeDB(
-        modules=[_Module(1, "pawn", "Пешка"), _Module(2, "rook", "Ладья")],
+        modules=[
+            _Module(1, "pieces", "Шахматная азбука"),
+            _Module(2, "tactics", "Тактические приёмы"),
+        ],
         task_rows=[(100, 10, 1), (101, 20, 2)],
         lesson_rows=[(10, 1), (20, 2)],
         attempt_rows=[],
@@ -138,7 +197,7 @@ def test_two_puzzles_in_a_day_are_not_enough():
     now = _local_noon()
     yesterday = _local_noon(days_ago=1)
     db = _FakeDB(
-        modules=[_Module(1, "pawn", "Пешка")],
+        modules=[_Module(1, "pieces", "Шахматная азбука")],
         puzzle_rows=[
             ("a1", True, yesterday),
             ("a2", True, yesterday),
@@ -156,7 +215,7 @@ def test_repeated_puzzle_counts_once_per_day():
     # Одна и та же задача, решённая трижды, не делает день занятием.
     now = _local_noon()
     db = _FakeDB(
-        modules=[_Module(1, "pawn", "Пешка")],
+        modules=[_Module(1, "pieces", "Шахматная азбука")],
         puzzle_rows=[("same", True, now), ("same", True, now), ("same", True, now)],
     )
     result = _run(get_training_progress(db, user_id=1))
@@ -168,7 +227,7 @@ def test_visits_do_not_extend_streak():
     # Простой заход на сайт больше не продлевает серию: учитываются только
     # дни занятий (3+ разных пазла или задание курса).
     db = _FakeDB(
-        modules=[_Module(1, "pawn", "Пешка")],
+        modules=[_Module(1, "pieces", "Шахматная азбука")],
         attempt_rows=[],
         puzzle_rows=[],
     )
@@ -181,7 +240,7 @@ def test_course_task_counts_as_active_day():
     # Достаточно одного задания модуля курса за день.
     now = _local_noon()
     db = _FakeDB(
-        modules=[_Module(1, "pawn", "Пешка")],
+        modules=[_Module(1, "pieces", "Шахматная азбука")],
         task_rows=[(100, 10, 1)],
         lesson_rows=[(10, 1)],
         attempt_rows=[(100, True, now, 1)],
@@ -196,7 +255,7 @@ def test_streak_joins_course_and_puzzle_days():
     now = _local_noon()
     yesterday = _local_noon(days_ago=1)
     db = _FakeDB(
-        modules=[_Module(1, "pawn", "Пешка")],
+        modules=[_Module(1, "pieces", "Шахматная азбука")],
         task_rows=[(100, 10, 1)],
         lesson_rows=[(10, 1)],
         attempt_rows=[(100, True, now, 1)],

@@ -13,7 +13,12 @@ from backend.models.training_task import TrainingTask
 from backend.models.user import User
 from backend.services.local_time import local_today, to_local_date
 from backend.services.training_checker import TrainingCheckResult
-from backend.services.training_course_data import LEVEL_LABELS
+from backend.services.training_course_data import LEVEL_LABELS, MODULES
+
+# Публичный список курса определяется декларативными данными.
+# Старые строки БД остаются для истории попыток, но не появляются в API.
+# Будущие модули можно показывать, объявив их в MODULES.
+COURSE_MODULE_SLUGS = frozenset(module["slug"] for module in MODULES)
 
 # Сколько РАЗНЫХ задач нужно решить за день, чтобы день считался занятием
 # и продлевал серию дней. Повторное решение той же задачи не считается.
@@ -22,7 +27,11 @@ PUZZLES_PER_ACTIVE_DAY = 3
 
 async def list_modules(db: AsyncSession) -> list[dict]:
     modules = (
-        await db.scalars(select(TrainingModule).order_by(TrainingModule.sort_order, TrainingModule.id))
+        await db.scalars(
+            select(TrainingModule)
+            .where(TrainingModule.slug.in_(COURSE_MODULE_SLUGS))
+            .order_by(TrainingModule.sort_order, TrainingModule.id)
+        )
     ).all()
 
     result: list[dict] = []
@@ -59,6 +68,8 @@ async def list_modules(db: AsyncSession) -> list[dict]:
 
 
 async def get_module_by_slug(db: AsyncSession, slug: str) -> TrainingModule | None:
+    if slug not in COURSE_MODULE_SLUGS:
+        return None
     return await db.scalar(select(TrainingModule).where(TrainingModule.slug == slug))
 
 
@@ -93,7 +104,14 @@ async def list_module_lessons(db: AsyncSession, module_id: int) -> list[dict]:
 
 
 async def get_lesson(db: AsyncSession, lesson_id: int) -> TrainingLesson | None:
-    return await db.get(TrainingLesson, lesson_id)
+    return await db.scalar(
+        select(TrainingLesson)
+        .join(TrainingModule, TrainingLesson.module_id == TrainingModule.id)
+        .where(
+            TrainingLesson.id == lesson_id,
+            TrainingModule.slug.in_(COURSE_MODULE_SLUGS),
+        )
+    )
 
 
 async def list_lesson_tasks(db: AsyncSession, lesson_id: int) -> list[TrainingTask]:
@@ -107,7 +125,15 @@ async def list_lesson_tasks(db: AsyncSession, lesson_id: int) -> list[TrainingTa
 
 
 async def get_task(db: AsyncSession, task_id: int) -> TrainingTask | None:
-    return await db.get(TrainingTask, task_id)
+    return await db.scalar(
+        select(TrainingTask)
+        .join(TrainingLesson, TrainingTask.lesson_id == TrainingLesson.id)
+        .join(TrainingModule, TrainingLesson.module_id == TrainingModule.id)
+        .where(
+            TrainingTask.id == task_id,
+            TrainingModule.slug.in_(COURSE_MODULE_SLUGS),
+        )
+    )
 
 
 async def save_attempt(
@@ -199,7 +225,10 @@ async def get_training_progress(db: AsyncSession, user_id: int) -> dict:
     modules = (
         await db.scalars(
             select(TrainingModule)
-            .where(TrainingModule.enabled.is_(True))
+            .where(
+                TrainingModule.enabled.is_(True),
+                TrainingModule.slug.in_(COURSE_MODULE_SLUGS),
+            )
             .order_by(TrainingModule.sort_order, TrainingModule.id)
         )
     ).all()
@@ -258,6 +287,7 @@ async def get_training_progress(db: AsyncSession, user_id: int) -> dict:
             .where(
                 TrainingAttempt.user_id == user_id,
                 TrainingModule.enabled.is_(True),
+                TrainingModule.slug.in_(COURSE_MODULE_SLUGS),
                 TrainingLesson.enabled.is_(True),
                 TrainingTask.enabled.is_(True),
             )
