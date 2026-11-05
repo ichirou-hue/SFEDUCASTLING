@@ -226,7 +226,7 @@
     padding: 5px 2px 4px;
     border-radius: 14px;
     color: rgba(246, 244, 239, 0.66);
-    font: 500 9px/1.15 Inter, sans-serif;
+    font: 500 9px/1.15 var(--font-ui);
     letter-spacing: 0.01em;
     text-align: center;
     text-transform: none;
@@ -828,7 +828,7 @@
     background: rgba(7, 18, 22, 0.96);
     box-shadow: 0 8px 22px rgba(0, 0, 0, 0.34);
     color: #eee8db;
-    font: 600 12px/1 Inter, sans-serif;
+    font: 600 12px/1 var(--font-ui);
     touch-action: manipulation;
   }
 
@@ -967,7 +967,7 @@
     min-height: 44px;
     padding: 8px 5px;
     border-radius: 14px;
-    font: 600 11px/1.2 Inter, sans-serif;
+    font: 600 11px/1.2 var(--font-ui);
   }
 
   .puzzle-chat-section,

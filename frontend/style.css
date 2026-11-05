@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&display=swap");
 
 @font-face {
   font-family: "Calypso";
@@ -9,7 +9,7 @@
 }
 
 :root {
-  --font-ui: "Inter", "Segoe UI", system-ui, sans-serif;
+  --font-ui: "Manrope", "Segoe UI", system-ui, sans-serif;
   --font-display: "Calypso", Georgia, serif;
 }
 
@@ -137,7 +137,7 @@ textarea {
   background: rgba(243, 240, 232, 0.9);
   color: #6f6759;
   cursor: pointer;
-  font: 600 10px/1 "Inter", sans-serif;
+  font: 600 10px/1 var(--font-ui);
   transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease, transform 0.16s ease;
 }
 
@@ -419,7 +419,7 @@ textarea {
   border-radius: 999px;
   background: rgba(201, 169, 110, 0.12);
   color: #e4c58d;
-  font: 600 12px/1 Inter, sans-serif;
+  font: 600 12px/1 var(--font-ui);
   white-space: nowrap;
   text-decoration: none;
   cursor: pointer;
@@ -476,7 +476,7 @@ textarea {
     inset 0 1px 0 rgba(255, 253, 248, 0.08),
     0 18px 42px rgba(0, 0, 0, 0.42);
   color: #f6f4ef;
-  font: 500 13px/1.35 Inter, sans-serif;
+  font: 500 13px/1.35 var(--font-ui);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   animation:
@@ -801,7 +801,7 @@ textarea {
 
 .gameover-review-note {
   margin-top: 8px;
-  font-family: "Inter", sans-serif;
+  font-family: var(--font-ui);
   font-size: 12px;
   color: #837053;
 }
@@ -1028,7 +1028,7 @@ textarea {
   border-radius: 10px;
   background: rgba(91, 35, 31, 0.88);
   color: #ffe3dc;
-  font: 12px/1.4 "Inter", Arial, sans-serif;
+  font: 12px/1.4 var(--font-ui);
 }
 
 .maia-engine-error button {
@@ -1088,7 +1088,7 @@ textarea {
     inset 0 0 0 1px rgba(180, 135, 44, 0.55),
     0 2px 6px rgba(0, 0, 0, 0.12);
   color: #333;
-  font-family: "Cormorant Garamond", Georgia, serif;
+  font-family: var(--font-ui);
   font-size: 15px;
   line-height: 1.5;
 }
@@ -2031,7 +2031,7 @@ textarea {
 
 .review-hint {
   margin: -2px 0 8px;
-  font-family: "Inter", sans-serif;
+  font-family: var(--font-ui);
   font-size: 11px;
   color: #837053;
 }
@@ -2079,7 +2079,7 @@ textarea {
 
 .review-move-mark {
   margin-left: 3px;
-  font-family: "Inter", sans-serif;
+  font-family: var(--font-ui);
   font-size: 14px;
   font-weight: 700;
 }
@@ -2105,7 +2105,7 @@ textarea {
   min-width: 46px;
   padding: 2px 5px;
   border-radius: 6px;
-  font-family: "Inter", sans-serif;
+  font-family: var(--font-ui);
   font-size: 11px;
   font-weight: 600;
   text-align: center;
@@ -2574,7 +2574,7 @@ textarea {
 }
 .auth-brand-name {
   font-family: var(--font-ui);
-  font-weight: 900;
+  font-weight: 800;
   font-size: 30px;
   letter-spacing: 0.14em;
   color: #2f5c36;
@@ -2969,7 +2969,7 @@ textarea {
   margin: 0 0 14px;
   padding: 11px 14px;
   border-radius: 12px;
-  font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+  font-family: var(--font-ui);
   font-size: 13px;
   line-height: 1.45;
 }
@@ -3001,7 +3001,7 @@ textarea {
 
 .auth-link-hint {
   margin: 0;
-  font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+  font-family: var(--font-ui);
   font-size: 12px;
   line-height: 1.4;
   color: #7c8b70;
@@ -3274,7 +3274,7 @@ textarea {
 
 .puzzle-theme-label {
   color: #80652f;
-  font: 700 10px/1.2 Inter, sans-serif;
+  font: 700 10px/1.2 var(--font-ui);
   letter-spacing: .09em;
   text-transform: uppercase;
 }
@@ -3291,7 +3291,7 @@ textarea {
 
 .puzzle-instruction {
   color: #46534d;
-  font: 600 13px/1.4 Inter, sans-serif;
+  font: 600 13px/1.4 var(--font-ui);
 }
 
 .puzzle-turn-indicator {
@@ -3361,7 +3361,7 @@ textarea {
   border-radius: 14px;
   background: rgba(34, 90, 115, .07);
   color: #65706a;
-  font: 600 12px/1.25 Inter, sans-serif;
+  font: 600 12px/1.25 var(--font-ui);
   text-align: center;
 }
 
@@ -3400,17 +3400,17 @@ textarea {
 .puzzle-quick-stat span,
 .puzzle-streak-best {
   color: #77817b;
-  font: 600 11px/1.3 Inter, sans-serif;
+  font: 600 11px/1.3 var(--font-ui);
 }
 
 .puzzle-quick-stat-hint {
   color: #77817b;
-  font: 500 10px/1.25 Inter, sans-serif;
+  font: 500 10px/1.25 var(--font-ui);
 }
 
 .puzzle-quick-stat strong {
   color: #34483e;
-  font: 700 21px/1.15 Inter, sans-serif;
+  font: 700 21px/1.15 var(--font-ui);
   font-variant-numeric: tabular-nums;
 }
 
@@ -3421,7 +3421,7 @@ textarea {
 .puzzle-rewards-details {
   width: 100%;
   color: #68736c;
-  font: 500 10px/1.4 Inter, sans-serif;
+  font: 500 10px/1.4 var(--font-ui);
 }
 
 .puzzle-rewards-details summary {
@@ -3454,21 +3454,21 @@ textarea {
 
 .puzzle-mode-card-heading span {
   color: #80652f;
-  font: 700 9px/1.2 Inter, sans-serif;
+  font: 700 9px/1.2 var(--font-ui);
   letter-spacing: .09em;
   text-transform: uppercase;
 }
 
 .puzzle-mode-card-heading strong {
   color: #34483e;
-  font: 700 15px/1.25 Inter, sans-serif;
+  font: 700 15px/1.25 var(--font-ui);
 }
 
 .puzzle-mode-card p,
 .puzzle-mode-level,
 .puzzle-mode-difficulty {
   color: #68736c;
-  font: 500 12px/1.4 Inter, sans-serif;
+  font: 500 12px/1.4 var(--font-ui);
 }
 
 .puzzle-mode-card button {
@@ -3481,7 +3481,7 @@ textarea {
   background: rgba(255, 255, 255, .72);
   color: #594519;
   cursor: pointer;
-  font: 700 12px/1.25 Inter, sans-serif;
+  font: 700 12px/1.25 var(--font-ui);
 }
 
 .puzzle-mode-card button:hover {
@@ -3634,7 +3634,7 @@ textarea {
 
 .puzzle-promotion-dialog > p {
   color: #bdc4c0;
-  font: 500 12px/1.4 Inter, sans-serif;
+  font: 500 12px/1.4 var(--font-ui);
 }
 
 .puzzle-promotion-options {
@@ -3655,7 +3655,7 @@ textarea {
   background: rgba(255, 255, 255, .07);
   color: #f0d394;
   cursor: pointer;
-  font: 700 12px/1.2 Inter, sans-serif;
+  font: 700 12px/1.2 var(--font-ui);
   transition: background-color .15s ease, transform .15s ease, border-color .15s ease;
 }
 
@@ -3680,7 +3680,7 @@ textarea {
   background: transparent;
   color: #bdc4c0;
   cursor: pointer;
-  font: 600 12px/1.3 Inter, sans-serif;
+  font: 600 12px/1.3 var(--font-ui);
   text-decoration: underline;
   text-underline-offset: 3px;
 }
@@ -3730,7 +3730,7 @@ textarea {
 
 .puzzle-solved-text {
   color: #fff8e9;
-  font: 700 clamp(17px, 4vw, 22px)/1.25 Inter, sans-serif;
+  font: 700 clamp(17px, 4vw, 22px)/1.25 var(--font-ui);
   text-shadow: none;
 }
 
@@ -3749,13 +3749,13 @@ textarea {
 
 .puzzle-solved-streak {
   color: #ffbd74;
-  font: 700 14px/1.3 Inter, sans-serif;
+  font: 700 14px/1.3 var(--font-ui);
 }
 
 /* Подсказка об автопереключении под «Задача решена!». */
 .puzzle-solved-hint {
   color: #d1d9d5;
-  font: 500 12px/1.4 Inter, sans-serif;
+  font: 500 12px/1.4 var(--font-ui);
 }
 
 .puzzle-result {
@@ -4751,7 +4751,7 @@ textarea {
 }
 
 .training-variation-line {
-  font-family: "Cormorant Garamond", Georgia, serif;
+  font-family: var(--font-ui);
   font-size: 13px;
   letter-spacing: 0.02em;
   color: #555;
@@ -4782,7 +4782,7 @@ textarea {
 }
 
 .training-branch-banner-line {
-  font-family: "Cormorant Garamond", Georgia, serif;
+  font-family: var(--font-ui);
   font-size: 13px;
   color: #555;
 }
