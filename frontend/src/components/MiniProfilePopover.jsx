@@ -149,8 +149,12 @@ export default function MiniProfilePopover({
         <div className="mini-profile__arrow" aria-hidden="true" />
 
         <div className="mini-profile__heading">
-          <div className="mini-profile__avatar" aria-hidden="true">
-            {profile?.is_admin ? "♛" : "♟"}
+          <div className="mini-profile__avatar">
+            {profile?.avatar_url ? (
+              <img src={profile.avatar_url} alt="" />
+            ) : (
+              <span aria-hidden="true">{profile?.is_admin ? "♛" : "♟"}</span>
+            )}
           </div>
           <div className="mini-profile__identity">
             <strong>{profile?.login || user?.login || "Пользователь"}</strong>

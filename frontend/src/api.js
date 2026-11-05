@@ -42,6 +42,24 @@ export async function fetchCurrentUser() {
   return user;
 }
 
+export async function uploadAvatar(file) {
+  const form = new FormData();
+  form.append("file", file);
+  const { data } = await api.post("/api/avatars/me", form);
+  if (data?.user) {
+    localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+  }
+  return data?.user;
+}
+
+export async function deleteAvatar() {
+  const { data } = await api.delete("/api/avatars/me");
+  if (data?.user) {
+    localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+  }
+  return data?.user;
+}
+
 function saveAuth(data) {
   localStorage.setItem(TOKEN_KEY, data.access_token);
   localStorage.setItem(REFRESH_KEY, data.refresh_token);

@@ -31,6 +31,8 @@ class User(Base):
     puzzle_streak: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
     equipped_avatar_frame: Mapped[str | None] = mapped_column(String(64), nullable=True)
     equipped_profile_accent: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # Только серверное случайное имя перекодированного WebP, не исходное имя upload.
+    avatar_filename: Mapped[str | None] = mapped_column(String(80), nullable=True)
     # Сырые ответы онбординг-анкеты Q1-Q8. None - анкета ещё не заполнена
     # (по этому признаку фронтенд показывает плашку «Заполните анкету»).
     #
@@ -91,6 +93,10 @@ class User(Base):
             "puzzle_streak": int(self.puzzle_streak or 0),
             "equipped_avatar_frame": self.equipped_avatar_frame,
             "equipped_profile_accent": self.equipped_profile_accent,
+            "avatar_url": (
+                f"/api/avatars/{self.id}/{self.avatar_filename}"
+                if self.avatar_filename else None
+            ),
             # Наша анкета: сырой ответ (TopBar-плашка «Заполните анкету»
             # и OnboardingModal проверяют user.onboarding !== null).
             "onboarding": self.onboarding,

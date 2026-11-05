@@ -33,6 +33,7 @@ from backend.api_gateway.state import (
 )
 
 from backend.api_gateway.routes.game import router as game_router
+from backend.api_gateway.routes.avatar import router as avatar_router
 from backend.api_gateway.routes.analysis import router as analysis_router
 from backend.api_gateway.routes.knowledge import router as knowledge_router
 from backend.api_gateway.routes.data import router as data_router
@@ -102,6 +103,7 @@ app.add_middleware(
 
 # Подключаем маршруты, разбитые по доменам
 app.include_router(game_router)
+app.include_router(avatar_router)
 app.include_router(analysis_router)
 app.include_router(knowledge_router)
 app.include_router(data_router)

@@ -1,11 +1,13 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+  deleteAvatar,
   fetchCurrentUser,
   fetchLinkedChessAccounts,
   getAccessToken,
   linkChessAccount,
   unlinkChessAccount,
+  uploadAvatar,
 } from "../api.js";
 import ChessAccountsSection from "./ChessAccountsSection.jsx";
 import ProgressWidget from "./ProgressWidget.jsx";
@@ -187,6 +189,9 @@ export default function UserProfilePage({ user, onUserChange }) {
   const [profile, setProfile] = useState(user || null);
   const [loading, setLoading] = useState(Boolean(user));
   const [error, setError] = useState("");
+  const [avatarBusy, setAvatarBusy] = useState(false);
+  const [avatarNotice, setAvatarNotice] = useState(null);
+  const avatarInputRef = useRef(null);
 
   useEffect(() => {
     if (user) setProfile(user);
@@ -221,6 +226,63 @@ export default function UserProfilePage({ user, onUserChange }) {
     };
   }, [onUserChange]);
 
+  const handleAvatarFile = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || avatarBusy) return;
+
+    const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
+    if (!allowedTypes.has(file.type)) {
+      setAvatarNotice({ type: "error", text: "Выберите JPEG, PNG или WebP." });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setAvatarNotice({ type: "error", text: "Файл больше 5 МБ." });
+      return;
+    }
+
+    try {
+      setAvatarBusy(true);
+      setAvatarNotice(null);
+      const updated = await uploadAvatar(file);
+      setProfile(updated);
+      onUserChange?.(updated);
+      setAvatarNotice({ type: "ok", text: "Аватар обновлён." });
+    } catch (err) {
+      setAvatarNotice({
+        type: "error",
+        text:
+          err?.response?.data?.detail ||
+          err?.message ||
+          "Не удалось загрузить аватар.",
+      });
+    } finally {
+      setAvatarBusy(false);
+    }
+  };
+
+  const handleAvatarDelete = async () => {
+    if (avatarBusy || !profile?.avatar_url) return;
+    try {
+      setAvatarBusy(true);
+      setAvatarNotice(null);
+      const updated = await deleteAvatar();
+      setProfile(updated);
+      onUserChange?.(updated);
+      setAvatarNotice({ type: "ok", text: "Аватар удалён." });
+    } catch (err) {
+      setAvatarNotice({
+        type: "error",
+        text:
+          err?.response?.data?.detail ||
+          err?.message ||
+          "Не удалось удалить аватар.",
+      });
+    } finally {
+      setAvatarBusy(false);
+    }
+  };
+
   if (!profile && !loading) {
     return (
       <main className="user-profile-page">
@@ -234,8 +296,54 @@ export default function UserProfilePage({ user, onUserChange }) {
   return (
     <main className="user-profile-page">
       <section className={`user-profile-card user-profile-card--accent-${profile?.equipped_profile_accent || "default"}`}>
-        <div className={`user-profile-avatar user-profile-avatar--${profile?.equipped_avatar_frame || "default"}`} aria-hidden="true">
-          {profile?.is_admin ? "♛" : "♟"}
+        <div className="user-profile-avatar-editor">
+          <div className={`user-profile-avatar user-profile-avatar--${profile?.equipped_avatar_frame || "default"}`}>
+            {profile?.avatar_url ? (
+              <img
+                src={profile.avatar_url}
+                alt={`Аватар ${profile?.login || "пользователя"}`}
+              />
+            ) : (
+              <span aria-hidden="true">{profile?.is_admin ? "♛" : "♟"}</span>
+            )}
+          </div>
+
+          <input
+            ref={avatarInputRef}
+            className="user-profile-avatar-input"
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={handleAvatarFile}
+            disabled={avatarBusy}
+          />
+          <button
+            type="button"
+            className="user-profile-avatar-btn"
+            onClick={() => avatarInputRef.current?.click()}
+            disabled={avatarBusy}
+          >
+            {avatarBusy ? "Обработка…" : profile?.avatar_url ? "Изменить" : "Загрузить"}
+          </button>
+          {profile?.avatar_url && (
+            <button
+              type="button"
+              className="user-profile-avatar-btn user-profile-avatar-btn--remove"
+              onClick={handleAvatarDelete}
+              disabled={avatarBusy}
+            >
+              Удалить
+            </button>
+          )}
+          <small className="user-profile-avatar-hint">JPEG, PNG, WebP · до 5 МБ</small>
+          {avatarNotice && (
+            <small
+              className={`user-profile-avatar-notice ${
+                avatarNotice.type === "ok" ? "user-profile-avatar-notice--ok" : ""
+              }`}
+            >
+              {avatarNotice.text}
+            </small>
+          )}
         </div>
 
         <div className="user-profile-main">
