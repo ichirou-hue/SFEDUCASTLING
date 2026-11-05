@@ -194,7 +194,6 @@ export default function ProgressWidget() {
 
       {activeTopics.length > 0 ? (
         <div className="progress-widget__topics">
-          <div className="progress-widget__topics-title">Точность по темам курса</div>
           <div className="progress-topic-list">
             {activeTopics.map((topic) => (
               <div className="progress-topic" key={topic.slug}>

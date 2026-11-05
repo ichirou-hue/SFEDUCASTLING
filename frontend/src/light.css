@@ -665,3 +665,369 @@
 :root[data-theme="light"] .gigacoin-shop__retry:hover {
   background: rgba(169, 133, 63, 0.2);
 }
+
+/* =========================================================================
+   ЧАТ (ИГРА И ЗАДАЧИ)
+   -------------------------------------------------------------------------
+   Базовая панель чата полупрозрачная, и в светлой теме сквозь неё
+   просвечивал фон страницы: заголовок и поле ввода теряли контраст.
+   Делаем её такой же плотной бумажной карточкой, как остальные панели.
+   ========================================================================= */
+
+:root[data-theme="light"] .main-area > .chat-section,
+:root[data-theme="light"] .puzzle-chat-section {
+  border-color: rgba(160, 124, 54, 0.5);
+  background: linear-gradient(145deg, rgba(255, 253, 248, 0.97), rgba(249, 244, 233, 0.95));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    0 18px 44px rgba(48, 65, 52, 0.12);
+}
+
+:root[data-theme="light"] .chat-title-block h2,
+:root[data-theme="light"] .main-area > .chat-section .chat-title-block h2,
+:root[data-theme="light"] .puzzle-chat-section .chat-title-block h2 {
+  color: var(--lt-ink-strong);
+}
+
+:root[data-theme="light"] .chat-collapse-btn {
+  border-color: rgba(160, 124, 54, 0.4);
+  background: rgba(255, 253, 248, 0.85);
+  color: var(--lt-green);
+}
+
+:root[data-theme="light"] .chat-collapse-btn:hover {
+  border-color: rgba(160, 124, 54, 0.7);
+  background: #fffdf8;
+}
+
+:root[data-theme="light"] .chat-avatar-glyph {
+  border-color: rgba(160, 124, 54, 0.3);
+  background: var(--lt-gold-soft);
+  color: var(--lt-green);
+}
+
+/* Свёрнутый чат: та же бумага, что у развёрнутой панели. */
+:root[data-theme="light"] .chat-strip,
+:root[data-theme="light"] .chat-strip-chevron,
+:root[data-theme="light"] .chat-strip-title {
+  color: var(--lt-green);
+}
+
+:root[data-theme="light"] .chat-strip:hover {
+  background: var(--lt-gold-soft);
+}
+
+/* Скроллбар ленты сообщений - приглушённый зелёный вместо мятного. */
+:root[data-theme="light"] .chat-messages::-webkit-scrollbar-thumb {
+  background: rgba(63, 122, 81, 0.45);
+}
+
+:root[data-theme="light"] .chat-messages::-webkit-scrollbar-thumb:hover {
+  background: rgba(63, 122, 81, 0.65);
+}
+
+/* Пузырь ассистента: тёплая бумага на плотной панели. */
+:root[data-theme="light"] .chat-msg .msg-body,
+:root[data-theme="light"] .main-area > .chat-section .chat-msg .msg-body,
+:root[data-theme="light"] .puzzle-chat-section .chat-msg .msg-body {
+  border-color: rgba(160, 124, 54, 0.28);
+  background: linear-gradient(180deg, #fffdf8 0%, #f8f2e6 100%);
+  color: var(--lt-ink);
+  box-shadow: 0 2px 8px rgba(48, 65, 52, 0.06);
+}
+
+/* Своё сообщение - мягкая зелёная подложка. */
+:root[data-theme="light"] .chat-msg.user .msg-body,
+:root[data-theme="light"] .main-area > .chat-section .chat-msg.user .msg-body,
+:root[data-theme="light"] .puzzle-chat-section .chat-msg.user .msg-body {
+  border-color: rgba(63, 122, 81, 0.3);
+  background: linear-gradient(180deg, rgba(131, 183, 135, 0.3) 0%, rgba(131, 183, 135, 0.18) 100%);
+  color: #1f3f28;
+}
+
+:root[data-theme="light"] .chat-msg .msg-avatar {
+  border-color: rgba(160, 124, 54, 0.35);
+  background: #fffdf8;
+  color: var(--lt-green);
+}
+
+:root[data-theme="light"] .chat-msg .msg-avatar:not(.msg-avatar--ai) {
+  border-color: rgba(63, 122, 81, 0.28);
+  background: rgba(131, 183, 135, 0.22);
+  color: #24432a;
+}
+
+/* Заголовки Markdown: мятный на бумаге читался слишком бледно. */
+:root[data-theme="light"] .chat-msg .msg-body .msg-heading {
+  color: var(--lt-gold-strong);
+}
+
+:root[data-theme="light"] .chat-input-area input,
+:root[data-theme="light"] .main-area > .chat-section .chat-input-area input,
+:root[data-theme="light"] .puzzle-chat-section .chat-input-area input {
+  border-color: rgba(160, 124, 54, 0.32);
+  background: #fffdf8;
+  color: var(--lt-ink-strong);
+}
+
+:root[data-theme="light"] .chat-input-area input:focus,
+:root[data-theme="light"] .main-area > .chat-section .chat-input-area input:focus,
+:root[data-theme="light"] .puzzle-chat-section .chat-input-area input:focus {
+  border-color: var(--lt-green);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(63, 122, 81, 0.14);
+}
+
+:root[data-theme="light"] .chat-input-area input::placeholder {
+  color: var(--lt-muted-2);
+}
+
+:root[data-theme="light"] .chat-opening-btn {
+  border-color: rgba(160, 124, 54, 0.4);
+  background: rgba(255, 253, 248, 0.9);
+  color: var(--lt-ink);
+}
+
+:root[data-theme="light"] .chat-opening-btn:hover:not(:disabled) {
+  border-color: rgba(160, 124, 54, 0.7);
+  background: #fffdf8;
+  box-shadow: 0 2px 6px rgba(48, 65, 52, 0.08);
+}
+
+/* =========================================================================
+   РАЗБОР ПАРТИЙ
+   -------------------------------------------------------------------------
+   GameReviewPage.css написан на тёмных цветах, поэтому в светлой теме
+   страница целиком оставалась тёмной. Возвращаем её в общую палитру:
+   тёплая бумага, зелёные чернила и приглушённое золото.
+   ========================================================================= */
+
+:root[data-theme="light"] .review-page {
+  color: var(--lt-ink);
+  background-color: #f2ecdf;
+  background-image:
+    var(--lt-page-veil),
+    url("/backgrounds/training-rook.webp");
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-attachment: scroll;
+}
+
+:root[data-theme="light"] .review-heading h1 {
+  color: var(--lt-ink-strong);
+}
+
+:root[data-theme="light"] .review-kicker,
+:root[data-theme="light"] .review-back,
+:root[data-theme="light"] .review-game-info .review-game-open {
+  color: var(--lt-gold-strong);
+}
+
+:root[data-theme="light"] .review-heading p,
+:root[data-theme="light"] .review-empty,
+:root[data-theme="light"] .review-loading,
+:root[data-theme="light"] .review-player small,
+:root[data-theme="light"] .review-game-info span,
+:root[data-theme="light"] .review-stage span,
+:root[data-theme="light"] .review-practice p {
+  color: var(--lt-muted);
+}
+
+:root[data-theme="light"] .review-back:hover,
+:root[data-theme="light"] .review-back:focus-visible {
+  color: var(--lt-gold);
+}
+
+:root[data-theme="light"] .review-error {
+  color: #b3543a;
+}
+
+/* Карточки страницы: та же тёплая бумага, что у остальных панелей. */
+:root[data-theme="light"] .review-import,
+:root[data-theme="light"] .review-chart-panel,
+:root[data-theme="light"] .review-moves-panel,
+:root[data-theme="light"] .review-player,
+:root[data-theme="light"] .review-stage,
+:root[data-theme="light"] .review-loading,
+:root[data-theme="light"] .review-game-row,
+:root[data-theme="light"] .review-practice {
+  border-color: var(--lt-line-gold);
+  background: var(--lt-surface);
+  color: var(--lt-ink);
+  box-shadow: 0 10px 30px rgba(48, 65, 52, 0.07);
+}
+
+:root[data-theme="light"] .review-import h2,
+:root[data-theme="light"] .review-chart-panel h2,
+:root[data-theme="light"] .review-moves-panel h2 {
+  color: var(--lt-ink-strong);
+}
+
+/* Плашка загрузки - карточка, но текст в ней приглушённый. */
+:root[data-theme="light"] .review-loading {
+  color: var(--lt-muted);
+}
+
+:root[data-theme="light"] .review-player strong {
+  color: var(--lt-gold-strong);
+}
+
+:root[data-theme="light"] .review-player.is-selected {
+  border-color: var(--lt-gold);
+  box-shadow:
+    inset 0 0 0 1px var(--lt-line-gold),
+    0 10px 30px rgba(48, 65, 52, 0.08);
+}
+
+/* Строка архива партий. */
+:root[data-theme="light"] .review-game-row {
+  color: var(--lt-ink);
+}
+
+:root[data-theme="light"] .review-game-row:hover,
+:root[data-theme="light"] .review-game-row:focus-visible {
+  border-color: var(--lt-gold);
+  background: linear-gradient(145deg, #fffefa, #f7f1e4);
+}
+
+:root[data-theme="light"] .review-game-info strong {
+  color: var(--lt-ink-strong);
+}
+
+/* Полоса прогресса разбора. */
+:root[data-theme="light"] .review-stage strong {
+  color: var(--lt-ink-strong);
+}
+
+:root[data-theme="light"] .review-stage-track {
+  background: #e7e0d0;
+}
+
+:root[data-theme="light"] .review-stage-track span {
+  background: var(--lt-green);
+}
+
+/* Бейджи оценок: светлые подложки и контрастный текст. */
+:root[data-theme="light"] .review-grade {
+  border-color: rgba(48, 82, 61, 0.16);
+  background: #f1ede3;
+  color: var(--lt-ink);
+}
+
+:root[data-theme="light"] .review-grade--best {
+  border-color: rgba(73, 148, 94, 0.35);
+  background: #e4f4e7;
+  color: #27623b;
+}
+
+:root[data-theme="light"] .review-grade--excellent {
+  border-color: rgba(74, 143, 181, 0.35);
+  background: #e6f3fa;
+  color: #255e7d;
+}
+
+:root[data-theme="light"] .review-grade--good {
+  border-color: rgba(73, 148, 94, 0.28);
+  background: #e9f4ea;
+  color: #2d6643;
+}
+
+:root[data-theme="light"] .review-grade--inaccuracy {
+  border-color: rgba(184, 148, 60, 0.35);
+  background: #fbf1d5;
+  color: #7b5911;
+}
+
+:root[data-theme="light"] .review-grade--mistake {
+  border-color: rgba(196, 119, 74, 0.35);
+  background: #fae8dc;
+  color: #8c4a1e;
+}
+
+:root[data-theme="light"] .review-grade--blunder {
+  border-color: rgba(190, 87, 91, 0.4);
+  background: #fbe4e5;
+  color: #97383c;
+}
+
+:root[data-theme="light"] .review-grade--decided {
+  background: #ecece5;
+  color: #54625b;
+}
+
+:root[data-theme="light"] .review-grade--unscored {
+  background: #f0f1ec;
+  color: #6c7873;
+}
+
+/* График оценки. */
+:root[data-theme="light"] .review-chart-zero {
+  stroke: #b6c1b9;
+}
+
+:root[data-theme="light"] .review-chart-line {
+  stroke: #4d8f63;
+}
+
+:root[data-theme="light"] .review-chart-point {
+  fill: var(--lt-gold);
+}
+
+/* Список ходов. */
+:root[data-theme="light"] .review-move {
+  border-color: transparent;
+  background: #f7f3ea;
+  color: var(--lt-ink);
+}
+
+:root[data-theme="light"] .review-move:hover {
+  background: #f1e9d8;
+}
+
+:root[data-theme="light"] .review-move.is-selected {
+  border-color: var(--lt-gold);
+  background: #efe4cd;
+}
+
+:root[data-theme="light"] .review-move.is-selected .review-move-grade {
+  filter: none;
+}
+
+/* Кнопки страницы: золото светлой темы. */
+:root[data-theme="light"] .review-import button,
+:root[data-theme="light"] .review-navigation button {
+  background: #c9a96e;
+  color: #23302a;
+}
+
+:root[data-theme="light"] .review-import button:hover:not(:disabled),
+:root[data-theme="light"] .review-navigation button:hover:not(:disabled) {
+  background: #b89a5e;
+}
+
+:root[data-theme="light"] .review-practice button {
+  border-color: var(--lt-line-gold);
+  background: var(--lt-gold-soft);
+  color: var(--lt-gold-strong);
+}
+
+:root[data-theme="light"] .review-practice button:hover:not(:disabled) {
+  background: rgba(169, 133, 63, 0.2);
+}
+
+/* Список локальных партий (используется в форме импорта). */
+:root[data-theme="light"] .review-local-games button {
+  border-color: var(--lt-line-gold);
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--lt-ink);
+}
+
+:root[data-theme="light"] .review-local-games button.is-selected {
+  border-color: var(--lt-gold);
+  box-shadow: 0 0 0 1px var(--lt-gold);
+}
+
+:root[data-theme="light"] .review-local-games span {
+  color: var(--lt-muted);
+}

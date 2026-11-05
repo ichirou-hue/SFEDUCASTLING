@@ -114,7 +114,6 @@ function LinkedAccountsSection() {
     <section className="user-profile-section">
       <div className="user-profile-section-heading">
         <div>
-          <div className="user-profile-kicker">Шахматный профиль</div>
           <h2>Привязанные аккаунты</h2>
         </div>
         <p>Привяжите публичный профиль Lichess или Chess.com.</p>
@@ -417,7 +416,6 @@ export default function UserProfilePage({ user, onUserChange }) {
       <section className="user-profile-rating-section">
         <div className="user-profile-section-heading">
           <div>
-            <div className="user-profile-kicker">Ваш результат</div>
             <h2>Прогресс уровня</h2>
           </div>
           <p>Путь от текущего уровня к следующему по рейтингу.</p>
@@ -429,7 +427,6 @@ export default function UserProfilePage({ user, onUserChange }) {
       <section className="user-profile-progress-section">
         <div className="user-profile-section-heading">
           <div>
-            <div className="user-profile-kicker">Обучение</div>
             <h2>Прогресс</h2>
           </div>
           <p>

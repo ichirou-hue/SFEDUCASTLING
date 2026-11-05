@@ -39,15 +39,6 @@
   font-size: 24px;
 }
 
-.progress-widget__kicker,
-.progress-widget__topics-title {
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #4f765e;
-}
-
 .progress-widget__streak {
   display: flex;
   align-items: center;

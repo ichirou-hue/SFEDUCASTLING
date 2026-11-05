@@ -412,12 +412,6 @@
   color: var(--profile-ink);
 }
 
-:root[data-theme="dark"] .user-profile-page .user-profile-kicker,
-:root[data-theme="dark"] .user-profile-page .progress-widget__kicker,
-:root[data-theme="dark"] .user-profile-page .progress-widget__topics-title {
-  color: var(--profile-gold);
-}
-
 :root[data-theme="dark"] .user-profile-page .user-profile-section-heading p,
 :root[data-theme="dark"] .user-profile-page .user-profile-muted {
   color: var(--profile-muted);

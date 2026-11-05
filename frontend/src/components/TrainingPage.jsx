@@ -12,6 +12,7 @@ import {
 } from "../api.js";
 import SiteFooter from "./SiteFooter.jsx";
 import RatingBandProgress from "./RatingBandProgress.jsx";
+import { getCheckState, getKingCheckStyle } from "../chessStatus.js";
 import "./LearningCrossLinks.css";
 
 const PIECE_IMAGES = {
@@ -136,6 +137,7 @@ export default function TrainingPage({ user, onRegister }) {
   // Свой id доски - иначе доски делят один dnd-менеджер и мини-доски
   // рисуют у курсора чужую перетаскиваемую фигуру (см. Chessboard.jsx).
   const boardId = useId();
+  const dueModalTitleId = useId();
 
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -144,7 +146,8 @@ export default function TrainingPage({ user, onRegister }) {
 
   const [modules, setModules] = useState([]);
   const [dueItems, setDueItems] = useState([]);
-  const [duePanelOpen, setDuePanelOpen] = useState(false);
+  // Слаг модуля, для которого открыто окно повторений. null - окно закрыто.
+  const [dueModalSlug, setDueModalSlug] = useState(null);
   // Прогресс курса: modules.items[] несёт счётчики заданий по каждому
   // модулю и его урокам. Грузится отдельно от списка модулей, потому что
   // требует JWT и считается по training_attempts.
@@ -183,6 +186,7 @@ export default function TrainingPage({ user, onRegister }) {
   // заново (первый клик «съедается», срабатывает только второй).
   // С этим ref stale-рендер пропускается: слаг равен отображаемому.
   const displayedSlugRef = useRef(null);
+  const dueModalCloseRef = useRef(null);
 
   // Память скролла: три ветки рендера (grid/lessons/lesson) - три разных
   // DOM-узла, при переходе контейнер перемонтируется и scrollTop слетает
@@ -219,6 +223,11 @@ export default function TrainingPage({ user, onRegister }) {
     commonTasks.every((task) => solvedTaskIds.has(task.id));
 
   const currentTask = visibleTasks[taskIndex] || null;
+  const boardPosition = boardFen || currentTask?.fen || null;
+  const checkState = useMemo(
+    () => getCheckState(boardPosition),
+    [boardPosition],
+  );
   // Следим за конкретным пользователем, а не за объектом целиком:
   // обновление профиля (идентичный id) не должно перезагружать курс.
   const userId = user?.id ?? null;
@@ -231,6 +240,29 @@ export default function TrainingPage({ user, onRegister }) {
     }
     return map;
   }, [progress]);
+
+  // Просроченные повторения, разложенные по модулям: на карточке модуля
+  // показываем красный «!» только там, где действительно есть что повторять.
+  const dueByModuleSlug = useMemo(() => {
+    const map = new Map();
+    for (const item of dueItems) {
+      const slug = item?.module?.slug;
+      if (!slug) continue;
+      const list = map.get(slug);
+      if (list) list.push(item);
+      else map.set(slug, [item]);
+    }
+    return map;
+  }, [dueItems]);
+
+  const dueModalItems = dueModalSlug
+    ? dueByModuleSlug.get(dueModalSlug) || []
+    : [];
+  const dueModalModule = dueModalSlug
+    ? modules.find((module) => module.slug === dueModalSlug) ||
+      dueModalItems[0]?.module ||
+      null
+    : null;
 
   // Конь-маршрутчик на тропинке модулей: сидит над первым непройденным
   // модулем (изначально - над первым). Когда модуль закрывается, конь
@@ -373,7 +405,7 @@ export default function TrainingPage({ user, onRegister }) {
 
     async function loadDue() {
       try {
-        const data = await fetchTrainingDue(20);
+        const data = await fetchTrainingDue(100);
         if (!cancelled) setDueItems(data.items || []);
       } catch {
         // Просроченные повторения - вспомогательная секция:
@@ -398,6 +430,7 @@ export default function TrainingPage({ user, onRegister }) {
       // входа останутся старые данные (пустой список или гостевой 401).
       setModules([]);
       setDueItems([]);
+      setDueModalSlug(null);
       setProgress(null);
       setSelectedModule(null);
       setLessons([]);
@@ -415,8 +448,12 @@ export default function TrainingPage({ user, onRegister }) {
     loadProgress();
 
     // После каждого верного ответа страница сама шлёт это событие -
-    // перечитываем прогресс, чтобы бары обновились без перезахода.
-    const refreshProgress = () => loadProgress();
+    // перечитываем прогресс и повторения, чтобы бары и значки обновились
+    // без перезахода.
+    const refreshProgress = () => {
+      loadProgress();
+      loadDue();
+    };
     window.addEventListener("sfedu-progress-updated", refreshProgress);
 
     return () => {
@@ -424,6 +461,33 @@ export default function TrainingPage({ user, onRegister }) {
       window.removeEventListener("sfedu-progress-updated", refreshProgress);
     };
   }, [userId]);
+
+  // Окно повторений: закрытие по Escape, блокировка прокрутки страницы
+  // под оверлеем и фокус на кнопке закрытия.
+  useEffect(() => {
+    if (!dueModalSlug) return undefined;
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") setDueModalSlug(null);
+    };
+    document.addEventListener("keydown", handleKeyDown);
+
+    const page = pageRef.current;
+    const previousOverflow = page?.style.overflowY;
+    if (page) page.style.overflowY = "hidden";
+    dueModalCloseRef.current?.focus();
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      if (page) page.style.overflowY = previousOverflow || "";
+    };
+  }, [dueModalSlug]);
+
+  // Повторение могло быть выполнено, пока окно открыто: если список
+  // опустел, закрываем окно, чтобы не осталось пустой модалки.
+  useEffect(() => {
+    if (dueModalSlug && dueModalItems.length === 0) setDueModalSlug(null);
+  }, [dueModalSlug, dueModalItems.length]);
 
   useEffect(() => {
     const updateSize = () => {
@@ -598,7 +662,7 @@ export default function TrainingPage({ user, onRegister }) {
       }
 
       displayedSlugRef.current = moduleSlug;
-      setDuePanelOpen(false);
+      setDueModalSlug(null);
       navigate(`/training?module=${encodeURIComponent(moduleSlug)}`);
       saveBranchScroll("grid");
       branchScrollRef.current.lesson = 0;
@@ -927,9 +991,21 @@ export default function TrainingPage({ user, onRegister }) {
       }
     }
 
+    /*
+     * Шах рисуем поверх остальной подсветки: король должен быть
+     * заметен и на клетке-источнике задания, и на последнем ходе.
+     */
+    if (checkState.kingSquare) {
+      styles[checkState.kingSquare] = {
+        ...(styles[checkState.kingSquare] || {}),
+        ...getKingCheckStyle(checkState.isCheckmate),
+      };
+    }
+
     return styles;
   }, [
     boardFen,
+    checkState,
     currentTask?.fen,
     currentTask?.source_square,
     legalMovesForSelected,
@@ -1029,193 +1105,211 @@ export default function TrainingPage({ user, onRegister }) {
 
     return (
       <div
-        className={`training-page training-page--grid training-page--grid-with-due${
-          duePanelOpen ? " training-page--due-open" : ""
-        }`}
+        className="training-page training-page--course"
         ref={pageRef}
       >
-        <main className="training-course-main">
-        <section className="training-hero">
-          <div className="training-kicker">Учебный режим</div>
-          <h1>Обучение шахматам</h1>
-          <p>
-            Изучайте особенности каждой фигуры последовательно: сначала теория,
-            затем интерактивные задания на шахматной доске.
-          </p>
-          <RatingBandProgress userId={userId} />
+        <div className="training-course-layout">
+          <main className="training-course-main">
+            <section className="training-hero">
+              <div className="training-kicker">Учебный режим</div>
+              <h1>Обучение шахматам</h1>
+              <p>
+                Изучайте особенности каждой фигуры последовательно: сначала теория,
+                затем интерактивные задания на шахматной доске.
+              </p>
+              <RatingBandProgress userId={userId} />
 
-          {course && course.total > 0 && (
-            <div className="training-course-progress">
-              <div className="training-course-progress__head">
-                <span>
-                  Пройдено модулей: {course.completed} из {course.total}
-                </span>
-                <strong>{Math.round(course.percent)}%</strong>
-              </div>
-              <ProgressBar
-                value={course.percent}
-                label={`Прогресс курса: ${Math.round(course.percent)}%`}
-              />
-            </div>
-          )}
-        </section>
-
-        {error && <div className="training-global-error">{error}</div>}
-
-        <div className="training-modules-path" ref={modulesPathRef}>
-          {modules.map((module, index) => {
-            const moduleProgress = moduleProgressBySlug.get(module.slug);
-
-            return (
-              <button
-                type="button"
-                key={module.id}
-                ref={(el) => {
-                  if (el) moduleNodeRefs.current.set(module.id, el);
-                  else moduleNodeRefs.current.delete(module.id);
-                }}
-                className={`training-module-node training-module-node--${
-                  index % 2 === 0 ? "left" : "right"
-                } ${module.enabled ? "" : "training-module-node--disabled"} ${
-                  module.locked ? "training-module-node--locked" : ""
-                }`}
-                onClick={() => {
-                  if (!module.enabled) return;
-                  if (module.locked) {
-                    setError(
-                      user?.elo == null
-                        ? `Модуль откроется после теста уровня: нужен рейтинг Elo ${module.required_elo} и выше.`
-                        : `Модуль откроется при рейтинге Elo ${module.required_elo} и выше.`,
-                    );
-                    return;
-                  }
-                  navigate(
-                    `/training?module=${encodeURIComponent(module.slug)}`,
-                  );
-                }}
-                disabled={!module.enabled || module.locked}
-                title={
-                  module.locked ? lockedModuleHint(module) : undefined
-                }
-              >
-                <span className="training-module-node-icon" aria-hidden="true">
-                  {MODULE_ICONS[module.slug] || "♟"}
-                </span>
-                <span className="training-module-node-main">
-                  <span className="training-module-node-title">{module.title}</span>
-                  {module.level_label && (
-                    <span className="training-module-level">
-                      Уровень {module.level_label}
+              {course && course.total > 0 && (
+                <div className="training-course-progress">
+                  <div className="training-course-progress__head">
+                    <span>
+                      Пройдено модулей: {course.completed} из {course.total}
                     </span>
-                  )}
-                  <span className="training-module-node-description">
-                    {module.description}
-                  </span>
-
-                  {module.enabled && !module.locked && moduleProgress && (
-                    <span className="training-module-progress">
-                      <span className="training-module-progress__head">
-                        <span>
-                          {moduleProgress.tasks_solved} из{" "}
-                          {moduleProgress.tasks_total} заданий
-                        </span>
-                        <strong>{Math.round(moduleProgress.percent)}%</strong>
-                      </span>
-                      <ProgressBar
-                        value={moduleProgress.percent}
-                        label={`${module.title}: ${Math.round(moduleProgress.percent)}%`}
-                      />
-                    </span>
-                  )}
-
-                  {/* Счётчик уроков и заданий дублировал строку прогресса
-                      выше, поэтому плашку с ним убрали. Для ещё не
-                      открытых модулей оставляем статус «Скоро». */}
-                  {!module.enabled && (
-                    <span className="training-module-meta">Скоро</span>
-                  )}
-                  {module.enabled && module.locked && (
-                    <span className="training-module-meta training-module-meta--locked">
-                      🔒 {lockedModuleHint(module)}
-                    </span>
-                  )}
-                </span>
-              </button>
-            );
-          })}
-          {knightPos && (
-            <div
-              className={`training-knight-rider${
-                knightInstant ? " training-knight-rider--instant" : ""
-              }`}
-              style={{ top: knightPos.top, left: knightPos.left }}
-              aria-hidden="true"
-            >
-              <span className="training-knight-hop" key={knightHops}>
-                <span className="training-knight-glyph">♘</span>
-              </span>
-            </div>
-          )}
-        </div>
-        </main>
-
-        <aside
-          className={`training-due-rail ${
-            duePanelOpen ? "training-due-rail--open" : "training-due-rail--collapsed"
-          }`}
-          aria-label="Интервальные повторения"
-        >
-          <button
-            type="button"
-            className="training-due-toggle"
-            aria-expanded={duePanelOpen}
-            aria-controls="training-due-panel"
-            aria-label={`${duePanelOpen ? "Скрыть" : "Показать"} задания для повторения: ${dueItems.length}`}
-            title="Задания для повторения"
-            onClick={() => setDuePanelOpen((open) => !open)}
-          >
-            <span className="training-due-toggle-icon" aria-hidden="true">🔁</span>
-            <span className="training-due-toggle-label">Повторения</span>
-            <span className="training-due-toggle-count">{dueItems.length}</span>
-            <span className="training-due-toggle-chevron" aria-hidden="true">
-              {duePanelOpen ? "−" : "+"}
-            </span>
-          </button>
-
-          {duePanelOpen && (
-            <section className="training-due-panel" id="training-due-panel">
-              <div className="training-due-heading">
-                <strong>Пора повторить: {formatTaskCount(dueItems.length)}</strong>
-                <span>Повторите задания, чтобы закрепить материал.</span>
-              </div>
-              {dueItems.length > 0 ? (
-                <div className="training-due-list">
-                  {dueItems.map((item) => (
-                    <button
-                      type="button"
-                      key={item.review.id}
-                      className="training-due-card"
-                      onClick={() => openDueItem(item)}
-                    >
-                      <span className="training-due-card-main">
-                        <strong>{item.task.title}</strong>
-                        <span>
-                          {item.module.title} · {item.lesson.title}
-                        </span>
-                      </span>
-                      <span className="training-due-card-meta">
-                        повторений: {item.review.reps}
-                      </span>
-                      <span className="training-due-card-arrow" aria-hidden="true">→</span>
-                    </button>
-                  ))}
+                    <strong>{Math.round(course.percent)}%</strong>
+                  </div>
+                  <ProgressBar
+                    value={course.percent}
+                    label={`Прогресс курса: ${Math.round(course.percent)}%`}
+                  />
                 </div>
-              ) : (
-                <p className="training-due-empty">Сейчас нет заданий для повтора.</p>
               )}
             </section>
-          )}
-        </aside>
+
+            {error && <div className="training-global-error">{error}</div>}
+
+            <div className="training-modules-path" ref={modulesPathRef}>
+              {modules.map((module, index) => {
+                const moduleProgress = moduleProgressBySlug.get(module.slug);
+                const moduleDueItems = dueByModuleSlug.get(module.slug) || [];
+                const side = index % 2 === 0 ? "left" : "right";
+
+                return (
+                  <div
+                    key={module.id}
+                    ref={(el) => {
+                      if (el) moduleNodeRefs.current.set(module.id, el);
+                      else moduleNodeRefs.current.delete(module.id);
+                    }}
+                    className={`training-module-node-shell training-module-node-shell--${side}`}
+                  >
+                    {/*
+                     * Закрытый модуль виден в программе курса, но не
+                     * открывается: доступ задаёт Elo-корзина пользователя.
+                     * Подсказку объясняем в title и в плашке внутри.
+                     */}
+                    <button
+                      type="button"
+                      className={`training-module-node training-module-node--${side} ${
+                        module.enabled ? "" : "training-module-node--disabled"
+                      } ${module.locked ? "training-module-node--locked" : ""}`}
+                      onClick={() => {
+                        if (!module.enabled) return;
+                        if (module.locked) {
+                          setError(
+                            user?.elo == null
+                              ? `Модуль откроется после теста уровня: нужен рейтинг Elo ${module.required_elo} и выше.`
+                              : `Модуль откроется при рейтинге Elo ${module.required_elo} и выше.`,
+                          );
+                          return;
+                        }
+                        navigate(
+                          `/training?module=${encodeURIComponent(module.slug)}`,
+                        );
+                      }}
+                      disabled={!module.enabled || module.locked}
+                      title={
+                        module.locked ? lockedModuleHint(module) : undefined
+                      }
+                    >
+                      <span className="training-module-node-icon" aria-hidden="true">
+                        {MODULE_ICONS[module.slug] || "♟"}
+                      </span>
+                      <span className="training-module-node-main">
+                        <span className="training-module-node-title">{module.title}</span>
+                        {module.level_label && (
+                          <span className="training-module-level">
+                            Уровень {module.level_label}
+                          </span>
+                        )}
+                        <span className="training-module-node-description">
+                          {module.description}
+                        </span>
+
+                        {module.enabled && !module.locked && moduleProgress && (
+                          <span className="training-module-progress">
+                            <span className="training-module-progress__head">
+                              <span>
+                                {moduleProgress.tasks_solved} из{" "}
+                                {moduleProgress.tasks_total} заданий
+                              </span>
+                              <strong>{Math.round(moduleProgress.percent)}%</strong>
+                            </span>
+                            <ProgressBar
+                              value={moduleProgress.percent}
+                              label={`${module.title}: ${Math.round(moduleProgress.percent)}%`}
+                            />
+                          </span>
+                        )}
+
+                        {/* Счётчик уроков и заданий дублировал строку прогресса
+                            выше, поэтому плашку с ним убрали. Для ещё не
+                            открытых модулей оставляем статус «Скоро». */}
+                        {!module.enabled && (
+                          <span className="training-module-meta">Скоро</span>
+                        )}
+                        {module.enabled && module.locked && (
+                          <span className="training-module-meta training-module-meta--locked">
+                            🔒 {lockedModuleHint(module)}
+                          </span>
+                        )}
+                      </span>
+                    </button>
+
+                    {module.enabled && moduleDueItems.length > 0 && (
+                      <button
+                        type="button"
+                        className="training-module-due-badge"
+                        onClick={() => setDueModalSlug(module.slug)}
+                        aria-label={`Повторить по модулю «${module.title}»: ${formatTaskCount(
+                          moduleDueItems.length,
+                        )}`}
+                        title={`Пора повторить: ${formatTaskCount(moduleDueItems.length)}`}
+                      >
+                        <span aria-hidden="true">!</span>
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+              {knightPos && (
+                <div
+                  className={`training-knight-rider${
+                    knightInstant ? " training-knight-rider--instant" : ""
+                  }`}
+                  style={{ top: knightPos.top, left: knightPos.left }}
+                  aria-hidden="true"
+                >
+                  <span className="training-knight-hop" key={knightHops}>
+                    <span className="training-knight-glyph">♘</span>
+                  </span>
+                </div>
+              )}
+            </div>
+          </main>
+        </div>
+
+        {dueModalSlug && dueModalItems.length > 0 && (
+          <div
+            className="training-due-modal"
+            onClick={() => setDueModalSlug(null)}
+          >
+            <section
+              className="training-due-modal-card"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby={dueModalTitleId}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <button
+                type="button"
+                className="training-due-modal-close"
+                onClick={() => setDueModalSlug(null)}
+                aria-label="Закрыть окно повторений"
+                ref={dueModalCloseRef}
+              >
+                ✕
+              </button>
+
+              <div className="training-due-modal-head">
+                <span className="training-due-modal-kicker">Пора повторить</span>
+                <h2 id={dueModalTitleId}>{dueModalModule?.title}</h2>
+                <p>
+                  {formatTaskCount(dueModalItems.length)} ждут повторения.
+                  Это займёт пару минут.
+                </p>
+              </div>
+
+              <div className="training-due-modal-list">
+                {dueModalItems.map((item) => (
+                  <button
+                    type="button"
+                    key={item.review.id}
+                    className="training-due-card"
+                    onClick={() => openDueItem(item)}
+                  >
+                    <span className="training-due-card-main">
+                      <strong>{item.task.title}</strong>
+                      <span>
+                        {item.module.title} · {item.lesson.title}
+                      </span>
+                    </span>
+                    <span className="training-due-card-arrow" aria-hidden="true">→</span>
+                  </button>
+                ))}
+              </div>
+            </section>
+          </div>
+        )}
 
         <SiteFooter />
       </div>
@@ -1483,7 +1577,7 @@ export default function TrainingPage({ user, onRegister }) {
             <div className="training-board-wrapper" data-logo-anchor>
               <ReactChessboard
                 id={boardId}
-                position={boardFen || currentTask.fen}
+                position={boardPosition || currentTask.fen}
                 onPieceDrop={handlePieceDrop}
                 onSquareClick={handleSquareClick}
                 boardWidth={boardWidth}
@@ -1492,7 +1586,7 @@ export default function TrainingPage({ user, onRegister }) {
                 showBoardNotation={true}
                 customNotationStyle={{
                   fontSize: "12px",
-                  fontFamily: "Inter, sans-serif",
+                  fontFamily: "var(--font-ui)",
                   fontWeight: "500",
                   color: "#4a3220",
                 }}
