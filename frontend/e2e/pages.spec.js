@@ -6,7 +6,7 @@ for (const path of ['/', '/play', '/puzzles', '/training', '/review']) {
   await page.route('**/api/**', route => route.fulfill({status:401,contentType:'application/json',body:'{"detail":"Not authenticated"}'}));
   await page.goto(path);
   await expect(page.locator('#root')).not.toBeEmpty();
-  await expect(page.locator('body')).toContainText(/GIGA|»г|¬ход|шахмат/i);
+  await expect(page.locator('a[href="/play"]').first()).toBeVisible();
   await page.screenshot({path:testInfo.outputPath('page.png'),fullPage:true});
   expect(errors).toEqual([]);
  });
