@@ -72,9 +72,34 @@ jobs:
         working-directory: frontend
         run: npm ci
 
+      - name: Test frontend behavior
+        working-directory: frontend
+        run: npm test
+
       - name: Build frontend
         working-directory: frontend
         run: npm run build
+
+      - name: Install browser
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Browser tests on desktop and mobile
+        working-directory: frontend
+        run: npm run test:e2e
+
+      - name: Preserve browser screenshots and failure traces
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: frontend-browser-results-${{ github.sha }}
+          path: |
+            frontend/test-results
+            frontend/playwright-report
+          retention-days: 7
+
+      - name: Stamp release and frontend hashes
+        run: python scripts/release_manifest.py
 
       - name: Assemble deployable source bundle
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'

@@ -1,5 +1,8 @@
 """Readiness endpoint for load balancers and deployment checks."""
 
+import json
+from pathlib import Path
+
 from fastapi import APIRouter, HTTPException
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
@@ -18,4 +21,8 @@ async def health_check() -> dict[str, str]:
     except SQLAlchemyError as exc:
         raise HTTPException(status_code=503, detail="Database unavailable") from exc
 
-    return {"status": "ok"}
+    manifest = Path(__file__).resolve().parents[3] / "release.json"
+    result = {"status": "ok"}
+    if manifest.is_file():
+        result["sha"] = json.loads(manifest.read_text())["sha"]
+    return result
