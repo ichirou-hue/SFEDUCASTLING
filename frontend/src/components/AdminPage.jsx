@@ -98,7 +98,7 @@ export default function AdminPage({ user, onUserChange }) {
     loadUsers();
   }, [loadUsers]);
 
-  // Дашборд считается на клиенте из списка пользователей — отдельный эндпоинт не нужен.
+  // Дашборд считается на клиенте из списка пользователей - отдельный эндпоинт не нужен.
   const dashboard = useMemo(() => {
     const total = users.length;
     const admins = users.filter((u) => u.role === "admin").length;
@@ -183,7 +183,7 @@ export default function AdminPage({ user, onUserChange }) {
             ? { ...prev, user: { ...prev.user, ...updated } }
             : prev,
         );
-        // Сменили роль сами себе — обновляем глобальный user в app.jsx.
+        // Сменили роль сами себе - обновляем глобальный user в app.jsx.
         if (updated.id === currentUserId) {
           onUserChange?.(updated);
         }
@@ -464,7 +464,7 @@ export default function AdminPage({ user, onUserChange }) {
                   <section className="admin-card">
                     <h3>Сильные и слабые темы</h3>
                     {(() => {
-                      // Показываем только настоящие темы — подтверждённые
+                      // Показываем только настоящие темы - подтверждённые
                       // попытками. Без истории бэкенд присылает фабрикат
                       // (см. rank_topic_profile), его прячем.
                       const observed = (t) => t.observed || (t.attempts || 0) > 0;

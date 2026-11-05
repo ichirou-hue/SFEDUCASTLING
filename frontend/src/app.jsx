@@ -11,6 +11,7 @@ import RegisterModal from "./components/RegisterModal.jsx";
 import OnboardingModal from "./components/OnboardingModal.jsx";
 import PuzzlesPage from "./components/PuzzlesPage.jsx";
 import TrainingPage from "./components/TrainingPage.jsx";
+import GameReviewPage from "./components/GameReviewPage.jsx";
 import UserProfilePage from "./components/UserProfilePage.jsx";
 import GigacoinShopPage from "./components/GigacoinShopPage.jsx";
 import AdminPage from "./components/AdminPage.jsx";
@@ -63,6 +64,26 @@ function OAuthCallbackPage({ onSuccess }) {
   );
 }
 
+const EVAL_MODE_KEY = "sfedu-eval-mode";
+
+function readEvalMode() {
+  try {
+    return window.localStorage.getItem(EVAL_MODE_KEY) === "engine"
+      ? "engine"
+      : "material";
+  } catch {
+    return "material";
+  }
+}
+
+function storeEvalMode(mode) {
+  try {
+    window.localStorage.setItem(EVAL_MODE_KEY, mode);
+  } catch {
+    // Приватный режим браузера: настройка просто не запомнится.
+  }
+}
+
 function MainPage({ user }) {
   const boardRef = useRef(null);
   const [boardState, setBoardState] = useState({
@@ -77,7 +98,24 @@ function MainPage({ user }) {
     maiaVictory: null,
     hintMessage: null,
     isComparing: false,
+    sidePickerOpen: true,
+    levelLocked: false,
   });
+
+  /*
+   * Режим шкалы у доски: материальный перевес или оценка движка.
+   * Выбор запоминаем в браузере - это личная настройка показа,
+   * а не данные пользователя, поэтому server-side хранение не нужно.
+   */
+  const [evalMode, setEvalMode] = useState(readEvalMode);
+
+  const toggleEvalMode = () => {
+    setEvalMode((current) => {
+      const next = current === "engine" ? "material" : "engine";
+      storeEvalMode(next);
+      return next;
+    });
+  };
 
   /*
    * Чат можно свернуть в узкую полосу - тогда освободившаяся ширина
@@ -108,6 +146,7 @@ function MainPage({ user }) {
             maiaRating={boardState.maiaRating}
             userRating={user?.elo || undefined}
             onNavigate={(dir) => boardRef.current?.onNavigate(dir)}
+            navigationDisabled={boardState.sidePickerOpen}
             fen={boardState.fen}
             onLoadFen={(nextFen) =>
               boardRef.current?.loadFen?.(nextFen) ?? false
@@ -118,12 +157,25 @@ function MainPage({ user }) {
             userId={user?.id}
             currentLevel={boardState.maiaRating}
             lastWin={boardState.maiaVictory}
+            levelLocked={boardState.levelLocked}
             onSelectLevel={(level) => boardRef.current?.setMaiaLevel?.(level)}
           />
         </div>
         <div className="board-stage">
-          <EvalBar diff={boardState.materialDiff} flipped={boardState.boardFlipped} height={boardState.boardHeight} />
-          <ChessboardComponent ref={boardRef} onStateChange={setBoardState} chatCollapsed={chatCollapsed} />
+          <EvalBar
+            diff={boardState.materialDiff}
+            engineEval={boardState.evalScore}
+            mode={evalMode}
+            flipped={boardState.boardFlipped}
+            height={boardState.boardHeight}
+          />
+          <ChessboardComponent
+            ref={boardRef}
+            onStateChange={setBoardState}
+            chatCollapsed={chatCollapsed}
+            evalMode={evalMode}
+            onToggleEvalMode={toggleEvalMode}
+          />
         </div>
         <ChatPanel
           hintMessage={boardState.hintMessage}
@@ -229,7 +281,7 @@ function HomePage({ user, onRegister, onOpenOnboarding }) {
               <span className="home-stats-guest__mark" aria-hidden="true">♞</span>
               <div>
                 <div className="user-profile-kicker">Твой прогресс</div>
-                <h2>Твои партии и рекорды - в одном месте</h2>
+                <h2>Твои партии и рекорды в одном месте</h2>
                 <p>Создай аккаунт, чтобы сохранять результаты и видеть настоящую статистику.</p>
                 <button type="button" className="home-stats-guest__button" onClick={onRegister}>
                   Создать аккаунт <span aria-hidden="true">↗</span>
@@ -251,14 +303,14 @@ export default function App() {
   const [authMode, setAuthMode] = useState("register");
   const [authNotice, setAuthNotice] = useState("");
   const [user, setUser] = useState(null);
-  // Пока не прочитали localStorage, роль неизвестна — нельзя редиректить с /admin.
+  // Пока не прочитали localStorage, роль неизвестна - нельзя редиректить с /admin.
   const [authChecked, setAuthChecked] = useState(false);
   // Анкета открывается автоматически после регистрации/входа, пока не заполнена.
   const [showOnboarding, setShowOnboarding] = useState(false);
   // После анкеты сразу запускаем входной тест на /level-test.
   const [autoStartTest, setAutoStartTest] = useState(false);
   const [gigacoinToast, setGigacoinToast] = useState(null);
-  // Тёмная тема — основная; выбор хранится в localStorage (см. theme.js).
+  // Тёмная тема - основная; выбор хранится в localStorage (см. theme.js).
   const [theme, setTheme] = useState(getStoredTheme);
 
   const handleThemeChange = (nextTheme) => {
@@ -282,7 +334,7 @@ export default function App() {
     if (stored) {
       setUser(stored);
       // Обновляем профиль с сервера: роль могла измениться с прошлого визита.
-      // Ошибка сети не должна разлогинивать — молча оставляем копию из localStorage.
+      // Ошибка сети не должна разлогинивать - молча оставляем копию из localStorage.
       fetchCurrentUser()
         .then((fresh) => {
           if (fresh) setUser(fresh);
@@ -321,6 +373,8 @@ export default function App() {
       setGigacoinToast({
         amount,
         balance: Number.isFinite(balance) ? balance : null,
+        // Новый ключ перезапускает анимацию плашки при повторной награде.
+        id: Date.now(),
       });
       window.clearTimeout(gigacoinToastTimer);
       gigacoinToastTimer = window.setTimeout(() => setGigacoinToast(null), 4000);
@@ -364,12 +418,30 @@ export default function App() {
         }}
       />
       {gigacoinToast?.amount > 0 && (
-        <div className="gigacoin-reward-toast" role="status" aria-live="polite">
-          <span className="gigacoin-reward-toast__icon" aria-hidden="true">✦</span>
+        <div
+          key={gigacoinToast.id}
+          className="gigacoin-reward-toast"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          <span className="gigacoin-reward-toast__icon" aria-hidden="true">
+            <svg viewBox="0 0 20 20">
+              <circle cx="10" cy="10" r="7.2" />
+              <path d="M12.3 7.5c-.4-.7-1.1-1-2.2-1-1.2 0-2 .5-2 1.4 0 2.2 4.8.8 4.8 3.3 0 1-.9 1.7-2.5 1.7-1.2 0-2.1-.4-2.6-1.2M10 4.9v1.4m0 7v1.7" />
+            </svg>
+          </span>
           <span className="gigacoin-reward-toast__copy">
-            <strong>Получено +{gigacoinToast.amount} GigaCoin</strong>
+            <strong>
+              <span className="gigacoin-reward-toast__label">Получено</span>{" "}
+              <span className="gigacoin-reward-toast__amount">
+                +{gigacoinToast.amount} GigaCoin
+              </span>
+            </strong>
             {gigacoinToast.balance != null && (
-              <small>Баланс: {gigacoinToast.balance.toLocaleString("ru-RU")}</small>
+              <small>
+                Баланс: <b>{gigacoinToast.balance.toLocaleString("ru-RU")}</b>
+              </small>
             )}
           </span>
         </div>
@@ -390,6 +462,8 @@ export default function App() {
           }
         />
         <Route path="/play" element={<MainPage user={user} />} />
+        <Route path="/review" element={<GameReviewPage />} />
+        <Route path="/review/game/:gameId" element={<GameReviewPage />} />
         <Route
           path="/oauth/callback"
           element={<OAuthCallbackPage onSuccess={setUser} />}
@@ -483,7 +557,7 @@ export default function App() {
             !authChecked ? null : isAdmin ? (
               <AdminPage user={user} onUserChange={setUser} />
             ) : (
-              // Гость/ученик не должны видеть админку — уводим в профиль.
+              // Гость/ученик не должны видеть админку - уводим в профиль.
               <Navigate to="/profile" replace />
             )
           }
@@ -505,7 +579,7 @@ export default function App() {
         onDone={(freshUser) => {
           if (freshUser) setUser(freshUser);
           setShowOnboarding(false);
-          // Сразу после анкеты — входной тест (страница сама его запускает).
+          // Сразу после анкеты - входной тест (страница сама его запускает).
           setAutoStartTest(true);
           navigate("/level-test");
         }}

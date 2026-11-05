@@ -60,7 +60,13 @@ def stockfish_analyze(req: FenRequest):
 
 @router.post("/api/eval")
 def quick_eval(req: FenRequest):
-    """Быстрая оценка позиции — только eval, без best move."""
+    """Быстрая оценка позиции: только eval, без лучшего хода.
+
+    Знак всегда от лица белых: положительное значение - перевес белых.
+    Шкала оценки у доски читает ответ без дополнительных пересчётов.
+    python-stockfish отдаёт оценку от лица стороны, чей ход, поэтому
+    на ходе чёрных знак переворачиваем.
+    """
     stockfish = ensure_stockfish()
     if not stockfish:
         return {"evaluation": None}
@@ -71,10 +77,10 @@ def quick_eval(req: FenRequest):
             stockfish.set_fen_position(req.fen)
             evaluation = stockfish.get_evaluation(searchtime=1000)
         if evaluation and board.turn == chess.BLACK:
-            if evaluation.get("type") == "cp":
-                evaluation = {"type": "cp", "value": -evaluation["value"]}
-            elif evaluation.get("type") == "mate":
-                evaluation = {"type": "mate", "value": -evaluation["value"]}
+            evaluation = {
+                "type": evaluation.get("type"),
+                "value": -(evaluation.get("value") or 0),
+            }
         return {"evaluation": evaluation}
     except Exception as e:
         print(f"[Stockfish] Ошибка eval: {e}")

@@ -11,8 +11,13 @@ from backend.models.training_lesson import TrainingLesson
 from backend.models.training_module import TrainingModule
 from backend.models.training_task import TrainingTask
 from backend.models.user import User
-from backend.models.user_activity_day import UserActivityDay
+from backend.services.local_time import local_today, to_local_date
 from backend.services.training_checker import TrainingCheckResult
+from backend.services.training_course_data import LEVEL_LABELS
+
+# Сколько РАЗНЫХ задач нужно решить за день, чтобы день считался занятием
+# и продлевал серию дней. Повторное решение той же задачи не считается.
+PUZZLES_PER_ACTIVE_DAY = 3
 
 
 async def list_modules(db: AsyncSession) -> list[dict]:
@@ -45,6 +50,7 @@ async def list_modules(db: AsyncSession) -> list[dict]:
                 "description": module.description,
                 "sort_order": module.sort_order,
                 "enabled": module.enabled,
+                "level_label": LEVEL_LABELS.get(module.slug),
                 "lesson_count": int(lesson_count or 0),
                 "task_count": int(task_count or 0),
             }
@@ -141,17 +147,21 @@ async def save_attempt(
 
 
 def _current_streak(activity_dates: set, today=None) -> int:
-    """Возвращает текущую серию дней с активностью или визитом.
+    """Возвращает текущую серию дней занятий.
 
-    ``activity_dates`` — объединение дат учебных попыток и дней визитов
-    (см. ``get_training_progress``). Серия не обнуляется утром нового дня:
-    если сегодня попыток ещё не было, но активность/визит были вчера,
-    отсчёт продолжается от вчерашней даты.
+    ``activity_dates`` - только дни, которые считаются занятием: в них решено
+    минимум ``PUZZLES_PER_ACTIVE_DAY`` разных задач или выполнено задание
+    модуля курса (см. ``get_training_progress``). Простой заход на сайт
+    серию не продлевает.
+
+    Серия не обнуляется утром нового дня: если сегодня занятий ещё не было,
+    но вчера были, отсчёт продолжается от вчерашней даты. Пропущенный
+    полный день обнуляет серию.
     """
     if not activity_dates:
         return 0
 
-    today = today or date.today()
+    today = today or local_today()
     if today in activity_dates:
         cursor = today
     elif today - timedelta(days=1) in activity_dates:
@@ -174,14 +184,14 @@ async def get_training_progress(db: AsyncSession, user_id: int) -> dict:
     Accuracy считается по всем строкам training_attempts, включая повторы.
 
     Помимо итогов, ответ несёт разбивку ``modules.items``: по каждому
-    модулю — счётчики заданий и список уроков. Она нужна фронту для
+    модулю - счётчики заданий и список уроков. Она нужна фронту для
     прогресс-баров на карточках модулей и для отметки решённых заданий
     в списке уроков. Разбивка лежит внутри ``modules``, а не на верхнем
     уровне: контракт /api/training/progress фиксирует ровно три ключа
-    (modules, attempts, streak) — см. test_training_progress_contract.
+    (modules, attempts, streak) - см. test_training_progress_contract.
 
     Точность по темам курса здесь НЕ считается: единственный источник
-    совмещённого профиля (training + puzzles) — build_weakness_profile,
+    совмещённого профиля (training + puzzles) - build_weakness_profile,
     который отдаётся `/api/learning/weaknesses`. Он же питает адаптивный
     подбор и B2, поэтому виджет показывает те же цифры, что используют
     алгоритмы, а не независимый расчёт по одному треку.
@@ -255,7 +265,11 @@ async def get_training_progress(db: AsyncSession, user_id: int) -> dict:
     ).all()
 
     correct_task_ids: set[int] = set()
-    activity_dates = set()
+    # День засчитывается в серию, только если это был день занятий:
+    # выполнено хотя бы одно задание модуля курса ИЛИ решено
+    # PUZZLES_PER_ACTIVE_DAY разных задач. Простой заход на сайт
+    # (регистрация/вход/открытие приложения) серию не продлевает.
+    activity_dates: set[date] = set()
 
     total_attempts = 0
     total_correct = 0
@@ -266,37 +280,30 @@ async def get_training_progress(db: AsyncSession, user_id: int) -> dict:
             correct_task_ids.add(task_id)
 
         if created_at is not None:
-            activity_dates.add(created_at.date())
+            activity_dates.add(to_local_date(created_at))
 
-    # Серия — по обоим трекам: в неё идут и задания курса, и паззлы.
-    # У паззлов нет флага enabled — берём все попытки пользователя.
-    puzzle_date_rows = (
+    # Паззлы: день занятий - не меньше трёх РАЗНЫХ верно решённых задач.
+    # Повторное решение той же задачи прогресс дня не увеличивает.
+    # У паззлов нет флага enabled - берём все попытки пользователя.
+    puzzle_rows = (
         await db.execute(
-            select(PuzzleAttempt.created_at).where(
+            select(
+                PuzzleAttempt.puzzle_id,
+                PuzzleAttempt.correct,
+                PuzzleAttempt.created_at,
+            ).where(
                 PuzzleAttempt.user_id == user_id,
             )
         )
     ).all()
-    for (created_at,) in puzzle_date_rows:
-        if created_at is not None:
-            activity_dates.add(created_at.date())
-
-    # Дни визитов (регистрация/вход/открытие приложения) тоже продлевают
-    # серию: пользователь, который просто зашёл, но ничего не решал, не
-    # должен видеть 0. Серия = объединение учебных дней и дней визитов.
-    visit_date_rows = (
-        await db.execute(
-            select(UserActivityDay.activity_date).where(
-                UserActivityDay.user_id == user_id,
-            )
-        )
-    ).all()
-    for (activity_date,) in visit_date_rows:
-        if activity_date is None:
+    solved_by_day: dict[date, set[str]] = {}
+    for puzzle_id, correct, created_at in puzzle_rows:
+        if not correct or created_at is None or puzzle_id is None:
             continue
-        if isinstance(activity_date, str):
-            activity_date = date.fromisoformat(activity_date)
-        activity_dates.add(activity_date)
+        solved_by_day.setdefault(to_local_date(created_at), set()).add(str(puzzle_id))
+    for day, puzzle_ids in solved_by_day.items():
+        if len(puzzle_ids) >= PUZZLES_PER_ACTIVE_DAY:
+            activity_dates.add(day)
 
     completed_modules = 0
     module_items = []
@@ -325,7 +332,7 @@ async def get_training_progress(db: AsyncSession, user_id: int) -> dict:
                         if lesson_total
                         else 0.0
                     ),
-                    # ID решённых заданий — фронт по ним красит «прогресс-дотсы»
+                    # ID решённых заданий - фронт по ним красит «прогресс-дотсы»
                     # в списке заданий урока и переживает перезаход.
                     "solved_task_ids": sorted(solved_ids),
                 }
@@ -360,5 +367,5 @@ async def get_training_progress(db: AsyncSession, user_id: int) -> dict:
             "correct": total_correct,
             "accuracy": overall_accuracy,
         },
-        "streak": _current_streak(activity_dates),
+        "streak": _current_streak(activity_dates, today=local_today()),
     }

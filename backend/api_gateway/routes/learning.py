@@ -34,6 +34,7 @@ from backend.services.adaptive_training import (
 )
 from backend.services.assessment import (
     RATING_GROUPS,
+    SELF_REPORT_CAP,
     build_test_feedback,
     calculate_performance_rating,
     max_puzzle_rating_for_user,
@@ -44,6 +45,7 @@ from backend.services.assessment import (
     rating_for_selection,
 )
 from backend.services.course_topics import (
+    COURSE_TOPIC_META,
     COURSE_TOPIC_PUZZLE_THEMES,
     primary_course_topic_for_puzzle,
 )
@@ -80,7 +82,7 @@ LEVEL_BUCKETS = [
 
 # Пробный доступ до анкеты. Зарегистрированный, но ещё не прошедший анкету
 # пользователь может пройти не больше трёх лёгких задач (рейтинг до 700),
-# после чего его просят заполнить анкету. Гостей это не касается — у них
+# после чего его просят заполнить анкету. Гостей это не касается - у них
 # свой гейт на предпоследнем ходу.
 PREVIEW_MAX_RATING = 700
 PREVIEW_PUZZLE_LIMIT = 3
@@ -223,6 +225,25 @@ async def _starting_rating(db: AsyncSession, user: User) -> int:
         return max(0, min(3500, int(account.rating)))
 
     return max(0, min(3500, int(user.rating_estimate or user.elo or 800)))
+
+
+async def _has_usable_chess_rating(db: AsyncSession, user_id: int) -> bool:
+    """Есть ли привязанный аккаунт с пригодным рейтингом (Lichess/Chess.com).
+
+    Без такого аккаунта входной тест не может поднять оценку выше
+    ``SELF_REPORT_CAP``: самооценка и 20 решённых задач не подтверждают
+    уровень так же, как внешний рейтинг с историей партий.
+    """
+    account_id = await db.scalar(
+        select(UserChessAccount.id)
+        .where(
+            UserChessAccount.user_id == user_id,
+            UserChessAccount.rating.is_not(None),
+            UserChessAccount.rating_usable.is_(True),
+        )
+        .limit(1)
+    )
+    return account_id is not None
 
 
 def _upsert_test_answer(test: LevelTest, answer: dict[str, Any]) -> None:
@@ -403,7 +424,7 @@ def level_test_result(answers: list[dict]):
     if not lookup:
         return {"error": "База паззлов не загружена"}
     final_rating = calculate_performance_rating(
-        initial_rating=1000, answers=answers, puzzle_lookup=lookup
+        initial_rating=1000, answers=answers
     )
     group = rating_group_for(final_rating)
     return {
@@ -473,8 +494,11 @@ async def level_test_submit(
     final_rating = calculate_performance_rating(
         initial_rating=initial_rating,
         answers=answers,
-        puzzle_lookup=lookup,
     )
+    # Без привязанного Lichess/Chess.com итог не выше SELF_REPORT_CAP, сколько
+    # бы задач ни было решено: неподтверждённая самооценка не даёт опоры выше.
+    if not await _has_usable_chess_rating(db, user.id):
+        final_rating = min(final_rating, SELF_REPORT_CAP)
     group = rating_group_for(final_rating)
 
     by_group = {
@@ -941,7 +965,7 @@ async def _preview_today_attempted(
     Дневной лимит расходуют только решённые задачи: неверные ходы не
     отнимают попытку, поэтому незавершённая задача остаётся доступной.
 
-    День считаем так же, как и лимит — ``date(created_at) = current_date()``,
+    День считаем так же, как и лимит - ``date(created_at) = current_date()``,
     чтобы сброс совпадал с часовым поясом, в котором пишется ``created_at``.
     """
     today = await db.scalar(select(func.current_date()))
@@ -999,6 +1023,7 @@ def _preview_payload(
         "puzzles": [_public_puzzle(p) for p in picked],
         "total": len(picked),
         "topic": topic,
+        "topic_title": COURSE_TOPIC_META.get(topic or "", {}).get("title"),
         "personalization": {
             "source": None,
             "group": None,
@@ -1020,11 +1045,11 @@ async def get_puzzles(
 ):
     """Возвращает набор задач с полными решениями для тренировочной страницы.
 
-    ``topic`` — slug модуля учебного курса. Если он передан, выдаются только
+    ``topic`` - slug модуля учебного курса. Если он передан, выдаются только
     связанные с этим модулем Lichess-темы. Так TrainingPage может отправить
-    пользователя сразу на релевантную практику. Практика по теме НЕ привязана
-    к рейтингу: показываются все пазлы темы (иначе для редких тем и высоких
-    корзин задач почти не остаётся).
+    пользователя сразу на релевантную практику. Правило рейтинга то же, что
+    и в обычной практике: своя корзина с потолком «рейтинг + 200», иначе
+    по теме модуля прилетали задачи любого Elo.
 
     Пока пользователь не прошёл анкету, ему доступен только пробный набор:
     не больше трёх задач в день с рейтингом до 700 (см. ``_preview_payload``).
@@ -1066,14 +1091,16 @@ async def get_puzzles(
         user.elo, user.rating_estimate, user.prior_band
     )
     personalization: dict[str, Any] = {
-        "source": rating_source if normalized_topic is None else None,
+        "source": rating_source,
         "group": None,
         "max_rating": None,
     }
 
-    if rating is not None and normalized_topic is None:
-        # Только текущая корзина пользователя. Потолок «рейтинг + 200» —
+    if rating is not None:
+        # Только текущая корзина пользователя. Потолок «рейтинг + 200» -
         # жёсткий максимум: более сложные задачи в практике не предлагаются.
+        # Правило одинаковое для свободной практики и для практики по теме
+        # модуля курса.
         ceiling = max_puzzle_rating_for_user(rating)
         own_group = int(rating_group_for(rating)["id"])
         own_pool = [p for p in valid_puzzles if puzzle_rating_group(p) == own_group]
@@ -1082,6 +1109,10 @@ async def get_puzzles(
         # (например, у самого низа диапазона), остаёмся в своей корзине.
         if not pool:
             pool = own_pool
+        # Редкая тема могла не попасть в свою корзину - тогда отдаём её
+        # задачи в пределах потолка, чтобы практика не оставалась пустой.
+        if not pool and normalized_topic:
+            pool = [p for p in valid_puzzles if _puzzle_rating(p) <= ceiling]
         picked = _shuffled_sample(pool, count)
         personalization = {
             "source": rating_source,
@@ -1099,6 +1130,7 @@ async def get_puzzles(
         "puzzles": result,
         "total": len(result),
         "topic": normalized_topic,
+        "topic_title": COURSE_TOPIC_META.get(normalized_topic or "", {}).get("title"),
         "personalization": personalization,
     }
 

@@ -1,66 +1,199 @@
 import { useEffect, useRef } from "react";
 
-export default function EvalBar({ diff = 0, flipped, height }) {
+/*
+ * Шкала двух режимов:
+ *
+ * - "material" - материальный перевес в пешках (как раньше);
+ * - "engine"   - оценка Stockfish, переведённая в вероятность победы
+ *                по кривой Lichess: разница в пешку почти не двигает
+ *                шкалу, а разгромная позиция прижимает её к краю.
+ *
+ * Сам переключатель живёт не на шкале, а в панели управления доской:
+ * на капсуле кнопка занимала место у доски и на узком экране мешала
+ * читать оценку.
+ */
+
+// Материальный перевес, при котором шкала упирается в край.
+const MAX_MATERIAL = 10;
+
+// Оценка в сантипешках -> доля позиции от -1 (чёрные выигрывают) до 1.
+function engineAdvantage(engineEval) {
+  if (!engineEval) return null;
+  if (engineEval.type === "mate") {
+    const value = Number(engineEval.value) || 0;
+    if (value === 0) return 0;
+    return value > 0 ? 1 : -1;
+  }
+  const cp = Number(engineEval.value) || 0;
+  return 2 / (1 + Math.exp(-0.00368208 * cp)) - 1;
+}
+
+// Подпись на шкале: "+1,2", "-0,4", "#" (мат на доске).
+// Для мата, который ещё не на доске, показываем предельную оценку
+// ±10,0: точное число ходов на коротком поиске недостоверно, а число
+// не спорит с историей ходов. Расшифровка - в подсказке.
+function engineLabel(engineEval, bottomSign) {
+  if (!engineEval) return "";
+
+  if (engineEval.type === "mate") {
+    const mate = Number(engineEval.value) || 0;
+    if (mate === 0) return "#";
+    const sign = mate > 0 ? 1 : -1;
+    return sign * bottomSign > 0 ? "+10,0" : "-10,0";
+  }
+
+  const pawns = ((Number(engineEval.value) || 0) / 100) * bottomSign;
+  if (Math.abs(pawns) < 0.05) return "0,0";
+  const text = (Math.round(pawns * 10) / 10).toFixed(1).replace(".", ",");
+  return pawns > 0 ? `+${text}` : text;
+}
+
+// Склонение «ход» в подсказке: 1 ход, 2 хода, 5 ходов.
+function movesWord(count) {
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+
+  if (mod10 === 1 && mod100 !== 11) return "ход";
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return "хода";
+  return "ходов";
+}
+
+// Расшифровка оценки для подсказки и aria-label: у мата нужна сторона.
+function engineLabelTitle(engineEval) {
+  if (!engineEval) return "";
+
+  if (engineEval.type === "mate") {
+    const mate = Number(engineEval.value) || 0;
+    if (mate === 0) return "мат на доске";
+    const side = mate > 0 ? "белых" : "чёрных";
+    const count = Math.abs(mate);
+    return `мат в ${count} ${movesWord(count)}, ставит сторона ${side}`;
+  }
+
+  return engineLabel(engineEval, 1);
+}
+
+export default function EvalBar({
+  diff = 0,
+  engineEval = null,
+  mode = "material",
+  flipped,
+  height,
+}) {
   const barRef = useRef(null);
-  const MAX = 10;
+
+  // Выбор пользователя и фактический режим шкалы расходятся, пока не
+  // пришла оценка движка: пустая капсула выглядела бы как сломанная,
+  // поэтому до первого ответа показываем материал.
+  const showEngine = mode === "engine" && Boolean(engineEval);
   const signed = Number.isFinite(diff) ? diff : 0;
-  const clamped = Math.max(-MAX, Math.min(MAX, signed));
 
   /*
-   * Низ шкалы — та сторона, которая стоит внизу доски: её цвет и её
-   * доля позиции. Когда доска развёрнута, цвета меняются местами —
+   * Низ шкалы - та сторона, которая стоит внизу доски: её цвет и её
+   * доля позиции. Когда доска развёрнута, цвета меняются местами -
    * тёмный мрамор (нижняя сторона) уходит вниз, бумага наверх.
    * Поэтому и цифра считается от нижней стороны.
    */
-  const bottomAdv = flipped ? -clamped : clamped;
-  const fillPct = 50 + (bottomAdv / MAX) * 50;
+  let bottomAdv;
+  let fillPct;
+  let label;
 
-  const label = (() => {
-    const v = Math.round(bottomAdv);
-    if (v === 0) return "";
-    return v > 0 ? `+${v}` : `${v}`;
-  })();
+  if (showEngine) {
+    const whiteAdv = engineAdvantage(engineEval) ?? 0;
+    bottomAdv = flipped ? -whiteAdv : whiteAdv;
+    fillPct = 50 + bottomAdv * 50;
+    label = engineLabel(engineEval, flipped ? -1 : 1);
+  } else {
+    const clamped = Math.max(-MAX_MATERIAL, Math.min(MAX_MATERIAL, signed));
+    bottomAdv = flipped ? -clamped : clamped;
+    fillPct = 50 + (bottomAdv / MAX_MATERIAL) * 50;
+    const rounded = Math.round(bottomAdv);
+    label = rounded === 0 ? "" : rounded > 0 ? `+${rounded}` : `${rounded}`;
+  }
 
-  // Подсказка при наведении: шкала отражает материальный перевес.
-  const title = label
-    ? `Материальный перевес: ${label}`
-    : "Материальный перевес: 0";
+  const title = showEngine
+    ? `Оценка движка: ${engineLabelTitle(engineEval) || "0,0"}`
+    : mode === "engine"
+      ? "Оценка движка недоступна - показан материальный перевес"
+      : `Материальный перевес: ${label || "0"}`;
 
-  /* Keep the bar locked to the playable board, independent of card chrome. */
+  /*
+   * Шкала держится за игровое поле, а не за карточку целиком: сверху в
+   * карточке есть панель противника, снизу - кнопки, и по карточке
+   * капсула съезжала бы относительно доски. Высоту и вертикальный
+   * сдвиг считаем по живым замерам: они меняются от ширины окна и от
+   * того, свёрнут ли чат.
+   */
   useEffect(() => {
     const bar = barRef.current;
-    const card = document.querySelector(".board-wrapper");
-    const board = document.querySelector(".eval-board-surface");
-
-    if (!bar || !card || !board) return undefined;
+    if (!bar) return undefined;
 
     const measure = () => {
+      // Доска может пересоздаваться (react-chessboard меняет key при
+      // смене позиции), поэтому берём актуальный узел на каждый замер,
+      // а не тот, что был при монтировании шкалы.
+      const board = document.querySelector(".eval-board-surface");
+      if (!board) return false;
+
       const boardRect = board.getBoundingClientRect();
+      // Пока доска ещё не разложена, её высота равна нулю: не схлопываем
+      // шкалу, дождёмся следующего замера.
+      if (!boardRect.height) return false;
+
+      bar.style.height = `${Math.round(boardRect.height)}px`;
+
+      // На узких экранах шкала лежит над доской, и CSS выключает сдвиг
+      // (transform: none). В этом режиме не копим --eval-shift-y: иначе
+      // при каждом замере он растёт и скачком применится на широком.
+      if (getComputedStyle(bar).transform === "none") {
+        bar.style.setProperty("--eval-shift-y", "0px");
+        return true;
+      }
+
       const currentY =
         parseFloat(bar.style.getPropertyValue("--eval-shift-y")) || 0;
       const barTop = bar.getBoundingClientRect().top - currentY;
       const shiftY = Math.round(boardRect.top - barTop);
 
-      bar.style.height = `${Math.round(boardRect.height)}px`;
       bar.style.setProperty("--eval-shift-y", `${shiftY}px`);
+      return true;
     };
 
     /*
-     * Замер сразу, без requestAnimationFrame: ResizeObserver вызывает
-     * нас уже после раскладки и до отрисовки, поэтому шкала едет в том
-     * же кадре, что и доска (иначе она отстаёт на кадр и «догоняет»).
+     * Шкала и доска - соседние компоненты, и к моменту первого эффекта
+     * карточки доски может ещё не быть в DOM. Поэтому ждём её в кадрах:
+     * как только появились и карточка, и поле с ненулевой высотой,
+     * ставим замер и подписываемся на изменения.
      */
-    measure();
+    let observer = null;
+    let frame = 0;
+    let timer = 0;
 
-    const observer = new ResizeObserver(measure);
-    observer.observe(card);
-    observer.observe(board);
-    const stage = document.querySelector(".board-stage");
-    if (stage) observer.observe(stage);
-    window.addEventListener("resize", measure);
+    const setup = () => {
+      const card = document.querySelector(".board-wrapper");
+      if (card && !observer) {
+        observer = new ResizeObserver(measure);
+        observer.observe(card);
+        const stage = document.querySelector(".board-stage");
+        if (stage) observer.observe(stage);
+        window.addEventListener("resize", measure);
+      }
+
+      // Замер сразу: ResizeObserver вызывает нас уже после раскладки и
+      // до отрисовки, поэтому шкала едет в том же кадре, что и доска
+      // (иначе она отстаёт на кадр и «догоняет»).
+      if ((!card || !measure()) && frame < 40) {
+        frame += 1;
+        // setTimeout, а не requestAnimationFrame: в фоновой вкладке
+        // кадры не идут, а таймеры работают.
+        timer = setTimeout(setup, 50);
+      }
+    };
+    setup();
 
     return () => {
-      observer.disconnect();
+      clearTimeout(timer);
+      if (observer) observer.disconnect();
       window.removeEventListener("resize", measure);
       bar.style.height = "";
       bar.style.removeProperty("--eval-shift-y");
@@ -72,7 +205,7 @@ export default function EvalBar({ diff = 0, flipped, height }) {
       ref={barRef}
       className={`eval-bar${
         flipped ? " eval-bar--bottom-black" : ""
-      }`}
+      }${showEngine ? " eval-bar--engine" : ""}`}
       style={{ height: height || undefined, "--eval-fill": `${fillPct}%` }}
       title={title}
       aria-label={title}
@@ -81,6 +214,7 @@ export default function EvalBar({ diff = 0, flipped, height }) {
       <div
         className="eval-bar-fill"
         style={{ height: `${fillPct}%` }}
+        aria-hidden="true"
       >
         {label && <span className="eval-bar-label">{label}</span>}
       </div>

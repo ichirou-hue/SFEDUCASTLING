@@ -121,7 +121,7 @@ export default function ProgressWidget() {
     <section className="progress-widget" aria-label="Общий прогресс обучения">
       <div className="progress-widget__header">
         <div className="progress-widget__streak-info">
-          <div className="progress-widget__streak" title="Серия дней подряд: визиты и учебная активность">
+          <div className="progress-widget__streak" title="Серия дней занятий: 3+ разных решённых пазла или задание курса в день">
             <span className="progress-widget__streak-icon">🔥</span>
             <span>
               <strong>{training?.streak ?? 0}</strong>

@@ -6,7 +6,7 @@
 training_reviews падал 500-й ошибкой и вкладка «Обучение» не принимала
 ответы. Заменяем дефолт на диалектно-осознанный CURRENT_TIMESTAMP.
 
-На PostgreSQL колонки уже используют now(), поэтому миграция там — no-op.
+На PostgreSQL колонки уже используют now(), поэтому миграция там - no-op.
 
 Revision ID: d3e8f1a2b4c6
 Revises: a7e1c9d24b63
