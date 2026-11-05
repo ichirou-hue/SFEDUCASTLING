@@ -1564,13 +1564,13 @@ const fetchBestMove = useCallback(
       /*
        * Историю берём из живого объекта партии, а не из состояния React.
        *
-       * moveHistory обновляется через setState, и в момент вызова (через
-       * 500 мс после хода игрока) замыкание держит значение с прошлого
-       * рендера - без только что сыгранного хода. Сервер получал историю,
-       * которая не сходилась с присланным FEN, писал "History FEN
-       * mismatch" и работал только с текущей позицией. Maia3 запущена
-       * с --use-uci-history и без истории играет вслепую: не видит, что
-       * было в партии, и её уровень резко падает.
+       * moveHistory обновляется через setState, и в момент вызова
+       * замыкание держит значение с прошлого рендера - без только что
+       * сыгранного хода. Сервер получал историю, которая не сходилась
+       * с присланным FEN, писал "History FEN mismatch" и работал только
+       * с текущей позицией. Maia3 запущена с --use-uci-history и без
+       * истории играет вслепую: не видит, что было в партии, и её
+       * уровень резко падает.
        */
       const uciMoves = toUciMoves(game.history());
 
@@ -1861,7 +1861,7 @@ const fetchBestMove = useCallback(
         const gen = gameGenRef.current;
         setTimeout(() => {
           if (gen === gameGenRef.current) makeAiMove();
-        }, 500);
+        }, 0);
       }
 
       return true;
@@ -1896,7 +1896,7 @@ const fetchBestMove = useCallback(
     const gen = gameGenRef.current;
     const timer = setTimeout(() => {
       if (gen === gameGenRef.current) makeAiMove();
-    }, 600);
+    }, 0);
 
     return () => clearTimeout(timer);
   }, [

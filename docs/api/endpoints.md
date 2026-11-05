@@ -55,7 +55,10 @@
 
 ```json
 {
-  "id": 1, "login": "alice", "email": null, "elo": 1500,
+  "id": 1, "login": "alice", "nickname": "alice",
+  "nickname_changes": 0, "nickname_change_price": 10,
+  "nickname_changed_at": null,
+  "email": null, "elo": 1500,
   "role": "learner", "is_admin": false,
   "skill_band": null, "prior_band": null,
   "rating_estimate": null, "rating_scale": null,
@@ -64,6 +67,8 @@
 ```
 
 Хеш пароля не передаётся в ответах API. `role` - один из `learner` / `admin` (у гостей аккаунта нет).
+
+`login` - неизменяемый идентификатор для входа (и для входа по email). `nickname` - отображаемое имя; у старых записей без никнейма API возвращает `login`. `nickname_changes` - число уже сделанных платных смен, `nickname_change_price` - цена следующей смены, которую сервер рассчитывает экспоненциально: 10, 20, 40, 80, ... GigaCoin.
 
 ## Авторизация - `routes/auth.py`
 
@@ -76,6 +81,7 @@
 | POST | `/api/auth/refresh` | гостевой | Ротация пары токенов |
 | POST | `/api/auth/logout` | гостевой | Отзыв refresh-токена |
 | GET  | `/api/auth/me` | авторизованный | Данные текущего пользователя |
+| PATCH | `/api/auth/nickname` | авторизованный | Смена отображаемого никнейма за GigaCoin |
 | GET  | `/api/auth/admin-only` | администратор | Пример защищённого ресурса |
 
 ### POST `/api/auth/register` - 201
@@ -126,6 +132,26 @@ Refresh-токен одноразовый: предыдущий отзывает
 ### GET `/api/auth/me` - 200
 
 Заголовок `Authorization: Bearer <access_token>`, ответ `{"user": ...}` (см. схему пользователя). Без токена или с невалидным - `401`.
+
+### PATCH `/api/auth/nickname` - 200
+
+```json
+{ "nickname": "Новый Ник" }
+```
+
+Меняет только отображаемый никнейм, `login` для входа остаётся прежним. Никнейм: 3-32 символа, буквы (латиница или кириллица), цифры, пробел и `_ - .`; лишние пробелы нормализуются. Занятый никнейм или совпадение с чужим логином - `409`, совпадение с текущим никнеймом - `400`, недопустимые символы - `422`.
+
+Смена платная: первая стоит 10 GigaCoin, каждая следующая вдвое дороже (10, 20, 40, 80, ...). Списание и счётчик смен фиксируются под блокировкой строки пользователя. При недостатке баланса - `409` с текстом `«Недостаточно GigaCoin: смена стоит <цена>»`.
+
+```json
+{
+  "ok": true,
+  "user": { "id": 1, "login": "alice", "nickname": "Новый Ник",
+            "nickname_changes": 1, "nickname_change_price": 20, "gigacoins": 90 },
+  "price_paid": 10,
+  "next_price": 20
+}
+```
 
 ### GET `/api/auth/admin-only` - 200
 

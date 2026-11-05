@@ -453,6 +453,8 @@ _maia3_lock = threading.Lock()
 
 _maia3_loading_lock = threading.Lock()
 
+_maia3_preload_started = False
+
 
 def _maia3_stderr():
     """Куда писать stderr процесса Maia3.
@@ -560,18 +562,45 @@ def get_maia3():
             if _maia3_checkpoint_is_cached(settings.maia3.model_id):
                 cmd.append("--local-files-only")
 
+            # Приложению нужен только лучший ход: WDL-строки оно не читает,
+            # а их расчёт - это второй forward модели на каждый ход (пачка из
+            # MultiPV позиций). Отключаем его целиком.
+            speed_flags = [
+                "--multipv",
+                "1",
+                "--no-compute-wdl",
+            ]
+
             if os.name == "nt":
                 stderr_stream = _maia3_stderr()
 
-            _maia3_engine = (
-                chess.engine.SimpleEngine.popen_uci(
-                    cmd,
+            def popen(extra_flags):
+                return chess.engine.SimpleEngine.popen_uci(
+                    cmd + extra_flags,
                     timeout=180,
                     cwd=str(maia3_source),
                     setpgrp=True,
                     stderr=stderr_stream,
                 )
-            )
+
+            try:
+                _maia3_engine = popen(speed_flags)
+            except Exception as exc:
+                # Сабмодуль maia3 может быть старше этих флагов (например,
+                # после git submodule update без нашего коммита), и тогда
+                # движок падает на разборе аргументов. Ходы важнее
+                # ускорения: запускаем как есть, с расчётом WDL.
+                print(
+                    "[Maia3] Запуск с флагами ускорения не удался: "
+                    f"{exc}. Повтор без них."
+                )
+                _maia3_engine = popen([])
+
+            # popen_uci завершает только uci-хендшейк. Чекпоинт грузится
+            # на первый isready, то есть без этого вызова его загрузка
+            # (и прогрев) легла бы на первый ход. ping() дожидается
+            # readyok, поэтому "ready" ниже печатается уже после загрузки.
+            _maia3_engine.ping()
 
             print(
                 "[Maia3] ready: "
@@ -598,6 +627,32 @@ def get_maia3():
                     pass
 
     return _maia3_engine
+
+
+def preload_maia3() -> None:
+    """Готовит движок Maia3 в фоне при старте приложения.
+
+    Импорт torch и загрузка чекпоинта занимают несколько секунд, и без
+    прогрева эту задержку оплачивает первый ход после запуска сервера.
+    Функция не блокирует старт: сбой прогрева ничего не ломает - первый
+    реальный запрос повторит попытку через get_maia3().
+    """
+
+    global _maia3_preload_started
+
+    if _maia3_engine is not None:
+        return
+
+    with _maia3_loading_lock:
+        if _maia3_preload_started or _maia3_engine is not None:
+            return
+        _maia3_preload_started = True
+
+    threading.Thread(
+        target=get_maia3,
+        name="maia3-preload",
+        daemon=True,
+    ).start()
 
 
 def shutdown_maia3():

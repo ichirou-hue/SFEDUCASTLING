@@ -154,16 +154,30 @@ async def seed_training() -> None:
                     select(TrainingLesson).where(
                         TrainingLesson.module_id == module.id,
                         TrainingLesson.slug.notin_(keep_lesson_slugs),
-                        TrainingLesson.enabled.is_(True),
                     )
                 )
             ).all()
             for stale_lesson in stale_lessons:
+                was_enabled = stale_lesson.enabled
                 stale_lesson.enabled = False
-                print(
-                    "[TrainingSeed] Урок "
-                    f"{stale_lesson.slug} скрыт: его нет в новой программе."
-                )
+                # Задания скрытого урока тоже гасим: иначе они остаются
+                # включёнными и всплывают в запросах, которые не проверяют
+                # enabled у урока. Повторный запуск ничего не меняет.
+                stale_lesson_tasks = (
+                    await session.scalars(
+                        select(TrainingTask).where(
+                            TrainingTask.lesson_id == stale_lesson.id,
+                            TrainingTask.enabled.is_(True),
+                        )
+                    )
+                ).all()
+                for stale_lesson_task in stale_lesson_tasks:
+                    stale_lesson_task.enabled = False
+                if was_enabled:
+                    print(
+                        "[TrainingSeed] Урок "
+                        f"{stale_lesson.slug} скрыт: его нет в новой программе."
+                    )
 
         # Снос опустевших старых модулей после слияния (10 -> 5).
         # Удаляем только модули вне нового состава И без уроков:
