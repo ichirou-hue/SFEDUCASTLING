@@ -84,7 +84,10 @@ textarea {
   height: auto;
   max-height: none;
   min-height: 0;
-  overflow: hidden;
+  /* Меню «Позиция» шире этой колонки (372px против 260px) и открывается
+     вправо поверх доски. overflow: hidden обрезал бы его по краю панели,
+     поэтому дочерние элементы по горизонтали не клипуем. */
+  overflow: visible;
   order: 0;
   width: 100%;
 }
