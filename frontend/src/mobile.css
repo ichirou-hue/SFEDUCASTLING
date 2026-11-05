@@ -549,6 +549,38 @@
     line-height: 1.4;
   }
 
+  /* Кнопки под доской - той же сеткой, что и на вкладке «Задачи»:
+     три равные колонки, а при появлении четвёртой кнопки («Разобрать
+     партию») - две колонки в два ряда. */
+  .main-area .controls-row {
+    flex-wrap: wrap;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .main-area .controls-actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    flex: 1 1 100%;
+    width: 100%;
+    gap: 7px;
+  }
+
+  .main-area .controls-actions:has(> :nth-child(4)) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .main-area .controls-actions .ctrl-btn {
+    min-height: 44px;
+    padding: 8px 5px;
+    border-radius: 14px;
+    font: 600 11px/1.2 var(--font-ui);
+  }
+
+  .main-area .controls-row > .material-display {
+    margin: 0 0 0 auto;
+  }
+
   .main-area > .game-history-column {
     display: flex;
     grid-area: history;

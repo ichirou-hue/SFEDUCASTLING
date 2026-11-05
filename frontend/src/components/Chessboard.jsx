@@ -750,20 +750,25 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
      * перестаёт отражать реальную высоту содержимого.
      */
     const boardBox = boardBoxRef.current;
-    const wrapper = boardBox
-      ? boardBox.closest(".board-wrapper")
+    const boardSection = boardBox
+      ? boardBox.closest(".board-section")
       : null;
 
+    /*
+     * Карточка доски и строка кнопок - соседние элементы внутри
+     * .board-section, поэтому хром считаем по всей секции: так высота
+     * кнопок под рамкой тоже вычитается из доступного места и доска
+     * не вылезает за экран.
+     */
     const measuredChrome =
-      wrapper && boardBox
-        ? wrapper.getBoundingClientRect().height -
+      boardSection && boardBox
+        ? boardSection.getBoundingClientRect().height -
           boardBox.getBoundingClientRect().height
         : 0;
 
-    // Минимум - панель противника + кнопки + ФЕН-панель + рамка
-    // с паддингами, когда карточки сравнения ещё нет. Реальный хром
-    // карточки — около 100px, поэтому не занижаем доску лишними 50px.
-    const chromeH = measuredChrome > 0 ? measuredChrome : 104;
+    // Минимум - панель противника + строка кнопок + карточка сравнения
+    // + рамка с паддингами, когда доска ещё не разложена.
+    const chromeH = measuredChrome > 0 ? measuredChrome : 150;
     const pageViewport = mainEl?.parentElement;
     const availableHeight = pageViewport
       ? pageViewport.clientHeight - 22
@@ -807,7 +812,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
       });
       observer.observe(mainEl);
       if (boardStageEl) observer.observe(boardStageEl);
-      else if (boardSectionEl) observer.observe(boardSectionEl);
+      if (boardSectionEl) observer.observe(boardSectionEl);
     }
 
     // Чат едет 340 мс; после этого раскладка устоялась.
@@ -3400,81 +3405,6 @@ const fetchBestMove = useCallback(
         </div>
 
         {/* =====================================================
-            Кнопки
-        ====================================================== */}
-        <div className="controls-row">
-
-          <button
-            className="ctrl-btn"
-            style={{
-              background: "#C9A96E",
-            }}
-            onClick={() =>
-              setBoardFlipped(
-                (f) => !f,
-              )
-            }
-          >
-            ↺ Доска
-          </button>
-
-          {/*
-           * «Новая игра» открывает меню выбора стороны: партия начнётся
-           * сразу после выбора. Клик по фону - отмена, текущая партия
-           * остаётся.
-           */}
-          <button
-            className="ctrl-btn"
-            style={{
-              background: "#C9A96E",
-            }}
-            onClick={
-              openSidePicker
-            }
-          >
-            Новая игра
-          </button>
-
-          {/*
-           * Разбор доступен и после того, как итоговую карточку закрыли
-           * кликом по фону: кнопка открывает её снова и запускает разбор.
-           */}
-          {gameResult && (
-            <Link
-              className="ctrl-btn ctrl-btn--review"
-              to={reviewArchiveId ? `/review/game/${reviewArchiveId}` : "/review"}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Разобрать партию
-            </Link>
-          )}
-
-          {/*
-           * На узком экране шкала становится тонкой полосой, и
-           * переключатель внутри неё не помещается: там режим
-           * меняется этой кнопкой. На широком экране она скрыта -
-           * переключатель есть в самой шкале.
-           */}
-          <button
-            type="button"
-            className="ctrl-btn ctrl-btn--eval-mode"
-            onClick={onToggleEvalMode}
-            disabled={!onToggleEvalMode}
-          >
-            {evalMode === "engine" ? "Оценка: движок" : "Оценка: материал"}
-          </button>
-
-          {/*
-           * Перевес нижней стороны - в её строке под доской,
-           * а не плашкой поверх поля.
-           */}
-          <MaterialDisplay
-            {...materialByColor[boardFlipped ? "b" : "w"]}
-          />
-        </div>
-
-        {/* =====================================================
             Легенда сравнения
         ====================================================== */}
         {compareData && (
@@ -3506,6 +3436,72 @@ const fetchBestMove = useCallback(
             )}
           </div>
         )}
+      </div>
+
+      {/* =====================================================
+          Кнопки под доской
+      ====================================================== */}
+      <div className="controls-row">
+        <div className="controls-actions">
+          <button
+            className="ctrl-btn"
+            onClick={() =>
+              setBoardFlipped(
+                (f) => !f,
+              )
+            }
+          >
+            ↺ Доска
+          </button>
+
+          {/*
+           * «Новая игра» открывает меню выбора стороны: партия начнётся
+           * сразу после выбора. Клик по фону - отмена, текущая партия
+           * остаётся.
+           */}
+          <button
+            className="ctrl-btn"
+            onClick={openSidePicker}
+          >
+            Новая игра
+          </button>
+
+          {/*
+           * Разбор доступен и после того, как итоговую карточку закрыли
+           * кликом по фону: кнопка открывает её снова и запускает разбор.
+           */}
+          {gameResult && (
+            <Link
+              className="ctrl-btn ctrl-btn--review"
+              to={reviewArchiveId ? `/review/game/${reviewArchiveId}` : "/review"}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Разобрать партию
+            </Link>
+          )}
+
+          {/*
+           * Переключатель режима шкалы: материальный перевес или оценка
+           * движка. Выбор запоминается в браузере.
+           */}
+          <button
+            type="button"
+            className="ctrl-btn ctrl-btn--eval-mode"
+            onClick={onToggleEvalMode}
+            disabled={!onToggleEvalMode}
+          >
+            {evalMode === "engine" ? "Оценка: движок" : "Оценка: материал"}
+          </button>
+        </div>
+
+        {/*
+         * Перевес нижней стороны - в её строке под доской,
+         * а не плашкой поверх поля.
+         */}
+        <MaterialDisplay
+          {...materialByColor[boardFlipped ? "b" : "w"]}
+        />
       </div>
     </div>
   );
