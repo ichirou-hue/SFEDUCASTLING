@@ -98,4 +98,14 @@ jobs:
           scp -i "$key" -o BatchMode=yes -o StrictHostKeyChecking=yes \
             "bundle/gigachess-$SHA.tar.gz" "$SERVER_USER@$SERVER_HOST:/tmp/gigachess-$SHA.tar.gz"
           ssh -i "$key" -o BatchMode=yes -o StrictHostKeyChecking=yes \
-            "$SERVER_USER@$SERVER_HOST" "sudo -n /usr/local/sbin/gigachess-deploy $SHA"
+            "$SERVER_USER@$SERVER_HOST" "tar -xOf /tmp/gigachess-$SHA.tar.gz ./requirements-runtime.txt > /tmp/gigachess-$SHA-requirements.txt && /home/deploy/.local/bin/uv pip install --python /srv/SFEDUCASTLING/venv/bin/python -r /tmp/gigachess-$SHA-requirements.txt && sudo -n /usr/local/sbin/gigachess-deploy $SHA"
+
+      - name: Check out verifier from deployed commit
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ steps.source.outputs.sha }}
+
+      - name: Verify public backend version and frontend files
+        env:
+          SHA: ${{ steps.source.outputs.sha }}
+        run: python3 scripts/verify_release.py https://gigachess.ru "$SHA"
