@@ -26,6 +26,12 @@ from backend.services.gigacoin_service import (
     award_gigacoins,
     moscow_today,
 )
+from backend.services.training_course_data import (
+    LEVEL_LABELS,
+    locked_module_slugs,
+    module_required_elo,
+    module_unlocked_for_elo,
+)
 from backend.services.training_checker import TrainingCheckError, check_training_task
 from backend.services.assessment import rating_for_selection
 from backend.services.difficulty_logic import difficulty_for_rating
@@ -57,6 +63,41 @@ def _base_difficulty_for_user(user: User) -> int:
     """Стартовая сложность тем из рейтинга пользователя (тест > анкета)."""
     rating, _ = rating_for_selection(user.elo, user.rating_estimate, user.prior_band)
     return difficulty_for_rating(rating)
+
+
+def _ensure_module_unlocked(module: TrainingModule, user: User) -> None:
+    """403, если модуль закрыт по Elo.
+
+    Правило то же, что в ``list_modules``: модуль открывается с нижней
+    границы своей метки уровня, а без рейтинга доступны только пороги 0.
+    """
+    if module_unlocked_for_elo(module.slug, user.elo):
+        return
+    required = module_required_elo(module.slug)
+    if user.elo is None:
+        detail = (
+            "Модуль откроется после теста уровня: "
+            f"нужен рейтинг Elo {required} и выше."
+        )
+    else:
+        detail = (
+            f"Модуль откроется при рейтинге Elo {required} и выше. "
+            f"Ваш рейтинг: {int(user.elo)}."
+        )
+    raise HTTPException(status_code=403, detail=detail)
+
+
+async def _ensure_task_access(
+    db: AsyncSession, task: TrainingTask, user: User
+) -> None:
+    """Проверяет, что урок и модуль задания включены и доступны по Elo."""
+    lesson = await get_lesson(db, task.lesson_id)
+    if not lesson or not lesson.enabled:
+        raise HTTPException(status_code=404, detail="Учебное задание не найдено")
+    module = await db.get(TrainingModule, lesson.module_id)
+    if not module or not module.enabled:
+        raise HTTPException(status_code=404, detail="Учебное задание не найдено")
+    _ensure_module_unlocked(module, user)
 
 
 class TrainingAnswerRequest(BaseModel):
@@ -149,8 +190,10 @@ async def training_progress(
     засчитывается за 3 разных решённых пазла или хотя бы одно решённое
     задание модуля. Дни визитов и награды GigaCoin в серию не входят,
     поэтому ``progress["streak"]`` здесь НЕ перезаписывается.
+
+    В цели курса учитываются только модули, открытые пользователю по Elo.
     """
-    return await get_training_progress(db, user.id)
+    return await get_training_progress(db, user.id, user_elo=user.elo)
 
 
 @router.get("/due")
@@ -160,7 +203,14 @@ async def training_due(
     user: User = Depends(get_current_user),
 ):
     """Задания, которые текущему пользователю уже пора повторить."""
-    items = await get_due_training_reviews(db, user_id=user.id, limit=limit)
+    items = await get_due_training_reviews(
+        db,
+        user_id=user.id,
+        limit=limit,
+        # Повторения из закрытых по Elo модулей отсекаются в SQL: пользователь
+        # не должен получать задание, которое не сможет открыть.
+        locked_slugs=locked_module_slugs(user.elo),
+    )
     return {
         "total": len(items),
         "items": [
@@ -183,8 +233,9 @@ async def training_modules(
     """Все карточки учебных модулей, включая будущие disabled-модули.
 
     Учебный модуль доступен только зарегистрированным пользователям.
+    Модули выше Elo-корзины пользователя отдаются с ``locked: true``.
     """
-    return {"modules": await list_modules(db)}
+    return {"modules": await list_modules(db, user_elo=user.elo)}
 
 
 @router.get("/modules/{slug}")
@@ -196,6 +247,8 @@ async def training_module(
     module = await get_module_by_slug(db, slug)
     if not module:
         raise HTTPException(status_code=404, detail="Учебный модуль не найден")
+    if module.enabled:
+        _ensure_module_unlocked(module, user)
 
     return {
         "module": {
@@ -205,6 +258,9 @@ async def training_module(
             "description": module.description,
             "enabled": module.enabled,
             "sort_order": module.sort_order,
+            "level_label": LEVEL_LABELS.get(module.slug),
+            "required_elo": module_required_elo(module.slug),
+            "locked": not module_unlocked_for_elo(module.slug, user.elo),
         },
         "lessons": await list_module_lessons(db, module.id) if module.enabled else [],
     }
@@ -219,6 +275,10 @@ async def training_lesson(
     lesson = await get_lesson(db, lesson_id)
     if not lesson or not lesson.enabled:
         raise HTTPException(status_code=404, detail="Учебный урок не найден")
+    module = await db.get(TrainingModule, lesson.module_id)
+    if not module or not module.enabled:
+        raise HTTPException(status_code=404, detail="Учебный урок не найден")
+    _ensure_module_unlocked(module, user)
 
     tasks = await list_lesson_tasks(db, lesson.id)
     return {
@@ -244,6 +304,7 @@ async def training_task(
     task = await get_task(db, task_id)
     if not task or not task.enabled:
         raise HTTPException(status_code=404, detail="Учебное задание не найдено")
+    await _ensure_task_access(db, task, user)
     return {"task": _task_public(task)}
 
 
@@ -257,6 +318,7 @@ async def check_task(
     task = await get_task(db, task_id)
     if not task or not task.enabled:
         raise HTTPException(status_code=404, detail="Учебное задание не найдено")
+    await _ensure_task_access(db, task, user)
 
     try:
         result = check_training_task(task, req.answer)

@@ -3718,6 +3718,14 @@ img[src^="/pieces/"] {
   filter: grayscale(0.15);
 }
 
+/* Модуль выше Elo-корзины пользователя: карточка видна, но закрыта. */
+.training-module-node--locked {
+  opacity: 0.62;
+  cursor: not-allowed;
+  filter: grayscale(0.3);
+  border-style: dashed;
+}
+
 .training-module-node-icon {
   flex-shrink: 0;
   font-family: var(--font-ui);
@@ -3746,7 +3754,7 @@ img[src^="/pieces/"] {
   color: #666;
 }
 
-/* Метка уровня из программы курса: только подсказка, доступ не ограничивает. */
+/* Метка уровня из программы курса. Её нижняя граница задаёт порог доступа. */
 .training-module-level {
   align-self: flex-start;
   padding: 4px 10px;
@@ -3771,6 +3779,11 @@ img[src^="/pieces/"] {
   color: #775f30;
   font-size: 12px;
   font-weight: 600;
+}
+
+.training-module-meta--locked {
+  background: rgba(120, 120, 120, 0.16);
+  color: #5f5f5f;
 }
 
 /* Конь над текущим модулем: планирует (transition) + прыгает (hop). */

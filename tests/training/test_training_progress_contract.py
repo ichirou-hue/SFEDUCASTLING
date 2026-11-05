@@ -209,3 +209,63 @@ def test_streak_joins_course_and_puzzle_days():
     result = _run(get_training_progress(db, user_id=1))
 
     assert result["streak"] == 2
+
+
+def _course_modules():
+    return [
+        _Module(1, "pieces", "Шахматная азбука"),
+        _Module(2, "endgames", "Эндшпиль"),
+        _Module(3, "openings", "Дебют"),
+        _Module(4, "middlegame", "Миттельшпиль: стратегия"),
+    ]
+
+
+def test_locked_modules_excluded_from_course_goal():
+    # Без Elo цель курса - только базовые модули, иначе 100% недостижимы.
+    # Заглушка БД не умеет фильтровать по module_ids, поэтому задания и
+    # уроки закрытых модулей в неё не кладём - как и в реальном SQL.
+    db = _FakeDB(
+        modules=_course_modules(),
+        task_rows=[(100, 10, 1)],
+        lesson_rows=[(10, 1)],
+    )
+    result = _run(get_training_progress(db, user_id=1))
+
+    assert result["modules"]["total"] == 1
+    assert [item["slug"] for item in result["modules"]["items"]] == ["pieces"]
+    assert result["modules"]["completed"] == 0
+    assert result["modules"]["percent"] == 0.0
+
+
+def test_locked_modules_join_goal_when_elo_is_enough():
+    # С Elo 1000 модули 1000-1500 входят в цель курса.
+    db = _FakeDB(
+        modules=_course_modules(),
+        task_rows=[(100, 10, 1), (101, 20, 2), (102, 30, 3), (103, 40, 4)],
+        lesson_rows=[(10, 1), (20, 2), (30, 3), (40, 4)],
+    )
+    result = _run(get_training_progress(db, user_id=1, user_elo=1000))
+
+    assert result["modules"]["total"] == 4
+    assert {item["slug"] for item in result["modules"]["items"]} == {
+        "pieces",
+        "endgames",
+        "openings",
+        "middlegame",
+    }
+
+
+def test_progress_counts_attempts_from_locked_modules():
+    # История попыток - статистика, а не доступ: она не обрезается по Elo.
+    db = _FakeDB(
+        modules=_course_modules()[:2],
+        task_rows=[(100, 10, 1)],
+        lesson_rows=[(10, 1)],
+        attempt_rows=[(101, True, _local_noon(), 2)],
+    )
+    result = _run(get_training_progress(db, user_id=1, user_elo=None))
+
+    assert result["modules"]["total"] == 1
+    assert result["attempts"]["total"] == 1
+    assert result["attempts"]["correct"] == 1
+    assert result["attempts"]["accuracy"] == 100.0

@@ -27,8 +27,9 @@ from backend.services.openings_course_data import build_openings_lessons
 
 START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
-# Диапазоны рейтинга из программы. Метка только отображается на карточке
-# модуля: доступ ничем не ограничивается, отдельной колонки в БД нет.
+# Диапазоны рейтинга из программы. Метка показывается на карточке модуля,
+# а её нижняя граница задаёт минимальный Elo для доступа к модулю. Отдельной
+# колонки в БД нет: правила курса живут в декларативных данных.
 LEVEL_LABELS = {
     "pieces": "0-1000",
     "king-safety": "0-1000",
@@ -37,6 +38,51 @@ LEVEL_LABELS = {
     "openings": "1000-1500",
     "middlegame": "1000-1500",
 }
+
+
+def _label_min_elo(label: str) -> int:
+    """Нижняя граница метки уровня: "1000-1500" -> 1000."""
+    try:
+        return int(str(label).split("-")[0].strip())
+    except (TypeError, ValueError):
+        return 0
+
+
+# Минимальный Elo для открытия модуля. Модули с порогом 0 доступны всем,
+# включая пользователей без пройденного теста уровня.
+LEVEL_MIN_ELO = {
+    slug: _label_min_elo(label) for slug, label in LEVEL_LABELS.items()
+}
+
+
+def module_required_elo(slug: str) -> int:
+    """Порог Elo модуля; неизвестный модуль считаем доступным."""
+    return LEVEL_MIN_ELO.get(slug, 0)
+
+
+def module_unlocked_for_elo(slug: str, elo: int | None) -> bool:
+    """Открыт ли модуль при данном Elo.
+
+    Без рейтинга доступны только модули с порогом 0: остальные откроются
+    после прохождения теста уровня.
+    """
+    required = module_required_elo(slug)
+    if required <= 0:
+        return True
+    return elo is not None and int(elo) >= required
+
+
+def locked_module_slugs(elo: int | None) -> set[str]:
+    """Слаги модулей, закрытых для данного Elo.
+
+    Нужны запросам, которые фильтруют контент по модулям в SQL: так лимит
+    выборки не расходуется на закрытые модули.
+    """
+    return {
+        slug
+        for slug in LEVEL_MIN_ELO
+        if not module_unlocked_for_elo(slug, elo)
+    }
 
 
 def _options(*pairs: tuple[str, str]) -> list[dict[str, str]]:

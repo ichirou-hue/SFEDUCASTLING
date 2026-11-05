@@ -13,14 +13,26 @@ from backend.models.training_task import TrainingTask
 from backend.models.user import User
 from backend.services.local_time import local_today, to_local_date
 from backend.services.training_checker import TrainingCheckResult
-from backend.services.training_course_data import LEVEL_LABELS
+from backend.services.training_course_data import (
+    LEVEL_LABELS,
+    module_required_elo,
+    module_unlocked_for_elo,
+)
 
 # Сколько РАЗНЫХ задач нужно решить за день, чтобы день считался занятием
 # и продлевал серию дней. Повторное решение той же задачи не считается.
 PUZZLES_PER_ACTIVE_DAY = 3
 
 
-async def list_modules(db: AsyncSession) -> list[dict]:
+async def list_modules(
+    db: AsyncSession, *, user_elo: int | None = None
+) -> list[dict]:
+    """Список модулей с признаком доступности по Elo пользователя.
+
+    ``locked`` и ``required_elo`` считаются здесь, чтобы интерфейс и API
+    использовали одно правило. Без рейтинга закрыты модули выше базовой
+    корзины (``required_elo > 0``).
+    """
     modules = (
         await db.scalars(select(TrainingModule).order_by(TrainingModule.sort_order, TrainingModule.id))
     ).all()
@@ -42,6 +54,7 @@ async def list_modules(db: AsyncSession) -> list[dict]:
                 TrainingTask.enabled.is_(True),
             )
         )
+        required_elo = module_required_elo(module.slug)
         result.append(
             {
                 "id": module.id,
@@ -51,6 +64,8 @@ async def list_modules(db: AsyncSession) -> list[dict]:
                 "sort_order": module.sort_order,
                 "enabled": module.enabled,
                 "level_label": LEVEL_LABELS.get(module.slug),
+                "required_elo": required_elo,
+                "locked": not module_unlocked_for_elo(module.slug, user_elo),
                 "lesson_count": int(lesson_count or 0),
                 "task_count": int(task_count or 0),
             }
@@ -176,12 +191,19 @@ def _current_streak(activity_dates: set, today=None) -> int:
     return streak
 
 
-async def get_training_progress(db: AsyncSession, user_id: int) -> dict:
+async def get_training_progress(
+    db: AsyncSession, user_id: int, *, user_elo: int | None = None
+) -> dict:
     """Агрегирует прогресс пользователя по учебному курсу.
 
     Модуль считается пройденным, когда пользователь хотя бы один раз
     правильно выполнил каждое включённое задание этого модуля.
     Accuracy считается по всем строкам training_attempts, включая повторы.
+
+    В цели курса входят только модули, доступные пользователю по Elo:
+    закрытые модули из ``modules.total/percent/items`` исключены, иначе
+    прогресс курса никогда не дошёл бы до 100%. История попыток и серия
+    дней при этом не обрезаются - это статистика, а не доступ.
 
     Помимо итогов, ответ несёт разбивку ``modules.items``: по каждому
     модулю - счётчики заданий и список уроков. Она нужна фронту для
@@ -203,6 +225,13 @@ async def get_training_progress(db: AsyncSession, user_id: int) -> dict:
             .order_by(TrainingModule.sort_order, TrainingModule.id)
         )
     ).all()
+
+    # Цель курса - только доступные модули, как и выключенные из неё.
+    modules = [
+        module
+        for module in modules
+        if module_unlocked_for_elo(module.slug, user_elo)
+    ]
 
     module_ids = [module.id for module in modules]
     tasks_by_module: dict[int, set[int]] = {module.id: set() for module in modules}
