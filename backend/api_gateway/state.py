@@ -733,6 +733,71 @@ def get_gigachess():
 
 
 # =============================================================
+# CHAT FALLBACK LLM (Chat Completions API)
+# =============================================================
+
+_chat_fallback_client = None
+
+_chat_fallback_lock = threading.Lock()
+
+
+def get_chat_fallback():
+    """Возвращает singleton-клиент резервной LLM для чата."""
+
+    global _chat_fallback_client
+
+    if _chat_fallback_client is not None:
+        return _chat_fallback_client
+
+    with _chat_fallback_lock:
+
+        if _chat_fallback_client is not None:
+            return _chat_fallback_client
+
+        try:
+
+            from backend.config.settings import settings
+            from backend.llm.openai_compat import OpenAICompatClient
+
+            config = settings.chat_fallback
+
+            if not config.base_url or not config.api_key:
+
+                print(
+                    "[LLMFallback] "
+                    "CHAT_FALLBACK__BASE_URL или "
+                    "CHAT_FALLBACK__API_KEY не заданы"
+                )
+
+                return None
+
+            _chat_fallback_client = OpenAICompatClient(
+                base_url=config.base_url,
+                api_key=config.api_key,
+                model=config.model,
+                connect_timeout=config.connect_timeout,
+                read_timeout=config.read_timeout,
+            )
+
+            print(
+                "[LLMFallback] Client ready: "
+                f"{config.base_url} "
+                f"(model={config.model})"
+            )
+
+            return _chat_fallback_client
+
+        except Exception as e:
+
+            print(
+                "[LLMFallback] "
+                f"Ошибка инициализации: {e}"
+            )
+
+            return None
+
+
+# =============================================================
 # LLAVA
 # =============================================================
 
