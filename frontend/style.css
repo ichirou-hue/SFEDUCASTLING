@@ -297,8 +297,9 @@ textarea {
   outline-offset: 4px;
 }
 
-/* Главная страница: своя скролл-колонка, чтобы футер был в потоке
-   контента (внизу при проскролле), а не зафиксированной полосой. */
+/* Страница игры: своя колонка, чтобы футер был в потоке контента,
+   а не зафиксированной полосой поверх страницы. На десктопе прокрутка
+   отключается (см. ниже), на планшете и телефоне остаётся. */
 .main-page-scroll {
   flex: 1;
   min-height: 0;
@@ -308,6 +309,33 @@ textarea {
   scrollbar-gutter: stable;
   display: flex;
   flex-direction: column;
+}
+
+/* На десктопе страница игры помещается целиком без прокрутки:
+   доска подстраивает высоту под оставшееся место (см. updateBoardSize
+   в Chessboard.jsx). Для низких окон и планшетной/мобильной раскладки
+   оставляем страховочную прокрутку, чтобы контент не обрезался. */
+@media (min-width: 1451px) and (min-height: 560px) {
+  .main-page-scroll {
+    overflow-y: hidden;
+    /* Скроллбара больше нет - не резервируем под него полосу справа. */
+    scrollbar-gutter: auto;
+  }
+
+  /* Строка грида не должна расти из-за intrinsic-высоты колонок:
+     иначе история/чат раздувают её выше экрана, а доска центрируется
+     в этой раздутой строке и визуально уезжает вниз. */
+  .main-area {
+    flex: 1 1 auto;
+    min-height: 0;
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .main-area > .board-stage,
+  .main-area > .game-history-column,
+  .main-area > .chat-section {
+    min-height: 0;
+  }
 }
 
 /* Футер в гриде пазлов: отдельной строкой на всю ширину. */
@@ -639,7 +667,9 @@ textarea {
 }
 
 .board-section {
-  align-self: start;
+  /* Центрируем всю связку «перевес + доска + кнопки» по вертикали
+     относительно колонок истории и чата. */
+  align-self: center;
   flex: 0 0 auto;
   min-width: 0;
   display: flex;
@@ -660,6 +690,20 @@ textarea {
   gap: 12px;
   order: 2;
   grid-area: board;
+}
+
+/* Строка материального перевеса верхней стороны: живёт над карточкой
+   доски, а не внутри неё. Высота фиксирована - появление перевеса не
+   сдвигает доску и не меняет её рассчитанный размер. */
+.board-material-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  align-self: stretch;
+  min-height: 24px;
+  /* Соседние элементы секции разделяет gap: 12px; оставляем видимый
+     зазор 6px, чтобы плашка не отрывалась от доски. */
+  margin-bottom: -6px;
 }
 
 .board-wrapper {
@@ -685,17 +729,26 @@ textarea {
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 16px;
   background: rgba(20, 28, 20, 0.45);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
   border-radius: 15px;
   animation: gameoverFadeIn 0.25s ease;
 }
 
+/* Карточка - одна вертикальная колонка: заголовок, причина и действия
+   идут с общим ритмом, поэтому высота не скачет при появлении разбора. */
 .gameover-card {
-  min-width: 240px;
-  max-width: 82%;
-  padding: 22px 30px;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.96);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: min(92%, 360px);
+  min-width: 0;
+  padding: 24px 24px 20px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.97);
   border: 3px solid rgba(180, 135, 44, 0.85);
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
   text-align: center;
@@ -710,34 +763,77 @@ textarea {
   border-color: #b3543a;
 }
 
+.gameover-card--draw {
+  border-color: rgba(180, 135, 44, 0.85);
+}
+
+/* Заголовок - тем же display-шрифтом, что и крупные заголовки сайта. */
 .gameover-title {
-  margin-top: 6px;
-  font-family: var(--font-ui);
-  font-size: 24px;
+  font-family: var(--font-display);
+  font-size: clamp(26px, 3.4vw, 34px);
+  font-weight: 400;
+  line-height: 1.1;
+  letter-spacing: 0.01em;
   color: #333;
+}
+
+.gameover-card--win .gameover-title {
+  color: #2f6b3a;
+}
+
+.gameover-card--loss .gameover-title {
+  color: #a2432b;
+}
+
+.gameover-card--draw .gameover-title {
+  color: #8a6a28;
 }
 
 .gameover-reason {
-  margin-top: 6px;
   font-size: 14px;
+  line-height: 1.45;
   color: #666;
 }
 
+/* Кнопки карточки: одинаковый размер и форма независимо от того,
+   кнопка это или ссылка. display: inline-flex обязателен для <a>:
+   у строчной ссылки вертикальные padding не участвуют в потоке и
+   наезжают на текст причины. */
 .gameover-btn {
-  margin-top: 14px;
-  padding: 9px 28px;
-  border: none;
-  border-radius: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 10px 22px;
+  border: 1px solid transparent;
+  border-radius: 999px;
   background: #c9a96e;
-  color: #333;
+  color: #2b2418;
   font-family: var(--font-ui);
-  font-size: 16px;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
   cursor: pointer;
-  transition: background 0.2s;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease,
+    transform 0.15s ease;
 }
 
 .gameover-btn:hover {
   background: #b89a5e;
+}
+
+.gameover-btn:active {
+  transform: translateY(1px);
+}
+
+.gameover-btn:focus-visible {
+  outline: 2px solid rgba(180, 135, 44, 0.7);
+  outline-offset: 2px;
 }
 
 .gameover-btn:disabled {
@@ -745,25 +841,32 @@ textarea {
   opacity: 0.65;
 }
 
-/* Кнопка разбора - светлее основной: это второе действие, после него
-   в карточке появляются звёзды и точность. */
+/* Вторичное действие - «Разобрать партию»: светлая кнопка с золотым
+   кантом, чтобы не спорить с основной «Новой игрой». */
 .gameover-btn--review {
-  background: #f1e6cf;
-  border: 1px solid rgba(180, 135, 44, 0.8);
+  background: #f6f1e6;
+  border-color: rgba(180, 135, 44, 0.55);
+  color: #5c4a2e;
 }
 
 .gameover-btn--review:hover {
-  background: #e8d9b8;
+  background: #efe5d2;
 }
 
-/* Кнопки карточки итога: после разбора их две - «Разбор по ходам»
-   и «Новая игра». На узком экране переносятся на вторую строку. */
+/* Действия идут столбцом на всю ширину карточки: длинная подпись
+   разбора больше не растягивает кнопку сильнее остальных. */
 .gameover-actions {
   display: flex;
-  justify-content: center;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
   gap: 10px;
-  flex-wrap: wrap;
+  width: 100%;
+  margin-top: 14px;
+}
+
+.gameover-actions .gameover-btn {
+  width: 100%;
+  margin-top: 0;
 }
 
 /* Итог разбора: три звезды, точность и счётчики ходов игрока. */
@@ -790,7 +893,7 @@ textarea {
 
 .gameover-review-accuracy {
   margin-top: 8px;
-  font-family: "Calypso", serif;
+  font-family: var(--font-display);
   font-size: 18px;
   color: #333;
 }
@@ -813,25 +916,28 @@ textarea {
 }
 
 /* Выбор стороны при входе на главную: та же карточка, что и итог
-   партии, только вместо одной кнопки - две «медали» сторон. */
+   партии, только вместо кнопок - две равные «медали» сторон. */
 .gameover-card--side {
-  min-width: 330px;
+  width: min(94%, 380px);
 }
 
 .side-picker {
-  display: flex;
-  gap: 14px;
-  justify-content: center;
-  margin-top: 16px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  width: 100%;
+  margin-top: 12px;
 }
 
 .side-pick {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  width: 132px;
-  padding: 14px 10px 12px;
+  width: 100%;
+  min-width: 0;
+  padding: 14px 8px 12px;
   border: 2px solid rgba(180, 135, 44, 0.5);
   border-radius: 14px;
   background: linear-gradient(180deg, #fffdf8 0%, #f4ecdc 100%);
@@ -1007,15 +1113,6 @@ textarea {
    режим отличался от материального без дополнительных подписей. */
 .eval-bar--engine .eval-bar-fill {
   border-top-color: rgba(201, 154, 62, 1);
-}
-
-.player-bar {
-  width: 100%;
-  padding: 4px 4px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
 }
 
 .maia-engine-error {

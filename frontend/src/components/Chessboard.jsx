@@ -697,6 +697,14 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
   const updateBoardSize = useCallback(() => {
     const isMobile = window.matchMedia("(max-width: 760px)").matches;
     const isStacked = window.matchMedia("(max-width: 1450px)").matches;
+    /*
+     * Должно совпадать с media-query в style.css: только при фиксированной
+     * высоте .main-area можно брать её clientHeight для расчёта доски.
+     * В остальных случаях страница прокручивается, и высоту берём
+     * от скролл-контейнера.
+     */
+    const isFixedPageHeight =
+      !isStacked && window.matchMedia("(min-height: 560px)").matches;
 
     /*
      * Ширину берём у самой колонки доски, а не вычитаем чат из окна.
@@ -737,13 +745,20 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
       : sectionW - boardChromeW - evalAndGapW;
 
     /*
-     * Высота - замером живых элементов, а не гаданием по window:
-     * clientHeight .main-area уже исключает топбар, футер, отступы
-     * и хром браузера. Из него вычитаем всё, что лежит в карточке
-     * доски кроме самой доски: верхнюю панель, кнопки, карточку
-     * сравнения, ФЕН-панель, паддинги и рамку. Именно замером, потому
-     * что карточка сравнения появляется только после подсказки и
-     * добавляет ~100px - иначе доска перестаёт помещаться на экране.
+     * Высота - замером живых элементов, а не гаданием по window.
+     * На десктопе .main-area растягивается на всё оставшееся место
+     * (см. style.css), поэтому его clientHeight без нижнего padding
+     * и есть высота, которую может занять .board-section. Так доска
+     * не зависит от высоты футера и от того, насколько высоко браузер
+     * посчитал intrinsic-высоту соседних колонок.
+     *
+     * Когда страница прокручивается (stacked-раскладка или низкое
+     * окно), оставляем прежний запас в 22px от скролл-контейнера.
+     *
+     * Из доступной высоты вычитаем всё, что лежит в карточке доски
+     * кроме самой доски: верхнюю панель, кнопки, карточку сравнения,
+     * ФЕН-панель, паддинги и рамку. Именно замером, потому что карточка
+     * сравнения появляется только после подсказки и добавляет ~100px.
      *
      * Через scrollHeight, а не offsetHeight: когда содержимого больше,
      * чем места, карточка сжимается по высоте колонки и offsetHeight
@@ -770,9 +785,23 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
     // + рамка с паддингами, когда доска ещё не разложена.
     const chromeH = measuredChrome > 0 ? measuredChrome : 150;
     const pageViewport = mainEl?.parentElement;
-    const availableHeight = pageViewport
-      ? pageViewport.clientHeight - 22
-      : (mainEl?.clientHeight || window.innerHeight) - 12;
+
+    /*
+     * На десктопе при фиксированной высоте .main-area уже занимает
+     * ровно доступное место, поэтому берём его фактическую высоту.
+     * Когда страница прокручивается, оставляем прежний расчёт
+     * от скролл-контейнера.
+     */
+    let availableHeight;
+    if (isFixedPageHeight && mainEl) {
+      const mainStyle = window.getComputedStyle(mainEl);
+      availableHeight =
+        mainEl.clientHeight - (parseFloat(mainStyle.paddingBottom) || 0);
+    } else {
+      availableHeight = pageViewport
+        ? pageViewport.clientHeight - 22
+        : (mainEl?.clientHeight || window.innerHeight) - 12;
+    }
     const availH = availableHeight - chromeH;
 
     const size = Math.round(Math.min(availW, availH));
@@ -3030,20 +3059,18 @@ const fetchBestMove = useCallback(
 
   return (
     <div className="board-section">
-      <div className="board-wrapper" data-logo-anchor>
+      {/*
+       * Перевес верхней стороны - над карточкой доски, а не внутри
+       * неё. Строка имеет фиксированную высоту, поэтому появление
+       * перевеса не сдвигает поле и не пересчитывает его размер.
+       */}
+      <div className="board-material-row">
+        <MaterialDisplay
+          {...materialByColor[boardFlipped ? "w" : "b"]}
+        />
+      </div>
 
-        {/* =====================================================
-            Верхняя панель
-        ====================================================== */}
-        <div className="player-bar">
-          {/*
-           * Перевес верхней стороны живёт в её же строке, а не плашкой
-           * поверх доски: так он ничего не перекрывает.
-           */}
-          <MaterialDisplay
-            {...materialByColor[boardFlipped ? "w" : "b"]}
-          />
-        </div>
+      <div className="board-wrapper" data-logo-anchor>
 
         {maiaError && (
           <div className="maia-engine-error" role="alert">
@@ -3357,31 +3384,32 @@ const fetchBestMove = useCallback(
                   {gameResult.reason}
                 </div>
 
-                {/*
-                 * Разбор партии: до нажатия - кнопка, после ответа
-                 * сервера - звёзды, точность и счётчик ходов.
-                 */}
-                <Link
-                  className="gameover-btn gameover-btn--review"
-                  to={reviewArchiveId ? `/review/game/${reviewArchiveId}` : "/review"}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Разобрать партию по ходам
-                </Link>
-
                 {reviewError && (
                   <div className="gameover-review-note gameover-review-note--error">
                     {reviewError}
                   </div>
                 )}
 
+                {/*
+                 * Все действия живут в одном столбце: так у них общая
+                 * ширина, одинаковые отступы и они не наезжают на текст
+                 * причины. Разбор открывается в новой вкладке, а после
+                 * ответа сервера появляется кнопка, которая просто
+                 * прячет карточку и оставляет доску для листания.
+                 */}
                 <div className="gameover-actions">
-                  {/*
-                   * Разбор уже готов: главное действие - посмотреть ходы
-                   * с оценками. Кнопка прячет карточку, чтобы доска
-                   * освободилась для листания.
-                   */}
+                  <Link
+                    className="gameover-btn gameover-btn--review"
+                    to={
+                      reviewArchiveId
+                        ? `/review/game/${reviewArchiveId}`
+                        : "/review"
+                    }
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Разобрать партию по ходам
+                  </Link>
                   {review && (
                     <button
                       type="button"
@@ -3393,7 +3421,7 @@ const fetchBestMove = useCallback(
                   )}
                   <button
                     type="button"
-                    className="gameover-btn"
+                    className="gameover-btn gameover-btn--primary"
                     onClick={openSidePicker}
                   >
                     Новая игра

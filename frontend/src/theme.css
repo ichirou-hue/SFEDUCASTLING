@@ -467,8 +467,24 @@
   border-color: rgba(190, 106, 88, 0.6);
 }
 
+:root[data-theme="dark"] .gameover-card--draw {
+  border-color: var(--sf-line-strong);
+}
+
 :root[data-theme="dark"] .gameover-title {
   color: var(--sf-ink-strong);
+}
+
+:root[data-theme="dark"] .gameover-card--win .gameover-title {
+  color: var(--sf-green);
+}
+
+:root[data-theme="dark"] .gameover-card--loss .gameover-title {
+  color: var(--sf-error);
+}
+
+:root[data-theme="dark"] .gameover-card--draw .gameover-title {
+  color: var(--sf-gold);
 }
 
 :root[data-theme="dark"] .gameover-reason {
@@ -491,12 +507,13 @@
 
 /* Разбор партии: второстепенная кнопка и итог со звёздами. */
 :root[data-theme="dark"] .gameover-btn--review {
-  border: 1px solid var(--sf-line-strong);
+  border-color: var(--sf-line-strong);
   background: rgba(246, 244, 239, 0.08);
   color: var(--sf-ink);
 }
 
 :root[data-theme="dark"] .gameover-btn--review:hover {
+  border-color: var(--sf-line-strong);
   background: rgba(213, 180, 118, 0.16);
 }
 
