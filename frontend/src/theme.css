@@ -82,17 +82,16 @@
 /* Панель уровней Maia стоит под историей ходов и должна выглядеть
    частью того же набора: та же тёмная поверхность и золото. */
 :root[data-theme="dark"] .maia-level-progress {
-  border-color: var(--sf-line);
-  border-left-color: var(--sf-gold);
-  background: var(--sf-surface-raised);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.26);
+  border-color: var(--sf-line-strong);
+  background: var(--sf-surface);
+  box-shadow: 0 20px 52px rgba(0, 0, 0, 0.3);
 }
 
 :root[data-theme="dark"] .maia-level-progress-title {
   color: var(--sf-gold);
 }
 
-:root[data-theme="dark"] .maia-level-progress-title span {
+:root[data-theme="dark"] .maia-level-progress-count {
   color: var(--sf-muted);
 }
 

@@ -96,51 +96,65 @@ textarea {
   order: 1;
 }
 
+/* «Победы над Maia» - вторая карточка той же серии, что и история ходов:
+   та же золотая рамка, радиус и поверхность, поэтому блоки читаются
+   как один набор, а не как большой виджет и мелкая служебная плашка. */
 .maia-level-progress {
   flex: 0 0 auto;
-  padding: 12px;
-  border: 1px solid rgba(180, 135, 44, 0.58);
-  border-left: 3px solid rgba(180, 135, 44, 0.9);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+  padding: 16px 20px 18px;
+  border: 3px solid rgba(180, 135, 44, 0.85);
+  border-radius: 30px;
+  background: rgba(255, 255, 255, 0.87);
+  box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.25);
 }
 
 .maia-level-progress-title {
   color: #80652f;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.07em;
-  line-height: 1.3;
-  text-transform: uppercase;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: normal;
+  letter-spacing: 0.01em;
+  line-height: 1.15;
+  text-align: center;
+  text-transform: none;
 }
 
-.maia-level-progress-title span {
+.maia-level-progress-count {
+  display: inline-block;
+  margin-left: 4px;
   color: #4f4a3f;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
   font-variant-numeric: tabular-nums;
-  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.maia-level-progress .title-separator {
+  margin: 8px 0 6px;
 }
 
 .maia-level-progress-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 5px;
-  margin-top: 9px;
+  gap: 6px;
+  margin-top: 10px;
 }
 
 .maia-level-chip {
   display: flex;
   min-width: 0;
-  aspect-ratio: 1.45;
+  aspect-ratio: 1.3;
   align-items: center;
   justify-content: center;
   padding: 3px;
   border: 1px solid rgba(180, 135, 44, 0.16);
-  border-radius: 9px;
+  border-radius: 11px;
   background: rgba(243, 240, 232, 0.9);
   color: #6f6759;
   cursor: pointer;
-  font: 600 10px/1 var(--font-ui);
+  font: 600 12px/1 var(--font-ui);
   transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease, transform 0.16s ease;
 }
 
@@ -159,8 +173,10 @@ textarea {
    обычного hover-подъёма чипов. */
 .maia-level-progress-title .maia-level-progress-lock {
   display: block;
-  margin-top: 2px;
+  margin-top: 3px;
   color: #8a7a58;
+  font-family: var(--font-ui);
+  font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: none;
@@ -170,7 +186,7 @@ textarea {
   border-color: rgba(180, 135, 44, 0.58);
   background: rgba(201, 169, 110, 0.24);
   color: #765518;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 800;
 }
 
