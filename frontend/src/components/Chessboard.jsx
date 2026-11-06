@@ -626,21 +626,6 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
   }, [boardFlipped, onStateChange]);
 
   /*
-   * Пока открыта карточка выбора стороны, история ходов должна быть
-   * недоступна: иначе поверх «За кого играем?» можно откатить партию
-   * назад. Флаг уходит в общее состояние страницы, чтобы панель истории
-   * погасила стрелки и клики по ходам.
-   */
-  useEffect(() => {
-    if (typeof onStateChange === "function") {
-      onStateChange((prev) => ({
-        ...prev,
-        sidePickerOpen,
-      }));
-    }
-  }, [sidePickerOpen, onStateChange]);
-
-  /*
    * Фиксация уровня Maia3 тоже живёт в общем состоянии страницы:
    * чипы уровней отрисовываются в левой колонке, вне доски.
    */
@@ -1179,6 +1164,15 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
       } else {
         setIsViewMode(true);
         setViewIndex(index);
+
+        /*
+         * Игрок отматывает партию назад, чтобы её пересмотреть: плашки
+         * «итог партии» и «За кого играем?» закрываем, иначе они
+         * закрывают доску и мешают смотреть ходы. Итог при этом
+         * сохраняется - кнопка «Разобрать партию» остаётся доступной.
+         */
+        setResultCardDismissed(true);
+        setSidePickerOpen(false);
       }
     },
     [moveHistory, applyReviewEval],
@@ -1187,11 +1181,11 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
   const onNavigate = useCallback(
     (direction) => {
       /*
-       * Под карточкой выбора стороны навигация запрещена. Это вторая
-       * линия защиты: панель истории тоже гасит кнопки, но onNavigate
-       * можно вызвать и через boardRef.
+       * Явный переход по истории важнее предложения новой игры:
+       * если меню выбора стороны открыто, закрываем его и продолжаем
+       * навигацию, чтобы можно было пересмотреть партию.
        */
-      if (sidePickerOpen) return;
+      if (sidePickerOpen) setSidePickerOpen(false);
 
       /*
        * Переход по истории меняет позицию на доске. Предход,
@@ -1241,12 +1235,15 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
   );
 
   /*
-   * Листание партии стрелками, как на Lichess. Включается только после
-   * завершения партии (иначе перехватывало бы прокрутку во время игры)
-   * и не трогает поля ввода - прежде всего поле чата.
+   * Листание партии стрелками, как на Lichess. Включается после
+   * завершения партии или при открытом меню выбора стороны, если ходы
+   * уже есть (иначе перехватывало бы прокрутку во время игры и гасило
+   * стартовое меню), и не трогает поля ввода - прежде всего поле чата.
    */
   useEffect(() => {
-    if (!gameResult) return undefined;
+    if (!gameResult && !(sidePickerOpen && moveHistory.length > 0)) {
+      return undefined;
+    }
 
     const onKeyDown = (event) => {
       if (event.altKey || event.ctrlKey || event.metaKey) return;
@@ -1279,7 +1276,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
     window.addEventListener("keydown", onKeyDown);
 
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [gameResult, onNavigate]);
+  }, [gameResult, sidePickerOpen, moveHistory.length, onNavigate]);
 
   /*
    * Новая игра.

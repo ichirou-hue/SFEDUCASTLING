@@ -98,7 +98,6 @@ function MainPage({ user }) {
     maiaVictory: null,
     hintMessage: null,
     isComparing: false,
-    sidePickerOpen: true,
     levelLocked: false,
   });
 
@@ -146,7 +145,6 @@ function MainPage({ user }) {
             maiaRating={boardState.maiaRating}
             userRating={user?.elo || undefined}
             onNavigate={(dir) => boardRef.current?.onNavigate(dir)}
-            navigationDisabled={boardState.sidePickerOpen}
             fen={boardState.fen}
             onLoadFen={(nextFen) =>
               boardRef.current?.loadFen?.(nextFen) ?? false
