@@ -38,7 +38,7 @@ const PIECE_IMAGES = {
 const customPieces = Object.fromEntries(
   Object.entries(PIECE_IMAGES).map(([code, src]) => [
     code,
-    () => <img src={src} style={{ width: "100%", height: "100%" }} />,
+    () => <img src={src} draggable={false} style={{ width: "100%", height: "100%" }} />,
   ]),
 );
 
@@ -1358,6 +1358,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
                       <img
                         src={PIECE_IMAGES[`${pendingPromotion.color}${piece.toUpperCase()}`]}
                         alt=""
+                        draggable={false}
                       />
                       <span>{label}</span>
                     </button>
