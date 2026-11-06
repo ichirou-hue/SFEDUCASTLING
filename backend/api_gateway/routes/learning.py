@@ -541,6 +541,13 @@ async def level_test_submit(
     locked_user.elo = final_rating
     locked_user.skill_band = int(group["id"])
     locked_user.assessment_completed_at = datetime.now(UTC)
+    # Реальный тест заменяет автоматически назначенный новичку минимум:
+    # при повторном прохождении анкеты это не даст сбросить результат.
+    if isinstance(locked_user.onboarding, dict):
+        locked_user.onboarding = {
+            **locked_user.onboarding,
+            "placement": "level_test",
+        }
 
     test.answers = answers
     test.score = score

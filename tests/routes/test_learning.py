@@ -532,6 +532,12 @@ class TestLevelTestSubmitDeterminism:
         assert result["rating"] == 500
         assert result["band"] == 1
 
+        # Реальный тест помечает placement: повторная анкета не должна
+        # принять это за автоматически назначенный минимум и всё сбросить.
+        me = client.get("/api/auth/me", headers=_headers(token))
+        assert me.status_code == 200, me.text
+        assert me.json()["user"]["onboarding"]["placement"] == "level_test"
+
     def test_unlinked_user_is_capped_even_with_perfect_score(self, cleanup):
         """Без Lichess/Chess.com итог не выше 800 при любом числе верных."""
         token = _authed_user(cleanup)

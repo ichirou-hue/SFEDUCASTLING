@@ -20,6 +20,13 @@ const Q1 = [
   ["tournaments", "Турниры"],
 ];
 
+// Отдельный вопрос про правила: ответ "no" уводит новичка в модуль
+// «Шахматная азбука» сразу после анкеты, минуя входной тест.
+const KNOWS_RULES = [
+  ["yes", "Да"],
+  ["no", "Нет"],
+];
+
 const Q3 = [
   ["family", "Друзья и семья"],
   ["online_rating", "Онлайн-рейтинг"],
@@ -61,6 +68,7 @@ const Q8 = [
 
 const INITIAL = {
   q1: null,
+  knowsRules: null,
   // Q2 - только привязка: платформа и логин для поиска профиля.
   // Рейтинг и тип контроля в форму не вводятся - берутся из проверенной
   // привязки в submit. Руками присвоенный рейтинг изменить нельзя.
@@ -255,15 +263,16 @@ export default function OnboardingModal({ isOpen, onClose, onDone }) {
 
   const validate = () => {
     if (!a.q1) return "Ответьте на вопрос 1";
+    if (!a.knowsRules) return "Ответьте на вопрос 2";
     if (a.useQ2 && !a.q2.login.trim())
       return "Укажите логин на платформе или снимите галочку «Есть аккаунт»";
     // Q2 - только через привязку: рейтинг всегда проверенный, руками не вводится.
     if (a.useQ2 && !linked?.account)
       return "Привяжите аккаунт кнопкой «Найти и привязать аккаунт» или снимите галочку «Есть аккаунт»";
-    if (!a.q3.length) return "Выберите хотя бы один ответ на вопрос 3";
-    if (!a.q4) return "Ответьте на вопрос 4";
-    if (!a.q6) return "Ответьте на вопрос 6";
-    if (!a.q7) return "Ответьте на вопрос 7";
+    if (!a.q3.length) return "Выберите хотя бы один ответ на вопрос 4";
+    if (!a.q4) return "Ответьте на вопрос 5";
+    if (!a.q6) return "Ответьте на вопрос 7";
+    if (!a.q7) return "Ответьте на вопрос 8";
     if (a.q7 === "u10" && !a.consent)
       return "Для возраста до 10 лет нужно согласие родителя/опекуна";
     return "";
@@ -290,6 +299,7 @@ export default function OnboardingModal({ isOpen, onClose, onDone }) {
         : "blitz";
       const payload = {
         q1: a.q1,
+        knows_rules: a.knowsRules,
         q2: a.useQ2
           ? {
               platform: linkedAccount.platform || a.q2.platform,
@@ -351,7 +361,7 @@ export default function OnboardingModal({ isOpen, onClose, onDone }) {
           </span>
           <h2 className="onb-title">Анкета оценки уровня игры</h2>
           <p className="onb-subtitle">
-            Восемь коротких вопросов. От неё зависит, с чего начнётся обучение.
+            Девять коротких вопросов. От неё зависит, с чего начнётся обучение.
           </p>
           <div className="onb-divider" />
         </div>
@@ -366,7 +376,26 @@ export default function OnboardingModal({ isOpen, onClose, onDone }) {
 
           <section className="onb-q">
             <h3 className="onb-q-title">
-              2. Аккаунт + платформа + тип рейтинга?{" "}
+              2. Знаете ли вы правила игры в шахматы?
+            </h3>
+            <RadioGroup
+              name="knowsRules"
+              value={a.knowsRules}
+              options={KNOWS_RULES}
+              onChange={(v) => set({ knowsRules: v })}
+            />
+            {a.knowsRules === "no" && (
+              <p className="onb-question-note">
+                Назначим минимальный стартовый уровень — тест проходить не
+                нужно. Начнём с модуля «Шахматная азбука»: доска, фигуры,
+                шах и мат, специальные правила.
+              </p>
+            )}
+          </section>
+
+          <section className="onb-q">
+            <h3 className="onb-q-title">
+              3. Аккаунт + платформа + тип рейтинга?{" "}
               <span className="onb-optional">необязательно</span>
             </h3>
             <label className="onb-check">
@@ -495,7 +524,7 @@ export default function OnboardingModal({ isOpen, onClose, onDone }) {
 
           <section className="onb-q">
             <h3 className="onb-q-title">
-              3. Зачем вам шахматы?{" "}
+              4. Зачем вам шахматы?{" "}
               <span className="onb-optional">можно выбрать до 2</span>
             </h3>
             <div className="onb-options onb-options--wrap onb-options--multi">
@@ -520,13 +549,13 @@ export default function OnboardingModal({ isOpen, onClose, onDone }) {
           </section>
 
           <section className="onb-q">
-            <h3 className="onb-q-title">4. Сколько готовы заниматься в неделю?</h3>
+            <h3 className="onb-q-title">5. Сколько готовы заниматься в неделю?</h3>
             <RadioGroup name="q4" value={a.q4} options={Q4} onChange={(v) => set({ q4: v })} />
           </section>
 
           <section className="onb-q">
             <h3 className="onb-q-title">
-              5. Что интереснее?{" "}
+              6. Что интереснее?{" "}
               <span className="onb-optional">расставьте по порядку</span>
             </h3>
             <ol className="onb-rank">
@@ -603,12 +632,12 @@ export default function OnboardingModal({ isOpen, onClose, onDone }) {
           </section>
 
           <section className="onb-q">
-            <h3 className="onb-q-title">6. Подсказки во время заданий?</h3>
+            <h3 className="onb-q-title">7. Подсказки во время заданий?</h3>
             <RadioGroup name="q6" value={a.q6} options={Q6} onChange={(v) => set({ q6: v })} />
           </section>
 
           <section className="onb-q">
-            <h3 className="onb-q-title">7. Возрастная группа?</h3>
+            <h3 className="onb-q-title">8. Возрастная группа?</h3>
             <RadioGroup name="q7" value={a.q7} options={Q7} onChange={(v) => set({ q7: v })} />
 
             {a.q7 === "u10" && (
@@ -634,7 +663,7 @@ export default function OnboardingModal({ isOpen, onClose, onDone }) {
 
           <section className="onb-q">
             <h3 className="onb-q-title">
-              8. Как узнали о платформе?{" "}
+              9. Как узнали о платформе?{" "}
               <span className="onb-optional">необязательно</span>
             </h3>
             <RadioGroup name="q8" value={a.q8} options={Q8} onChange={(v) => set({ q8: v })} />

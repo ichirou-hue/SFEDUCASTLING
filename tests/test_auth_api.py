@@ -294,6 +294,68 @@ class TestOnboarding:
         assert user["rating_scale"] == "self_report"
         assert user["prior_band"] == 2
         assert user["onboarding_completed"] is True
+        assert user["assessment_completed"] is False
+
+    def test_persists_knows_rules_answer(self, cleanup):
+        login = cleanup(_unique("onb_rules"))
+        token = client.post(
+            "/api/auth/register", json={"login": login, "password": PASSWORD}
+        ).json()["access_token"]
+        r = client.post(
+            "/api/auth/onboarding",
+            json={**ONBOARDING, "knows_rules": "no"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert r.status_code == 200, r.text
+        user = r.json()["user"]
+        assert user["onboarding"]["answers"]["knows_rules"] == "no"
+        # Новичку без знания правил сразу назначается минимум, тест не нужен.
+        assert user["elo"] == 500
+        assert user["skill_band"] == 1
+        assert user["rating_estimate"] == 500
+        assert user["prior_band"] == 1
+        assert user["assessment_completed"] is True
+        assert user["onboarding"]["placement"] == "minimum"
+
+    def test_answering_rules_yes_after_minimum_unlocks_test(self, cleanup):
+        login = cleanup(_unique("onb_rules_retry"))
+        token = client.post(
+            "/api/auth/register", json={"login": login, "password": PASSWORD}
+        ).json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+        first = client.post(
+            "/api/auth/onboarding",
+            json={**ONBOARDING, "knows_rules": "no"},
+            headers=headers,
+        )
+        assert first.status_code == 200, first.text
+
+        second = client.post(
+            "/api/auth/onboarding",
+            json={**ONBOARDING, "knows_rules": "yes"},
+            headers=headers,
+        )
+        assert second.status_code == 200, second.text
+        user = second.json()["user"]
+        # Минимум снят: оценка снова считается непройденной, колонки очищены.
+        assert user["assessment_completed"] is False
+        assert user["elo"] is None
+        assert user["skill_band"] is None
+        assert user["rating_estimate"] == 800
+        assert user["prior_band"] == 2
+        assert "placement" not in user["onboarding"]
+
+    def test_rejects_unknown_knows_rules_answer(self, cleanup):
+        login = cleanup(_unique("onb_rules_bad"))
+        token = client.post(
+            "/api/auth/register", json={"login": login, "password": PASSWORD}
+        ).json()["access_token"]
+        r = client.post(
+            "/api/auth/onboarding",
+            json={**ONBOARDING, "knows_rules": "maybe"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert r.status_code == 422
 
 
 class TestAdmin:

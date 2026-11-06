@@ -577,6 +577,14 @@ export default function App() {
         onDone={(freshUser) => {
           if (freshUser) setUser(freshUser);
           setShowOnboarding(false);
+          // Новичок, не знающий правил, идёт сразу в «Шахматную азбуку»:
+          // входной тест ему пока не нужен. Остальные - на тест уровня.
+          const knowsRules = freshUser?.onboarding?.answers?.knows_rules;
+          if (knowsRules === "no") {
+            setAutoStartTest(false);
+            navigate("/training?module=pieces");
+            return;
+          }
           // Сразу после анкеты - входной тест (страница сама его запускает).
           setAutoStartTest(true);
           navigate("/level-test");
