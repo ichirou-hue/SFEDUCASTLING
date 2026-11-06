@@ -105,6 +105,9 @@ class PuzzleAttemptRequest(BaseModel):
     puzzle_id: str = Field(min_length=1, max_length=64)
     correct: bool
     player_moves: list[str] = Field(default_factory=list, max_length=50)
+    # Клиент сообщает, пользовался ли игрок подсказкой при решении. Решение
+    # с подсказкой не увеличивает серию, а сбрасывает её в 0.
+    used_hint: bool = False
 
 
 class LevelTestSubmitAnswer(BaseModel):
@@ -612,21 +615,34 @@ async def record_puzzle_attempt(
         PuzzleAttempt.puzzle_id == req.puzzle_id,
         PuzzleAttempt.correct.is_(True),
     ).limit(1)) is not None
+    # Пазл, на котором уже была ошибка, больше не может расти серию:
+    # его последующее верное решение не даёт прибавку к стрику.
+    already_failed = await db.scalar(select(PuzzleAttempt.id).where(
+        PuzzleAttempt.user_id == user.id,
+        PuzzleAttempt.puzzle_id == req.puzzle_id,
+        PuzzleAttempt.correct.is_(False),
+    ).limit(1)) is not None
 
     attempt = PuzzleAttempt(
         user_id=user.id,
         puzzle_id=req.puzzle_id,
         correct=req.correct,
+        hint_used=req.used_hint,
     )
     db.add(attempt)
     await db.flush()
     coins_due = puzzle_reward(puzzle.get("rating")) if req.correct and not already_solved else 0
     coins_earned = 0
     base_coins_earned = 0
+    streak_incremented = False
     if not req.correct:
         user.puzzle_streak = 0
-    elif not already_solved:
+    elif req.used_hint:
+        # Решение с подсказкой не растягивает серию, а обрывает её.
+        user.puzzle_streak = 0
+    elif not already_solved and not already_failed:
         user.puzzle_streak = int(user.puzzle_streak or 0) + 1
+        streak_incremented = True
 
     if coins_due:
         coins_earned = await award_gigacoins(
@@ -643,7 +659,7 @@ async def record_puzzle_attempt(
 
     streak_bonus = 0
     streak_reward = PUZZLE_STREAK_REWARDS.get(int(user.puzzle_streak or 0))
-    if streak_reward and req.correct and not already_solved:
+    if streak_reward and streak_incremented:
         streak_bonus = await award_gigacoins(
             db, user, "puzzle_streak", str(attempt.id), streak_reward
         )

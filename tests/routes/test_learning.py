@@ -364,6 +364,95 @@ class TestGigaCoinLearningRewards:
         assert second.json()["gigacoins_balance"] == 15
 
 
+class TestPuzzleStreakWithHint:
+    """Решение пазла с подсказкой сбрасывает серию (стрик) в 0."""
+
+    def test_hint_solve_resets_streak(self, cleanup):
+        token, _ = _registered_user(cleanup)
+        with patch(MATCH_ANCHOR, NEW_PUZZLES):
+            # Без подсказки: первый пазл поднимает серию до 1.
+            first = client.post(
+                "/api/learning/puzzle/attempt",
+                json={
+                    "puzzle_id": "a1",
+                    "correct": True,
+                    "player_moves": ["b1b8", "b8b7", "b7b1"],
+                },
+                headers=_headers(token),
+            )
+            assert first.status_code == 200, first.text
+            assert first.json()["puzzle_streak"] == 1
+
+            # С подсказкой: задача засчитана как решённая, но серия обнуляется.
+            hinted = client.post(
+                "/api/learning/puzzle/attempt",
+                json={
+                    "puzzle_id": "a2",
+                    "correct": True,
+                    "player_moves": ["b1b8", "b8b7", "b7b1"],
+                    "used_hint": True,
+                },
+                headers=_headers(token),
+            )
+            assert hinted.status_code == 200, hinted.text
+            assert hinted.json()["puzzle_streak"] == 0
+
+            # Снова без подсказки: серия растёт с нуля.
+            third = client.post(
+                "/api/learning/puzzle/attempt",
+                json={
+                    "puzzle_id": "a3",
+                    "correct": True,
+                    "player_moves": ["b1b8", "b8b7", "b7b1"],
+                },
+                headers=_headers(token),
+            )
+            assert third.status_code == 200, third.text
+            assert third.json()["puzzle_streak"] == 1
+
+
+class TestPuzzleStreakRetryAfterError:
+    """Пазл, на котором была ошибка, больше не может расти серию."""
+
+    def test_retry_after_error_does_not_grow_streak(self, cleanup):
+        token, _ = _registered_user(cleanup)
+        with patch(MATCH_ANCHOR, NEW_PUZZLES):
+            # Ошибка на a1 обнуляет серию.
+            failed = client.post(
+                "/api/learning/puzzle/attempt",
+                json={"puzzle_id": "a1", "correct": False, "player_moves": []},
+                headers=_headers(token),
+            )
+            assert failed.status_code == 200, failed.text
+            assert failed.json()["puzzle_streak"] == 0
+
+            # Повторное верное решение того же a1 серию не поднимает.
+            retry = client.post(
+                "/api/learning/puzzle/attempt",
+                json={
+                    "puzzle_id": "a1",
+                    "correct": True,
+                    "player_moves": ["b1b8", "b8b7", "b7b1"],
+                },
+                headers=_headers(token),
+            )
+            assert retry.status_code == 200, retry.text
+            assert retry.json()["puzzle_streak"] == 0
+
+            # Новый пазл a2 уже поднимает серию до 1.
+            fresh = client.post(
+                "/api/learning/puzzle/attempt",
+                json={
+                    "puzzle_id": "a2",
+                    "correct": True,
+                    "player_moves": ["b1b8", "b8b7", "b7b1"],
+                },
+                headers=_headers(token),
+            )
+            assert fresh.status_code == 200, fresh.text
+            assert fresh.json()["puzzle_streak"] == 1
+
+
 class TestLevelTestStart:
     def test_without_puzzle_base(self, cleanup):
         token = _authed_user(cleanup)

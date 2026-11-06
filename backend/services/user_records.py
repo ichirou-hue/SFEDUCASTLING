@@ -86,11 +86,19 @@ def build_user_records(
         for offset in range(14)
     }
 
+    # Серию растят только первые решения пазла. Повторное решение уже
+    # пробованного пазла (ошибся раньше или уже решил) нейтрально: серию
+    # не растягивает, а ошибка или подсказка на любом пазле по-прежнему
+    # обрывает её.
+    seen_puzzle_ids: set[str] = set()
     for attempt in ordered_attempts:
-        if attempt.correct:
+        is_first_attempt = attempt.puzzle_id not in seen_puzzle_ids
+        seen_puzzle_ids.add(attempt.puzzle_id)
+        if attempt.correct and not attempt.hint_used and is_first_attempt:
             current_puzzle_streak += 1
             longest_puzzle_streak = max(longest_puzzle_streak, current_puzzle_streak)
-        else:
+        elif not (attempt.correct and not attempt.hint_used):
+            # Ошибка или решение с подсказкой обрывает серию.
             current_puzzle_streak = 0
 
         attempt_date = _local_date(attempt.created_at).isoformat()

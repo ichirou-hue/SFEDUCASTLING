@@ -544,11 +544,12 @@ export async function checkPuzzle(puzzleId, move) {
   return data;
 }
 
-export async function recordPuzzleAttempt(puzzleId, correct, playerMoves = []) {
+export async function recordPuzzleAttempt(puzzleId, correct, playerMoves = [], usedHint = false) {
   const { data } = await api.post("/api/learning/puzzle/attempt", {
     puzzle_id: puzzleId,
     correct,
     player_moves: playerMoves,
+    used_hint: usedHint,
   });
   announceGigacoinReward(data);
   if (typeof window !== "undefined" && Number.isFinite(Number(data?.puzzle_streak))) {

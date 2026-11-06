@@ -417,10 +417,16 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
   const solutionMovesRef = useRef([]);
   const playerMovesRef = useRef([]);
   const solutionIndexRef = useRef(0);
+  // Пользовался ли игрок подсказкой при решении текущей задачи. Решение
+  // с подсказкой сбрасывает серию пазлов в 0.
+  const usedHintRef = useRef(false);
   const puzzlesRef = useRef([]);
   // Уникальные задачи, решённые за текущую загрузку страницы. Повторное
   // решение той же задачи не приближает пробный лимит.
   const solvedPuzzleIdsRef = useRef(new Set());
+  // Задачи, на которых за эту загрузку страницы была ошибка. Пазл с ошибкой
+  // больше не может расти серию: его повторное решение нейтрально.
+  const failedPuzzleIdsRef = useRef(new Set());
   const loadSeqRef = useRef(0);
 
   useEffect(() => {
@@ -515,6 +521,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
       const moves = (puzzle.moves || "").trim().split(/\s+/).filter(Boolean);
       solutionMovesRef.current = moves;
       playerMovesRef.current = [];
+      usedHintRef.current = false;
       solutionIndexRef.current = 0;
       setMovesLeft(countPlayerMoves(puzzle.moves));
     },
@@ -527,6 +534,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
     setError(null);
     setSolvedCount(0);
     solvedPuzzleIdsRef.current = new Set();
+    failedPuzzleIdsRef.current = new Set();
     setAdaptiveMeta(null);
     setPreviewInfo(null);
 
@@ -644,15 +652,29 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
   }, [navigate]);
 
   const savePuzzleProgress = useCallback(
-    (correct) => {
+    (correct, usedHint = false) => {
       if (!currentPuzzle?.id || !getAccessToken()) return;
       recordPuzzleAttempt(
         currentPuzzle.id,
         correct,
         correct ? playerMovesRef.current : [],
+        usedHint,
       )
-        .then(() => {
+        .then((data) => {
           window.dispatchEvent(new Event("sfedu-progress-updated"));
+          // Сервер - источник истины для серии: локальный счётчик
+          // синхронизируем с его значением. Так повторное решение пазла
+          // с ошибкой (в том числе с прошлых заходов на страницу) не
+          // оставляет завышенный локальный стрик.
+          const serverStreak = Number(data?.puzzle_streak);
+          if (Number.isFinite(serverStreak)) {
+            setStreak(serverStreak);
+            setBestStreak((prev) => {
+              const nextBest = Math.max(prev, serverStreak);
+              persistPuzzleStreak(serverStreak, nextBest);
+              return nextBest;
+            });
+          }
         })
         .catch(() => {
           // Ошибка статистики не должна мешать решению самой задачи.
@@ -734,11 +756,30 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
 
         if (solutionIndexRef.current >= totalMoves) {
           setResultMessage({ type: "success", text: "Правильно! Задача решена!" });
+          // Пазл, на котором в этой загрузке страницы уже была ошибка,
+          // больше не может расти серию: его решение нейтрально.
+          const isFailedRetry = failedPuzzleIdsRef.current.has(currentPuzzle?.id);
           if (currentPuzzle?.id) {
             solvedPuzzleIdsRef.current.add(currentPuzzle.id);
           }
           setSolvedCount(solvedPuzzleIdsRef.current.size);
-          // Серия растёт: задача решена без неверных ставок
+          if (usedHintRef.current) {
+            // Решение с подсказкой не растягивает серию, а обрывает её:
+            // задача засчитана как решённая, стрик сбрасывается в 0.
+            persistPuzzleStreak(0, bestStreak);
+            setStreak(0);
+            setPuzzleSolved(true);
+            savePuzzleProgress(true, true);
+            return true;
+          }
+          if (isFailedRetry) {
+            // Серия не растёт за повторное решение пазла с ошибкой в прошлом,
+            // но и не обрывается (ошибка уже обнулила счётчик).
+            setPuzzleSolved(true);
+            savePuzzleProgress(true);
+            return true;
+          }
+          // Серия растёт: задача решена без подсказок и неверных ставок
           // (ошибка в ветке ниже уже обнулила счётчик).
           const nextStreak = streak + 1;
           const nextBestStreak = Math.max(bestStreak, nextStreak);
@@ -815,6 +856,11 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
       }
       persistPuzzleStreak(0, bestStreak);
       setStreak(0);
+      if (currentPuzzle?.id) {
+        // С этого момента пазл «пробован с ошибкой»: его повторное верное
+        // решение в этой сессии не будет расти серию.
+        failedPuzzleIdsRef.current.add(currentPuzzle.id);
+      }
       savePuzzleProgress(false);
       return false;
     },
@@ -945,6 +991,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
     const nextUci = solutionMovesRef.current[solutionIndexRef.current];
     if (!nextUci) return;
 
+    usedHintRef.current = true;
     const from = nextUci.substring(0, 2);
     const to = nextUci.substring(2, 4);
 
