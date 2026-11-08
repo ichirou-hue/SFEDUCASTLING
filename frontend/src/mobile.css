@@ -1165,6 +1165,11 @@
     right: -8px;
   }
 
+  .training-path-due-badge {
+    top: -8px;
+    right: -8px;
+  }
+
   .training-page--lesson {
     padding-left: 12px;
     padding-right: 12px;

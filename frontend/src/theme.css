@@ -985,7 +985,8 @@
   color: var(--sf-muted);
 }
 
-:root[data-theme="dark"] .training-module-due-badge {
+:root[data-theme="dark"] .training-module-due-badge,
+:root[data-theme="dark"] .training-path-due-badge {
   border-color: var(--sf-surface-raised);
   box-shadow:
     0 6px 16px rgba(0, 0, 0, 0.42),

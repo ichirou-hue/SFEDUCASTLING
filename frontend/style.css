@@ -4373,7 +4373,8 @@ textarea {
   width: 100%;
 }
 
-.training-module-due-badge {
+.training-module-due-badge,
+.training-path-due-badge {
   position: absolute;
   top: -10px;
   right: -10px;
@@ -4396,29 +4397,35 @@ textarea {
   transition: transform 0.16s ease, box-shadow 0.16s ease;
 }
 
-.training-module-due-badge:hover {
+.training-module-due-badge:hover,
+.training-path-due-badge:hover {
   transform: translateY(-1px) scale(1.06);
   box-shadow:
     0 9px 22px rgba(198, 40, 40, 0.46),
     0 0 0 3px rgba(198, 40, 40, 0.14);
 }
 
-.training-module-due-badge:active {
+.training-module-due-badge:active,
+.training-path-due-badge:active {
   transform: scale(0.98);
 }
 
-.training-module-due-badge:focus-visible {
+.training-module-due-badge:focus-visible,
+.training-path-due-badge:focus-visible {
   outline: 2px solid #8b1d1d;
   outline-offset: 2px;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .training-module-due-badge {
+  .training-module-due-badge,
+  .training-path-due-badge {
     transition: none;
   }
 
   .training-module-due-badge:hover,
-  .training-module-due-badge:active {
+  .training-module-due-badge:active,
+  .training-path-due-badge:hover,
+  .training-path-due-badge:active {
     transform: none;
   }
 }
@@ -4690,6 +4697,30 @@ textarea {
   transform: translateX(-50%);
   border-radius: 4px;
   background: rgba(131, 183, 135, 0.3);
+}
+
+/* Обёртка узла урока: держит значок повторений в углу, не вкладывая
+   кнопку в кнопку. */
+.training-path-node-shell {
+  position: relative;
+  width: min(430px, 78%);
+}
+
+.training-path-node-shell--left {
+  align-self: flex-start;
+}
+
+.training-path-node-shell--right {
+  align-self: flex-end;
+}
+
+.training-path-node-shell .training-path-node {
+  width: 100%;
+}
+
+.training-path-due-badge {
+  top: -9px;
+  right: -9px;
 }
 
 .training-path-node {

@@ -139,8 +139,9 @@ export default function TrainingPage({ user, onRegister }) {
 
   const [modules, setModules] = useState([]);
   const [dueItems, setDueItems] = useState([]);
-  // Слаг модуля, для которого открыто окно повторений. null - окно закрыто.
-  const [dueModalSlug, setDueModalSlug] = useState(null);
+  // Цель открытого окна повторений: модуль или конкретный урок.
+  // null - окно закрыто.
+  const [dueModalTarget, setDueModalTarget] = useState(null);
   // Прогресс курса: modules.items[] несёт счётчики заданий по каждому
   // модулю и его урокам. Грузится отдельно от списка модулей, потому что
   // требует JWT и считается по training_attempts.
@@ -248,14 +249,47 @@ export default function TrainingPage({ user, onRegister }) {
     return map;
   }, [dueItems]);
 
-  const dueModalItems = dueModalSlug
-    ? dueByModuleSlug.get(dueModalSlug) || []
-    : [];
-  const dueModalModule = dueModalSlug
-    ? modules.find((module) => module.slug === dueModalSlug) ||
+  // То же самое по урокам: внутри модуля «!» стоит над теми уроками,
+  // в которых остались задания к повторению.
+  const dueByLessonId = useMemo(() => {
+    const map = new Map();
+    for (const item of dueItems) {
+      const lessonId = item?.lesson?.id;
+      if (lessonId == null) continue;
+      const key = String(lessonId);
+      const list = map.get(key);
+      if (list) list.push(item);
+      else map.set(key, [item]);
+    }
+    return map;
+  }, [dueItems]);
+
+  const dueModalItems = useMemo(() => {
+    if (!dueModalTarget) return [];
+    if (dueModalTarget.kind === "module") {
+      return dueByModuleSlug.get(dueModalTarget.slug) || [];
+    }
+    return dueByLessonId.get(String(dueModalTarget.lessonId)) || [];
+  }, [dueModalTarget, dueByModuleSlug, dueByLessonId]);
+
+  const dueModalModule = dueModalTarget
+    ? modules.find(
+        (module) =>
+          dueModalTarget.kind === "module" &&
+          module.slug === dueModalTarget.slug,
+      ) ||
       dueModalItems[0]?.module ||
-      null
+      (dueModalTarget.kind === "lesson" ? selectedModule : null)
     : null;
+
+  const dueModalLesson =
+    dueModalTarget?.kind === "lesson"
+      ? lessons.find(
+          (item) => String(item.id) === String(dueModalTarget.lessonId),
+        ) ||
+        dueModalItems[0]?.lesson ||
+        null
+      : null;
 
   // Конь-маршрутчик на тропинке модулей: сидит над первым непройденным
   // модулем (изначально - над первым). Когда модуль закрывается, конь
@@ -423,7 +457,7 @@ export default function TrainingPage({ user, onRegister }) {
       // входа останутся старые данные (пустой список или гостевой 401).
       setModules([]);
       setDueItems([]);
-      setDueModalSlug(null);
+      setDueModalTarget(null);
       setProgress(null);
       setSelectedModule(null);
       setLessons([]);
@@ -458,10 +492,10 @@ export default function TrainingPage({ user, onRegister }) {
   // Окно повторений: закрытие по Escape, блокировка прокрутки страницы
   // под оверлеем и фокус на кнопке закрытия.
   useEffect(() => {
-    if (!dueModalSlug) return undefined;
+    if (!dueModalTarget) return undefined;
 
     const handleKeyDown = (event) => {
-      if (event.key === "Escape") setDueModalSlug(null);
+      if (event.key === "Escape") setDueModalTarget(null);
     };
     document.addEventListener("keydown", handleKeyDown);
 
@@ -474,13 +508,13 @@ export default function TrainingPage({ user, onRegister }) {
       document.removeEventListener("keydown", handleKeyDown);
       if (page) page.style.overflowY = previousOverflow || "";
     };
-  }, [dueModalSlug]);
+  }, [dueModalTarget]);
 
   // Повторение могло быть выполнено, пока окно открыто: если список
   // опустел, закрываем окно, чтобы не осталось пустой модалки.
   useEffect(() => {
-    if (dueModalSlug && dueModalItems.length === 0) setDueModalSlug(null);
-  }, [dueModalSlug, dueModalItems.length]);
+    if (dueModalTarget && dueModalItems.length === 0) setDueModalTarget(null);
+  }, [dueModalTarget, dueModalItems.length]);
 
   useEffect(() => {
     const updateSize = () => {
@@ -636,7 +670,7 @@ export default function TrainingPage({ user, onRegister }) {
       }
 
       displayedSlugRef.current = moduleSlug;
-      setDueModalSlug(null);
+      setDueModalTarget(null);
       navigate(`/training?module=${encodeURIComponent(moduleSlug)}`);
       saveBranchScroll("grid");
       branchScrollRef.current.lesson = 0;
@@ -1175,7 +1209,9 @@ export default function TrainingPage({ user, onRegister }) {
                       <button
                         type="button"
                         className="training-module-due-badge"
-                        onClick={() => setDueModalSlug(module.slug)}
+                        onClick={() =>
+                          setDueModalTarget({ kind: "module", slug: module.slug })
+                        }
                         aria-label={`Повторить по модулю «${module.title}»: ${formatTaskCount(
                           moduleDueItems.length,
                         )}`}
@@ -1204,10 +1240,10 @@ export default function TrainingPage({ user, onRegister }) {
           </main>
         </div>
 
-        {dueModalSlug && dueModalItems.length > 0 && (
+        {dueModalTarget && dueModalItems.length > 0 && (
           <div
             className="training-due-modal"
-            onClick={() => setDueModalSlug(null)}
+            onClick={() => setDueModalTarget(null)}
           >
             <section
               className="training-due-modal-card"
@@ -1219,7 +1255,7 @@ export default function TrainingPage({ user, onRegister }) {
               <button
                 type="button"
                 className="training-due-modal-close"
-                onClick={() => setDueModalSlug(null)}
+                onClick={() => setDueModalTarget(null)}
                 aria-label="Закрыть окно повторений"
                 ref={dueModalCloseRef}
               >
@@ -1230,6 +1266,11 @@ export default function TrainingPage({ user, onRegister }) {
                 <span className="training-due-modal-kicker">Пора повторить</span>
                 <h2 id={dueModalTitleId}>{dueModalModule?.title}</h2>
                 <p>
+                  {dueModalLesson && (
+                    <>
+                      Урок «{dueModalLesson.title}».{" "}
+                    </>
+                  )}
                   {formatTaskCount(dueModalItems.length)} ждут повторения.
                   Это займёт пару минут.
                 </p>
@@ -1308,38 +1349,71 @@ export default function TrainingPage({ user, onRegister }) {
                 </div>
               )}
               <div className="training-path-nodes">
-                {section.lessons.map(({ item, state, progress, globalIndex }) => (
-                  <button
-                    type="button"
-                    className={`training-path-node training-path-node--${state} ${
-                      globalIndex % 2 === 0 ? "training-path-node--left" : "training-path-node--right"
-                    }`}
-                    key={item.id}
-                    onClick={() => openLesson(item.id)}
-                    title={`${item.title}${
-                      state === "done" ? " - пройден" : state === "current" ? " - текущий" : ""
-                    }`}
-                  >
-                    <span className="training-path-circle" aria-hidden="true">
-                      {state === "done" ? "✓" : globalIndex + 1}
-                    </span>
-                    <span className="training-path-label">
-                      <span className="training-path-title">{item.title}</span>
-                      <span className="training-path-meta">
-                        {item.task_count}{" "}
-                        {item.task_count === 1 ? "задание" : "задания"}
-                      </span>
-                      {progress && (
-                        <span className="training-path-progress-bar">
-                          <ProgressBar
-                            value={progress.percent}
-                            label={`${item.title}: ${progress.tasks_solved} из ${progress.tasks_total}`}
-                          />
+                {section.lessons.map(({ item, state, progress, globalIndex }) => {
+                  const side = globalIndex % 2 === 0 ? "left" : "right";
+                  const lessonDueItems =
+                    dueByLessonId.get(String(item.id)) || [];
+
+                  return (
+                    <div
+                      className={`training-path-node-shell training-path-node-shell--${side}`}
+                      key={item.id}
+                    >
+                      <button
+                        type="button"
+                        className={`training-path-node training-path-node--${state} training-path-node--${side}`}
+                        onClick={() => openLesson(item.id)}
+                        title={`${item.title}${
+                          state === "done"
+                            ? " - пройден"
+                            : state === "current"
+                              ? " - текущий"
+                              : ""
+                        }`}
+                      >
+                        <span className="training-path-circle" aria-hidden="true">
+                          {state === "done" ? "✓" : globalIndex + 1}
                         </span>
+                        <span className="training-path-label">
+                          <span className="training-path-title">{item.title}</span>
+                          <span className="training-path-meta">
+                            {item.task_count}{" "}
+                            {item.task_count === 1 ? "задание" : "задания"}
+                          </span>
+                          {progress && (
+                            <span className="training-path-progress-bar">
+                              <ProgressBar
+                                value={progress.percent}
+                                label={`${item.title}: ${progress.tasks_solved} из ${progress.tasks_total}`}
+                              />
+                            </span>
+                          )}
+                        </span>
+                      </button>
+
+                      {lessonDueItems.length > 0 && (
+                        <button
+                          type="button"
+                          className="training-path-due-badge"
+                          onClick={() =>
+                            setDueModalTarget({
+                              kind: "lesson",
+                              lessonId: item.id,
+                            })
+                          }
+                          aria-label={`Повторить по уроку «${item.title}»: ${formatTaskCount(
+                            lessonDueItems.length,
+                          )}`}
+                          title={`Пора повторить: ${formatTaskCount(
+                            lessonDueItems.length,
+                          )}`}
+                        >
+                          <span aria-hidden="true">!</span>
+                        </button>
                       )}
-                    </span>
-                  </button>
-                ))}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           ))}
