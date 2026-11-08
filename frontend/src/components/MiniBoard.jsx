@@ -19,7 +19,7 @@ const PIECE_IMAGES = {
 const customPieces = Object.fromEntries(
   Object.entries(PIECE_IMAGES).map(([code, src]) => [
     code,
-    () => <img src={src} style={{ width: "100%", height: "100%" }} />,
+    () => <img src={src} draggable={false} style={{ width: "100%", height: "100%" }} />,
   ]),
 );
 
@@ -70,7 +70,7 @@ export default function MiniBoard({
         showBoardNotation={false}
         customNotationStyle={{
           fontSize: `${Math.max(8, Math.round(width * 0.0214))}px`,
-          fontFamily: "Inter, sans-serif",
+          fontFamily: "var(--font-ui)",
           fontWeight: "500",
           color: "#4a3220",
         }}

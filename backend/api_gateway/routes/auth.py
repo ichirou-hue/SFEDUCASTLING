@@ -41,7 +41,11 @@ from backend.models.user_chess_account import (
     UserChessAccount,
     VERIFICATION_VERIFIED,
 )
-from backend.services.assessment import onboarding_rating
+from backend.services.assessment import (
+    RATING_FLOOR,
+    onboarding_rating,
+    rating_group_for,
+)
 from backend.services.login_throttle import LoginThrottle
 from backend.services.user_activity import record_user_visit
 from backend.services.gigacoin_service import ONBOARDING_REWARD, award_gigacoins
@@ -154,6 +158,7 @@ class RefreshRequest(BaseModel):
 # users.onboarding IS NOT NULL.
 
 Q1_CHOICES = {"never", "know_moves", "sometimes", "regular", "tournaments"}
+KNOWS_RULES_CHOICES = {"yes", "no"}
 Q3_CHOICES = {"family", "online_rating", "tournaments", "child"}
 Q4_CHOICES = {"lt1", "h1_3", "h3_5", "h5plus"}
 Q5_CHOICES = {"puzzles", "games", "lessons"}
@@ -181,7 +186,7 @@ Q8_CHOICES = {"coach", "friends", "internet", "school"}
 #      users.rating_estimate int     - шкала Lichess blitz;
 #      users.rating_scale str        - происхождение шкалы;
 #      users.pedagogy     str        - ответ Q6 (подсказки);
-#      users.skill_band   int 0..4   - пишет входной тест, не анкета.
+#      users.skill_band   int 0..4   - пишет входной тест (или минимум для новичка без правил).
 #    Пока эти колонок нет - источник истины users.onboarding (см. public()).
 #
 # 3) parental_consent: сейчас только валидация ответа в JSON. Нужно:
@@ -209,6 +214,10 @@ class ParentalConsent(BaseModel):
 
 class OnboardingRequest(BaseModel):
     q1: str
+    # Отдельный вопрос про знание правил. Необязателен для обратной
+    # совместимости со старыми клиентами: без него маршрут после анкеты
+    # остаётся прежним (входной тест). "no" уводит в модуль «Шахматная азбука».
+    knows_rules: str | None = None
     q2: Q2Answer | None = None
     q3: list[str] = Field(min_length=1, max_length=2)
     q4: str
@@ -223,6 +232,13 @@ class OnboardingRequest(BaseModel):
     def _q1(cls, v: str) -> str:
         if v not in Q1_CHOICES:
             raise ValueError(f"q1: допустимы {sorted(Q1_CHOICES)}")
+        return v
+
+    @field_validator("knows_rules")
+    @classmethod
+    def _knows_rules(cls, v: str | None) -> str | None:
+        if v is not None and v not in KNOWS_RULES_CHOICES:
+            raise ValueError(f"knows_rules: допустимы {sorted(KNOWS_RULES_CHOICES)}")
         return v
 
     @field_validator("q3")
@@ -486,12 +502,37 @@ async def save_onboarding(
     # подбор пазлов и стартовая сложность опираются на колонки.
     linked = await _linked_rating(db, user.id)
     rating_estimate, rating_scale, prior_band = onboarding_rating(payload, linked=linked)
-    user.onboarding = {
+
+    previous = user.onboarding if isinstance(user.onboarding, dict) else {}
+    placement: str | None = None
+    if payload.get("knows_rules") == "no":
+        # Новичку, не знающему правил, входной тест не нужен: сразу фиксируем
+        # минимальный уровень. Это закрывает оценку (assessment_completed_at),
+        # поэтому профиль больше не предлагает пройти тест уровня.
+        minimum_band = int(rating_group_for(RATING_FLOOR)["id"])
+        rating_estimate = RATING_FLOOR
+        rating_scale = "self_report"
+        prior_band = minimum_band
+        user.elo = RATING_FLOOR
+        user.skill_band = minimum_band
+        user.assessment_completed_at = datetime.now(UTC)
+        placement = "minimum"
+    elif previous.get("placement") == "minimum":
+        # Пользователь повторно прошёл анкету и теперь знает правила: снимаем
+        # автоматически назначенный минимум, чтобы снова стал доступен тест.
+        user.elo = None
+        user.skill_band = None
+        user.assessment_completed_at = None
+
+    onboarding = {
         "answers": payload,
         "prior_band": prior_band,
         "linked_rating": linked,
         "submitted_at": datetime.now(UTC).isoformat(),
     }
+    if placement:
+        onboarding["placement"] = placement
+    user.onboarding = onboarding
     user.prior_band = prior_band
     user.rating_estimate = rating_estimate
     user.rating_scale = rating_scale

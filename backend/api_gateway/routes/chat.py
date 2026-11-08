@@ -19,6 +19,8 @@ from backend.api_gateway.sanitize import sanitize_text
 from backend.api_gateway.state import ensure_stockfish, get_gigachess, stockfish_lock
 from backend.db.session import get_db
 from backend.llm.gigachess import GigachessError
+from backend.llm.chat_provider import ChatProvider
+from backend.config.settings import settings
 from backend.models.chat_message import ChatMessage
 
 router = APIRouter(tags=["chat"])
@@ -208,7 +210,9 @@ async def chat_ask(
 
     db.add(ChatMessage(role="user", text=sanitize_text(req.message), user_id=uid))
 
-    engine = get_gigachess()
+    primary = get_gigachess()
+    fallback_enabled = bool(settings.chat_fallback.base_url and settings.chat_fallback.api_key.get_secret_value())
+    engine = ChatProvider(settings.chat_fallback, primary) if primary is not None or fallback_enabled else None
     if engine is None:
         reply_text = "AI не подключён. Проверьте GIGACHESS_BASE_URL в .env."
     else:

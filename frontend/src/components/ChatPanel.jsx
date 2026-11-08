@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect, useLayoutEffect } from "react";
 import { askLLM, fetchOpeningByFen } from "../api.js";
+import formatMarkdown from "../formatMarkdown.js";
+import useChatAutoScroll from "../useChatAutoScroll.js";
 import MiniBoard from "./MiniBoard.jsx";
 import ChatCollapsedStrip from "./ChatCollapsedStrip.jsx";
 
@@ -14,6 +16,10 @@ function classifyLocal(text) {
 
 const STOCKFISH_GREEN = "rgba(0, 150, 50, 0.85)";
 const MAIA_ORANGE = "rgba(220, 120, 20, 0.9)";
+
+// Ширина свёрнутой полосы чата: должна совпадать с третьей колонкой
+// .main-area в style.css.
+const COLLAPSED_CHAT_WIDTH = 48;
 
 /*
  * Стрелки для мини-доски подсказки Stockfish:
@@ -40,38 +46,6 @@ function buildHintArrows(hintMessage) {
   return arrows;
 }
 
-function escapeHtml(str) {
-  return String(str ?? "")
-    .replace(/[\u2012\u2013\u2014\u2015]/g, "-")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
-
-function formatMarkdown(text) {
-  let s = escapeHtml(text);
-
-  s = s.replace(
-    /^### (.+)$/gm,
-    '<div style="font-weight:700;color:#79b180;margin-top:8px;">$1</div>',
-  );
-  s = s.replace(
-    /^## (.+)$/gm,
-    '<div style="font-weight:700;color:#79b180;font-size:15px;margin-top:8px;">$1</div>',
-  );
-  s = s.replace(
-    /^# (.+)$/gm,
-    '<div style="font-weight:700;color:#79b180;font-size:16px;margin-top:8px;">$1</div>',
-  );
-  s = s.replace(/\*\*(.+?)\*\*/g, '<b style="color:#333;">$1</b>');
-  s = s.replace(/\*(.+?)\*/g, "<i>$1</i>");
-  s = s.replace(/^[-•] (.+)$/gm, '<div style="padding-left:12px;">• $1</div>');
-  s = s.replace(/\n/g, "<br>");
-  return s;
-}
-
 export default function ChatPanel({
   onAnalyze,
   onLoadOpening,
@@ -90,7 +64,7 @@ export default function ChatPanel({
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const messagesEndRef = useRef(null);
+  const messagesListRef = useChatAutoScroll(messages);
   const lastHintMessageIdRef = useRef(null);
   const rootRef = useRef(null);
   // Ширина панели в развёрнутом виде: с неё начинается анимация сворачивания.
@@ -98,13 +72,15 @@ export default function ChatPanel({
   // Ширина, на которой анимацию прервали повторным кликом: следующий
   // проезд начинаем ровно оттуда, без скачка.
   const interruptedRef = useRef(0);
-  const firstRunRef = useRef(true);
+  // Предыдущее состояние чата: первый рендер (и повторный вызов эффекта
+  // в StrictMode) не анимируем - панель уже нужной ширины.
+  const prevCollapsedRef = useRef(collapsed);
 
   /*
    * Плавное сворачивание/разворачивание: ширина колонки едет к новому
    * значению, а строка пересчитывается на каждом кадре - доска и шкала
    * оценки съезжают вместе с ней. Ширина в развёрнутом виде задана
-   * флексом и зависит от окна, поэтому запоминаем её замером, а не
+   * грид-треком и зависит от окна, поэтому запоминаем её замером, а не
    * константой.
    */
   useEffect(() => {
@@ -130,41 +106,61 @@ export default function ChatPanel({
 
   useLayoutEffect(() => {
     const el = rootRef.current;
+    const layout = el?.parentElement;
 
-    if (!el) {
+    if (!el || !layout) {
       return undefined;
     }
 
-    if (window.matchMedia("(max-width: 1450px)").matches) {
+    /*
+     * Возвращаем панель и сетку в исходное состояние. Ширину колонки
+     * анимируем не у самой панели, а у грид-контейнера: только так
+     * соседняя колонка с доской пересчитывается на каждом кадре.
+     */
+    const reset = () => {
       el.classList.remove("chat-section--sliding", "chat-section--reveal");
       el.style.flex = "";
       el.style.width = "";
       el.style.minWidth = "";
       el.style.maxWidth = "";
-      return undefined;
-    }
+      delete el.dataset.chatTargetWidth;
+      layout.style.gridTemplateColumns = "";
+    };
 
     // Первый рендер не анимируем: панель и так уже нужной ширины.
-    if (firstRunRef.current) {
-      firstRunRef.current = false;
+    // Сравнение с прошлым состоянием заодно гасит повторный запуск
+    // layout-эффекта в StrictMode.
+    if (prevCollapsedRef.current === collapsed) {
+      return undefined;
+    }
+    prevCollapsedRef.current = collapsed;
+
+    if (window.matchMedia("(max-width: 1450px)").matches) {
+      reset();
       return undefined;
     }
 
     // Снимаем остатки прошлой анимации, иначе замерим не ту ширину.
-    el.classList.remove("chat-section--sliding", "chat-section--reveal");
-    el.style.flex = "";
-    el.style.width = "";
-    el.style.minWidth = "";
-    el.style.maxWidth = "";
+    reset();
 
-    const target = el.getBoundingClientRect().width;
+    /*
+     * Целевую ширину нельзя брать из замера в свёрнутом состоянии:
+     * в первом кадре колонка ещё может быть старой ширины. Поэтому
+     * для сворачивания она известна (48px), а для разворачивания
+     * берём реально отрисованную ширину развёрнутой панели.
+     */
+    const measured = el.getBoundingClientRect().width;
+    const target = collapsed ? COLLAPSED_CHAT_WIDTH : measured;
+    const natural = collapsed ? naturalWidthRef.current : measured;
     const from =
-      interruptedRef.current ||
-      (collapsed ? naturalWidthRef.current : 48);
+      interruptedRef.current || (collapsed ? natural : COLLAPSED_CHAT_WIDTH);
 
     interruptedRef.current = 0;
 
-    if (!from || Math.abs(target - from) < 1) {
+    if (!from || !target || Math.abs(target - from) < 1) {
+      if (!collapsed && measured > 0) {
+        naturalWidthRef.current = measured;
+      }
       return undefined;
     }
 
@@ -172,29 +168,32 @@ export default function ChatPanel({
       typeof window.matchMedia === "function" &&
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const duration = reduceMotion ? 0 : 340;
+    const easing = "cubic-bezier(0.4, 0, 0.2, 1)";
 
     /*
-     * На время анимации ширину задаём инлайном: у свёрнутого класса
-     * жёсткие min/max-width 48px, у развёрнутого - min-width 320px,
-     * они бы не дали панели проехать промежуточные значения.
+     * Первую колонку (история ходов) оставляем как есть, средняя
+     * остаётся гибкой и забирает освободившуюся ширину, а третья
+     * едет между значениями. Это тот же приём, что и на странице
+     * задач (см. PuzzlesPage.jsx).
      */
-    el.classList.add("chat-section--sliding");
-    el.style.flex = "0 0 auto";
-    el.style.minWidth = "0px";
-    el.style.maxWidth = "none";
-    el.style.width = `${target}px`;
+    const firstCol = getComputedStyle(layout).gridTemplateColumns.split(" ")[0];
+    const track = (width) => `${firstCol} minmax(0, 1fr) ${width}px`;
 
-    const animation = el.animate(
-      [{ width: `${from}px` }, { width: `${target}px` }],
-      { duration, easing: "cubic-bezier(0.4, 0, 0.2, 1)" }
+    el.classList.add("chat-section--sliding");
+    // По этому значению Chessboard считает итоговый размер доски,
+    // пока колонки ещё едут.
+    el.dataset.chatTargetWidth = String(Math.round(target));
+
+    const animation = layout.animate(
+      [
+        { gridTemplateColumns: track(from) },
+        { gridTemplateColumns: track(target) },
+      ],
+      { duration, easing }
     );
 
     const finish = () => {
-      el.style.flex = "";
-      el.style.width = "";
-      el.style.minWidth = "";
-      el.style.maxWidth = "";
-      el.classList.remove("chat-section--sliding");
+      reset();
       el.classList.add("chat-section--reveal");
 
       if (!collapsed) {
@@ -210,17 +209,22 @@ export default function ChatPanel({
 
     return () => {
       if (animation.playState === "running") {
-        interruptedRef.current = el.getBoundingClientRect().width;
+        /*
+         * Ширину прерванной анимации берём у грид-колонки, а не у
+         * панели: при переключении разметки старый DOM-узел уже
+         * может быть откреплён.
+         */
+        const columns = getComputedStyle(layout).gridTemplateColumns.split(" ");
+        const current = parseFloat(columns[columns.length - 1]);
+        if (current > 0) {
+          interruptedRef.current = current;
+        }
       }
 
       animation.cancel();
     };
   }, [collapsed]);
 
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
 
   /*
    * ============================================================
@@ -375,7 +379,7 @@ export default function ChatPanel({
         </button>
       </div>
 
-      <div className="chat-messages">
+      <div className="chat-messages" ref={messagesListRef}>
         {messages.map((msg, i) => (
           <div
             className={`chat-msg ${msg.role === "user" ? "user" : ""}`}
@@ -409,7 +413,6 @@ export default function ChatPanel({
             <div className="msg-body">Думаю...</div>
           </div>
         )}
-        <div ref={messagesEndRef} />
       </div>
 
       <div className="chat-input-area">

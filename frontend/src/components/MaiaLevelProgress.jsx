@@ -78,11 +78,15 @@ export default function MaiaLevelProgress({
       aria-label={`Победы над Maia: ${earnedLevels.length} из ${MAIA_LEVELS.length}`}
     >
       <h3 className="maia-level-progress-title">
-        Победы над Maia <span>· {earnedLevels.length}/{MAIA_LEVELS.length}</span>
+        Победы над Maia
+        <span className="maia-level-progress-count">
+          · {earnedLevels.length}/{MAIA_LEVELS.length}
+        </span>
         {levelLocked && (
-          <span className="maia-level-progress-lock"> · уровень зафиксирован</span>
+          <span className="maia-level-progress-lock">уровень зафиксирован</span>
         )}
       </h3>
+      <div className="title-separator maia-level-progress-separator" />
       <div className="maia-level-progress-grid" aria-label="Уровни Maia">
         {MAIA_LEVELS.map((level) => {
           const earned = earnedLevels.includes(level);

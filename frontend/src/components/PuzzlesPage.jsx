@@ -9,6 +9,8 @@ import {
   getAccessToken,
   recordPuzzleAttempt,
 } from "../api.js";
+import formatMarkdown from "../formatMarkdown.js";
+import useChatAutoScroll from "../useChatAutoScroll.js";
 import MiniBoard from "./MiniBoard.jsx";
 import ChatCollapsedStrip from "./ChatCollapsedStrip.jsx";
 import PuzzleRegisterGate from "./PuzzleRegisterGate.jsx";
@@ -36,7 +38,7 @@ const PIECE_IMAGES = {
 const customPieces = Object.fromEntries(
   Object.entries(PIECE_IMAGES).map(([code, src]) => [
     code,
-    () => <img src={src} style={{ width: "100%", height: "100%" }} />,
+    () => <img src={src} draggable={false} style={{ width: "100%", height: "100%" }} />,
   ]),
 );
 
@@ -129,37 +131,6 @@ function getThemeInfo(puzzle) {
     };
   }
   return { key: null, label: "Тактика", icon: "♟" };
-}
-
-function escapeHtml(str) {
-  return String(str ?? "")
-    .replace(/[\u2012\u2013\u2014\u2015]/g, "-")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
-
-function formatMarkdown(text) {
-  let s = escapeHtml(text);
-  s = s.replace(
-    /^### (.+)$/gm,
-    '<div style="font-weight:700;color:#79b180;margin-top:8px;">$1</div>',
-  );
-  s = s.replace(
-    /^## (.+)$/gm,
-    '<div style="font-weight:700;color:#79b180;font-size:15px;margin-top:8px;">$1</div>',
-  );
-  s = s.replace(
-    /^# (.+)$/gm,
-    '<div style="font-weight:700;color:#79b180;font-size:16px;margin-top:8px;">$1</div>',
-  );
-  s = s.replace(/\*\*(.+?)\*\*/g, '<b style="color:#333;">$1</b>');
-  s = s.replace(/\*(.+?)\*/g, "<i>$1</i>");
-  s = s.replace(/^[-•] (.+)$/gm, '<div style="padding-left:12px;">• $1</div>');
-  s = s.replace(/\n/g, "<br>");
-  return s;
 }
 
 export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
@@ -263,7 +234,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
   ]);
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
-  const chatEndRef = useRef(null);
+  const chatMessagesRef = useChatAutoScroll(chatMessages);
 
   /*
    * Чат можно свернуть в узкую полосу (как на главной): колонка чата
@@ -445,10 +416,6 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
   // решение той же задачи не приближает пробный лимит.
   const solvedPuzzleIdsRef = useRef(new Set());
   const loadSeqRef = useRef(0);
-
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [chatMessages]);
 
   useEffect(() => {
     // Замеряем только готовую раскладку: на экране загрузки её нет
@@ -1321,7 +1288,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
               showBoardNotation={true}
               customNotationStyle={{
                 fontSize: "12px",
-                fontFamily: "Inter, sans-serif",
+                fontFamily: "var(--font-ui)",
                 fontWeight: "500",
                 color: "#4a3220",
               }}
@@ -1382,6 +1349,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
                       <img
                         src={PIECE_IMAGES[`${pendingPromotion.color}${piece.toUpperCase()}`]}
                         alt=""
+                        draggable={false}
                       />
                       <span>{label}</span>
                     </button>
@@ -1474,7 +1442,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
             </button>
           </div>
 
-          <div className="chat-messages">
+          <div className="chat-messages" ref={chatMessagesRef}>
             {chatMessages.map((msg, i) => (
               <div
                 className={`chat-msg ${msg.role === "user" ? "user" : ""}`}
@@ -1505,7 +1473,6 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
                 <div className="msg-body">Думаю...</div>
               </div>
             )}
-            <div ref={chatEndRef} />
           </div>
 
           <div className="chat-input-area">

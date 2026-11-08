@@ -30,7 +30,7 @@
   border-color: rgba(33, 90, 115, 0.26);
   background: linear-gradient(135deg, #ffffff 0%, #eef6f9 100%);
   color: #1f4f66;
-  font-family: "Inter", "Segoe UI", Arial, sans-serif;
+  font-family: var(--font-ui);
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.01em;

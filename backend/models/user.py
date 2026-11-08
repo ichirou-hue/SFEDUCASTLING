@@ -37,7 +37,8 @@ class User(Base):
     # TODO(BACKEND): временный «мешок» для ответов. По методике нужны
     # отдельные колонки - prior_band (1..4), rating_estimate (шкала Lichess
     # blitz), rating_scale (напр. "lichess_blitz"), pedagogy (ответ Q6).
-    # skill_band (0..4) пишет входной тест, не анкета.
+    # skill_band (0..4): пишет входной тест или автоназначенный минимум
+    # для новичка, не знающего правил.
     # Подробности - блок TODO в backend/api_gateway/routes/auth.py.
 
     # Поля стартовой оценки. Часть из них уже могла быть создана старой

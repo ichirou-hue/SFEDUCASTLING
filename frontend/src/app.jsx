@@ -98,7 +98,6 @@ function MainPage({ user }) {
     maiaVictory: null,
     hintMessage: null,
     isComparing: false,
-    sidePickerOpen: true,
     levelLocked: false,
   });
 
@@ -146,7 +145,6 @@ function MainPage({ user }) {
             maiaRating={boardState.maiaRating}
             userRating={user?.elo || undefined}
             onNavigate={(dir) => boardRef.current?.onNavigate(dir)}
-            navigationDisabled={boardState.sidePickerOpen}
             fen={boardState.fen}
             onLoadFen={(nextFen) =>
               boardRef.current?.loadFen?.(nextFen) ?? false
@@ -579,6 +577,14 @@ export default function App() {
         onDone={(freshUser) => {
           if (freshUser) setUser(freshUser);
           setShowOnboarding(false);
+          // Новичок, не знающий правил, идёт сразу в «Шахматную азбуку»:
+          // входной тест ему пока не нужен. Остальные - на тест уровня.
+          const knowsRules = freshUser?.onboarding?.answers?.knows_rules;
+          if (knowsRules === "no") {
+            setAutoStartTest(false);
+            navigate("/training?module=pieces");
+            return;
+          }
           // Сразу после анкеты - входной тест (страница сама его запускает).
           setAutoStartTest(true);
           navigate("/level-test");

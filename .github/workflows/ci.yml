@@ -35,6 +35,7 @@ jobs:
     env:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/sfeducasling_test
       JWT_SECRET_KEY: ci-only-not-a-production-secret
+      STOCKFISH_PATH: /usr/games/stockfish
 
     steps:
       - name: Check out source and Maia3 submodule
@@ -52,6 +53,9 @@ jobs:
       - name: Install CI dependencies
         run: python -m pip install --disable-pip-version-check -r requirements-ci.txt
 
+      - name: Install real Stockfish for integration checks
+        run: sudo apt-get update && sudo apt-get install -y stockfish
+
       - name: Check Python style
         run: ruff check backend/api_gateway/routes/health.py tests/routes/test_health.py
 
@@ -60,6 +64,11 @@ jobs:
 
       - name: Run backend test suite
         run: pytest
+
+      - name: Verify course synchronization and repeatability
+        run: |
+          python -m scripts.sync_training_course
+          python -m scripts.sync_training_course
 
       - name: Set up Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
@@ -72,9 +81,34 @@ jobs:
         working-directory: frontend
         run: npm ci
 
+      - name: Test frontend behavior
+        working-directory: frontend
+        run: npm test
+
       - name: Build frontend
         working-directory: frontend
         run: npm run build
+
+      - name: Install browser
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Browser tests on desktop and mobile
+        working-directory: frontend
+        run: npm run test:e2e
+
+      - name: Preserve browser screenshots and failure traces
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: frontend-browser-results-${{ github.sha }}
+          path: |
+            frontend/test-results
+            frontend/playwright-report
+          retention-days: 7
+
+      - name: Stamp release and frontend hashes
+        run: python scripts/release_manifest.py
 
       - name: Assemble deployable source bundle
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'

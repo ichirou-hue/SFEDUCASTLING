@@ -62,3 +62,8 @@ ml/synthesis_pipeline/generate.log
 progress_notes.docxwandb/
 **/wandb/
 ml/models/stockfish/*
+
+frontend/test-results/
+frontend/playwright-report/
+release.json
+frontend/dist/version.json

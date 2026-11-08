@@ -82,17 +82,16 @@
 /* Панель уровней Maia стоит под историей ходов и должна выглядеть
    частью того же набора: та же тёмная поверхность и золото. */
 :root[data-theme="dark"] .maia-level-progress {
-  border-color: var(--sf-line);
-  border-left-color: var(--sf-gold);
-  background: var(--sf-surface-raised);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.26);
+  border-color: var(--sf-line-strong);
+  background: var(--sf-surface);
+  box-shadow: 0 20px 52px rgba(0, 0, 0, 0.3);
 }
 
 :root[data-theme="dark"] .maia-level-progress-title {
   color: var(--sf-gold);
 }
 
-:root[data-theme="dark"] .maia-level-progress-title span {
+:root[data-theme="dark"] .maia-level-progress-count {
   color: var(--sf-muted);
 }
 
@@ -467,8 +466,24 @@
   border-color: rgba(190, 106, 88, 0.6);
 }
 
+:root[data-theme="dark"] .gameover-card--draw {
+  border-color: var(--sf-line-strong);
+}
+
 :root[data-theme="dark"] .gameover-title {
   color: var(--sf-ink-strong);
+}
+
+:root[data-theme="dark"] .gameover-card--win .gameover-title {
+  color: var(--sf-green);
+}
+
+:root[data-theme="dark"] .gameover-card--loss .gameover-title {
+  color: var(--sf-error);
+}
+
+:root[data-theme="dark"] .gameover-card--draw .gameover-title {
+  color: var(--sf-gold);
 }
 
 :root[data-theme="dark"] .gameover-reason {
@@ -491,12 +506,13 @@
 
 /* Разбор партии: второстепенная кнопка и итог со звёздами. */
 :root[data-theme="dark"] .gameover-btn--review {
-  border: 1px solid var(--sf-line-strong);
+  border-color: var(--sf-line-strong);
   background: rgba(246, 244, 239, 0.08);
   color: var(--sf-ink);
 }
 
 :root[data-theme="dark"] .gameover-btn--review:hover {
+  border-color: var(--sf-line-strong);
   background: rgba(213, 180, 118, 0.16);
 }
 
@@ -962,6 +978,14 @@
   color: var(--sf-muted);
 }
 
+:root[data-theme="dark"] .training-module-due-badge,
+:root[data-theme="dark"] .training-path-due-badge {
+  border-color: var(--sf-surface-raised);
+  box-shadow:
+    0 6px 16px rgba(0, 0, 0, 0.42),
+    0 0 0 3px rgba(198, 40, 40, 0.16);
+}
+
 :root[data-theme="dark"] .training-module-meta {
   background: var(--sf-gold-soft);
   color: var(--sf-gold);
@@ -1245,72 +1269,48 @@
   color: var(--sf-ink-strong);
 }
 
-/* Блок «Повторения». */
-:root[data-theme="dark"] .training-due-toggle {
+/* Окно «Повторения». */
+:root[data-theme="dark"] .training-due-modal {
+  background: rgba(0, 0, 0, 0.62);
+}
+
+:root[data-theme="dark"] .training-due-modal-card {
   border-color: var(--sf-line);
   background: var(--sf-surface-raised);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.52);
+}
+
+:root[data-theme="dark"] .training-due-modal-close {
+  border-color: var(--sf-line);
+  background: var(--sf-soft);
+  color: var(--sf-muted);
+}
+
+:root[data-theme="dark"] .training-due-modal-close:hover {
+  border-color: var(--sf-line-strong);
+  background: var(--sf-soft-2);
   color: var(--sf-ink);
 }
 
-:root[data-theme="dark"] .training-due-toggle:hover {
-  border-color: var(--sf-line-strong);
-  /* Сохраняем непрозрачную подложку и добавляем золотистый оттенок сверху,
-     иначе карточка при наведении просвечивает фоном страницы. */
-  background:
-    linear-gradient(rgba(213, 180, 118, 0.09), rgba(213, 180, 118, 0.09)),
-    var(--sf-surface-raised);
-  box-shadow:
-    0 14px 34px rgba(0, 0, 0, 0.34),
-    0 0 0 1px rgba(213, 180, 118, 0.16),
-    0 0 22px rgba(213, 180, 118, 0.1);
-}
-
-:root[data-theme="dark"] .training-due-toggle:focus-visible,
-:root[data-theme="dark"] .training-due-card:focus-visible {
-  outline-color: var(--sf-gold);
-}
-
-:root[data-theme="dark"] .training-due-toggle-icon {
-  background: var(--sf-gold-soft);
+:root[data-theme="dark"] .training-due-modal-kicker {
   color: var(--sf-gold);
 }
 
-:root[data-theme="dark"] .training-due-toggle-hint {
-  color: var(--sf-muted-2);
-}
-
-:root[data-theme="dark"] .training-due-toggle-count {
-  background: var(--sf-gold);
-  color: #141a16;
-}
-
-:root[data-theme="dark"] .training-due-toggle-chevron {
-  color: var(--sf-gold);
-}
-
-:root[data-theme="dark"] .training-due-panel {
-  border-color: var(--sf-line);
-  background: var(--sf-surface-raised);
-  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.4);
-}
-
-:root[data-theme="dark"] .training-due-heading {
+:root[data-theme="dark"] .training-due-modal-head {
   border-bottom-color: var(--sf-line);
 }
 
-:root[data-theme="dark"] .training-due-heading strong {
-  color: var(--sf-ink);
+:root[data-theme="dark"] .training-due-modal-head h2 {
+  color: var(--sf-ink-strong);
 }
 
-:root[data-theme="dark"] .training-due-heading span,
-:root[data-theme="dark"] .training-due-empty {
+:root[data-theme="dark"] .training-due-modal-head p {
   color: var(--sf-muted-2);
 }
 
-:root[data-theme="dark"] .training-due-empty-icon {
-  background: var(--sf-green-soft);
-  color: var(--sf-green);
+:root[data-theme="dark"] .training-due-modal-close:focus-visible,
+:root[data-theme="dark"] .training-due-card:focus-visible {
+  outline-color: var(--sf-gold);
 }
 
 :root[data-theme="dark"] .training-due-card {
@@ -1322,14 +1322,6 @@
 :root[data-theme="dark"] .training-due-card:hover {
   border-color: var(--sf-line-strong);
   background: rgba(213, 180, 118, 0.1);
-}
-
-:root[data-theme="dark"] .training-due-card-due {
-  color: var(--sf-gold);
-}
-
-:root[data-theme="dark"] .training-due-card-reps {
-  color: var(--sf-muted-2);
 }
 
 /* Подсказки и кросс-ссылки внутри обучения. */
@@ -1687,11 +1679,6 @@
 
 :root[data-theme="dark"] .progress-widget--error {
   color: var(--sf-error);
-}
-
-:root[data-theme="dark"] .progress-widget__kicker,
-:root[data-theme="dark"] .progress-widget__topics-title {
-  color: var(--sf-gold);
 }
 
 :root[data-theme="dark"] .progress-widget__streak {

@@ -60,7 +60,7 @@
 
 .onb-brand-name {
   font-family: var(--font-ui);
-  font-weight: 900;
+  font-weight: 800;
   font-size: 16px;
   letter-spacing: 0.14em;
   color: #2f5c36;
@@ -113,6 +113,17 @@
   font-size: 12px;
   font-weight: 400;
   color: #a0a0a0;
+}
+
+/* Пояснение к ответу «Нет» в вопросе о правилах: куда поведёт анкета. */
+.onb-question-note {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(201, 169, 110, 0.12);
+  font-size: 13px;
+  line-height: 1.45;
+  color: #6b5a37;
 }
 
 /* Радио-кнопки */
