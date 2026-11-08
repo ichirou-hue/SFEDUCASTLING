@@ -1,6 +1,7 @@
 /* Mobile-first adjustments for the compact app shell and stacked chess views. */
 .mobile-nav-icon,
-.top-nav-label-mobile {
+.top-nav-label-mobile,
+.onb-badge-label-mobile {
   display: none;
 }
 
@@ -303,6 +304,14 @@
     font-size: 10px;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .onb-badge-label {
+    display: none;
+  }
+
+  .onb-badge-label-mobile {
+    display: inline;
   }
 
   .top-bar .reg-btn {
@@ -653,9 +662,17 @@
     gap: 0;
   }
 
-  .main-area .btn-import {
-    height: 36px;
-    font-size: 16px;
+  .main-area .btn-position {
+    width: min(100%, 132px);
+    height: 32px;
+    gap: 6px;
+    font-size: 14px;
+  }
+
+  .main-area .btn-position__chevron {
+    border-left-width: 4px;
+    border-right-width: 4px;
+    border-top-width: 5px;
   }
 
   .main-area > .chat-section {
@@ -919,8 +936,6 @@
   .puzzle-turn-indicator,
   .puzzle-moves-summary,
   .puzzle-quick-stats,
-  .puzzle-streak-best,
-  .puzzle-rewards-details,
   .puzzle-mode-card,
   .learning-topic-filter,
   .learning-crosslink {

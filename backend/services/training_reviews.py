@@ -13,6 +13,9 @@ from backend.models.training_module import TrainingModule
 from backend.models.training_review import TrainingReview
 from backend.models.training_task import TrainingTask
 from backend.services.review_logic import DEFAULT_EASE, next_review_state
+from backend.services.training_course_data import MODULES
+
+COURSE_MODULE_SLUGS = frozenset(module["slug"] for module in MODULES)
 
 
 async def update_training_review_after_attempt(
@@ -115,6 +118,7 @@ async def get_due_training_reviews(
                 TrainingTask.enabled.is_(True),
                 TrainingLesson.enabled.is_(True),
                 TrainingModule.enabled.is_(True),
+                TrainingModule.slug.in_(COURSE_MODULE_SLUGS),
             )
             .order_by(TrainingReview.next_review_at.asc(), TrainingReview.id.asc())
             .limit(limit)
