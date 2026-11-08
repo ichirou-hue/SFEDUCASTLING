@@ -890,6 +890,7 @@ textarea {
   width: 100%;
   margin-top: 0;
 }
+.gameover-actions a.gameover-btn{display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
 
 /* Итог разбора: три звезды, точность и счётчики ходов игрока. */
 .gameover-review {
@@ -2102,6 +2103,8 @@ textarea {
   flex: 1;
   min-height: 0;
   max-height: 280px; /* Пять строк истории по 56px. */
+  /* Keep the controls at the bottom when the capped list leaves free space. */
+  margin-bottom: auto;
   overflow-y: auto;
   padding-right: 8px;
 }
@@ -3625,15 +3628,9 @@ textarea {
   background: rgba(255, 255, 255, .45);
 }
 
-.puzzle-quick-stat span,
-.puzzle-streak-best {
+.puzzle-quick-stat span {
   color: #77817b;
   font: 600 11px/1.3 var(--font-ui);
-}
-
-.puzzle-quick-stat-hint {
-  color: #77817b;
-  font: 500 10px/1.25 var(--font-ui);
 }
 
 .puzzle-quick-stat strong {
@@ -3644,21 +3641,6 @@ textarea {
 
 .puzzle-quick-stat strong.puzzle-streak-value--hot {
   color: #b3541e;
-}
-
-.puzzle-rewards-details {
-  width: 100%;
-  color: #68736c;
-  font: 500 10px/1.4 var(--font-ui);
-}
-
-.puzzle-rewards-details summary {
-  cursor: pointer;
-  text-underline-offset: 2px;
-}
-
-.puzzle-rewards-details p {
-  padding: 5px 0 0 12px;
 }
 
 .puzzle-mode-card {
@@ -3742,12 +3724,6 @@ textarea {
 /* Активная серия - "горячий" цвет цифры. */
 .puzzle-streak-value--hot {
   color: #b3541e;
-}
-
-.puzzle-streak-best {
-  font-family: var(--font-ui);
-  font-size: 12px;
-  color: #888;
 }
 
 /* Строчка серии в оверлее "Задача решена!". */
@@ -4444,7 +4420,7 @@ textarea {
 
 .training-module-node-icon {
   flex-shrink: 0;
-  font-family: var(--font-ui);
+  font-family: "Segoe UI Symbol", "Noto Sans Symbols 2", sans-serif;
   font-size: 56px;
   line-height: 1;
   color: #225a73;
@@ -4532,6 +4508,7 @@ textarea {
   justify-content: center;
   width: 100%;
   height: 100%;
+  font-family: "Segoe UI Symbol", "Noto Sans Symbols 2", sans-serif;
   font-size: 68px;
   line-height: 1;
   color: #4f935c;
@@ -4629,7 +4606,7 @@ textarea {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: var(--font-ui);
+  font-family: "Segoe UI Symbol", "Noto Sans Symbols 2", sans-serif;
   font-size: 64px;
   color: #225a73;
   background: rgba(131, 183, 135, 0.18);
@@ -5655,5 +5632,3 @@ textarea {
 .oauth-callback-card a {
   color: #2f6b3a;
 }
-
-

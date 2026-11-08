@@ -1200,15 +1200,6 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
           </div>
         </div>
 
-        {bestStreak > 0 && (
-          <div className="puzzle-streak-best">Рекорд серии: {bestStreak}</div>
-        )}
-
-        <details className="puzzle-rewards-details">
-          <summary>Награды за серию</summary>
-          <p>5 задач: +3 · 10: +5 · 20: +10 · 30: +15 GigaCoin</p>
-        </details>
-
         {showModeSwitcher && (
           <section className="puzzle-mode-card" aria-label="Режим задач">
             <div className="puzzle-mode-card-heading">

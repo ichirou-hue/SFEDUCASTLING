@@ -771,8 +771,7 @@
 :root[data-theme="dark"] .puzzle-moves-left-label,
 :root[data-theme="dark"] .puzzle-streak-label,
 :root[data-theme="dark"] .puzzle-nav-index,
-:root[data-theme="dark"] .puzzle-rating,
-:root[data-theme="dark"] .puzzle-streak-best {
+:root[data-theme="dark"] .puzzle-rating {
   color: var(--sf-muted-2);
 }
 
@@ -809,8 +808,6 @@
 
 :root[data-theme="dark"] .puzzle-theme-label,
 :root[data-theme="dark"] .puzzle-quick-stat span,
-:root[data-theme="dark"] .puzzle-streak-best,
-:root[data-theme="dark"] .puzzle-rewards-details,
 :root[data-theme="dark"] .puzzle-mode-card p,
 :root[data-theme="dark"] .puzzle-mode-level,
 :root[data-theme="dark"] .puzzle-mode-difficulty {
@@ -856,10 +853,6 @@
 
 :root[data-theme="dark"] .puzzle-moves-left-count {
   color: var(--sf-blue);
-}
-
-:root[data-theme="dark"] .puzzle-quick-stat-hint {
-  color: var(--sf-muted);
 }
 
 :root[data-theme="dark"] .puzzle-quick-stat strong {
