@@ -3790,11 +3790,20 @@ textarea {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 12px;
 }
 
 .puzzle-board-wrapper {
   position: relative;
+  /* Как .board-wrapper на «Игре»: доска центрируется в рамке по обеим
+     осям, а строчный baseline-зазор у .puzzle-board-surface исчезает. */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  max-width: 100%;
   border-radius: 15px;
   border: 3px solid rgba(180, 135, 44, 0.85);
   background: #f0f2ea;
