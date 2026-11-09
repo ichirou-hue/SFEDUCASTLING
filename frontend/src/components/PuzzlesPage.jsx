@@ -17,7 +17,11 @@ import PuzzleRegisterGate from "./PuzzleRegisterGate.jsx";
 import PuzzlePreviewGate from "./PuzzlePreviewGate.jsx";
 import SiteFooter from "./SiteFooter.jsx";
 import { getCheckState, getKingCheckStyle } from "../chessStatus.js";
-import { getCourseTopicForPuzzle, getCourseTopicMeta } from "../learningLinks.js";
+import {
+  getCourseTopicForPuzzle,
+  getCourseTopicMeta,
+  getNextCourseTopicMeta,
+} from "../learningLinks.js";
 import "./LearningCrossLinks.css";
 
 const PIECE_IMAGES = {
@@ -605,6 +609,12 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
     getCourseTopicMeta(currentPuzzle?.adaptive_topic) ||
     requestedTopic ||
     getCourseTopicForPuzzle(currentPuzzle);
+  // Последняя задача текущей пачки: после её решения вместо автоперехода
+  // показываем выбор - следующая тема или список уроков.
+  const isLastPuzzle =
+    puzzles.length > 0 && currentIndex === puzzles.length - 1;
+  const completionTopic = requestedTopic || relatedCourseTopic;
+  const nextTopic = getNextCourseTopicMeta(completionTopic?.slug);
 
   // Пробный доступ исчерпан: либо бэкенд уже вернул пусто (лимит на сегодня
   // выбран), либо на третьей решённой задаче открыт гейт анкеты.
@@ -954,6 +964,21 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
     if (currentIndex < puzzles.length - 1) {
       setCurrentIndex((i) => i + 1);
     }
+  };
+
+  // Завершение набора: уводим на следующую тему курса либо в уроки по
+  // текущей теме (если тему определить не удалось - в общий список модулей).
+  const handleNextTopic = () => {
+    if (!nextTopic) return;
+    navigate(`/puzzles?topic=${encodeURIComponent(nextTopic.slug)}`);
+  };
+
+  const handleGoToLessons = () => {
+    if (completionTopic?.slug) {
+      navigate(`/training?module=${encodeURIComponent(completionTopic.slug)}`);
+      return;
+    }
+    navigate("/training");
   };
 
   // Автопереключение после решения: даём полюбоваться оверлеем «Задача
@@ -1375,7 +1400,31 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
                     🔥 Серия: {streak}
                   </div>
                 )}
-                {currentIndex < puzzles.length - 1 && (
+                {isLastPuzzle ? (
+                  <>
+                    <div className="puzzle-solved-hint">
+                      Вы прошли последнюю задачу набора.
+                    </div>
+                    <div className="puzzle-solved-actions">
+                      {nextTopic && (
+                        <button
+                          type="button"
+                          className="learning-crosslink puzzle-complete-primary"
+                          onClick={handleNextTopic}
+                        >
+                          Следующая тема: {nextTopic.icon} {nextTopic.title} →
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className="learning-crosslink puzzle-complete-secondary"
+                        onClick={handleGoToLessons}
+                      >
+                        К урокам
+                      </button>
+                    </div>
+                  </>
+                ) : (
                   <div className="puzzle-solved-hint">
                     Следующая задача откроется автоматически…
                   </div>

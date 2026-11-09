@@ -4,6 +4,7 @@ import { Chess } from 'chess.js';
 import { getCheckState } from '../src/chessStatus.js';
 import formatMarkdown from '../src/formatMarkdown.js';
 import { formatApiError } from '../src/apiErrors.js';
+import { getNextCourseTopicMeta } from '../src/learningLinks.js';
 test('checkmate highlights king of displayed FEN', () => {
  const game = new Chess();
  for (const move of ['f3','e5','g4','Qh4#']) game.move(move);
@@ -19,4 +20,10 @@ test('chat escapes HTML and preserves compact markdown', () => {
 test('validation errors remain readable strings', () => {
  assert.equal(typeof formatApiError([{type:'missing',loc:['body','login']}]),'string');
  assert.equal(formatApiError(null,'retry'),'retry');
+});
+test('next course topic follows the course order and wraps around', () => {
+ assert.equal(getNextCourseTopicMeta('pieces').slug, 'king-safety');
+ assert.equal(getNextCourseTopicMeta('middlegame').slug, 'pieces');
+ assert.equal(getNextCourseTopicMeta('unknown').slug, 'pieces');
+ assert.equal(getNextCourseTopicMeta(null).slug, 'pieces');
 });

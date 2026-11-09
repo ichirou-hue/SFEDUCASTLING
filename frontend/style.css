@@ -3962,6 +3962,35 @@ textarea {
   font: 500 12px/1.4 var(--font-ui);
 }
 
+/* Завершение набора: выбор следующей темы или переход к урокам. */
+.puzzle-solved-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.puzzle-solved-actions .learning-crosslink {
+  min-height: 34px;
+  padding: 7px 12px;
+  border-radius: 10px;
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.puzzle-solved-actions .puzzle-complete-primary {
+  border-color: rgba(201, 169, 110, 0.85);
+  background: #e7c884;
+  color: #3d2a10;
+}
+
+.puzzle-solved-actions .puzzle-complete-primary:hover {
+  background: #f0d79f;
+  box-shadow: 0 6px 18px rgba(201, 169, 110, 0.28);
+}
+
 .puzzle-result {
   font-family: var(--font-ui);
   font-size: 18px;
