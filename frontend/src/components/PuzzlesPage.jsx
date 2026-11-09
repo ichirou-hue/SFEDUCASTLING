@@ -17,6 +17,7 @@ import PuzzleRegisterGate from "./PuzzleRegisterGate.jsx";
 import PuzzlePreviewGate from "./PuzzlePreviewGate.jsx";
 import SiteFooter from "./SiteFooter.jsx";
 import { getCheckState, getKingCheckStyle } from "../chessStatus.js";
+import { playMoveSound } from "../moveSound.js";
 import {
   getCourseTopicForPuzzle,
   getCourseTopicMeta,
@@ -724,6 +725,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
         if (!move) return false;
         playerMovesRef.current.push(`${move.from}${move.to}${move.promotion || ""}`.toLowerCase());
 
+        playMoveSound();
         setFen(game.fen());
         setLastMove({ from: sourceSquare, to: targetSquare });
         setSelectedSquare(null);
@@ -779,6 +781,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
                 promotion: oppPromo || "q",
               });
               if (oppMove) {
+                playMoveSound();
                 setFen(game.fen());
                 setLastMove({ from: oppFrom, to: oppTo });
                 solutionIndexRef.current++;
@@ -932,6 +935,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
       const promo = uci.length > 4 ? uci[4] : undefined;
       const move = game.move({ from, to, promotion: promo || "q" });
       if (move) {
+        playMoveSound();
         setFen(game.fen());
         setLastMove({ from, to });
         i++;

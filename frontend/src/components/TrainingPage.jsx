@@ -13,6 +13,7 @@ import {
 import SiteFooter from "./SiteFooter.jsx";
 import RatingBandProgress from "./RatingBandProgress.jsx";
 import { getCheckState, getKingCheckStyle } from "../chessStatus.js";
+import { playMoveSound } from "../moveSound.js";
 import "./LearningCrossLinks.css";
 
 const PIECE_IMAGES = {
@@ -830,7 +831,10 @@ export default function TrainingPage({ user, onRegister }) {
               to: moveToApply.to,
               promotion: "q",
             });
-            if (move) setBoardFen(game.fen());
+            if (move) {
+              playMoveSound();
+              setBoardFen(game.fen());
+            }
           } catch {
             // Визуальное применение хода не влияет на серверную проверку.
           }

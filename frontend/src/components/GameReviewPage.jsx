@@ -3,6 +3,7 @@ import { Chess } from "chess.js";
 import { Link, useParams } from "react-router-dom";
 import { fetchLocalGameHistory, fetchStockfishAnalysis, getAccessToken, getStoredUser, reviewGame } from "../api.js";
 import { getLocalBotGames } from "../localBotGames.js";
+import { playMoveSound } from "../moveSound.js";
 import MiniBoard from "./MiniBoard.jsx";
 import "./GameReviewPage.css";
 
@@ -184,6 +185,13 @@ export default function GameReviewPage() {
 
   function tryPracticeMove(from, to) {
     if (!practice || !bestMove) return false;
+    try {
+      const game = new Chess(plies[selected].fen);
+      if (!game.move({ from, to, promotion: "q" })) return false;
+    } catch {
+      return false;
+    }
+    playMoveSound();
     setPracticeMessage(`${from}${to}` === bestMove.best_move.slice(0, 4)
       ? `Верно! Лучший ход: ${bestMove.san}` : "Попробуйте другой ход.");
     return false;
