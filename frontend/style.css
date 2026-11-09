@@ -1477,7 +1477,7 @@ textarea {
 }
 
 .move-pair span {
-  padding: 4px 10px;
+  padding: 2px 3px;
   border-radius: 8px;
   cursor: pointer;
   transition: background 0.2s;
@@ -2102,7 +2102,7 @@ textarea {
 .move-list {
   flex: 1;
   min-height: 0;
-  max-height: 280px; /* Пять строк истории по 56px. */
+  max-height: 200px; /* Примерно пять строк истории по 36px. */
   /* Keep the controls at the bottom when the capped list leaves free space. */
   margin-bottom: auto;
   overflow-y: auto;
@@ -2176,9 +2176,12 @@ textarea {
   position: relative;
   display: flex;
   align-items: center;
-  padding: 12px 6px;
+  height: auto;
+  min-height: 36px;
+  padding: 5px 3px;
   font-family: var(--font-ui);
-  font-size: 22px;
+  font-size: clamp(13px, 1.05vw, 15px);
+  line-height: 1.25;
   color: #333;
 }
 
@@ -2210,7 +2213,7 @@ textarea {
   border-radius: 10px;
 }
 .move-pair span {
-  padding: 4px 10px;
+  padding: 2px 3px;
   border-radius: 8px;
   cursor: pointer;
   transition: background 0.2s;
@@ -2220,14 +2223,14 @@ textarea {
   justify-content: center;
   align-items: center;
   text-align: center;
-  min-width: 45px; /* Р§С‚РѕР±С‹ РІСЃРµ РїР»Р°С€РєРё Р±С‹Р»Рё РѕРґРёРЅР°РєРѕРІРѕР№ С€РёСЂРёРЅС‹ Рё СЃРјРѕС‚СЂРµР»РёСЃСЊ СЃРёРјРјРµС‚СЂРёС‡РЅРѕ */
+  min-width: 30px; /* Р§С‚РѕР±С‹ РІСЃРµ РїР»Р°С€РєРё Р±С‹Р»Рё РѕРґРёРЅР°РєРѕРІРѕР№ С€РёСЂРёРЅС‹ Рё СЃРјРѕС‚СЂРµР»РёСЃСЊ СЃРёРјРјРµС‚СЂРёС‡РЅРѕ */
 }
 .move-pair .num {
-  flex: 0 0 32px;
-  width: 32px;
+  flex: 0 0 24px;
+  width: 24px;
   padding-inline: 0;
   color: #555;
-  font-size: 22px;
+  font-size: 13px;
 }
 .move-pair .move-w {
   flex: 1 1 0;
