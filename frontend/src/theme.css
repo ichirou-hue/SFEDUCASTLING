@@ -1768,8 +1768,7 @@
 
 :root[data-theme="dark"] .phase-accuracy__summary-item span,
 :root[data-theme="dark"] .phase-accuracy__summary-item small,
-:root[data-theme="dark"] .phase-accuracy__details-heading span,
-:root[data-theme="dark"] .phase-accuracy__footnote {
+:root[data-theme="dark"] .phase-accuracy__details-heading span {
   color: var(--sf-muted-2);
 }
 

@@ -189,7 +189,7 @@ export default function ProgressWidget() {
         </div>
       )}
 
-      {activeTopics.length > 0 ? (
+      {activeTopics.length > 0 && (
         <div className="progress-widget__topics">
           <div className="progress-topic-list">
             {activeTopics.map((topic) => (
@@ -208,11 +208,7 @@ export default function ProgressWidget() {
             ))}
           </div>
         </div>
-      ) : (
-          <div className="progress-widget__empty">
-            Выполните первое задание курса - здесь появится точность по темам.
-          </div>
-        )}
+      )}
     </section>
   );
 }

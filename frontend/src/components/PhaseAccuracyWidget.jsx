@@ -407,10 +407,6 @@ export default function PhaseAccuracyWidget() {
           </div>
         </div>
       )}
-
-      <footer className="phase-accuracy__footnote">
-        Точность считается по падению вероятности победы, как в разборе партии. Ходы в уже решённых позициях не учитываются. Наведите на точку или нажмите на этап для подробностей.
-      </footer>
     </section>
   );
 }

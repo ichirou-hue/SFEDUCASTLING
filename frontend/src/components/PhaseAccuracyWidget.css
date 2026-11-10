@@ -319,13 +319,6 @@
 .phase-accuracy__error--medium { color: #a85f3a; background: #fbede4; }
 .phase-accuracy__error--strong { color: #a44f4a; background: #f8e9e8; }
 
-.phase-accuracy__footnote {
-  margin-top: 11px;
-  color: #919d95;
-  font-size: 10px;
-  line-height: 1.45;
-}
-
 @media (max-width: 760px) {
   .phase-accuracy { padding: 17px 14px 14px; }
   .phase-accuracy__header h2 { font-size: 20px; }

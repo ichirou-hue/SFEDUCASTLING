@@ -12,6 +12,9 @@
   /* Колонка ради футера (см. .training-page). */
   display: flex;
   flex-direction: column;
+  /* Единый вертикальный ритм: отступ между всеми блоками страницы задаёт
+     контейнер, а не margin-top отдельных карточек. */
+  gap: 18px;
   /* Тонкий скроллбар в стиле сайта (как в админке, чате, списке ходов) */
   scrollbar-width: thin;
   scrollbar-color: #79b180 transparent;
@@ -28,8 +31,18 @@
 
 .user-profile-page > .site-footer {
   width: 100%;
+  /* Футер отделяется тем же gap, а не глобальным margin-top: auto. */
+  margin-top: 0;
   margin-left: 0;
   margin-right: 0;
+}
+
+/* Промежутки между крупными блоками профиля задаёт gap контейнера. */
+.user-profile-page > .user-records,
+.user-profile-page > .phase-accuracy,
+.user-profile-page > .user-profile-rating-section,
+.user-profile-page > .user-profile-progress-section {
+  margin-top: 0;
 }
 
 .user-profile-page::-webkit-scrollbar {
@@ -170,12 +183,10 @@
 }
 
 .user-profile-progress-section {
-  margin-top: 18px;
   padding: 22px;
 }
 
 .user-profile-rating-section {
-  margin-top: 18px;
   padding: 22px;
   border: 1px solid rgba(34, 90, 115, 0.16);
   border-radius: 20px;
@@ -463,8 +474,7 @@
 :root[data-theme="dark"] .user-profile-page .progress-topic strong,
 :root[data-theme="dark"] .user-profile-page .progress-widget__empty,
 :root[data-theme="dark"] .user-profile-page .phase-accuracy__header p,
-:root[data-theme="dark"] .user-profile-page .phase-accuracy__details-heading span,
-:root[data-theme="dark"] .user-profile-page .phase-accuracy__footnote {
+:root[data-theme="dark"] .user-profile-page .phase-accuracy__details-heading span {
   color: var(--profile-muted);
 }
 
