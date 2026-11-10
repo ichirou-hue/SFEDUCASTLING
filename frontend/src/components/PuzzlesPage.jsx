@@ -1416,7 +1416,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
                           className="learning-crosslink puzzle-complete-primary"
                           onClick={handleNextTopic}
                         >
-                          Следующая тема: {nextTopic.icon} {nextTopic.title} →
+                          Следующая тема: {nextTopic.icon} {nextTopic.title}
                         </button>
                       )}
                       <button

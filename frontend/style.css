@@ -1659,7 +1659,10 @@ textarea {
 /* --- Шапка чата --- */
 .chat-header {
   padding: 16px 24px 14px;
-  display: flex;
+  display: grid;
+  /* Симметричные боковые колонки держат заголовок ровно по центру панели,
+     независимо от ширины аватара и кнопки сворачивания. */
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: 16px;
   flex-shrink: 0;
@@ -1686,6 +1689,10 @@ textarea {
 }
 
 /* Аватар ассистента в золотом кольце на бумажной подложке. */
+.chat-avatar {
+  justify-self: start;
+}
+
 .chat-avatar img {
   width: 52px;
   height: 52px;
@@ -1705,6 +1712,9 @@ textarea {
   width: 44px;
   height: 44px;
   box-sizing: border-box;
+  /* Глиф коня стоит на baseline и визуально уезжает вверх. Небольшой
+     верхний отступ возвращает его в геометрический центр рамки. */
+  padding-top: 0.35em;
   border: 1px solid rgba(34, 90, 115, 0.2);
   border-radius: 12px;
   background: rgba(34, 90, 115, 0.08);
@@ -1717,6 +1727,9 @@ textarea {
 .chat-title-block {
   display: flex;
   flex-direction: column;
+  align-items: center;
+  min-width: 0;
+  text-align: center;
 }
 
 .chat-title-block h2 {
@@ -1750,6 +1763,7 @@ textarea {
    волоском, по hover становится плотнее. */
 .chat-collapse-btn {
   margin-left: auto;
+  justify-self: end;
   flex: 0 0 auto;
   width: 34px;
   height: 34px;
