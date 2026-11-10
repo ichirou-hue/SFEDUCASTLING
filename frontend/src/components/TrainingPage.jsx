@@ -1053,7 +1053,6 @@ export default function TrainingPage({ user, onRegister }) {
       <div className="training-page training-page--centered" ref={pageRef}>
         <div className="training-center-wrap">
           <div className="training-register-wall">
-            <div className="training-kicker">Учебный режим</div>
             <h1>Обучение доступно после регистрации</h1>
             <p>
               Зарегистрируйтесь, чтобы проходить учебные модули по шахматам
@@ -1119,7 +1118,6 @@ export default function TrainingPage({ user, onRegister }) {
         <div className="training-course-layout">
           <main className="training-course-main">
             <section className="training-hero">
-              <div className="training-kicker">Учебный режим</div>
               <h1>Обучение шахматам</h1>
               <p>
                 Изучайте особенности каждой фигуры последовательно: сначала теория,
