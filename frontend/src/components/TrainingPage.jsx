@@ -1119,10 +1119,6 @@ export default function TrainingPage({ user, onRegister }) {
           <main className="training-course-main">
             <section className="training-hero">
               <h1>Обучение шахматам</h1>
-              <p>
-                Изучайте особенности каждой фигуры последовательно: сначала теория,
-                затем интерактивные задания на шахматной доске.
-              </p>
               <RatingBandProgress userId={userId} />
 
               {course && course.total > 0 && (

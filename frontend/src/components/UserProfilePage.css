@@ -615,4 +615,3 @@
 .user-profile-page .user-profile-card--accent-accent_aurora { border-color: rgba(118, 214, 197, .5); box-shadow: 0 20px 52px rgba(0, 0, 0, .24), 0 0 24px rgba(118, 214, 197, .08); }
 .user-profile-page .user-profile-card--accent-accent_ruby { border-color: rgba(232, 139, 147, .5); box-shadow: 0 20px 52px rgba(0, 0, 0, .24), 0 0 24px rgba(232, 139, 147, .08); }
 .user-profile-page .user-profile-card--accent-accent_amethyst { border-color: rgba(187, 160, 242, .5); box-shadow: 0 20px 52px rgba(0, 0, 0, .24), 0 0 24px rgba(187, 160, 242, .08); }
-:root[data-theme="dark"] .user-profile-page .progress-widget__streak-reward { color: var(--profile-muted); }

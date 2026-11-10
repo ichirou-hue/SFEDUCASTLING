@@ -4308,13 +4308,6 @@ textarea {
   font-size: 15px;
 }
 
-.training-hero p {
-  width: min(100%, 820px);
-  max-width: 820px;
-  margin: 0 auto 16px;
-  text-align: center;
-}
-
 .training-hero .rating-band-progress {
   align-self: center;
   text-align: center;
