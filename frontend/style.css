@@ -2158,8 +2158,9 @@ textarea {
 .player-info {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 2px;
+  position: relative;
   border-radius: 999px;
   /* Чистая двухцветная заливка вместо размытого диагонального градиента:
      своя половина с зелёным подтоном, половина соперника - тёплая бумага.
@@ -2536,6 +2537,11 @@ textarea {
   display: flex;
   align-items: center;
   justify-content: center;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1;
   width: 28px;
   height: 28px;
   flex-shrink: 0;
@@ -2547,7 +2553,7 @@ textarea {
   font-size: 12px;
   letter-spacing: 0.02em;
   color: #8a6a26;
-  margin: 0 2px;
+  margin: 0;
 }
 
 /* РЎС‚РёР»РёР·Р°С†РёСЏ Р°РІР°С‚Р°СЂРѕРє (РµСЃР»Рё С‚С‹ РЅРµ СЌРєСЃРїРѕСЂС‚РёСЂСѓРµС€СЊ РёС… СЃ С„РѕРЅРѕРј) */
@@ -2586,6 +2592,7 @@ textarea {
   flex-direction: column;
   align-items: flex-end;
   flex: 0 0 auto;
+  margin-left: auto;
 }
 .player-rating,
 .bot-rating {
