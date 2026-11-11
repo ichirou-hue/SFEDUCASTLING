@@ -822,6 +822,20 @@ textarea {
   border-color: rgba(180, 135, 44, 0.85);
 }
 
+.gameover-coins {
+  width: 100%;
+  margin: 12px 0 4px;
+  padding: 12px 14px;
+  border: 1px solid rgba(94, 148, 99, .5);
+  border-radius: 12px;
+  background: rgba(94, 148, 99, .12);
+  color: #285d37;
+  font-size: clamp(18px, 4vw, 25px);
+  font-weight: 800;
+  line-height: 1.25;
+}
+.gameover-coins--loss { border-color: rgba(179, 84, 58, .5); background: rgba(179, 84, 58, .1); color: #8b3d2c; }
+
 /* Заголовок - тем же display-шрифтом, что и крупные заголовки сайта. */
 .gameover-title {
   font-family: var(--font-display);

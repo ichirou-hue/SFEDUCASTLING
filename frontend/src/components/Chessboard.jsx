@@ -23,6 +23,7 @@ import {
   fetchExplainMove,
   finishGame,
   reviewGame,
+  getAccessToken,
   getStoredUser,
 } from "../api.js";
 
@@ -292,6 +293,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
    * ходе игрока - поражение, мат при ходе соперника - победа.
    */
   const [gameResult, setGameResult] = useState(null);
+  const [coinChange, setCoinChange] = useState(null);
   const [resignConfirmOpen, setResignConfirmOpen] = useState(false);
   const [reviewArchiveId, setReviewArchiveId] = useState(null);
   /*
@@ -935,6 +937,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
     });
     setReviewArchiveId(archiveId);
 
+    const finishGeneration = gameGenRef.current;
     finishGame({
       moves: uciMoves,
       elo: gameLevelRef.current ?? elo,
@@ -942,7 +945,11 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
       result,
       status,
       playerColor,
-    }).catch(() => {});
+    }).then((data) => {
+      if (finishGeneration === gameGenRef.current) setCoinChange(Number(data.gigacoins_earned || 0));
+    }).catch(() => {
+      if (finishGeneration === gameGenRef.current) setCoinChange("unavailable");
+    });
   }, [moveHistory, fen, elo, playerColor, onStateChange, showGameOverCard]);
 
   /*
@@ -1009,8 +1016,11 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
       result,
       status: "resigned",
       playerColor,
+    }).then((data) => {
+      if (resignGeneration === gameGenRef.current) setCoinChange(Number(data.gigacoins_earned || 0));
     }).catch(() => {
       if (resignGeneration === gameGenRef.current) {
+        setCoinChange("unavailable");
         setReviewError("Вы сдались. Партия сохранена на этом устройстве, но не отправлена на сервер.");
       }
     });
@@ -1362,6 +1372,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
     setMoveHistory([]);
     setPlayerMovesPlayed(0);
     setGameResult(null);
+    setCoinChange(null);
     setReviewArchiveId(null);
     setResultCardDismissed(false);
     setPositionSnapshots([startFen]);
@@ -1435,6 +1446,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
   const openSidePicker = useCallback(() => {
     onNavigate("last");
     setGameResult(null);
+    setCoinChange(null);
     setResultCardDismissed(false);
     setSidePickerOpen(true);
   }, [onNavigate]);
@@ -1462,6 +1474,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
         setMoveHistory([]);
         setPlayerMovesPlayed(0);
         setGameResult(null);
+        setCoinChange(null);
         setPositionSnapshots([validFen]);
 
         setViewIndex(-1);
@@ -3482,6 +3495,12 @@ const fetchBestMove = useCallback(
                 </div>
                 <div className="gameover-reason">
                   {gameResult.reason}
+                </div>
+                <div className={`gameover-coins ${typeof coinChange === "number" && coinChange < 0 ? "gameover-coins--loss" : ""}`} aria-live="polite">
+                  {coinChange === null ? "Подсчитываем GigaCoin…"
+                    : coinChange === "unavailable" ? "Баланс GigaCoin недоступен"
+                      : !getAccessToken() ? "Войдите, чтобы получать GigaCoin"
+                        : `${coinChange > 0 ? "+" : ""}${coinChange} GigaCoin`}
                 </div>
 
                 {reviewError && (

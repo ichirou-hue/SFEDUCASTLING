@@ -363,11 +363,11 @@ export default function App() {
     let gigacoinToastTimer;
     const showGigacoinReward = (event) => {
       const amount = Number(event?.detail?.amount || 0);
-      if (amount <= 0) return;
       const balance = Number(event?.detail?.balance);
       if (Number.isFinite(balance)) {
         setUser((current) => current ? { ...current, gigacoins: balance } : current);
       }
+      if (amount <= 0) return;
       setGigacoinToast({
         amount,
         balance: Number.isFinite(balance) ? balance : null,

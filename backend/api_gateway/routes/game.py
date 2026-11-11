@@ -36,7 +36,9 @@ from backend.services.gigacoin_service import (
     MAIA_DRAW_COINS,
     MAIA_FAIR_GAP,
     MAIA_WIN_COINS,
+    MAIA_LOSS_COINS,
     award_gigacoins,
+    charge_maia_loss,
 )
 from backend.models.game import Game
 from backend.models.user import User
@@ -553,6 +555,31 @@ def _verified_maia_result(req: FinishGameRequest) -> str | None:
     return _replay_maia_result(req, MAIA_WIN_COINS)
 
 
+def _verified_maia_loss(req: FinishGameRequest) -> bool:
+    if req.engine != "maia3" or req.elo not in MAIA_LOSS_COINS:
+        return False
+    expected = "0-1" if req.player_color == "w" else "1-0"
+    if req.result != expected or req.status not in ("resigned", "checkmate"):
+        return False
+    if req.status == "checkmate":
+        return _replay_maia_result(req, MAIA_LOSS_COINS, minimum_moves=1) == expected
+    board = chess.Board()
+    player_moves = 0
+    for index, token in enumerate(req.moves):
+        if board.is_game_over(claim_draw=True):
+            return False
+        try:
+            move = chess.Move.from_uci(token)
+        except ValueError:
+            return False
+        if move not in board.legal_moves:
+            return False
+        if index % 2 == (0 if req.player_color == "w" else 1):
+            player_moves += 1
+        board.push(move)
+    return player_moves > 0 and not board.is_game_over(claim_draw=True)
+
+
 def _verified_maia_achievement(req: FinishGameRequest) -> str | None:
     return _replay_maia_result(req, MAIA_PROGRESS_LEVELS, minimum_moves=1)
 
@@ -644,7 +671,8 @@ async def finish_game(
     coins_earned = 0
     if user is not None:
         verified_result = _verified_maia_result(req)
-        if verified_result is not None:
+        verified_loss = _verified_maia_loss(req)
+        if verified_result is not None and not verified_loss:
             ref_payload = f"{req.engine}:{req.elo}:{req.player_color}:{','.join(req.moves)}:{verified_result}"
             ref = hashlib.sha256(ref_payload.encode("utf-8")).hexdigest()
             coins_earned = await award_gigacoins(db, user, "game_activity", ref, 0)
@@ -655,7 +683,12 @@ async def finish_game(
         requested_coins = MAIA_WIN_COINS.get(req.elo, 0) if player_won else MAIA_DRAW_COINS if player_drew else 0
         if requested_coins and fair_level:
             coins_earned += await award_gigacoins(db, user, "maia_game", ref, requested_coins)
-        if verified_result is not None:
+        if verified_loss:
+            loss_ref = hashlib.sha256(
+                f"{req.engine}:{req.elo}:{req.player_color}:{','.join(req.moves)}:{req.result}:{req.status}".encode("utf-8")
+            ).hexdigest()
+            coins_earned -= await charge_maia_loss(db, user, loss_ref, MAIA_LOSS_COINS[req.elo])
+        if verified_result is not None or verified_loss:
             await db.commit()
 
     background_tasks.add_task(
