@@ -434,6 +434,20 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
   const game = gameRef.current;
 
   /*
+   * Сдаться можно только после того, как игрок сделал хотя бы один ход.
+   * Во время ответа Maia кнопка временно недоступна, чтобы не сохранять
+   * полупартию ровно в момент применения ответа движка. Если Maia вернула
+   * ошибку, сдача снова разрешена — пользователь не должен застревать.
+   */
+  const canResign =
+    playerMovesPlayed > 0 &&
+    !gameResult &&
+    !sidePickerOpen &&
+    !isViewMode &&
+    !isAiThinking &&
+    (game.turn() === playerColor || Boolean(maiaError));
+
+  /*
    * Шах и мат считаем по отображаемому FEN: при листании истории
    * доска показывает произвольный кадр партии, и подсветка должна
    * соответствовать именно ему.
@@ -929,6 +943,88 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
       playerColor,
     }).catch(() => {});
   }, [moveHistory, fen, elo, playerColor, onStateChange, showGameOverCard]);
+
+  /*
+   * Добровольная сдача партии.
+   *
+   * chess.js не считает сдачу шахматным окончанием позиции, поэтому
+   * результат фиксируем отдельно: останавливаем взаимодействие с доской,
+   * инвалидируем отложенный/текущий запрос Maia и вручную отправляем
+   * /api/game/finish со статусом "resigned".
+   */
+  const handleResign = useCallback(() => {
+    if (!canResign) return;
+
+    const confirmed = window.confirm(
+      "Сдаться? Партия будет засчитана как поражение.",
+    );
+    if (!confirmed) return;
+
+    gameGenRef.current += 1;
+    finishSentRef.current = true;
+
+    clearPremove();
+    setIsAiThinking(false);
+    setMaiaError("");
+    setDragFrom(null);
+    setSelectedSquare(null);
+    setLegalMovesForSelected([]);
+    setStockfishArrow(null);
+    setMaiaArrow(null);
+    setCompareData(null);
+    setIsComparing(false);
+
+    setReview(null);
+    setReviewError("");
+    setReviewLoading(false);
+    setReviewArchiveId(null);
+
+    setGameResult({
+      outcome: "loss",
+      reason: "Вы сдались — победа Maia3",
+    });
+    setResultCardDismissed(false);
+
+    const result = playerColor === "w" ? "0-1" : "1-0";
+    const uciMoves = toUciMoves(moveHistory);
+
+    if (uciMoves.length === 0 || uciMoves.length !== moveHistory.length) {
+      return;
+    }
+
+    const archiveId = `${Date.now()}-${gameGenRef.current}`;
+    const resignGeneration = gameGenRef.current;
+    saveLocalBotGame({
+      id: archiveId,
+      userId: getCurrentUserId(),
+      pgn: game.pgn(),
+      playedAt: new Date().toISOString(),
+      playerColor,
+      elo: gameLevelRef.current ?? elo,
+      result,
+    });
+    setReviewArchiveId(archiveId);
+
+    finishGame({
+      moves: uciMoves,
+      elo: gameLevelRef.current ?? elo,
+      engine: "maia3",
+      result,
+      status: "resigned",
+      playerColor,
+    }).catch(() => {
+      if (resignGeneration === gameGenRef.current) {
+        setReviewError("Вы сдались. Партия сохранена на этом устройстве, но не отправлена на сервер.");
+      }
+    });
+  }, [
+    canResign,
+    clearPremove,
+    elo,
+    game,
+    moveHistory,
+    playerColor,
+  ]);
 
   /*
    * Разбор партии по кнопке в итоговой карточке. Считает сервер:
@@ -2050,6 +2146,8 @@ const fetchBestMove = useCallback(
    */
   const processPlayerMove = useCallback(
     (sourceSquare, targetSquare) => {
+      if (gameResult) return false;
+
       let move;
       try {
         move = game.move({
@@ -2184,6 +2282,7 @@ const fetchBestMove = useCallback(
       onStateChange,
       clearPremove,
       showGameOverCard,
+      gameResult,
     ],
   );
 
@@ -2278,7 +2377,7 @@ const fetchBestMove = useCallback(
    */
   const handlePremoveSquareClick = useCallback(
     (square) => {
-      if (game.isGameOver() || game.isDraw()) return;
+      if (gameResult || game.isGameOver() || game.isDraw()) return;
 
       /*
        * Клик по уже подсвеченной цели снимает предход - удобная
@@ -2347,6 +2446,7 @@ const fetchBestMove = useCallback(
       getPremoveTargets,
       setPremoveMove,
       clearPremove,
+      gameResult,
     ],
   );
 
@@ -2355,7 +2455,7 @@ const fetchBestMove = useCallback(
    */
   const onDrop = useCallback(
     (sourceSquare, targetSquare) => {
-      if (isViewMode || sidePickerOpen) return false;
+      if (gameResult || isViewMode || sidePickerOpen) return false;
       if (game.isGameOver() || game.isDraw()) return false;
 
       /*
@@ -2398,6 +2498,7 @@ const fetchBestMove = useCallback(
       processPlayerMove,
       setPremoveMove,
       clearPremove,
+      gameResult,
     ],
   );
 
@@ -2406,7 +2507,7 @@ const fetchBestMove = useCallback(
    */
   const onSquareClick = useCallback(
     (square) => {
-      if (isViewMode || sidePickerOpen) return;
+      if (gameResult || isViewMode || sidePickerOpen) return;
       if (game.isGameOver() || game.isDraw()) return;
 
       /*
@@ -2500,6 +2601,7 @@ const fetchBestMove = useCallback(
       handlePremoveSquareClick,
       processPlayerMove,
       clearPremove,
+      gameResult,
     ],
   );
 
@@ -2531,10 +2633,11 @@ const fetchBestMove = useCallback(
 
   const isDraggablePiece = useCallback(
     ({ piece }) =>
+      !gameResult &&
       !isViewMode &&
       !sidePickerOpen &&
       piece?.[0] === playerColor,
-    [isViewMode, sidePickerOpen, playerColor],
+    [gameResult, isViewMode, sidePickerOpen, playerColor],
   );
 
   /*
@@ -3474,6 +3577,16 @@ const fetchBestMove = useCallback(
             onClick={openSidePicker}
           >
             Новая игра
+          </button>
+
+          <button
+            type="button"
+            className="ctrl-btn ctrl-btn--resign"
+            onClick={handleResign}
+            disabled={!canResign}
+            title={canResign ? "Сдаться и завершить партию поражением" : "Сдаться можно во время активной партии"}
+          >
+            Сдаться
           </button>
 
           {/*
