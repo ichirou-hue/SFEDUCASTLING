@@ -484,6 +484,23 @@
   box-shadow: 0 10px 30px rgba(48, 65, 52, 0.07);
 }
 
+/* Акцент профиля: общее правило карточки выше перекрывало цветные рамки
+   из UserProfilePage.css, и в светлой теме все акценты выглядели одинаково. */
+:root[data-theme="light"] .user-profile-page .user-profile-card--accent-accent_aurora {
+  border-color: rgba(31, 122, 104, 0.5);
+  box-shadow: 0 10px 30px rgba(48, 65, 52, 0.07), 0 0 24px rgba(31, 122, 104, 0.12);
+}
+
+:root[data-theme="light"] .user-profile-page .user-profile-card--accent-accent_ruby {
+  border-color: rgba(168, 60, 71, 0.5);
+  box-shadow: 0 10px 30px rgba(48, 65, 52, 0.07), 0 0 24px rgba(168, 60, 71, 0.12);
+}
+
+:root[data-theme="light"] .user-profile-page .user-profile-card--accent-accent_amethyst {
+  border-color: rgba(106, 75, 176, 0.5);
+  box-shadow: 0 10px 30px rgba(48, 65, 52, 0.07), 0 0 24px rgba(106, 75, 176, 0.12);
+}
+
 :root[data-theme="light"] .user-profile-kicker,
 :root[data-theme="light"] .training-kicker,
 :root[data-theme="light"] .admin-kicker {
@@ -636,6 +653,35 @@
   border-color: var(--lt-gold);
   background: #fffdf8;
   color: var(--lt-ink-strong);
+}
+
+/* Индивидуальные цвета косметики. Общие правила выше имеют более высокую
+   специфичность, чем item-правила из GigacoinShop.css, и без этих строк
+   все рамки становились золотыми, а все акценты - одного цвета.
+   Оттенки темнее базовых: светлые варианты не читаются на бумажном фоне. */
+:root[data-theme="light"] .gigacoin-shop__item--frame_sapphire .gigacoin-shop__avatar {
+  border-color: #3f7fa8;
+  box-shadow: 0 0 9px rgba(63, 127, 168, 0.28);
+}
+
+:root[data-theme="light"] .gigacoin-shop__item--frame_emerald .gigacoin-shop__avatar {
+  border-color: #3f8a5c;
+  box-shadow: 0 0 9px rgba(63, 138, 92, 0.28);
+}
+
+:root[data-theme="light"] .gigacoin-shop__item--accent_aurora .gigacoin-shop__preview {
+  color: #1f7a68;
+  border-color: rgba(31, 122, 104, 0.5);
+}
+
+:root[data-theme="light"] .gigacoin-shop__item--accent_ruby .gigacoin-shop__preview {
+  color: #a83c47;
+  border-color: rgba(168, 60, 71, 0.5);
+}
+
+:root[data-theme="light"] .gigacoin-shop__item--accent_amethyst .gigacoin-shop__preview {
+  color: #6a4bb0;
+  border-color: rgba(106, 75, 176, 0.5);
 }
 
 :root[data-theme="light"] .gigacoin-shop__item button {
@@ -832,6 +878,27 @@
 :root[data-theme="light"] .review-stage span,
 :root[data-theme="light"] .review-practice p {
   color: var(--lt-muted);
+}
+
+/* Метаданные партии в шапке разбора: светлая «пилюля» с золотым Elo. */
+:root[data-theme="light"] .review-heading .review-meta {
+  border-color: var(--lt-line-gold);
+  background: rgba(255, 253, 248, 0.82);
+  color: var(--lt-ink);
+  box-shadow: 0 4px 14px rgba(48, 65, 52, 0.06);
+}
+
+:root[data-theme="light"] .review-meta-elo {
+  color: var(--lt-gold-strong);
+}
+
+:root[data-theme="light"] .review-meta-date {
+  color: var(--lt-muted);
+}
+
+:root[data-theme="light"] .review-meta-divider {
+  background: var(--lt-gold);
+  opacity: 0.4;
 }
 
 :root[data-theme="light"] .review-back:hover,

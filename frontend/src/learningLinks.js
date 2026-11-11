@@ -9,6 +9,9 @@ export const COURSE_TOPIC_META = {
   middlegame: { title: "Миттельшпиль: стратегия", icon: "♛" },
 };
 
+// Порядок тем для последовательного перехода после завершения набора задач.
+export const COURSE_TOPIC_ORDER = Object.keys(COURSE_TOPIC_META);
+
 // Раньше модули назывались по фигурам и пазл относился к модулю, только
 // если фигура реально ходила в решении. После слияния модулей (10 -> 5)
 // профильных фигур у тем нет - словарь пуст, modulePieceOk всегда true.
@@ -100,6 +103,18 @@ export function getCourseTopicMeta(slug) {
   if (!slug) return null;
   const meta = COURSE_TOPIC_META[slug];
   return meta ? { slug, ...meta } : null;
+}
+
+// Следующая тема курса по кругу: с последней темы переходим на первую.
+// Без текущей темы предлагаем начать с первой (шахматная азбука).
+export function getNextCourseTopicMeta(slug) {
+  if (COURSE_TOPIC_ORDER.length === 0) return null;
+  const index = COURSE_TOPIC_ORDER.indexOf(slug);
+  const nextSlug =
+    index < 0
+      ? COURSE_TOPIC_ORDER[0]
+      : COURSE_TOPIC_ORDER[(index + 1) % COURSE_TOPIC_ORDER.length];
+  return getCourseTopicMeta(nextSlug);
 }
 
 export function getCourseTopicForPuzzle(puzzle) {

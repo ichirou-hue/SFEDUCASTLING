@@ -120,15 +120,12 @@ export default function ProgressWidget() {
   return (
     <section className="progress-widget" aria-label="Общий прогресс обучения">
       <div className="progress-widget__header">
-        <div className="progress-widget__streak-info">
-          <div className="progress-widget__streak" title="Серия дней занятий: 3+ разных решённых пазла или задание курса в день">
-            <span className="progress-widget__streak-icon">🔥</span>
-            <span>
-              <strong>{training?.streak ?? 0}</strong>
-              <small>дн. подряд</small>
-            </span>
-          </div>
-          <p className="progress-widget__streak-reward">За каждые 7 активных дней подряд: +10 GigaCoin</p>
+        <div className="progress-widget__streak" title="Серия дней занятий: 3+ разных решённых пазла или задание курса в день">
+          <span className="progress-widget__streak-icon">🔥</span>
+          <span>
+            <strong>{training?.streak ?? 0}</strong>
+            <small>дн. подряд</small>
+          </span>
         </div>
       </div>
 
@@ -192,7 +189,7 @@ export default function ProgressWidget() {
         </div>
       )}
 
-      {activeTopics.length > 0 ? (
+      {activeTopics.length > 0 && (
         <div className="progress-widget__topics">
           <div className="progress-topic-list">
             {activeTopics.map((topic) => (
@@ -211,11 +208,7 @@ export default function ProgressWidget() {
             ))}
           </div>
         </div>
-      ) : (
-          <div className="progress-widget__empty">
-            Выполните первое задание курса - здесь появится точность по темам.
-          </div>
-        )}
+      )}
     </section>
   );
 }

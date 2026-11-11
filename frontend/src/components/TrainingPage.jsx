@@ -13,6 +13,7 @@ import {
 import SiteFooter from "./SiteFooter.jsx";
 import RatingBandProgress from "./RatingBandProgress.jsx";
 import { getCheckState, getKingCheckStyle } from "../chessStatus.js";
+import { playMoveSound } from "../moveSound.js";
 import "./LearningCrossLinks.css";
 
 const PIECE_IMAGES = {
@@ -830,7 +831,10 @@ export default function TrainingPage({ user, onRegister }) {
               to: moveToApply.to,
               promotion: "q",
             });
-            if (move) setBoardFen(game.fen());
+            if (move) {
+              playMoveSound();
+              setBoardFen(game.fen());
+            }
           } catch {
             // Визуальное применение хода не влияет на серверную проверку.
           }
@@ -1049,7 +1053,6 @@ export default function TrainingPage({ user, onRegister }) {
       <div className="training-page training-page--centered" ref={pageRef}>
         <div className="training-center-wrap">
           <div className="training-register-wall">
-            <div className="training-kicker">Учебный режим</div>
             <h1>Обучение доступно после регистрации</h1>
             <p>
               Зарегистрируйтесь, чтобы проходить учебные модули по шахматам
@@ -1115,12 +1118,7 @@ export default function TrainingPage({ user, onRegister }) {
         <div className="training-course-layout">
           <main className="training-course-main">
             <section className="training-hero">
-              <div className="training-kicker">Учебный режим</div>
               <h1>Обучение шахматам</h1>
-              <p>
-                Изучайте особенности каждой фигуры последовательно: сначала теория,
-                затем интерактивные задания на шахматной доске.
-              </p>
               <RatingBandProgress userId={userId} />
 
               {course && course.total > 0 && (

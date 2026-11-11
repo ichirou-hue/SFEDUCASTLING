@@ -204,10 +204,15 @@ export default function UserProfilePage({ user, onUserChange }) {
         onUserChange?.(freshUser);
       } catch (err) {
         if (cancelled) return;
+        // Профиль мог отрисоваться из кэша localStorage, а /me вернул 401:
+        // вместо технического «Требуется авторизация» просим пройти анкету.
+        const status = err?.response?.status;
         setError(
-          err?.response?.data?.detail ||
-            err?.message ||
-            "Не удалось обновить данные профиля.",
+          status === 401
+            ? "Требуется пройти анкету"
+            : err?.response?.data?.detail ||
+                err?.message ||
+                "Не удалось обновить данные профиля.",
         );
       } finally {
         if (!cancelled) setLoading(false);

@@ -10,6 +10,7 @@ import {
 } from "../api.js";
 import SiteFooter from "./SiteFooter.jsx";
 import { getCheckState, getKingCheckStyle } from "../chessStatus.js";
+import { playMoveSound } from "../moveSound.js";
 import "./LevelTestPage.css";
 
 const START_FEN = "8/8/8/8/8/8/8/8 w - - 0 1";
@@ -216,6 +217,7 @@ export default function LevelTestPage({ onCompleted = null, autoStart = false, o
     setSelectedSquare(null);
     setLegalTargets([]);
     setLastMove({ from, to });
+    playMoveSound();
     setFen(nextFen);
 
     try {

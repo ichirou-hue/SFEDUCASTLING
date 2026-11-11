@@ -3,6 +3,7 @@ import { Chess } from "chess.js";
 import { Link, useParams } from "react-router-dom";
 import { fetchLocalGameHistory, fetchStockfishAnalysis, getAccessToken, getStoredUser, reviewGame } from "../api.js";
 import { getLocalBotGames } from "../localBotGames.js";
+import { playMoveSound } from "../moveSound.js";
 import MiniBoard from "./MiniBoard.jsx";
 import "./GameReviewPage.css";
 
@@ -49,6 +50,20 @@ function resultLabel(game) {
   if (game.result === "1/2-1/2") return "Ничья";
   if (game.result === (game.playerColor === "w" ? "1-0" : "0-1")) return "Победа";
   return "Поражение";
+}
+
+function gameTimestamp(value) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function formatGameDate(value) {
+  const date = gameTimestamp(value);
+  if (!date) return "—";
+  return new Intl.DateTimeFormat("ru-RU", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
 }
 
 function EvalChart({ plies, selected, onSelect }) {
@@ -170,6 +185,13 @@ export default function GameReviewPage() {
 
   function tryPracticeMove(from, to) {
     if (!practice || !bestMove) return false;
+    try {
+      const game = new Chess(plies[selected].fen);
+      if (!game.move({ from, to, promotion: "q" })) return false;
+    } catch {
+      return false;
+    }
+    playMoveSound();
     setPracticeMessage(`${from}${to}` === bestMove.best_move.slice(0, 4)
       ? `Верно! Лучший ход: ${bestMove.san}` : "Попробуйте другой ход.");
     return false;
@@ -183,7 +205,7 @@ export default function GameReviewPage() {
         to={`/review/game/${encodeURIComponent(game.id)}`} target="_blank" rel="noopener noreferrer">
         <div className="review-game-info"><strong>{resultLabel(game)}</strong>
           <span>Maia {game.elo ?? "—"} · {game.playerColor === "b" ? "игра чёрными" : "игра белыми"}</span>
-          <span>{new Date(game.playedAt).toLocaleString("ru-RU")}</span>
+          <span>{formatGameDate(game.playedAt)}</span>
           <span className="review-game-open">Открыть разбор ↗</span></div>
         <div className="review-game-board" aria-label="Финальная позиция партии">
           <MiniBoard fen={finalPosition(game)} width={Math.min(180, Math.max(130, window.innerWidth - 225))} />
@@ -195,7 +217,12 @@ export default function GameReviewPage() {
   return <main className="review-page review-page--detail">
     <header className="review-heading"><Link className="review-back" to="/review">← Все партии</Link>
       <span className="review-kicker">РАЗБОР ПАРТИИ</span><h1>{selectedGame ? resultLabel(selectedGame) : "Загружаем партию"}</h1>
-      {selectedGame && <p>Maia {selectedGame.elo ?? "—"} · {new Date(selectedGame.playedAt).toLocaleString("ru-RU")}</p>}</header>
+      {selectedGame && <p className="review-meta">
+        <span className="review-meta-elo">Maia {selectedGame.elo ?? "—"}</span>
+        <span className="review-meta-divider" aria-hidden="true" />
+        <time className="review-meta-date" dateTime={gameTimestamp(selectedGame.playedAt)?.toISOString()}
+          title={gameTimestamp(selectedGame.playedAt)?.toLocaleString("ru-RU")}>{formatGameDate(selectedGame.playedAt)}</time>
+      </p>}</header>
     {error && <p className="review-error" role="alert">{error}</p>}
     {!parsed && !error && <p className="review-loading" role="status">Загружаем ходы партии…</p>}
     {parsed && <section className="review-report">

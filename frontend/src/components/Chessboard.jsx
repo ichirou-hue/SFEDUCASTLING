@@ -12,6 +12,7 @@ import { Chessboard as ReactChessboard } from "react-chessboard";
 import { Chess } from "chess.js";
 import { Link } from "react-router-dom";
 import { saveLocalBotGame } from "../localBotGames.js";
+import { playMoveSound } from "../moveSound.js";
 
 import { getCheckState, getKingCheckStyle } from "../chessStatus.js";
 import {
@@ -248,37 +249,6 @@ function GameReviewSummary({ review }) {
       </div>
     </div>
   );
-}
-
-let audioCtx = null;
-
-function playMoveSound() {
-  if (!audioCtx)
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-
-  const now = audioCtx.currentTime;
-
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
-  const filter = audioCtx.createBiquadFilter();
-
-  filter.type = "lowpass";
-  filter.frequency.setValueAtTime(1200, now);
-  filter.frequency.exponentialRampToValueAtTime(300, now + 0.08);
-
-  osc.type = "triangle";
-  osc.frequency.setValueAtTime(180, now);
-  osc.frequency.exponentialRampToValueAtTime(60, now + 0.06);
-
-  gain.gain.setValueAtTime(0.5, now);
-  gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-
-  osc.connect(filter);
-  filter.connect(gain);
-  gain.connect(audioCtx.destination);
-
-  osc.start(now);
-  osc.stop(now + 0.12);
 }
 
 const ChessboardComponent = forwardRef(function ChessboardComponent(

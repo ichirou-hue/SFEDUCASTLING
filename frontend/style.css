@@ -1477,7 +1477,7 @@ textarea {
 }
 
 .move-pair span {
-  padding: 4px 10px;
+  padding: 2px 3px;
   border-radius: 8px;
   cursor: pointer;
   transition: background 0.2s;
@@ -1659,7 +1659,10 @@ textarea {
 /* --- Шапка чата --- */
 .chat-header {
   padding: 16px 24px 14px;
-  display: flex;
+  display: grid;
+  /* Симметричные боковые колонки держат заголовок ровно по центру панели,
+     независимо от ширины аватара и кнопки сворачивания. */
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: 16px;
   flex-shrink: 0;
@@ -1686,6 +1689,10 @@ textarea {
 }
 
 /* Аватар ассистента в золотом кольце на бумажной подложке. */
+.chat-avatar {
+  justify-self: start;
+}
+
 .chat-avatar img {
   width: 52px;
   height: 52px;
@@ -1705,6 +1712,9 @@ textarea {
   width: 44px;
   height: 44px;
   box-sizing: border-box;
+  /* Глиф коня стоит на baseline и визуально уезжает вверх. Небольшой
+     верхний отступ возвращает его в геометрический центр рамки. */
+  padding-top: 0.35em;
   border: 1px solid rgba(34, 90, 115, 0.2);
   border-radius: 12px;
   background: rgba(34, 90, 115, 0.08);
@@ -1717,6 +1727,9 @@ textarea {
 .chat-title-block {
   display: flex;
   flex-direction: column;
+  align-items: center;
+  min-width: 0;
+  text-align: center;
 }
 
 .chat-title-block h2 {
@@ -1750,6 +1763,7 @@ textarea {
    волоском, по hover становится плотнее. */
 .chat-collapse-btn {
   margin-left: auto;
+  justify-self: end;
   flex: 0 0 auto;
   width: 34px;
   height: 34px;
@@ -2102,7 +2116,7 @@ textarea {
 .move-list {
   flex: 1;
   min-height: 0;
-  max-height: 280px; /* Пять строк истории по 56px. */
+  max-height: 200px; /* Примерно пять строк истории по 36px. */
   /* Keep the controls at the bottom when the capped list leaves free space. */
   margin-bottom: auto;
   overflow-y: auto;
@@ -2144,8 +2158,9 @@ textarea {
 .player-info {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 2px;
+  position: relative;
   border-radius: 999px;
   /* Чистая двухцветная заливка вместо размытого диагонального градиента:
      своя половина с зелёным подтоном, половина соперника - тёплая бумага.
@@ -2176,9 +2191,12 @@ textarea {
   position: relative;
   display: flex;
   align-items: center;
-  padding: 12px 6px;
+  height: auto;
+  min-height: 36px;
+  padding: 5px 3px;
   font-family: var(--font-ui);
-  font-size: 22px;
+  font-size: clamp(13px, 1.05vw, 15px);
+  line-height: 1.25;
   color: #333;
 }
 
@@ -2210,7 +2228,7 @@ textarea {
   border-radius: 10px;
 }
 .move-pair span {
-  padding: 4px 10px;
+  padding: 2px 3px;
   border-radius: 8px;
   cursor: pointer;
   transition: background 0.2s;
@@ -2220,14 +2238,14 @@ textarea {
   justify-content: center;
   align-items: center;
   text-align: center;
-  min-width: 45px; /* Р§С‚РѕР±С‹ РІСЃРµ РїР»Р°С€РєРё Р±С‹Р»Рё РѕРґРёРЅР°РєРѕРІРѕР№ С€РёСЂРёРЅС‹ Рё СЃРјРѕС‚СЂРµР»РёСЃСЊ СЃРёРјРјРµС‚СЂРёС‡РЅРѕ */
+  min-width: 30px; /* Р§С‚РѕР±С‹ РІСЃРµ РїР»Р°С€РєРё Р±С‹Р»Рё РѕРґРёРЅР°РєРѕРІРѕР№ С€РёСЂРёРЅС‹ Рё СЃРјРѕС‚СЂРµР»РёСЃСЊ СЃРёРјРјРµС‚СЂРёС‡РЅРѕ */
 }
 .move-pair .num {
-  flex: 0 0 32px;
-  width: 32px;
+  flex: 0 0 24px;
+  width: 24px;
   padding-inline: 0;
   color: #555;
-  font-size: 22px;
+  font-size: 13px;
 }
 .move-pair .move-w {
   flex: 1 1 0;
@@ -2366,14 +2384,14 @@ textarea {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
   margin-bottom: 16px;
 }
 
 /* Р”РµР»Р°РµРј СЃР°РјСѓ РєРЅРѕРїРєСѓ РЅРµРІРёРґРёРјРѕР№ РѕР±РµСЂС‚РєРѕР№ РґР»СЏ SVG */
 .arrow-btn {
-  width: 55px;
-  height: 44px;
+  width: 40px;
+  height: 32px;
   background: transparent; /* РЈР±РёСЂР°РµРј Р·РµР»РµРЅС‹Р№ С„РѕРЅ РёР· CSS, С„РѕРЅ С‚РµРїРµСЂСЊ РІРЅСѓС‚СЂРё SVG */
   border: none;
   padding: 0;
@@ -2382,6 +2400,12 @@ textarea {
   justify-content: center;
   align-items: center;
   transition: transform 0.2s; /* Р›РµРіРєР°СЏ Р°РЅРёРјР°С†РёСЏ РїСЂРё РЅР°РІРµРґРµРЅРёРё */
+}
+
+/* SVG стрелок масштабируется вместе с кнопкой. */
+.arrow-btn svg {
+  width: 100%;
+  height: 100%;
 }
 
 /* РџСЂРё РЅР°РІРµРґРµРЅРёРё РєРЅРѕРїРєР° Р±СѓРґРµС‚ СЃР»РµРіРєР° СѓРІРµР»РёС‡РёРІР°С‚СЊСЃСЏ (РІРјРµСЃС‚Рѕ СЃРјРµРЅС‹ С†РІРµС‚Р°) */
@@ -2513,6 +2537,11 @@ textarea {
   display: flex;
   align-items: center;
   justify-content: center;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1;
   width: 28px;
   height: 28px;
   flex-shrink: 0;
@@ -2524,7 +2553,7 @@ textarea {
   font-size: 12px;
   letter-spacing: 0.02em;
   color: #8a6a26;
-  margin: 0 2px;
+  margin: 0;
 }
 
 /* РЎС‚РёР»РёР·Р°С†РёСЏ Р°РІР°С‚Р°СЂРѕРє (РµСЃР»Рё С‚С‹ РЅРµ СЌРєСЃРїРѕСЂС‚РёСЂСѓРµС€СЊ РёС… СЃ С„РѕРЅРѕРј) */
@@ -2563,6 +2592,7 @@ textarea {
   flex-direction: column;
   align-items: flex-end;
   flex: 0 0 auto;
+  margin-left: auto;
 }
 .player-rating,
 .bot-rating {
@@ -3781,11 +3811,20 @@ textarea {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 12px;
 }
 
 .puzzle-board-wrapper {
   position: relative;
+  /* Как .board-wrapper на «Игре»: доска центрируется в рамке по обеим
+     осям, а строчный baseline-зазор у .puzzle-board-surface исчезает. */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  max-width: 100%;
   border-radius: 15px;
   border: 3px solid rgba(180, 135, 44, 0.85);
   background: #f0f2ea;
@@ -3960,6 +3999,35 @@ textarea {
 .puzzle-solved-hint {
   color: #d1d9d5;
   font: 500 12px/1.4 var(--font-ui);
+}
+
+/* Завершение набора: выбор следующей темы или переход к урокам. */
+.puzzle-solved-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.puzzle-solved-actions .learning-crosslink {
+  min-height: 34px;
+  padding: 7px 12px;
+  border-radius: 10px;
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.puzzle-solved-actions .puzzle-complete-primary {
+  border-color: rgba(201, 169, 110, 0.85);
+  background: #e7c884;
+  color: #3d2a10;
+}
+
+.puzzle-solved-actions .puzzle-complete-primary:hover {
+  background: #f0d79f;
+  box-shadow: 0 6px 18px rgba(201, 169, 110, 0.28);
 }
 
 .puzzle-result {
@@ -4238,13 +4306,6 @@ textarea {
   line-height: 1.6;
   color: #555;
   font-size: 15px;
-}
-
-.training-hero p {
-  width: min(100%, 820px);
-  max-width: 820px;
-  margin: 0 auto 16px;
-  text-align: center;
 }
 
 .training-hero .rating-band-progress {
