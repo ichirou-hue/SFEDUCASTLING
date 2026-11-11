@@ -242,6 +242,9 @@
 
 .user-profile-actions {
   margin-top: 18px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
 .user-profile-level-test-btn {

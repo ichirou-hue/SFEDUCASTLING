@@ -224,13 +224,11 @@ export default function GameReviewPage() {
           </div>}</div>
         <div className="review-moves-panel"><h2>Ходы партии</h2>
           <div className="review-moves">{plies.map((ply, index) => {
-            const grade = GRADES[ply.classification] || (report && ply.analysis?.decided
-              ? ["◇", "Позиция решена"]
-              : report && ply.analysis?.eval_cp == null ? ["…", "Без оценки Stockfish"] : null);
+            const grade = GRADES[ply.classification] || (report && ply.analysis?.eval_cp == null ? ["…", "Без оценки Stockfish"] : null);
             return <button type="button" key={index} onClick={() => navigateTo(index)}
               className={`review-move ${index === selected ? "is-selected" : ""}`}>
               <span>{ply.move_no}{index % 2 ? "..." : "."} {ply.san}</span>
-              {grade && <span className={`review-move-grade review-grade--${ply.classification || (ply.analysis?.decided ? "decided" : "unscored")}`}>{grade[0]} {grade[1]}</span>}
+              {grade && <span className={`review-move-grade review-grade--${ply.classification || "unscored"}`}>{grade[0]} {grade[1]}</span>}
             </button>;
           })}</div>
           <div className="review-navigation"><button type="button" onClick={() => navigateTo(-1)}>⏮ Начало</button>
