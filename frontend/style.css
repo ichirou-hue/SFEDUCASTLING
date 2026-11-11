@@ -759,6 +759,39 @@ textarea {
   animation: gameoverFadeIn 0.25s ease;
 }
 
+.resign-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 25;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  border-radius: 15px;
+  background: rgba(7, 22, 24, .68);
+  backdrop-filter: blur(5px);
+}
+
+.resign-dialog {
+  width: min(100%, 390px);
+  padding: clamp(20px, 4vw, 30px);
+  border: 1px solid rgba(201, 169, 110, .65);
+  border-radius: 20px;
+  background: #10272a;
+  color: #f5eedf;
+  box-shadow: 0 20px 54px rgba(0, 0, 0, .45);
+  text-align: center;
+}
+
+.resign-dialog__eyebrow { color: #d6b77c; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
+.resign-dialog h2 { margin: 12px 0 8px; font-size: clamp(25px, 5vw, 32px); }
+.resign-dialog p { margin: 0; color: #d5ded8; line-height: 1.5; }
+.resign-dialog__actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
+.resign-dialog__actions button { flex: 1 1 140px; min-height: 44px; padding: 10px 14px; border-radius: 11px; font: inherit; font-weight: 600; cursor: pointer; }
+.resign-dialog__cancel { border: 1px solid #bd9b62; background: #dfc18a; color: #182a2a; }
+.resign-dialog__confirm { border: 1px solid #c46f5e; background: #8d3e32; color: #fff5ee; }
+.resign-dialog__actions button:hover { filter: brightness(1.1); }
+.resign-dialog__actions button:focus-visible { outline: 3px solid #f8dca2; outline-offset: 2px; }
+
 /* Карточка - одна вертикальная колонка: заголовок, причина и действия
    идут с общим ритмом, поэтому высота не скачет при появлении разбора. */
 .gameover-card {

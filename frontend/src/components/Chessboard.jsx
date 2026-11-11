@@ -292,6 +292,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
    * ходе игрока - поражение, мат при ходе соперника - победа.
    */
   const [gameResult, setGameResult] = useState(null);
+  const [resignConfirmOpen, setResignConfirmOpen] = useState(false);
   const [reviewArchiveId, setReviewArchiveId] = useState(null);
   /*
    * Карточку итога можно закрыть кликом по фону, чтобы рассмотреть
@@ -954,11 +955,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
    */
   const handleResign = useCallback(() => {
     if (!canResign) return;
-
-    const confirmed = window.confirm(
-      "Сдаться? Партия будет засчитана как поражение.",
-    );
-    if (!confirmed) return;
+    setResignConfirmOpen(false);
 
     gameGenRef.current += 1;
     finishSentRef.current = true;
@@ -3443,6 +3440,24 @@ const fetchBestMove = useCallback(
               </div>
             </div>
           )}
+          {resignConfirmOpen && !gameResult && (
+            <div className="resign-overlay" onClick={() => setResignConfirmOpen(false)}>
+              <div className="resign-dialog" role="dialog" aria-modal="true" aria-labelledby="resign-title"
+                onClick={(event) => event.stopPropagation()} onKeyDown={(event) => {
+                  if (event.key === "Escape") setResignConfirmOpen(false);
+                }}>
+                <span className="resign-dialog__eyebrow">Партия против Maia</span>
+                <h2 id="resign-title">Сдаться?</h2>
+                <p>Партия будет засчитана как поражение.</p>
+                <div className="resign-dialog__actions">
+                  <button type="button" className="resign-dialog__cancel" autoFocus
+                    onClick={() => setResignConfirmOpen(false)}>Продолжить игру</button>
+                  <button type="button" className="resign-dialog__confirm" onClick={handleResign}
+                    disabled={!canResign}>Сдаться</button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/*
            * Итог партии в духе chess.com: затемнение доски + карточка
@@ -3582,7 +3597,7 @@ const fetchBestMove = useCallback(
           <button
             type="button"
             className="ctrl-btn ctrl-btn--resign"
-            onClick={handleResign}
+            onClick={() => setResignConfirmOpen(true)}
             disabled={!canResign}
             title={canResign ? "Сдаться и завершить партию поражением" : "Сдаться можно во время активной партии"}
           >
