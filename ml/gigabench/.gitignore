@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+.venv/
+.env
+data/private/
+review20/draft/
+review20/*.zip
+runs/
+dist/
+*.nnue
+*.safetensors
+*.pt
+*.pth
+*.docx
+*.log

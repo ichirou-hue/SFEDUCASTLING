@@ -1,0 +1,154 @@
+{
+  "version": "gigachess-unified-v1.1-dev",
+  "seed": 20261101,
+  "random_positions": {
+    "smoke": 2,
+    "quick": 12,
+    "standard": 200
+  },
+  "mate_two_positions": {
+    "smoke": 2,
+    "quick": 4,
+    "standard": 40
+  },
+  "generation": {
+    "profile": "candidate_rank_major_start7",
+    "precision": "bf16",
+    "seed": 20261101
+  },
+  "engine": {
+    "nodes": 1000000,
+    "threads": 1,
+    "hash_mb": 128,
+    "tolerance_cp": 50
+  },
+  "bootstrap": {
+    "resamples": 2000,
+    "seed": 20261101
+  },
+  "aggregate": "Equal weight of automatic exact-accuracy tasks, excluding engine-quality and explanations; not an overall teaching score.",
+  "piece_bins": {
+    "мало фигур (2–10)": [
+      2,
+      10
+    ],
+    "средне (11–20)": [
+      11,
+      20
+    ],
+    "много (21–32)": [
+      21,
+      32
+    ]
+  },
+  "combined_tasks": {
+    "structural/cells": [
+      "structural/piece_occupied",
+      "structural/piece_empty"
+    ],
+    "legacy/M1": [
+      "legacy/M1_occupied",
+      "legacy/M1_empty"
+    ]
+  },
+  "blocks": {
+    "board_reading": [
+      "structural/cells",
+      "legacy/M1",
+      "structural/check",
+      "structural/square_control",
+      "structural/piece_protection",
+      "structural/state_tracking",
+      "structural/material_balance",
+      "structural/legal_count",
+      "structural/legal_moves_piece",
+      "random_chess/*"
+    ],
+    "rules": [
+      "rules/*",
+      "structural/move_legality"
+    ],
+    "tactics": [
+      "motifs/*",
+      "tactics/*"
+    ],
+    "move_choice": [
+      "legacy/M2",
+      "legacy/M3",
+      "games/*"
+    ],
+    "commentary": [
+      "structural/comment_fact_choice",
+      "commentary/*",
+      "legacy/M4_M7"
+    ],
+    "diagnostics": [
+      "fixtures/*"
+    ]
+  },
+  "block_names": {
+    "board_reading": "Чтение доски",
+    "rules": "Правила",
+    "tactics": "Тактика",
+    "move_choice": "Выбор хода",
+    "commentary": "Комментирование",
+    "diagnostics": "Ручные крайние случаи"
+  },
+  "block_roles": {
+    "board_reading": "trained",
+    "commentary": "trained",
+    "rules": "control",
+    "tactics": "control",
+    "move_choice": "control",
+    "diagnostics": "diagnostic"
+  },
+  "paraphrases": {
+    "smoke": 2,
+    "quick": 2,
+    "standard": 2
+  },
+  "generated_per_task": {
+    "smoke": 4,
+    "quick": 12,
+    "standard": 60
+  },
+  "full_move_positions": {
+    "smoke": 2,
+    "quick": 6,
+    "standard": 40
+  },
+  "game_positions": {
+    "smoke": 4,
+    "quick": 20,
+    "standard": 200
+  },
+  "puzzles_per_bin": {
+    "smoke": 2,
+    "quick": 10,
+    "standard": 50
+  },
+  "judgement": {
+    "nodes": 300000,
+    "recheck_factor": 4,
+    "margin_cp": 15,
+    "per_bucket": {
+      "smoke": 1,
+      "quick": 4,
+      "standard": 20
+    },
+    "candidates": {
+      "smoke": 60,
+      "quick": 400,
+      "standard": 4000
+    }
+  },
+  "diagnostic_note": "Hand-made fixtures are reported but too few for conclusions; they never enter trained or control block means.",
+  "puzzle_quality": {
+    "min_plays": 1000,
+    "max_rating_deviation": 80,
+    "min_popularity": 80
+  },
+  "frozen_sources": {
+    "games": 3000
+  }
+}
