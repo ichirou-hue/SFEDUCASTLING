@@ -1828,7 +1828,6 @@
   background: linear-gradient(160deg, rgba(213, 180, 118, 0.12), rgba(102, 180, 128, 0.08));
 }
 
-:root[data-theme="dark"] .auth-brand-icon,
 :root[data-theme="dark"] .prg-brand-icon,
 :root[data-theme="dark"] .onb-brand-icon {
   color: var(--sf-gold);

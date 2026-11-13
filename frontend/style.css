@@ -2813,6 +2813,9 @@ textarea {
   padding: 40px 36px;
 }
 .auth-side--brand {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   background: linear-gradient(160deg, rgba(201, 169, 110, 0.22), rgba(131, 183, 135, 0.18));
   border-right: 1px solid rgba(201, 169, 110, 0.4);
 }
@@ -2822,17 +2825,8 @@ textarea {
   justify-content: center;
 }
 
-/* --- Бренд --- */
-.auth-brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 22px;
-}
-.auth-brand-icon {
-  font-size: 30px;
-  color: #b88a3e;
-}
+/* Бренд на странице OAuth-колбэка (app.jsx); в модалке заголовок
+   начинается сразу с названия шага, без отдельной надписи. */
 .auth-brand-name {
   font-family: var(--font-ui);
   font-weight: 800;
@@ -2842,27 +2836,36 @@ textarea {
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
   text-transform: uppercase;
 }
-
+/* Крупные заголовки сайта набраны Calypso — шапка модалки следует
+   той же системе. */
 .auth-title {
-  font-family: var(--font-ui);
+  font-family: var(--font-display);
   font-weight: normal;
-  font-size: 30px;
-  line-height: 1.1;
+  font-size: 36px;
+  line-height: 1.05;
+  letter-spacing: 0.01em;
   color: #2f5c36;
-  margin: 0 0 8px;
+  margin: 0 0 12px;
 }
 .auth-subtitle {
   font-family: var(--font-ui);
-  font-size: 17px;
-  color: #6b7a6e;
-  line-height: 1.35;
-  margin: 0 0 24px;
+  font-size: 15px;
+  color: #66746b;
+  line-height: 1.55;
+  margin: 0 0 26px;
   max-width: 380px;
+}
+/* В двухколоночной модалке описание тянется на всю ширину панели:
+   иначе оно рвётся на три короткие строки и не совпадает с карточкой. */
+.auth-side--brand .auth-subtitle {
+  max-width: none;
+  text-wrap: pretty;
 }
 
 /* --- Секция импорта --- */
 .auth-section {
   padding: 18px;
+  margin-top: 24px;
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.55);
   border: 1px solid rgba(180, 200, 175, 0.6);
@@ -2872,15 +2875,19 @@ textarea {
   align-items: baseline;
   justify-content: space-between;
   margin-bottom: 12px;
+  padding: 0 14px;
 }
 .auth-section-label {
   font-family: var(--font-ui);
-  font-size: 16px;
-  color: #3a513f;
-  letter-spacing: 0.02em;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #8d6d31;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 .auth-optional {
-  font-size: 13px;
+  font-size: 12px;
   color: #8a908b;
 }
 
@@ -3060,6 +3067,7 @@ textarea {
 }
 .auth-label-text {
   display: block;
+  padding-left: 15px;
   font-size: 15px;
   color: #555;
   margin-bottom: 6px;
@@ -3216,10 +3224,6 @@ textarea {
 
 .auth-link-head {
   margin-bottom: 18px;
-}
-
-.auth-link-head .auth-brand {
-  margin-bottom: 16px;
 }
 
 .auth-link-head .auth-subtitle {

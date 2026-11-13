@@ -43,7 +43,7 @@
   text-align: center;
 }
 
-/* Бренд - как в RegisterModal (.auth-brand-*), но компактнее */
+/* Бренд — компактная версия логотипа модальных окон. */
 .onb-brand {
   display: flex;
   align-items: center;
