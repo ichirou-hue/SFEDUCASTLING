@@ -315,7 +315,6 @@ export default function UserProfilePage({ user, onUserChange }) {
           <div>
             <h2>Прогресс уровня</h2>
           </div>
-          <p>Путь от текущего уровня к следующему по рейтингу.</p>
         </div>
         <RatingBandProgress userId={profile?.id ?? user?.id} />
       </section>
@@ -326,9 +325,6 @@ export default function UserProfilePage({ user, onUserChange }) {
           <div>
             <h2>Прогресс</h2>
           </div>
-          <p>
-            Здесь объединены оба учебных трека: курс и шахматные задачи.
-          </p>
         </div>
 
         <ProgressWidget />
