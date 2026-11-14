@@ -198,7 +198,7 @@ export default function GameReviewPage() {
   }
 
   if (!detail) return <main className="review-page review-page--archive">
-    <header className="review-heading"><span className="review-kicker">МОИ ПАРТИИ</span>
+    <header className="review-heading">
       <h1>Партии против бота</h1><p>Откройте партию, чтобы просмотреть ходы и оценки.</p></header>
     <section className="review-archive">
       {games.length ? games.map((game) => <Link key={game.id} className="review-game-row"

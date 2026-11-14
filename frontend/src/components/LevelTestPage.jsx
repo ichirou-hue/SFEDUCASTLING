@@ -514,7 +514,6 @@ export default function LevelTestPage({ onCompleted = null, autoStart = false, o
       <section className="level-test-shell">
         <header className="level-test-header">
           <div>
-            <div className="level-test-kicker">Проверка уровня</div>
             <h1>Найдите лучший ход</h1>
           </div>
           <div className="level-test-counter">{currentIndex + 1} / {questions.length}</div>
