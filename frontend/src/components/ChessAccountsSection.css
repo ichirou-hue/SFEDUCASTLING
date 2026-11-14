@@ -267,6 +267,12 @@
   font-weight: 700;
 }
 
+.chess-account-add__controls .chess-account-add__link-btn,
+.chess-account-add__controls .chess-account-add__oauth,
+.chess-account-add__note {
+  font-size: 14px;
+}
+
 @media (max-width: 820px) {
   .chess-accounts-section__head { flex-direction: column; }
   .chess-accounts-section__summary { margin-left: 49px; }
