@@ -4960,8 +4960,12 @@ textarea {
     min-height: 0;
     height: 100%;
     overflow-y: auto;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(128, 101, 47, 0.38) transparent;
+    scrollbar-width: none;
+  }
+
+  .training-theory-panel::-webkit-scrollbar,
+  .training-task-panel::-webkit-scrollbar {
+    display: none;
   }
 
   .training-board-column {
