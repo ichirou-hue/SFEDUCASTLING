@@ -328,7 +328,7 @@ export default function OnboardingModal({ isOpen, onClose, onDone }) {
               3. Зачем вам шахматы?{" "}
               <span className="onb-optional">можно выбрать до 2</span>
             </h3>
-            <div className="onb-options onb-options--wrap onb-options--multi">
+            <div className="onb-options onb-options--multi">
               {Q3.map(([code, label]) => {
                 const active = a.q3.includes(code);
                 const disabled = !active && a.q3.length >= 2;
