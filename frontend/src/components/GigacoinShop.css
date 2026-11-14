@@ -15,10 +15,13 @@
 .gigacoin-shop__balance { display: grid; gap: 4px; flex: 0 0 auto; padding: 10px 14px; border: 1px solid rgba(213, 180, 118, .24); border-radius: 14px; background: rgba(213, 180, 118, .08); }
 .gigacoin-shop__balance span { color: rgba(246, 244, 239, .58); font-size: 11px; }
 .gigacoin-shop__balance strong, .gigacoin-shop__price { color: #e2c68e; font-size: 14px; }
+.gigacoin-shop__meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.gigacoin-shop__status { padding: 1px 8px; border: 1px solid rgba(213, 180, 118, .45); border-radius: 999px; color: #e8d6ad; background: rgba(213, 180, 118, .12); font-size: 10px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
 .gigacoin-shop__group { display: grid; gap: 10px; }
 .gigacoin-shop__group h3 { margin: 0; color: rgba(246, 244, 239, .82); font-size: 14px; }
 .gigacoin-shop__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .gigacoin-shop__item { display: grid; grid-template-columns: 42px minmax(0, 1fr); align-items: center; gap: 10px; padding: 12px; border: 1px solid rgba(246, 244, 239, .09); border-radius: 15px; background: rgba(246, 244, 239, .045); }
+.gigacoin-shop__item.is-equipped { border-color: rgba(213, 180, 118, .46); background: rgba(213, 180, 118, .09); box-shadow: inset 0 0 0 1px rgba(213, 180, 118, .16); }
 .gigacoin-shop__preview { display: grid; width: 42px; height: 42px; place-items: center; border: 1px solid rgba(213, 180, 118, .3); border-radius: 13px; color: #e3c68f; background: rgba(213, 180, 118, .08); font-size: 20px; }
 .gigacoin-shop__avatar { display: grid; width: 29px; height: 29px; place-items: center; border: 2px solid #d5b476; border-radius: 50%; color: #f6f4ef; background: #102022; }
 .gigacoin-shop__item--frame_sapphire .gigacoin-shop__avatar { border-color: #77b7e6; box-shadow: 0 0 9px #77b7e666; }

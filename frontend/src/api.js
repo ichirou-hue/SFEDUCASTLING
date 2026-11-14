@@ -351,6 +351,11 @@ export async function equipGigacoinCosmetic(cosmeticId) {
   return data;
 }
 
+export async function unequipGigacoinCosmetic(cosmeticId) {
+  const { data } = await api.post("/api/gigacoins/shop/unequip", { cosmetic_id: cosmeticId });
+  return data;
+}
+
 // === Админ-панель: пользователи, профиль, статистика, роли ===
 
 export async function fetchAdminUsers() {
