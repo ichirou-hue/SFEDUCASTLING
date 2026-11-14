@@ -108,7 +108,7 @@ export default function EvalBar({
     bottomAdv = flipped ? -clamped : clamped;
     fillPct = 50 + (bottomAdv / MAX_MATERIAL) * 50;
     const rounded = Math.round(bottomAdv);
-    label = rounded === 0 ? "" : rounded > 0 ? `+${rounded}` : `${rounded}`;
+    label = rounded === 0 ? "0" : rounded > 0 ? `+${rounded}` : `${rounded}`;
   }
 
   const title = showEngine
