@@ -4725,6 +4725,15 @@ textarea {
   gap: 24px;
 }
 
+.training-module-header > div:last-child {
+  display: grid;
+  gap: 8px;
+}
+
+.training-module-header h1 {
+  margin: 0;
+}
+
 .training-module-header-icon {
   flex-shrink: 0;
   width: 88px;
