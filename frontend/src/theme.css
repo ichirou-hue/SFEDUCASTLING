@@ -2248,6 +2248,39 @@
   scrollbar-color: rgba(213, 180, 118, 0.35) transparent;
 }
 
+/* Page content remains scrollable without browser chrome along the viewport. */
+html,
+body {
+  overflow-x: clip;
+  scrollbar-width: none;
+}
+
+.main-page-scroll,
+.puzzles-page-shell,
+.training-page,
+.user-profile-page,
+.gigacoin-shop-page,
+.level-test-page,
+.admin-page,
+.home-page,
+.review-page {
+  scrollbar-width: none;
+}
+
+.main-page-scroll::-webkit-scrollbar,
+.puzzles-page-shell::-webkit-scrollbar,
+.training-page::-webkit-scrollbar,
+.user-profile-page::-webkit-scrollbar,
+.gigacoin-shop-page::-webkit-scrollbar,
+.level-test-page::-webkit-scrollbar,
+.admin-page::-webkit-scrollbar,
+.home-page::-webkit-scrollbar,
+.review-page::-webkit-scrollbar,
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  display: none;
+}
+
 /* The embedded chess accounts section sits on the dark profile surface. */
 :root[data-theme="dark"] .chess-accounts-section--embedded {
   border-top-color: var(--sf-line);
