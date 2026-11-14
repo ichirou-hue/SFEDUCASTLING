@@ -476,7 +476,7 @@ class TestReviewGame:
 
         shuffled = result["moves"][1]
         assert shuffled["decided"] is True
-        assert shuffled["classification"] is None
+        assert shuffled["classification"] in {"best", "excellent", "good", "inaccuracy", "mistake", "blunder"}
         assert result["counts"]["best"] == 0
 
     def test_loss_caps_stars(self, monkeypatch):

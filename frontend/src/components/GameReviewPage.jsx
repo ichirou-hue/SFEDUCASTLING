@@ -17,7 +17,7 @@ function parsePgn(source) {
   const game = new Chess();
   game.loadPgn(source.trim());
   const history = game.history({ verbose: true });
-  if (history.length < 2) throw new Error("В партии должно быть хотя бы два хода.");
+  if (history.length < 1) throw new Error("В партии нет ходов.");
   const replay = new Chess();
   const positions = [replay.fen()];
   const moves = history.map((move) => {
@@ -198,7 +198,7 @@ export default function GameReviewPage() {
   }
 
   if (!detail) return <main className="review-page review-page--archive">
-    <header className="review-heading"><span className="review-kicker">МОИ ПАРТИИ</span>
+    <header className="review-heading">
       <h1>Партии против бота</h1><p>Откройте партию, чтобы просмотреть ходы и оценки.</p></header>
     <section className="review-archive">
       {games.length ? games.map((game) => <Link key={game.id} className="review-game-row"
@@ -251,13 +251,11 @@ export default function GameReviewPage() {
           </div>}</div>
         <div className="review-moves-panel"><h2>Ходы партии</h2>
           <div className="review-moves">{plies.map((ply, index) => {
-            const grade = GRADES[ply.classification] || (report && ply.analysis?.decided
-              ? ["◇", "Позиция решена"]
-              : report && ply.analysis?.eval_cp == null ? ["…", "Без оценки Stockfish"] : null);
+            const grade = GRADES[ply.classification] || (report && ply.analysis?.eval_cp == null ? ["…", "Без оценки Stockfish"] : null);
             return <button type="button" key={index} onClick={() => navigateTo(index)}
               className={`review-move ${index === selected ? "is-selected" : ""}`}>
               <span>{ply.move_no}{index % 2 ? "..." : "."} {ply.san}</span>
-              {grade && <span className={`review-move-grade review-grade--${ply.classification || (ply.analysis?.decided ? "decided" : "unscored")}`}>{grade[0]} {grade[1]}</span>}
+              {grade && <span className={`review-move-grade review-grade--${ply.classification || "unscored"}`}>{grade[0]} {grade[1]}</span>}
             </button>;
           })}</div>
           <div className="review-navigation"><button type="button" onClick={() => navigateTo(-1)}>⏮ Начало</button>

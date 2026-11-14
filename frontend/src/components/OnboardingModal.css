@@ -179,6 +179,10 @@
 }
 
 /* Множественный выбор (вопрос 3): квадратные отметки вместо кружков */
+.onb-options--multi .onb-option {
+  width: 100%;
+}
+
 .onb-options--multi .onb-option-mark {
   border-radius: 4px;
 }

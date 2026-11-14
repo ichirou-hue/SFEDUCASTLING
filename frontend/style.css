@@ -759,6 +759,39 @@ textarea {
   animation: gameoverFadeIn 0.25s ease;
 }
 
+.resign-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 25;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  border-radius: 15px;
+  background: rgba(7, 22, 24, .68);
+  backdrop-filter: blur(5px);
+}
+
+.resign-dialog {
+  width: min(100%, 390px);
+  padding: clamp(20px, 4vw, 30px);
+  border: 1px solid rgba(201, 169, 110, .65);
+  border-radius: 20px;
+  background: #10272a;
+  color: #f5eedf;
+  box-shadow: 0 20px 54px rgba(0, 0, 0, .45);
+  text-align: center;
+}
+
+.resign-dialog__eyebrow { color: #d6b77c; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
+.resign-dialog h2 { margin: 12px 0 8px; font-size: clamp(25px, 5vw, 32px); }
+.resign-dialog p { margin: 0; color: #d5ded8; line-height: 1.5; }
+.resign-dialog__actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
+.resign-dialog__actions button { flex: 1 1 140px; min-height: 44px; padding: 10px 14px; border-radius: 11px; font: inherit; font-weight: 600; cursor: pointer; }
+.resign-dialog__cancel { border: 1px solid #bd9b62; background: #dfc18a; color: #182a2a; }
+.resign-dialog__confirm { border: 1px solid #c46f5e; background: #8d3e32; color: #fff5ee; }
+.resign-dialog__actions button:hover { filter: brightness(1.1); }
+.resign-dialog__actions button:focus-visible { outline: 3px solid #f8dca2; outline-offset: 2px; }
+
 /* Карточка - одна вертикальная колонка: заголовок, причина и действия
    идут с общим ритмом, поэтому высота не скачет при появлении разбора. */
 .gameover-card {
@@ -788,6 +821,20 @@ textarea {
 .gameover-card--draw {
   border-color: rgba(180, 135, 44, 0.85);
 }
+
+.gameover-coins {
+  width: 100%;
+  margin: 12px 0 4px;
+  padding: 12px 14px;
+  border: 1px solid rgba(94, 148, 99, .5);
+  border-radius: 12px;
+  background: rgba(94, 148, 99, .12);
+  color: #285d37;
+  font-size: clamp(18px, 4vw, 25px);
+  font-weight: 800;
+  line-height: 1.25;
+}
+.gameover-coins--loss { border-color: rgba(179, 84, 58, .5); background: rgba(179, 84, 58, .1); color: #8b3d2c; }
 
 /* Заголовок - тем же display-шрифтом, что и крупные заголовки сайта. */
 .gameover-title {
@@ -1301,6 +1348,22 @@ textarea {
 .ctrl-btn:disabled {
   cursor: default;
   opacity: 0.65;
+}
+
+.ctrl-btn--resign {
+  border: 1px solid rgba(179, 84, 58, 0.55);
+  background: #f7e7e2;
+  color: #8b3d2c;
+}
+
+.ctrl-btn--resign:hover:not(:disabled) {
+  border-color: rgba(179, 84, 58, 0.85);
+  background: #f1d7d0;
+}
+
+.ctrl-btn--resign:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
 }
 
 /* Постоянная кнопка разбора под доской: итоговую карточку можно
@@ -3174,11 +3237,14 @@ textarea {
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  margin-top: 14px;
+  margin: 14px 0;
   padding: 12px 14px;
   border: 1px solid rgba(150, 190, 160, 0.7);
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.55);
+}
+.auth-consent + .auth-submit {
+  margin-top: 0;
 }
 .auth-consent-input {
   width: 18px;
@@ -4663,6 +4729,15 @@ textarea {
   gap: 24px;
 }
 
+.training-module-header > div:last-child {
+  display: grid;
+  gap: 8px;
+}
+
+.training-module-header h1 {
+  margin: 0;
+}
+
 .training-module-header-icon {
   flex-shrink: 0;
   width: 88px;
@@ -4889,8 +4964,12 @@ textarea {
     min-height: 0;
     height: 100%;
     overflow-y: auto;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(128, 101, 47, 0.38) transparent;
+    scrollbar-width: none;
+  }
+
+  .training-theory-panel::-webkit-scrollbar,
+  .training-task-panel::-webkit-scrollbar {
+    display: none;
   }
 
   .training-board-column {

@@ -199,7 +199,14 @@
 
 .level-test-side-card {
   padding: 22px;
+  display: grid;
+  gap: 12px;
+  font-size: 14px;
+  line-height: 1.5;
 }
+
+.level-test-side-card h2 { margin: 0; font-size: 22px; line-height: 1.2; }
+.level-test-side-card p { margin: 0; }
 
 .level-test-side-number {
   color: #66805f;
@@ -208,7 +215,7 @@
 }
 
 .level-test-turn {
-  margin: 16px 0;
+  margin: 4px 0;
   padding: 10px 12px;
   border-radius: 10px;
   background: #edf3e9;
@@ -238,7 +245,7 @@
 
 .level-test-side-card button {
   width: 100%;
-  margin-top: 8px;
+  margin-top: 4px;
 }
 
 .level-test-total-score {

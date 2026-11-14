@@ -20,6 +20,8 @@ ONBOARDING_REWARD = 5
 LEVEL_TEST_REWARD = 10
 MAIA_WIN_COINS = {1100: 2, 1300: 3, 1500: 4, 1700: 5, 1900: 7, 2200: 10, 2600: 14}
 MAIA_DRAW_COINS = 1
+MAIA_LOSS_COINS = {1100: 3, 1300: 3, 1500: 2, 1700: 2, 1900: 1, 2200: 1, 2600: 1}
+MAIA_DAILY_LOSS_CAP = 10
 MAIA_FAIR_GAP = 100
 ACTIVE_STREAK_BONUS = 10
 STREAK_CAP_EXEMPT = True
@@ -121,6 +123,31 @@ async def _record_activity_day(
     ))
     await db.flush()
     return True
+
+
+async def charge_maia_loss(db: AsyncSession, user: User, ref: str, amount: int) -> int:
+    """Charge a verified Maia loss once, limited by today's losses and balance."""
+    now = datetime.now(timezone.utc)
+    start, end, _ = _utc_bounds(now)
+    await db.scalar(select(User.id).where(User.id == user.id).with_for_update())
+    existing = await db.scalar(select(GigacoinEvent.id).where(
+        GigacoinEvent.user_id == user.id,
+        GigacoinEvent.reason == "maia_loss",
+        GigacoinEvent.ref == ref,
+    ).limit(1))
+    if existing is not None:
+        return 0
+    lost_today = int(await db.scalar(select(func.coalesce(func.sum(-GigacoinEvent.amount), 0)).where(
+        GigacoinEvent.user_id == user.id,
+        GigacoinEvent.reason == "maia_loss",
+        GigacoinEvent.created_at >= start,
+        GigacoinEvent.created_at < end,
+    )) or 0)
+    charged = min(max(0, int(amount)), max(0, MAIA_DAILY_LOSS_CAP - lost_today), max(0, int(user.gigacoins or 0)))
+    db.add(GigacoinEvent(user_id=user.id, reason="maia_loss", ref=ref[:128], amount=-charged, created_at=now))
+    user.gigacoins = max(0, int(user.gigacoins or 0) - charged)
+    await db.flush()
+    return charged
 
 
 async def award_gigacoins(

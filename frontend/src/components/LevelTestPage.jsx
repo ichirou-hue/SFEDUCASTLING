@@ -514,7 +514,6 @@ export default function LevelTestPage({ onCompleted = null, autoStart = false, o
       <section className="level-test-shell">
         <header className="level-test-header">
           <div>
-            <div className="level-test-kicker">Проверка уровня</div>
             <h1>Найдите лучший ход</h1>
           </div>
           <div className="level-test-counter">{currentIndex + 1} / {questions.length}</div>
@@ -578,9 +577,7 @@ export default function LevelTestPage({ onCompleted = null, autoStart = false, o
           <aside className="level-test-side-card">
             <div className="level-test-side-number">Задача {currentIndex + 1}</div>
             <h2>Ваш ход</h2>
-            <p>
-              Сделайте один лучший ход за сторону, которой принадлежит очередь хода. Можно перетащить фигуру или выбрать клетки кликом.
-            </p>
+            <p>Найдите лучший ход. Перетащите фигуру или выберите клетки.</p>
 
             <div className="level-test-turn">
               Ходят: <strong>{orientation === "white" ? "белые" : "чёрные"}</strong>
@@ -610,9 +607,6 @@ export default function LevelTestPage({ onCompleted = null, autoStart = false, o
               </button>
             )}
 
-            <div className="level-test-privacy-note">
-              Рейтинг и тема задачи намеренно скрыты до завершения теста.
-            </div>
           </aside>
         </div>
       </section>

@@ -463,6 +463,24 @@ class TestCapturedMaterial:
 # --- /api/game/finish ---
 
 class TestFinishGame:
+    @pytest.mark.asyncio
+    async def test_resignation_is_recorded_as_player_loss(self):
+        import backend.api_gateway.routes.game as game_routes
+        from backend.api_gateway.models import FinishGameRequest
+        from fastapi import BackgroundTasks
+
+        tasks = BackgroundTasks()
+        response = await game_routes.finish_game(
+            FinishGameRequest(moves=["e2e4", "e7e5"], engine="maia3", elo=1100,
+                              player_color="w", result="0-1", status="resigned"),
+            background_tasks=tasks, user=None, db=None,
+        )
+        assert response["ok"] is True
+        assert len(tasks.tasks) == 1
+        assert tasks.tasks[0].kwargs["status"] == "resigned"
+        assert tasks.tasks[0].kwargs["result"] == "0-1"
+        assert (tasks.tasks[0].kwargs["white"], tasks.tasks[0].kwargs["black"]) == ("player", "AI")
+
     def test_accepts_player_color(self):
         # Пустой список ходов: фоновый record_game выходит без обращения к БД.
         resp = client.post(

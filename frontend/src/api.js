@@ -26,7 +26,7 @@ function announceGigacoinReward(data) {
   if (typeof window === "undefined" || !data) return;
   const balance = Number(data.gigacoins_balance);
   const amount = Number(data.gigacoins_earned || 0);
-  if (amount > 0) {
+  if (amount !== 0) {
     window.dispatchEvent(new CustomEvent("sfedu-gigacoins-earned", {
       detail: { amount, balance: Number.isFinite(balance) ? balance : null },
     }));

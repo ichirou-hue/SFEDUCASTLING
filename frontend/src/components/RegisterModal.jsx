@@ -8,7 +8,6 @@ import {
 } from "../api.js";
 import { formatApiError } from "../apiErrors.js";
 import { LEGAL_DOCS } from "../legalDocs.js";
-import ChessAccountsSection from "./ChessAccountsSection.jsx";
 
 const PLATFORM_LABELS = {
   lichess: "Lichess",
@@ -40,15 +39,6 @@ export default function AuthModal({ isOpen, onClose, onSuccess, initialMode = "r
   // Обязательное согласие с документами при регистрации (только UI).
   const [consentAccepted, setConsentAccepted] = useState(false);
 
-  // Шаг после успешной регистрации: привязка шахматного аккаунта.
-  // Привязка требует авторизации, поэтому выполняется уже после создания
-  // пользователя, тем же компонентом, что и на вкладке профиля.
-  const [step, setStep] = useState("auth"); // "auth" | "link"
-  const [createdUser, setCreatedUser] = useState(null);
-  const [autoLinkNotice, setAutoLinkNotice] = useState("");
-  const [autoLinkError, setAutoLinkError] = useState("");
-  const [finishing, setFinishing] = useState(false);
-
   // Подтягивание профиля с Lichess / Chess.com (предпросмотр до регистрации)
   const [platform, setPlatform] = useState("lichess");
   const [username, setUsername] = useState("");
@@ -62,11 +52,6 @@ export default function AuthModal({ isOpen, onClose, onSuccess, initialMode = "r
     setAuthError(notice || "");
     setPassword("");
     setConsentAccepted(false);
-    setStep("auth");
-    setCreatedUser(null);
-    setAutoLinkNotice("");
-    setAutoLinkError("");
-    setFinishing(false);
     setCooldown(0);
   }, [isOpen, initialMode, notice]);
 
@@ -107,36 +92,21 @@ export default function AuthModal({ isOpen, onClose, onSuccess, initialMode = "r
       setSubmitPhase("register");
       const user = await apiRegister(nick, password);
 
-      // Импортированный профиль сразу привязываем: только привязка внешнего
-      // аккаунта даёт стартовую оценку выше ограничения самооценки.
-      // Ошибку не глотаем - показываем её на шаге привязки, аккаунт уже создан.
+      // После создания пользователя привязываем выбранный при регистрации
+      // профиль. Повторный экран привязки не нужен.
       const importedNick = username.trim();
-      let linkedNotice = "";
-      let linkError = "";
       if (importedNick) {
         setSubmitPhase("link");
         try {
-          const linked = await linkChessAccount(importedNick, normalizePlatform(platform));
-          const linkedName = linked?.account?.username || importedNick;
-          linkedNotice = `Аккаунт ${linkedName} привязан.`;
-          if (!linked?.account?.rating_trusted) {
-            linkedNotice +=
-              " Владение пока не подтверждено: пройдите OAuth, чтобы рейтинг учитывался в стартовой оценке.";
-          }
-        } catch (e) {
-          const detail = e?.response?.data?.detail;
-          linkError = `Аккаунт создан, но привязать профиль не удалось: ${
-            detail
-              ? formatApiError(detail)
-              : "проверьте ник и попробуйте снова."
-          }`;
+          await linkChessAccount(importedNick, normalizePlatform(platform));
+        } catch {
+          // Регистрация завершена; повторная привязка доступна в профиле.
         }
       }
 
-      setCreatedUser(user);
-      setAutoLinkNotice(linkedNotice);
-      setAutoLinkError(linkError);
-      setStep("link");
+      const fresh = await fetchCurrentUser().catch(() => null);
+      onSuccess?.(fresh || user);
+      onClose();
     } catch (e) {
       // Ошибки валидации бэкенда переводим на русский (см. apiErrors.js).
       const status = e?.response?.status;
@@ -152,33 +122,6 @@ export default function AuthModal({ isOpen, onClose, onSuccess, initialMode = "r
       setSubmitting(false);
       setSubmitPhase("");
     }
-  };
-
-  // Завершает регистрацию уже после шага привязки: подтягиваем свежего
-  // пользователя (OAuth мог обновить рейтинг) и отдаём его приложению.
-  const finishRegistration = async () => {
-    if (finishing) return;
-    setFinishing(true);
-    try {
-      const fresh = await fetchCurrentUser();
-      onSuccess?.(fresh || createdUser);
-    } catch {
-      onSuccess?.(createdUser);
-    } finally {
-      onClose();
-      setFinishing(false);
-    }
-  };
-
-  // После регистрации токены уже сохранены, поэтому закрытие модалки не
-  // должно оставлять приложение в состоянии «гость».
-  const handleClose = () => {
-    if (submitting) return;
-    if (step === "link" && createdUser) {
-      finishRegistration();
-      return;
-    }
-    onClose();
   };
 
   const handleSwitchMode = () => {
@@ -212,58 +155,6 @@ export default function AuthModal({ isOpen, onClose, onSuccess, initialMode = "r
     ? Object.entries(profile.perfs).filter(([, v]) => v && v.rating)
     : [];
 
-  if (step === "link" && createdUser) {
-    return (
-      <div className="auth-overlay" onClick={handleClose}>
-        <div className="auth-card auth-card--link" onClick={(e) => e.stopPropagation()}>
-          <button className="auth-close" onClick={handleClose} aria-label="Закрыть">
-            ✕
-          </button>
-
-          <div className="auth-link-panel">
-            <div className="auth-link-head">
-              <h2 className="auth-title">Аккаунт создан</h2>
-              <p className="auth-subtitle">
-                Привяжите шахматный профиль. Это необязательно. Подтверждённый
-                рейтинг Lichess или Chess.com используется для стартовой оценки.
-              </p>
-            </div>
-
-            {autoLinkNotice && (
-              <div className="auth-link-notice auth-link-notice--ok" role="status">
-                {autoLinkNotice}
-              </div>
-            )}
-            {autoLinkError && (
-              <div className="auth-link-notice auth-link-notice--error" role="alert">
-                {autoLinkError}
-              </div>
-            )}
-
-            <ChessAccountsSection
-              user={createdUser}
-              embedded
-              initialPlatform={username.trim() ? normalizePlatform(platform) : undefined}
-              initialUsername={username.trim()}
-            />
-
-            <div className="auth-link-actions">
-              <button
-                className="auth-submit"
-                onClick={finishRegistration}
-                disabled={finishing}
-              >
-                {finishing ? "Сохраняем…" : "Продолжить"}
-              </button>
-              <p className="auth-link-hint">
-                Привязать аккаунт можно позже в разделе «Профиль».
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   const submitLabel = submitting
     ? submitPhase === "link"
@@ -276,9 +167,9 @@ export default function AuthModal({ isOpen, onClose, onSuccess, initialMode = "r
       : "Войти";
 
   return (
-    <div className="auth-overlay" onClick={handleClose}>
+    <div className="auth-overlay" onClick={onClose}>
       <div className="auth-card" onClick={(e) => e.stopPropagation()}>
-        <button className="auth-close" onClick={handleClose} aria-label="Закрыть">
+        <button className="auth-close" onClick={onClose} aria-label="Закрыть">
           ✕
         </button>
 
