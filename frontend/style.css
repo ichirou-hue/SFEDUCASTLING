@@ -1179,12 +1179,6 @@ textarea {
   box-shadow: 0 1px 3px rgba(74, 50, 32, 0.22);
 }
 
-/* Шкала в режиме движка: золотая риска границы становится ярче, чтобы
-   режим отличался от материального без дополнительных подписей. */
-.eval-bar--engine .eval-bar-fill {
-  border-top-color: rgba(201, 154, 62, 1);
-}
-
 .maia-engine-error {
   width: 100%;
   display: flex;
@@ -1382,15 +1376,9 @@ textarea {
   opacity: 0.65;
 }
 
-/* Переключатель шкалы: «Материал / Движок». Живёт в панели управления
-   доской - на самой шкале кнопка больше не нужна. */
-.ctrl-btn--eval-mode {
-  display: inline-block;
-}
-
 @media (max-width: 1150px) {
   /* Кнопки под доской на узком экране переносятся, а не вылезают
-     за край: к переключателю шкалы добавляется ещё одна плашка. */
+     за край. */
   .controls-actions {
     gap: 10px;
   }
@@ -1398,10 +1386,6 @@ textarea {
   .ctrl-btn {
     padding: 9px 18px;
     font-size: 15px;
-  }
-
-  .ctrl-btn--eval-mode {
-    min-width: 0;
   }
 }
 

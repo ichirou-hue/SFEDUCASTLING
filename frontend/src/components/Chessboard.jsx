@@ -256,8 +256,6 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
   {
     onStateChange,
     chatCollapsed = false,
-    evalMode = "material",
-    onToggleEvalMode,
   },
   ref,
 ) {
@@ -2076,25 +2074,14 @@ const fetchBestMove = useCallback(
   ]);
 
   /*
-   * Первичная оценка позиции.
+   * Оценка текущей позиции. Шкала у доски всегда показывает
+   * Stockfish, поэтому оценку запрашиваем сразу после монтирования
+   * и подхватываем её, если первого ответа ещё нет (запрос упал или
+   * пришёл без оценки). Как только оценка появилась, повторно движок
+   * не дёргаем.
    */
   useEffect(() => {
-    fetchEval(game.fen())
-      .then((data) => {
-        if (data.evaluation) {
-          setEvalScore(data.evaluation);
-        }
-      })
-      .catch(() => {});
-  }, []);
-
-  /*
-   * Если шкалу переключили на движок, а оценки ещё нет (первый запрос
-   * не удался или прошёл до переключения), запрашиваем её для текущей
-   * позиции. Без этого капсула осталась бы материальной.
-   */
-  useEffect(() => {
-    if (evalMode !== "engine" || evalScore) return undefined;
+    if (evalScore) return undefined;
 
     let cancelled = false;
 
@@ -2109,7 +2096,7 @@ const fetchBestMove = useCallback(
     return () => {
       cancelled = true;
     };
-  }, [evalMode, evalScore, game]);
+  }, [evalScore, game]);
 
   /*
    * Передаём evaluation наверх.
@@ -3637,19 +3624,6 @@ const fetchBestMove = useCallback(
               Разобрать партию
             </Link>
           )}
-
-          {/*
-           * Переключатель режима шкалы: материальный перевес или оценка
-           * движка. Выбор запоминается в браузере.
-           */}
-          <button
-            type="button"
-            className="ctrl-btn ctrl-btn--eval-mode"
-            onClick={onToggleEvalMode}
-            disabled={!onToggleEvalMode}
-          >
-            {evalMode === "engine" ? "Оценка: движок" : "Оценка: материал"}
-          </button>
         </div>
 
         {/*
