@@ -693,8 +693,7 @@
 }
 
 :root[data-theme="dark"] .chat-strip,
-:root[data-theme="dark"] .chat-strip-chevron,
-:root[data-theme="dark"] .chat-strip-title {
+:root[data-theme="dark"] .chat-strip-chevron {
   color: var(--sf-gold);
 }
 

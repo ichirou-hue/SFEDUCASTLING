@@ -121,11 +121,6 @@
     padding: 10px 14px;
   }
 
-  .main-area .chat-strip-title {
-    margin: 0;
-    writing-mode: initial;
-  }
-
   .main-area .chat-strip-chevron {
     margin-left: auto;
     transform: rotate(-90deg);
@@ -747,12 +742,6 @@
     padding: 8px 12px;
   }
 
-  .main-area .chat-strip-title {
-    margin: 0;
-    writing-mode: initial;
-    font-size: 14px;
-  }
-
   .main-area .chat-strip-chevron {
     margin-left: auto;
     transform: rotate(-90deg);
@@ -1055,12 +1044,6 @@
     justify-content: flex-start;
     gap: 10px;
     padding: 8px 12px;
-  }
-
-  .puzzle-chat-section .chat-strip-title {
-    margin: 0;
-    writing-mode: initial;
-    font-size: 14px;
   }
 
   .puzzle-chat-section .chat-strip-chevron {

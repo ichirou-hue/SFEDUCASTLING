@@ -1692,17 +1692,6 @@ textarea {
   color: #3f6a46;
 }
 
-/* Подпись читается снизу вверх - вертикальная, чтобы влезть в 48px. */
-.chat-strip-title {
-  margin: auto 0;
-  writing-mode: vertical-rl;
-  font-family: var(--font-ui);
-  font-size: 13px;
-  letter-spacing: 0.06em;
-  color: #456b4b;
-  white-space: nowrap;
-}
-
 /* --- Шапка чата --- */
 .chat-header {
   padding: 16px 24px 14px;

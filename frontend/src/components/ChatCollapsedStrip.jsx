@@ -20,7 +20,6 @@ export default function ChatCollapsedStrip({ onExpand }) {
       <span className="chat-strip-chevron" aria-hidden="true">
         «
       </span>
-      <span className="chat-strip-title">Шахматный гуру</span>
     </button>
   );
 }
