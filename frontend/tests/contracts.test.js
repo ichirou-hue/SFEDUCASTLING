@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Chess } from 'chess.js';
-import { getCheckState } from '../src/chessStatus.js';
+import { getCheckState, isStartingPosition } from '../src/chessStatus.js';
 import formatMarkdown from '../src/formatMarkdown.js';
 import { formatApiError } from '../src/apiErrors.js';
 import { getNextCourseTopicMeta } from '../src/learningLinks.js';
@@ -11,6 +11,13 @@ test('checkmate highlights king of displayed FEN', () => {
  assert.deepEqual(getCheckState(game.fen()), {inCheck:true,isCheckmate:true,kingSquare:'e1'});
  assert.equal(getCheckState(new Chess().fen()).inCheck,false);
  assert.equal(getCheckState('invalid').inCheck,false);
+});
+test('starting position detection ignores counters and castling rights', () => {
+ assert.equal(isStartingPosition(new Chess().fen()), true);
+ assert.equal(isStartingPosition('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b - - 5 12'), true);
+ assert.equal(isStartingPosition('rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2'), false);
+ assert.equal(isStartingPosition(''), false);
+ assert.equal(isStartingPosition(null), false);
 });
 test('chat escapes HTML and preserves compact markdown', () => {
  assert.equal(formatMarkdown('**Hi**\n\nthere'),'<p><strong>Hi</strong></p><p>there</p>');

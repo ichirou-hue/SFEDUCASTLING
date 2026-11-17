@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useLayoutEffect } from "react";
 import { askLLM, fetchOpeningByFen } from "../api.js";
+import { isStartingPosition } from "../chessStatus.js";
 import formatMarkdown from "../formatMarkdown.js";
 import useChatAutoScroll from "../useChatAutoScroll.js";
 import MiniBoard from "./MiniBoard.jsx";
@@ -280,6 +281,14 @@ export default function ChatPanel({
     const fen = (currentFen || "").trim();
     if (!fen) {
       addMessage("ai", "Позиция на доске ещё не определена.");
+      return;
+    }
+
+    if (isStartingPosition(fen)) {
+      addMessage(
+        "ai",
+        "Партия ещё не начата. Сделайте первый ход — и я определю дебют.",
+      );
       return;
     }
 

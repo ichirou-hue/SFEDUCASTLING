@@ -100,6 +100,16 @@ MATCH_ANCHOR = "backend.api_gateway.state.knowledge_base"
 
 
 class TestDeepMatch:
+    def test_start_position_is_not_an_opening(self):
+        with patch(MATCH_ANCHOR, NEW_OPENINGS):
+            resp = client.get("/api/knowledge/opening", params={"fen": START_FEN})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["opening"] is None
+        assert data["message"] == (
+            "Партия ещё не начата. Сделайте первый ход — и я определю дебют."
+        )
+
     def test_returns_deepest_opening(self):
         with patch(MATCH_ANCHOR, NEW_OPENINGS):
             resp = client.get("/api/knowledge/opening", params={"fen": AFTER_D4})

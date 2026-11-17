@@ -9,6 +9,14 @@ from backend.api_gateway import state
 
 router = APIRouter(tags=["knowledge"])
 
+# Стартовая раскладка фигур: в базе она есть у каждого дебюта (fens[0]),
+# поэтому без отдельной проверки на старте возвращался бы самый длинный дебют.
+STARTING_PLACEMENT = "rnbqkbnr/pppppppp/8/8/8/8/pppppppp/rnbqkbnr"
+
+NOT_STARTED_MESSAGE = (
+    "Партия ещё не начата. Сделайте первый ход — и я определю дебют."
+)
+
 
 def _pieces(fen: str) -> str:
     return fen.strip().lower().split()[0]
@@ -54,7 +62,11 @@ def get_opening_by_fen(fen: str = ""):
     if not state.knowledge_base:
         return {"error": "База знаний не загружена"}
 
-    covering = _covering_openings(_pieces(fen))
+    current = _pieces(fen)
+    if current == STARTING_PLACEMENT:
+        return {"opening": None, "message": NOT_STARTED_MESSAGE}
+
+    covering = _covering_openings(current)
     if not covering:
         return {"opening": None, "message": "Дебют не найден в базе"}
 
