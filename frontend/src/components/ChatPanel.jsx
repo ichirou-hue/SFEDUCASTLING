@@ -1,5 +1,11 @@
-import { useState, useRef, useEffect, useLayoutEffect } from "react";
-import { askLLM, fetchOpeningByFen } from "../api.js";
+import { useState, useRef, useEffect, useLayoutEffect, useMemo } from "react";
+import { Chess } from "chess.js";
+import {
+  askLLM,
+  checkOpeningMove,
+  fetchOpeningByFen,
+  fetchOpenings,
+} from "../api.js";
 import { isStartingPosition } from "../chessStatus.js";
 import formatMarkdown from "../formatMarkdown.js";
 import useChatAutoScroll from "../useChatAutoScroll.js";
@@ -47,6 +53,60 @@ function buildHintArrows(hintMessage) {
   return arrows;
 }
 
+/*
+ * Каталог дебютов для панели чата. База отдаёт ~3800 записей (все линии),
+ * поэтому в списке по умолчанию показываем только семейства - самую
+ * короткую линию каждого базового названия (149 записей). Поиск идёт по
+ * всем линиям, но результаты ограничены, чтобы не рендерить тысячи кнопок.
+ */
+function buildOpeningCatalog(openings) {
+  const families = new Map();
+  const lines = new Map();
+
+  for (const opening of openings) {
+    const name = String(opening?.name || "");
+    if (!name) continue;
+    const moveCount = Array.isArray(opening.moves) ? opening.moves.length : 0;
+
+    const base = name.split(":")[0].trim();
+    const currentBase = families.get(base);
+    if (!currentBase || moveCount < currentBase.moveCount) {
+      families.set(base, { opening, moveCount });
+    }
+
+    const key = name.toLowerCase();
+    const currentLine = lines.get(key);
+    if (!currentLine || moveCount < currentLine.moveCount) {
+      lines.set(key, { opening, moveCount });
+    }
+  }
+
+  const title = (opening) => opening.name_ru || opening.name || "";
+  const familyList = [...families.values()]
+    .map((item) => item.opening)
+    .sort((a, b) => title(a).localeCompare(title(b), "ru"));
+
+  return {
+    families: familyList,
+    lines: [...lines.values()].map((item) => item.opening),
+  };
+}
+
+/* UCI-ход из базы знаний (e2e4) → SAN для показа человеку (e4). */
+function uciToSan(fen, uci) {
+  try {
+    const game = new Chess(fen);
+    const move = game.move({
+      from: uci.slice(0, 2),
+      to: uci.slice(2, 4),
+      promotion: uci.slice(4, 5) || "q",
+    });
+    return move?.san || uci;
+  } catch {
+    return uci;
+  }
+}
+
 export default function ChatPanel({
   onAnalyze,
   onLoadOpening,
@@ -76,6 +136,14 @@ export default function ChatPanel({
   // Предыдущее состояние чата: первый рендер (и повторный вызов эффекта
   // в StrictMode) не анимируем - панель уже нужной ширины.
   const prevCollapsedRef = useRef(collapsed);
+
+  // Каталог дебютов: грузим лениво при первом открытии (ответ ~3 МБ),
+  // поэтому держим его в состоянии и переиспользуем.
+  const [catalogOpen, setCatalogOpen] = useState(false);
+  const [catalog, setCatalog] = useState(null);
+  const [catalogLoading, setCatalogLoading] = useState(false);
+  const [catalogError, setCatalogError] = useState(null);
+  const [catalogQuery, setCatalogQuery] = useState("");
 
   /*
    * Плавное сворачивание/разворачивание: ширина колонки едет к новому
@@ -273,6 +341,73 @@ export default function ChatPanel({
   };
 
   /*
+   * Поиск по каталогу: пустой запрос показывает семейства, иначе ищем по
+   * русскому/английскому названию, ECO и линии. Ограничение в 60 строк
+   * достаточно для выбора мышью и не заставляет браузер рисовать всё.
+   */
+  const catalogResults = useMemo(() => {
+    if (!catalog) return [];
+    const query = catalogQuery.trim().toLocaleLowerCase("ru");
+    if (!query) return catalog.families;
+
+    const matched = catalog.lines.filter((opening) =>
+      [opening.name, opening.name_ru, opening.eco, opening.pgn]
+        .filter(Boolean)
+        .join(" ")
+        .toLocaleLowerCase("ru")
+        .includes(query),
+    );
+    return matched.slice(0, 60);
+  }, [catalog, catalogQuery]);
+
+  const openCatalog = async () => {
+    setCatalogOpen(true);
+    if (catalog || catalogLoading) return;
+
+    setCatalogLoading(true);
+    setCatalogError(null);
+    try {
+      const data = await fetchOpenings();
+      const openings = Array.isArray(data?.openings) ? data.openings : [];
+      if (openings.length === 0) {
+        setCatalogError(data?.error || "Каталог дебютов пуст.");
+        return;
+      }
+      setCatalog(buildOpeningCatalog(openings));
+    } catch {
+      setCatalogError("Не удалось загрузить каталог дебютов.");
+    } finally {
+      setCatalogLoading(false);
+    }
+  };
+
+  const handlePickOpening = (opening) => {
+    setCatalogOpen(false);
+    setCatalogQuery("");
+
+    const title = opening.name_ru || opening.name;
+    const lines = [`**${title}**${opening.eco ? ` (${opening.eco})` : ""}`];
+    if (opening.name_ru && opening.name && opening.name_ru !== opening.name) {
+      lines.push(`*${opening.name}*`);
+    }
+    if (opening.pgn) {
+      lines.push(`Линия: ${opening.pgn}`);
+    }
+    // Финальная позиция линии - на мини-доске в сообщении.
+    addMessage("ai", lines.join("\n"), opening.fen || null);
+  };
+
+  // Escape закрывает каталог, не сворачивая сам чат.
+  useEffect(() => {
+    if (!catalogOpen) return undefined;
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") setCatalogOpen(false);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [catalogOpen]);
+
+  /*
    * Дебют из базы знаний: определяем дебют по текущей позиции и
    * показываем карточку прямо в чате.
    */
@@ -313,6 +448,23 @@ export default function ChatPanel({
         }
         if (o.pgn) {
           lines.push(`Продолжение: ${o.pgn}`);
+        }
+        /*
+         * check-move добавляет книжные продолжения из всех дебютов,
+         * покрывающих позицию. Это подсказка «что ещё играют по теории»,
+         * которой нет в карточке отдельного дебюта. Ошибка проверки не
+         * должна ломать основную карточку.
+         */
+        try {
+          const theory = await checkOpeningMove(fen);
+          const nextMoves = (theory?.next_moves || [])
+            .map((uci) => uciToSan(fen, uci))
+            .filter(Boolean);
+          if (theory?.in_theory && nextMoves.length > 0) {
+            lines.push(`По теории можно продолжить: ${nextMoves.join(", ")}.`);
+          }
+        } catch {
+          // Карточка дебюта уже собрана - без этой строки она корректна.
         }
         addMessage("ai", lines.join("\n"));
       }
@@ -376,17 +528,82 @@ export default function ChatPanel({
         <div className="chat-title-block">
           <h2 className="chat-panel-title">Шахматный гуру</h2>
         </div>
-        <button
-          type="button"
-          className="chat-collapse-btn"
-          onClick={onToggleCollapsed}
-          title="Свернуть чат"
-          aria-label="Свернуть чат"
-          aria-expanded={true}
-        >
-          »
-        </button>
+        <div className="chat-header-actions">
+          <button
+            type="button"
+            className="chat-collapse-btn chat-catalog-toggle"
+            onClick={openCatalog}
+            title="Каталог дебютов"
+            aria-label="Открыть каталог дебютов"
+            aria-expanded={catalogOpen}
+          >
+            ♜
+          </button>
+          <button
+            type="button"
+            className="chat-collapse-btn"
+            onClick={onToggleCollapsed}
+            title="Свернуть чат"
+            aria-label="Свернуть чат"
+            aria-expanded={true}
+          >
+            »
+          </button>
+        </div>
       </div>
+
+      {catalogOpen && (
+        <div className="chat-catalog" role="dialog" aria-label="Каталог дебютов">
+          <div className="chat-catalog-header">
+            <strong>Каталог дебютов</strong>
+            <button
+              type="button"
+              className="chat-catalog-close"
+              onClick={() => setCatalogOpen(false)}
+              title="Закрыть каталог"
+              aria-label="Закрыть каталог"
+            >
+              ×
+            </button>
+          </div>
+          <input
+            type="text"
+            className="chat-catalog-search"
+            value={catalogQuery}
+            onChange={(e) => setCatalogQuery(e.target.value)}
+            placeholder="Название, ECO или ходы"
+            aria-label="Поиск дебюта"
+          />
+          <div className="chat-catalog-list">
+            {catalogLoading && (
+              <div className="chat-catalog-note">Загружаем каталог…</div>
+            )}
+            {catalogError && (
+              <div className="chat-catalog-note chat-catalog-note--error">
+                {catalogError}
+              </div>
+            )}
+            {!catalogLoading && !catalogError && catalogResults.length === 0 && (
+              <div className="chat-catalog-note">Ничего не найдено.</div>
+            )}
+            {catalogResults.map((opening) => (
+              <button
+                type="button"
+                className="chat-catalog-item"
+                key={`${opening.eco}-${opening.name}-${opening.pgn}`}
+                onClick={() => handlePickOpening(opening)}
+                title={opening.pgn || opening.name}
+              >
+                <span className="chat-catalog-eco">{opening.eco}</span>
+                <span className="chat-catalog-name">
+                  {opening.name_ru || opening.name}
+                </span>
+                <span className="chat-catalog-line">{opening.pgn}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="chat-messages" ref={messagesListRef}>
         {messages.map((msg, i) => (

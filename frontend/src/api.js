@@ -590,6 +590,11 @@ export async function fetchWeaknessProfile() {
   return data;
 }
 
+export async function fetchLearningDifficulty() {
+  const { data } = await api.get("/api/learning/difficulty");
+  return data;
+}
+
 export async function fetchAdaptivePuzzles(count = 20) {
   const { data } = await api.get("/api/learning/puzzles/adaptive", {
     params: { count },
@@ -630,6 +635,11 @@ export async function fetchTrainingLesson(lessonId) {
   return normalizeTrainingText(data);
 }
 
+export async function fetchTrainingTask(taskId) {
+  const { data } = await api.get(`/api/training/tasks/${taskId}`);
+  return normalizeTrainingText(data);
+}
+
 export async function checkTrainingTask(
   taskId,
   answer,
@@ -663,6 +673,16 @@ export async function fetchOpeningByFen(fen) {
   const { data } = await api.get("/api/knowledge/opening", {
     params: { fen },
   });
+  return data;
+}
+
+export async function fetchOpenings() {
+  const { data } = await api.get("/api/knowledge/openings");
+  return data;
+}
+
+export async function checkOpeningMove(fen) {
+  const { data } = await api.post("/api/knowledge/check-move", { fen });
   return data;
 }
 

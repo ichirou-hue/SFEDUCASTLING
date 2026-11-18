@@ -181,6 +181,24 @@
   text-align: right;
 }
 
+.progress-topic__difficulty {
+  flex: 0 0 auto;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(79, 147, 92, 0.14);
+  color: #3f6a46;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.progress-widget__difficulty-rule {
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  opacity: 0.65;
+}
+
 .progress-widget__empty {
   margin-top: 8px;
   font-size: 13px;

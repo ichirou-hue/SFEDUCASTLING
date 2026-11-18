@@ -1608,6 +1608,9 @@ img[src^="/pieces/"] {
 
   /* Скруглённые углы: содержимое не должно вылезать за рамку. */
   overflow: hidden;
+
+  /* Каталог дебютов позиционируется поверх ленты сообщений. */
+  position: relative;
 }
 
 /* --- Свёрнутый чат --- */
@@ -1854,6 +1857,146 @@ img[src^="/pieces/"] {
 .chat-collapse-btn:focus-visible {
   outline: 2px solid rgba(47, 92, 54, 0.55);
   outline-offset: 2px;
+}
+
+/* Кнопки в шапке: каталог дебютов + свернуть. */
+.chat-header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-left: auto;
+  justify-self: end;
+}
+
+.chat-catalog-toggle {
+  font-size: 15px;
+}
+
+/* --- Каталог дебютов поверх ленты сообщений --- */
+.chat-catalog {
+  position: absolute;
+  inset: 62px 12px 12px;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 14px 14px 10px;
+  border: 1px solid rgba(180, 135, 44, 0.6);
+  border-radius: 20px;
+  background: rgba(255, 253, 248, 0.97);
+  box-shadow: 0 12px 28px rgba(25, 52, 43, 0.22);
+}
+
+.chat-catalog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+  color: #3f6a46;
+  font-size: 15px;
+}
+
+.chat-catalog-close {
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid rgba(180, 135, 44, 0.45);
+  border-radius: 50%;
+  background: rgba(255, 253, 248, 0.75);
+  color: #3f6a46;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.chat-catalog-close:hover {
+  background: #fffdf8;
+  border-color: rgba(180, 135, 44, 0.75);
+}
+
+.chat-catalog-search {
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid rgba(180, 135, 44, 0.4);
+  border-radius: 10px;
+  background: rgba(255, 253, 248, 0.85);
+  color: #333;
+  font: inherit;
+  font-size: 13px;
+}
+
+.chat-catalog-search:focus {
+  outline: none;
+  border-color: #83b787;
+  box-shadow: 0 0 0 3px rgba(131, 183, 135, 0.16);
+}
+
+.chat-catalog-list {
+  flex: 1;
+  min-height: 0;
+  margin-top: 10px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.chat-catalog-item {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 1px 8px;
+  padding: 7px 8px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.chat-catalog-item:hover {
+  background: rgba(131, 183, 135, 0.14);
+  border-color: rgba(131, 183, 135, 0.45);
+}
+
+.chat-catalog-eco {
+  grid-row: 1 / span 2;
+  align-self: center;
+  color: #8b7440;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.chat-catalog-name {
+  overflow: hidden;
+  color: #2f4b35;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-catalog-line {
+  overflow: hidden;
+  color: #7d8478;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-catalog-note {
+  padding: 10px 4px;
+  color: #7d8478;
+  font-size: 12px;
+}
+
+.chat-catalog-note--error {
+  color: #9a3f38;
 }
 
 /* --- Лента сообщений --- */
@@ -5011,6 +5154,30 @@ img[src^="/pieces/"] {
   font-size: 14px;
   color: #555;
   text-align: justify;
+}
+
+.training-share-row {
+  margin-top: 12px;
+}
+
+.training-share-btn {
+  padding: 6px 12px;
+  border: 1px dashed rgba(180, 135, 44, 0.7);
+  border-radius: 999px;
+  background: rgba(251, 248, 239, 0.9);
+  color: #7a5a24;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.training-share-btn:hover:not(:disabled) {
+  background: #f6edd9;
+}
+
+.training-share-btn:disabled {
+  cursor: default;
+  opacity: 0.55;
 }
 
 .training-lesson-progress {

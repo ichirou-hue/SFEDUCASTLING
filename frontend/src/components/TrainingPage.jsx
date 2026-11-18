@@ -9,7 +9,9 @@ import {
   fetchTrainingModule,
   fetchTrainingModules,
   fetchTrainingProgress,
+  fetchTrainingTask,
 } from "../api.js";
+import copyText from "../clipboard.js";
 import SiteFooter from "./SiteFooter.jsx";
 import RatingBandProgress from "./RatingBandProgress.jsx";
 import { getCheckState, getKingCheckStyle } from "../chessStatus.js";
@@ -136,6 +138,9 @@ export default function TrainingPage({ user, onRegister }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const requestedModuleSlug = searchParams.get("module");
+  // Deep link на конкретное задание: /training?task=42. Задание несёт
+  // только lesson_id, поэтому урок и модуль подтягиваются по нему.
+  const requestedTaskId = searchParams.get("task");
   const showBasicCourse = searchParams.get("basics") === "1";
 
   const [modules, setModules] = useState([]);
@@ -174,6 +179,11 @@ export default function TrainingPage({ user, onRegister }) {
   const [hintVisible, setHintVisible] = useState(false);
   const taskStartedAtRef = useRef(Date.now());
   const openingModuleRef = useRef(null);
+  // Какое задание уже открыто по deep link: защищает от повторного запуска
+  // эффекта (StrictMode, обновление user/модулей) и зацикливания navigate.
+  const openingTaskRef = useRef(null);
+  // Плашка «ссылка скопирована» под теорией урока.
+  const [shareNotice, setShareNotice] = useState(null);
   // Слаг модуля, который реально открыт сейчас. Нужен против гонки в
   // backToModules: navigate("/training") + setSelectedModule(null) могут
   // отрендериться раньше, чем обновится searchParams, и эффект автооткрытия
@@ -608,6 +618,9 @@ export default function TrainingPage({ user, onRegister }) {
   }, [user?.elo]);
 
   useEffect(() => {
+    // При deep link на задание модуль открывает отдельный эффект ниже:
+    // здесь он мог бы стартовать раньше и перетереть выбранное задание.
+    if (requestedTaskId) return;
     if (!requestedModuleSlug || modules.length === 0) return;
     if (selectedModule?.slug === requestedModuleSlug) return;
     if (requestedModuleSlug === displayedSlugRef.current) return;
@@ -622,7 +635,87 @@ export default function TrainingPage({ user, onRegister }) {
     openModule(module).finally(() => {
       openingModuleRef.current = null;
     });
-  }, [modules, openModule, requestedModuleSlug, selectedModule?.slug]);
+  }, [modules, openModule, requestedModuleSlug, requestedTaskId, selectedModule?.slug]);
+
+  // Deep link на задание. Задание отдаёт lesson_id; урок - module_id;
+  // модуль берём из уже загруженного списка, чтобы заодно проверить
+  // enabled/locked и взять slug для URL.
+  useEffect(() => {
+    if (!requestedTaskId) {
+      openingTaskRef.current = null;
+      return;
+    }
+    if (modules.length === 0) return;
+    if (openingTaskRef.current === requestedTaskId) return;
+    openingTaskRef.current = requestedTaskId;
+
+    (async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const taskData = await fetchTrainingTask(requestedTaskId);
+        const task = taskData.task;
+        if (!task?.lesson_id) {
+          throw new Error("Задание не привязано к уроку.");
+        }
+
+        const lessonData = await fetchTrainingLesson(task.lesson_id);
+        const module = modules.find(
+          (item) => item.id === lessonData.lesson?.module_id,
+        );
+        if (!module || !module.enabled) {
+          throw new Error("Модуль задания больше недоступен.");
+        }
+        if (module.locked) {
+          setError(
+            user?.elo == null
+              ? `Модуль откроется после теста уровня: нужен рейтинг Elo ${module.required_elo} и выше.`
+              : `Модуль откроется при рейтинге Elo ${module.required_elo} и выше.`,
+          );
+          return;
+        }
+
+        const moduleData = await fetchTrainingModule(module.slug);
+        const lessonTasks = lessonData.tasks || [];
+        /*
+         * Уроки дебютов состоят из общей линии и веток. visibleTasks на
+         * странице - это общая линия плюс задания выбранной ветки, поэтому
+         * номер задания считаем по тому же списку, а ветку открываем сразу.
+         */
+        const branch = task.payload?.branch || null;
+        const visibleList = branch
+          ? [
+              ...lessonTasks.filter((item) => !item.payload?.branch),
+              ...lessonTasks.filter((item) => item.payload?.branch === branch),
+            ]
+          : lessonTasks.filter((item) => !item.payload?.branch);
+        const index = visibleList.findIndex(
+          (item) => String(item.id) === String(task.id),
+        );
+
+        // URL держим в согласии с состоянием: без module= эффект
+        // синхронизации ниже сбросил бы только что открытый модуль.
+        displayedSlugRef.current = module.slug;
+        navigate(
+          `/training?module=${encodeURIComponent(module.slug)}&task=${encodeURIComponent(task.id)}`,
+          { replace: true },
+        );
+        saveBranchScroll("grid");
+        branchScrollRef.current.lesson = 0;
+
+        setSelectedModule(moduleData.module);
+        setLessons(moduleData.lessons || []);
+        setLesson(lessonData.lesson);
+        setTasks(lessonTasks);
+        setTaskIndex(index < 0 ? 0 : index);
+        setBranchId(branch);
+      } catch (err) {
+        setError(getApiError(err, "Не удалось открыть задание по ссылке."));
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [modules, navigate, requestedTaskId, user?.elo]);
 
   // Стрелка браузера назад: URL вернулся на /training без ?module=,
   // а состояние ещё держит открытый модуль - сбрасываем как backToModules.
@@ -642,6 +735,13 @@ export default function TrainingPage({ user, onRegister }) {
   }, [requestedModuleSlug, selectedModule]);
 
   const openLesson = useCallback(async (lessonId, opts = {}) => {
+    // Ссылка на конкретное задание (?task=) ведёт в старый урок: после
+    // явного выбора другого урока её нужно убрать из адреса.
+    if (requestedTaskId && selectedModule?.slug) {
+      navigate(`/training?module=${encodeURIComponent(selectedModule.slug)}`, {
+        replace: true,
+      });
+    }
     // По умолчанию уходим со списка уроков: запоминаем его скролл.
     // openDueItem идёт с сетки (контейнер ещё старый) - ему сохранять
     // "lessons" нельзя, иначе туда запишется чужая позиция.
@@ -661,7 +761,7 @@ export default function TrainingPage({ user, onRegister }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [navigate, requestedTaskId, selectedModule?.slug]);
 
   // Заполняем решённые задания урока из серверного прогресса.
   // Зависим только от id урока: перезагрузка прогресса после ответа не
@@ -745,6 +845,13 @@ export default function TrainingPage({ user, onRegister }) {
   };
 
   const backToLessons = () => {
+    // Ссылка вида ?task=N ведёт в конкретное задание: после возврата к
+    // списку уроков она неактуальна и мешала бы эффекту deep link.
+    if (requestedTaskId && selectedModule?.slug) {
+      navigate(`/training?module=${encodeURIComponent(selectedModule.slug)}`, {
+        replace: true,
+      });
+    }
     saveBranchScroll("lesson");
     setLesson(null);
     setTasks([]);
@@ -890,6 +997,17 @@ export default function TrainingPage({ user, onRegister }) {
   const openPuzzlesForCurrentTopic = () => {
     if (!selectedModule?.slug) return;
     navigate(`/puzzles?topic=${encodeURIComponent(selectedModule.slug)}`);
+  };
+
+  // Ссылка на текущее задание: открывает тот же урок и сразу нужный номер
+  // через deep link ?task=. id задания уникален, модуль и урок
+  // восстанавливаются на странице.
+  const handleCopyTaskLink = async () => {
+    if (!currentTask) return;
+    const url = `${window.location.origin}/training?task=${currentTask.id}`;
+    const copied = await copyText(url);
+    setShareNotice(copied ? "Ссылка скопирована" : "Не удалось скопировать");
+    window.setTimeout(() => setShareNotice(null), 2500);
   };
 
   const submitMove = useCallback(
@@ -1483,6 +1601,18 @@ export default function TrainingPage({ user, onRegister }) {
           <div className="training-kicker">{selectedModule.title}</div>
           <h2>{lesson.title}</h2>
           <p>{lesson.theory}</p>
+
+          <div className="training-share-row">
+            <button
+              type="button"
+              className="training-share-btn"
+              onClick={handleCopyTaskLink}
+              disabled={!currentTask}
+              title="Скопировать ссылку на текущее задание"
+            >
+              {shareNotice || "Скопировать ссылку на задание"}
+            </button>
+          </div>
 
           <div className="training-theory-navigation">
             <button

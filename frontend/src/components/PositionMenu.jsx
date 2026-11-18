@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Chess } from "chess.js";
+import copyText from "../clipboard.js";
 import "./PositionMenu.css";
 
 const NOTICE_TIMEOUT = 2600;
@@ -28,33 +29,6 @@ const isValidFen = (fen) => {
   try {
     new Chess(fen);
     return true;
-  } catch {
-    return false;
-  }
-};
-
-const copyText = async (text) => {
-  if (navigator.clipboard?.writeText) {
-    try {
-      await navigator.clipboard.writeText(text);
-      return true;
-    } catch {
-      // Например, страница открыта по http - пробуем резервный способ.
-    }
-  }
-
-  try {
-    const area = document.createElement("textarea");
-    area.value = text;
-    area.setAttribute("readonly", "");
-    area.style.position = "fixed";
-    area.style.top = "0";
-    area.style.opacity = "0";
-    document.body.appendChild(area);
-    area.select();
-    const copied = document.execCommand("copy");
-    area.remove();
-    return copied;
   } catch {
     return false;
   }

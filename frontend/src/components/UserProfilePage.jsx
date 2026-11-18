@@ -186,11 +186,29 @@ function LinkedAccountsSection() {
  * Смена логина и отображаемого имени за GigaCoin. Старый логин освобождается.
  * Каждая следующая смена дороже: цену и счётчик смен считает сервер.
  */
+/*
+ * Дата последней смены логина. Сервер хранит время в UTC, но SQLite может
+ * отдать ISO-строку без зоны - тогда дописываем Z, иначе браузер примет
+ * её за локальное время и у даты появится сдвиг на часовой пояс.
+ */
+function formatNicknameChangedAt(value) {
+  if (!value) return null;
+  const normalized = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(value) ? value : `${value}Z`;
+  const date = new Date(normalized);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleDateString("ru-RU", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
 function NicknameSection({ profile, onChanged }) {
   const currentNickname = profile?.login || profile?.nickname || "";
   const price = Number(profile?.nickname_change_price ?? 10);
   const balance = Number(profile?.gigacoins || 0);
   const changes = Number(profile?.nickname_changes || 0);
+  const changedAt = formatNicknameChangedAt(profile?.nickname_changed_at);
   const [nickname, setNickname] = useState(currentNickname);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState(null);
@@ -262,6 +280,7 @@ function NicknameSection({ profile, onChanged }) {
 
       <p className="user-profile-muted">
         Баланс: ✦ {balance.toLocaleString("ru-RU")}. Смен никнейма: {changes}.
+        {changedAt ? ` Последняя смена: ${changedAt}.` : ""}
       </p>
 
       {notice && (
