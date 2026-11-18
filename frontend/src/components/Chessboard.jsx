@@ -123,6 +123,8 @@ function formatAccuracy(accuracy) {
  */
 const MIN_RELIABLE_MOVES = 8;
 
+const AI_MOVE_DELAY_MS = 450;
+
 /*
  * Описание итога партии для карточки. На мате ход принадлежит
  * проигравшей стороне: если это сторона игрока - поражение, иначе победа.
@@ -390,6 +392,9 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
   const [review, setReview] = useState(null);
   const [reviewError, setReviewError] = useState("");
   const [reviewLoading, setReviewLoading] = useState(false);
+  // Разбор только что пришёл: доску нужно вернуть к начальной позиции,
+  // чтобы ходы листались сначала, а не с финальной позиции партии.
+  const resetForReviewRef = useRef(false);
 
   /*
    * Две независимые стрелки:
@@ -1059,6 +1064,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
     reviewGame(uciMoves, playerColor)
       .then((data) => {
         if (gen === gameGenRef.current) {
+          resetForReviewRef.current = true;
           setReview(data);
         }
       })
@@ -1248,6 +1254,29 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
     },
     [moveHistory, applyReviewEval],
   );
+
+  /*
+   * Разбор пришёл: показываем доску в начальной позиции, чтобы листать
+   * партию с первого хода. Раньше доска оставалась на финальной позиции,
+   * и разбор начинался с конца.
+   */
+  useEffect(() => {
+    if (!review || !resetForReviewRef.current) return;
+
+    resetForReviewRef.current = false;
+    showPosition(-1);
+  }, [review, showPosition]);
+
+  /*
+   * «Разбор по ходам»: закрываем карточку итога и всегда возвращаемся
+   * к началу партии - даже если разбор был открыт повторно с середины.
+   */
+  const openReviewMoves = useCallback(() => {
+    setResultCardDismissed(true);
+    if (review) {
+      showPosition(-1);
+    }
+  }, [review, showPosition]);
 
   const onNavigate = useCallback(
     (direction) => {
@@ -1951,13 +1980,13 @@ const fetchBestMove = useCallback(
       /*
        * Историю берём из живого объекта партии, а не из состояния React.
        *
-       * moveHistory обновляется через setState, и в момент вызова (через
-       * 500 мс после хода игрока) замыкание держит значение с прошлого
-       * рендера - без только что сыгранного хода. Сервер получал историю,
-       * которая не сходилась с присланным FEN, писал "History FEN
-       * mismatch" и работал только с текущей позицией. Maia3 запущена
-       * с --use-uci-history и без истории играет вслепую: не видит, что
-       * было в партии, и её уровень резко падает.
+       * moveHistory обновляется через setState, и в момент вызова
+       * замыкание держит значение с прошлого рендера - без только что
+       * сыгранного хода. Сервер получал историю, которая не сходилась
+       * с присланным FEN, писал "History FEN mismatch" и работал только
+       * с текущей позицией. Maia3 запущена с --use-uci-history и без
+       * истории играет вслепую: не видит, что было в партии, и её
+       * уровень резко падает.
        */
       const uciMoves = toUciMoves(game.history());
 
@@ -2074,7 +2103,7 @@ const fetchBestMove = useCallback(
   ]);
 
   /*
-   * Оценка текущей позиции. Шкала у доски всегда показывает
+   * Оценка текущей позиции. Шкала у доски по умолчанию показывает
    * Stockfish, поэтому оценку запрашиваем сразу после монтирования
    * и подхватываем её, если первого ответа ещё нет (запрос упал или
    * пришёл без оценки). Как только оценка появилась, повторно движок
@@ -2264,7 +2293,7 @@ const fetchBestMove = useCallback(
         const gen = gameGenRef.current;
         setTimeout(() => {
           if (gen === gameGenRef.current) makeAiMove();
-        }, 500);
+        }, AI_MOVE_DELAY_MS);
       }
 
       return true;
@@ -2353,7 +2382,7 @@ const fetchBestMove = useCallback(
     const gen = gameGenRef.current;
     const timer = setTimeout(() => {
       if (gen === gameGenRef.current) makeAiMove();
-    }, 600);
+    }, AI_MOVE_DELAY_MS);
 
     return () => clearTimeout(timer);
   }, [
@@ -3413,6 +3442,7 @@ const fetchBestMove = useCallback(
                   >
                     <img
                       className="side-pick-piece"
+                      draggable={false}
                       src="/pieces/white_king.svg"
                       alt=""
                       draggable={false}
@@ -3428,6 +3458,7 @@ const fetchBestMove = useCallback(
                   >
                     <img
                       className="side-pick-piece"
+                      draggable={false}
                       src="/pieces/black_king.svg"
                       alt=""
                       draggable={false}
@@ -3520,7 +3551,7 @@ const fetchBestMove = useCallback(
                     <button
                       type="button"
                       className="gameover-btn gameover-btn--review"
-                      onClick={() => setResultCardDismissed(true)}
+                      onClick={openReviewMoves}
                     >
                       Разбор по ходам
                     </button>

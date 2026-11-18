@@ -742,6 +742,28 @@ textarea {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
 }
 
+/* Фигуры — это <img>, и браузер по умолчанию умеет выделять их
+   протяжкой мыши и тащить как картинки: можно было «схватить» сразу
+   несколько фигур и утащить их за пределы доски (а при вставке в поле
+   ввода получалась пустая строка — это картинка, а не текст).
+   Перетаскивание фигур обрабатывает сама доска (react-chessboard),
+   поэтому нативное поведение выключаем на всех досках, а не только
+   на игровой: селектор по src не зависит от разметки конкретной
+   страницы. */
+img[src^="/pieces/"] {
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
+.eval-board-surface,
+.chat-board,
+.puzzle-board-wrapper,
+.training-board-wrapper,
+.level-test-board-wrap {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 /* Итог партии на главной доске (в духе chess.com):
    затемнение + всплывающая карточка со счётом и причиной. */
 .gameover-overlay {
@@ -4522,6 +4544,14 @@ textarea {
   filter: grayscale(0.15);
 }
 
+/* Модуль выше Elo-корзины пользователя: карточка видна, но закрыта. */
+.training-module-node--locked {
+  opacity: 0.62;
+  cursor: not-allowed;
+  filter: grayscale(0.3);
+  border-style: dashed;
+}
+
 .training-module-node-icon {
   flex-shrink: 0;
   font-family: "Segoe UI Symbol", "Noto Sans Symbols 2", sans-serif;
@@ -4550,7 +4580,7 @@ textarea {
   color: #666;
 }
 
-/* Метка уровня из программы курса: только подсказка, доступ не ограничивает. */
+/* Метка уровня из программы курса. Её нижняя граница задаёт порог доступа. */
 .training-module-level {
   align-self: flex-start;
   padding: 4px 10px;
@@ -4575,6 +4605,11 @@ textarea {
   color: #775f30;
   font-size: 12px;
   font-weight: 600;
+}
+
+.training-module-meta--locked {
+  background: rgba(120, 120, 120, 0.16);
+  color: #5f5f5f;
 }
 
 /* Конь над текущим модулем: планирует (transition) + прыгает (hop). */

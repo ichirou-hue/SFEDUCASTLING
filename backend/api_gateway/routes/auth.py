@@ -21,7 +21,8 @@ from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from pydantic import BaseModel, Field, field_validator, model_validator
-from sqlalchemy import select
+from sqlalchemy import func, or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api_gateway.dependecies import get_current_admin, get_current_user
@@ -36,6 +37,7 @@ from backend.api_gateway.security import (
 )
 from backend.config.settings import settings
 from backend.db.session import get_db
+from backend.models.gigacoin_event import GigacoinEvent
 from backend.models.user import ROLE_ADMIN, ROLE_LEARNER, RefreshToken, User
 from backend.models.user_chess_account import (
     UserChessAccount,
@@ -47,6 +49,7 @@ from backend.services.assessment import (
     rating_group_for,
 )
 from backend.services.login_throttle import LoginThrottle
+from backend.services.nickname import nickname_change_price, validate_nickname
 from backend.services.user_activity import record_user_visit
 from backend.services.gigacoin_service import ONBOARDING_REWARD, award_gigacoins
 
@@ -302,6 +305,10 @@ class RoleUpdateRequest(BaseModel):
     role: Literal["learner", "admin"]
 
 
+class NicknameChangeRequest(BaseModel):
+    nickname: str = Field(min_length=3, max_length=32)
+
+
 def _as_utc(value: datetime) -> datetime:
     if value.tzinfo is None:
         return value.replace(tzinfo=UTC)
@@ -333,7 +340,16 @@ async def _issue_tokens(db: AsyncSession, user: User) -> dict:
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
-    existing = await db.scalar(select(User).where(User.login == req.login))
+    # login становится стартовым никнеймом, поэтому проверяем занятость
+    # и по логинам, и по отображаемым именам (без учёта регистра).
+    existing = await db.scalar(
+        select(User).where(
+            or_(
+                User.login == req.login,
+                func.lower(User.nickname) == req.login.lower(),
+            )
+        )
+    )
     if existing:
         raise HTTPException(status_code=409, detail="Логин уже занят")
     if req.email:
@@ -343,6 +359,7 @@ async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
 
     user = User(
         login=req.login,
+        nickname=req.login,
         email=req.email or None,
         elo=req.elo,
         password_hash=hash_password(req.password),
@@ -447,6 +464,109 @@ async def me(
     # даже если access-токен ещё жив и refresh не понадобился.
     await record_user_visit(db, user.id)
     return {"user": user.public()}
+
+
+@router.patch("/nickname")
+async def change_nickname(
+    req: NicknameChangeRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Меняет логин и отображаемое имя за GigaCoin.
+
+    Старый логин после успешной транзакции освобождается. Цена удваивается
+    после каждой смены (10, 20, 40, ...). Баланс, счётчик смен и запись
+    в журнале GigaCoin обновляются в одной транзакции под блокировкой
+    строки пользователя.
+    """
+    try:
+        new_nickname = validate_nickname(req.nickname)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    locked = await db.scalar(select(User).where(User.id == user.id).with_for_update())
+    if locked is None:
+        raise HTTPException(status_code=401, detail="Пользователь не найден")
+
+    current_nickname = locked.nickname or locked.login
+
+    # Записи, сделанные до исправления смены логина: отображаемое имя уже
+    # новое, а ``users.login`` остался прежним, поэтому новый логин занят
+    # собственным никнеймом. Досинхронизируем его бесплатно и без счётчика
+    # смен: иначе пользователь не сможет ни войти по новому логину, ни
+    # зарегистрировать его.
+    if (
+        new_nickname.casefold() == current_nickname.casefold()
+        and new_nickname.casefold() != locked.login.casefold()
+    ):
+        locked.login = new_nickname
+        locked.nickname = new_nickname
+        await db.commit()
+        await db.refresh(locked)
+        return {
+            "ok": True,
+            **await _issue_tokens(db, locked),
+            "price_paid": 0,
+            "next_price": nickname_change_price(int(locked.nickname_changes or 0)),
+        }
+
+    if new_nickname.casefold() == locked.login.casefold():
+        raise HTTPException(status_code=400, detail="Новый логин совпадает с текущим")
+
+    # Новый логин не должен повторять чужой логин или отображаемое имя.
+    conflict = await db.scalar(
+        select(User.id)
+        .where(
+            User.id != locked.id,
+            or_(
+                func.lower(User.nickname) == new_nickname.lower(),
+                func.lower(User.login) == new_nickname.lower(),
+            ),
+        )
+        .limit(1)
+    )
+    if conflict is not None:
+        raise HTTPException(status_code=409, detail="Этот логин уже занят")
+
+    changes = int(locked.nickname_changes or 0)
+    price = nickname_change_price(changes)
+    balance = int(locked.gigacoins or 0)
+    if balance < price:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Недостаточно GigaCoin: смена стоит {price}",
+        )
+
+    now = datetime.now(UTC)
+    locked.gigacoins = balance - price
+    locked.login = new_nickname
+    locked.nickname = new_nickname
+    locked.nickname_changes = changes + 1
+    locked.nickname_changed_at = now
+    db.add(
+        GigacoinEvent(
+            user_id=locked.id,
+            reason="nickname_change",
+            ref=f"{changes + 1}:{new_nickname}"[:128],
+            amount=-price,
+            created_at=now,
+        )
+    )
+    try:
+        await db.commit()
+    except IntegrityError as exc:
+        # Параллельная смена на тот же никнейм: уникальный индекс БД
+        # остаётся последней линией защиты.
+        await db.rollback()
+        raise HTTPException(status_code=409, detail="Этот логин уже занят") from exc
+    await db.refresh(locked)
+    tokens = await _issue_tokens(db, locked)
+    return {
+        "ok": True,
+        **tokens,
+        "price_paid": price,
+        "next_price": nickname_change_price(changes + 1),
+    }
 
 
 async def _linked_rating(db: AsyncSession, user_id: int) -> dict[str, Any] | None:

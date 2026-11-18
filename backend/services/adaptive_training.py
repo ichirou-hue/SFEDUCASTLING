@@ -181,21 +181,24 @@ async def compute_learning_progress(
 
     accuracy = round(solved * 100 / attempted, 1) if attempted else None
 
-    # Текущая серия подряд верно решённых пазлов. Любая ошибка её обнуляет,
-    # поэтому считаем только верные попытки после самой поздней неверной.
-    last_wrong_id = await db.scalar(
-        select(func.max(PuzzleAttempt.id)).where(
-            PuzzleAttempt.user_id == user_id,
-            PuzzleAttempt.correct.is_(False),
-        )
+    # Текущая серия подряд верно решённых пазлов. Серию растят только ПЕРВЫЕ
+    # решения пазла (его ещё ни разу не пробовали). Ошибка или решение
+    # с подсказкой обнуляют её, а повторное решение уже пробованного пазла
+    # нейтрально: серию не растягивает и не обрывает (ошибка уже обнулила).
+    attempt_rows = await db.scalars(
+        select(PuzzleAttempt)
+        .where(PuzzleAttempt.user_id == user_id)
+        .order_by(PuzzleAttempt.id)
     )
-    streak_stmt = select(func.count(PuzzleAttempt.id)).where(
-        PuzzleAttempt.user_id == user_id,
-        PuzzleAttempt.correct.is_(True),
-    )
-    if last_wrong_id is not None:
-        streak_stmt = streak_stmt.where(PuzzleAttempt.id > last_wrong_id)
-    puzzle_streak = int(await db.scalar(streak_stmt) or 0)
+    seen_puzzle_ids: set[str] = set()
+    puzzle_streak = 0
+    for row in attempt_rows:
+        is_first_attempt = row.puzzle_id not in seen_puzzle_ids
+        seen_puzzle_ids.add(row.puzzle_id)
+        if not row.correct or row.hint_used:
+            puzzle_streak = 0
+        elif is_first_attempt:
+            puzzle_streak += 1
 
     return {
         "attempted": attempted,

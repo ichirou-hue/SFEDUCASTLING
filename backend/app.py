@@ -29,6 +29,7 @@ from backend.api_gateway.state import (
     load_knowledge,
     load_puzzles,
     load_llava,
+    preload_maia3,
     shutdown_maia3,
 )
 
@@ -163,6 +164,12 @@ load_llava()
 async def startup_event():
     # Глушим трейсбеки от оборванных клиентов (WinError 64 при accept).
     windows_accept.quiet_loop_noise()
+
+    # Maia3 стартует долго (импорт torch + загрузка чекпоинта), поэтому
+    # греем её заранее и в фоне: иначе эту задержку оплачивает первый ход
+    # после запуска сервера. MAIA3_PRELOAD=0 отключает прогрев (тесты).
+    if os.getenv("MAIA3_PRELOAD", "1").strip().lower() not in {"0", "false", "no", "off"}:
+        preload_maia3()
 
 
 @app.on_event("shutdown")

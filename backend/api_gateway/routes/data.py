@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, File, UploadFile
 from fastapi.responses import StreamingResponse
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.concurrency import run_in_threadpool
 
 from backend.api_gateway.models import DatasetMoveRequest, PGNTextRequest
 from backend.api_gateway.state import ensure_stockfish, stockfish_lock
@@ -20,18 +21,38 @@ from backend.models.dataset_move import DatasetMove
 router = APIRouter(tags=["data"])
 
 
+def _analyse_move_with_stockfish(fen: str):
+    """Считает эталонный ход Stockfish и оценку позиции.
+
+    Две поисковые операции занимают около двух секунд. Обработчик ниже
+    асинхронный, а расчёт раньше выполнялся прямо в нём и на всё это
+    время останавливал event loop: запрос хода Maia3, который фронтенд
+    отправляет сразу после хода игрока, стоял в очереди и ответ
+    приходил через секунды. Теперь расчёт идёт в отдельном потоке,
+    как и остальные обращения к движку.
+    """
+
+    stockfish = ensure_stockfish()
+    if not stockfish:
+        return None
+
+    with stockfish_lock:
+        stockfish.set_fen_position(fen)
+        best_move = stockfish.get_best_move_time(1000)
+        evaluation = stockfish.get_evaluation(searchtime=1000)
+
+    return best_move, evaluation
+
+
 @router.post("/api/save-move-to-dataset")
 async def save_move_to_dataset(req: DatasetMoveRequest, db: AsyncSession = Depends(get_db)):
     """Сохраняет ход пользователя в тренировочный датасет с оценкой Stockfish."""
-    stockfish = ensure_stockfish()
-    if not stockfish:
-        return {"error": "Stockfish не загружен"}
-
     try:
-        with stockfish_lock:
-            stockfish.set_fen_position(req.fen)
-            stockfish_best = stockfish.get_best_move_time(1000)
-            stockfish_eval = stockfish.get_evaluation(searchtime=1000)
+        analysis = await run_in_threadpool(_analyse_move_with_stockfish, req.fen)
+        if analysis is None:
+            return {"error": "Stockfish не загружен"}
+
+        stockfish_best, stockfish_eval = analysis
 
         row = DatasetMove(
             fen=req.fen,

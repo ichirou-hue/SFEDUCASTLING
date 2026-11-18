@@ -298,7 +298,7 @@ export default function TrainingPage({ user, onRegister }) {
   const currentModuleIndex = useMemo(() => {
     if (modules.length === 0) return -1;
     const index = modules.findIndex((module) => {
-      if (!module.enabled) return false;
+      if (!module.enabled || module.locked) return false;
       const moduleProgress = moduleProgressBySlug.get(module.slug);
       if (!moduleProgress || !moduleProgress.tasks_total) return true;
       return moduleProgress.tasks_solved < moduleProgress.tasks_total;
@@ -562,8 +562,26 @@ export default function TrainingPage({ user, onRegister }) {
     return () => clearTimeout(timer);
   }, [taskResult?.correct, taskIndex, visibleTasks.length]);
 
+  // Подсказка для закрытого модуля. Без пройденного теста уровня рейтинга
+  // ещё нет, поэтому обещать «откроется при Elo N» неверно: сначала тест.
+  const lockedModuleHint = useCallback(
+    (module) =>
+      user?.elo == null
+        ? `Модуль откроется после теста уровня: нужен Elo ${module.required_elo}+`
+        : `Откроется с Elo ${module.required_elo}+`,
+    [user?.elo],
+  );
+
   const openModule = useCallback(async (module) => {
     if (!module.enabled) return;
+    if (module.locked) {
+      setError(
+        user?.elo == null
+          ? `Модуль откроется после теста уровня: нужен рейтинг Elo ${module.required_elo} и выше.`
+          : `Модуль откроется при рейтинге Elo ${module.required_elo} и выше.`,
+      );
+      return;
+    }
 
     // Единая воронка открытия (эффект по URL, openDueItem): фиксируем,
     // что показываем именно этот модуль, до асинхронной загрузки.
@@ -586,7 +604,8 @@ export default function TrainingPage({ user, onRegister }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+    // Текст ошибки зависит от наличия Elo, поэтому подписка на него.
+  }, [user?.elo]);
 
   useEffect(() => {
     if (!requestedModuleSlug || modules.length === 0) return;
@@ -1026,7 +1045,11 @@ export default function TrainingPage({ user, onRegister }) {
   ]);
 
   const nextTask = () => {
-    if (taskIndex < visibleTasks.length - 1) {
+    // Нельзя перескочить стрелкой через нерешённое задание. Кружочки
+    // используют то же правило: открыта только текущая или уже пройденная
+    // задача.
+    const currentSolved = currentTask && solvedTaskIds.has(currentTask.id);
+    if (currentSolved && taskIndex < visibleTasks.length - 1) {
       setTaskIndex((index) => index + 1);
     }
   };
@@ -1154,15 +1177,34 @@ export default function TrainingPage({ user, onRegister }) {
                     }}
                     className={`training-module-node-shell training-module-node-shell--${side}`}
                   >
+                    {/*
+                     * Закрытый модуль виден в программе курса, но не
+                     * открывается: доступ задаёт Elo-корзина пользователя.
+                     * Подсказку объясняем в title и в плашке внутри.
+                     */}
                     <button
                       type="button"
                       className={`training-module-node training-module-node--${side} ${
                         module.enabled ? "" : "training-module-node--disabled"
-                      }`}
-                      onClick={() =>
-                        navigate(`/training?module=${encodeURIComponent(module.slug)}`)
+                      } ${module.locked ? "training-module-node--locked" : ""}`}
+                      onClick={() => {
+                        if (!module.enabled) return;
+                        if (module.locked) {
+                          setError(
+                            user?.elo == null
+                              ? `Модуль откроется после теста уровня: нужен рейтинг Elo ${module.required_elo} и выше.`
+                              : `Модуль откроется при рейтинге Elo ${module.required_elo} и выше.`,
+                          );
+                          return;
+                        }
+                        navigate(
+                          `/training?module=${encodeURIComponent(module.slug)}`,
+                        );
+                      }}
+                      disabled={!module.enabled || module.locked}
+                      title={
+                        module.locked ? lockedModuleHint(module) : undefined
                       }
-                      disabled={!module.enabled}
                     >
                       <span className="training-module-node-icon" aria-hidden="true">
                         {MODULE_ICONS[module.slug] || "♟"}
@@ -1178,7 +1220,7 @@ export default function TrainingPage({ user, onRegister }) {
                           {module.description}
                         </span>
 
-                        {module.enabled && moduleProgress && (
+                        {module.enabled && !module.locked && moduleProgress && (
                           <span className="training-module-progress">
                             <span className="training-module-progress__head">
                               <span>
@@ -1199,6 +1241,11 @@ export default function TrainingPage({ user, onRegister }) {
                             открытых модулей оставляем статус «Скоро». */}
                         {!module.enabled && (
                           <span className="training-module-meta">Скоро</span>
+                        )}
+                        {module.enabled && module.locked && (
+                          <span className="training-module-meta training-module-meta--locked">
+                            🔒 {lockedModuleHint(module)}
+                          </span>
                         )}
                       </span>
                     </button>
@@ -1511,10 +1558,18 @@ export default function TrainingPage({ user, onRegister }) {
             <button
               type="button"
               className="training-progress-nav"
-              onClick={() => setTaskIndex((index) => Math.min(visibleTasks.length - 1, index + 1))}
-              disabled={taskIndex >= visibleTasks.length - 1}
+              onClick={nextTask}
+              disabled={
+                taskIndex >= visibleTasks.length - 1 ||
+                !currentTask ||
+                !solvedTaskIds.has(currentTask.id)
+              }
               aria-label="Следующее задание"
-              title="Следующее задание"
+              title={
+                currentTask && !solvedTaskIds.has(currentTask.id)
+                  ? "Сначала решите текущее задание"
+                  : "Следующее задание"
+              }
             >
               →
             </button>

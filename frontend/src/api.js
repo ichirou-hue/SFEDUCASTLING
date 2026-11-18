@@ -336,6 +336,12 @@ export async function saveOnboarding(answers) {
   return user;
 }
 
+export async function changeNickname(nickname) {
+  const { data } = await api.patch("/api/auth/nickname", { nickname });
+  if (data?.access_token && data?.refresh_token && data?.user) saveAuth(data);
+  return data;
+}
+
 export async function fetchGigacoinShop() {
   const { data } = await api.get("/api/gigacoins/shop");
   return data;
@@ -543,11 +549,12 @@ export async function checkPuzzle(puzzleId, move) {
   return data;
 }
 
-export async function recordPuzzleAttempt(puzzleId, correct, playerMoves = []) {
+export async function recordPuzzleAttempt(puzzleId, correct, playerMoves = [], usedHint = false) {
   const { data } = await api.post("/api/learning/puzzle/attempt", {
     puzzle_id: puzzleId,
     correct,
     player_moves: playerMoves,
+    used_hint: usedHint,
   });
   announceGigacoinReward(data);
   if (typeof window !== "undefined" && Number.isFinite(Number(data?.puzzle_streak))) {

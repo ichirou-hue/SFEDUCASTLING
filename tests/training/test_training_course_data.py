@@ -3,8 +3,12 @@ import pytest
 
 from backend.services.training_course_data import (
     LEVEL_LABELS,
+    LEVEL_MIN_ELO,
     LESSONS_BY_MODULE,
     MODULES,
+    locked_module_slugs,
+    module_required_elo,
+    module_unlocked_for_elo,
 )
 
 PROGRAM_MODULES = [
@@ -46,6 +50,48 @@ def test_every_module_has_level_label():
         assert LEVEL_LABELS[module["slug"]] == "1000-1500"
 
 
+def test_module_required_elo_matches_level_label():
+    """Порог доступа - нижняя граница метки уровня модуля."""
+    assert LEVEL_MIN_ELO == {
+        "pieces": 0,
+        "king-safety": 0,
+        "tactics": 0,
+        "endgames": 1000,
+        "openings": 1000,
+        "middlegame": 1000,
+    }
+    for slug, label in LEVEL_LABELS.items():
+        expected = int(label.split("-")[0])
+        assert module_required_elo(slug) == expected, slug
+
+
+def test_module_access_by_elo():
+    # Базовые модули доступны всем, включая пользователя без рейтинга.
+    assert module_unlocked_for_elo("pieces", None)
+    assert module_unlocked_for_elo("tactics", 0)
+
+    # Модули 1000-1500 открываются ровно с нижней границы.
+    assert not module_unlocked_for_elo("endgames", None)
+    assert not module_unlocked_for_elo("openings", 999)
+    assert module_unlocked_for_elo("openings", 1000)
+    assert module_unlocked_for_elo("middlegame", 1500)
+
+
+def test_locked_module_slugs_match_access_rule():
+    """Набор закрытых слагов совпадает с построчной проверкой доступа."""
+    for elo in (None, 0, 800, 999, 1000, 1500):
+        expected = {
+            slug
+            for slug in LEVEL_MIN_ELO
+            if not module_unlocked_for_elo(slug, elo)
+        }
+        assert locked_module_slugs(elo) == expected, elo
+
+    assert locked_module_slugs(None) == {"endgames", "openings", "middlegame"}
+    assert locked_module_slugs(999) == {"endgames", "openings", "middlegame"}
+    assert locked_module_slugs(1000) == set()
+
+
 @pytest.mark.parametrize("module", MODULES, ids=lambda item: item["slug"])
 def test_every_module_has_lessons(module):
     lessons = LESSONS_BY_MODULE.get(module["slug"])
@@ -53,13 +99,13 @@ def test_every_module_has_lessons(module):
     assert all(lesson["tasks"] for lesson in lessons)
 
 
-def test_course_has_program_topics_with_four_to_six_tasks():
+def test_course_has_program_topics_with_expected_task_count():
     topics = _topics()
     assert len(topics) == PROGRAM_TOPICS
     for lesson in topics:
         task_count = len(lesson["tasks"])
-        assert 4 <= task_count <= 6, (
-            f"{lesson['slug']}: {task_count} заданий, ожидалось 4-6"
+        assert 12 <= task_count <= 15, (
+            f"{lesson['slug']}: {task_count} заданий, ожидалось 12-15"
         )
 
 
@@ -142,7 +188,7 @@ def test_openings_module_starts_with_five_principles():
     assert [lesson["sort_order"] for lesson in OPENINGS_THEORY] == [1, 2, 3, 4, 5]
     assert OPENINGS_THEORY[0]["title"] == "Три главных дебютных принципа"
     assert OPENINGS_THEORY[-1]["title"] == "Критические ошибки в дебюте"
-    assert all(len(lesson["tasks"]) == 5 for lesson in OPENINGS_THEORY)
+    assert all(len(lesson["tasks"]) >= 5 for lesson in OPENINGS_THEORY)
 
 
 def test_concrete_openings_follow_principles():

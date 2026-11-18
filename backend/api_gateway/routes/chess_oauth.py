@@ -24,7 +24,7 @@ import requests
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from pydantic import BaseModel, Field
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.concurrency import run_in_threadpool
 
@@ -463,7 +463,14 @@ async def _unique_login(db: AsyncSession, username: str, provider: str) -> str:
     candidate = base
     suffix_base = f"_{provider}"
     n = 0
-    while await db.scalar(select(User.id).where(func.lower(User.login) == candidate.lower())):
+    while await db.scalar(
+        select(User.id).where(
+            or_(
+                func.lower(User.login) == candidate.lower(),
+                func.lower(User.nickname) == candidate.lower(),
+            )
+        )
+    ):
         n += 1
         suffix = suffix_base if n == 1 else f"{suffix_base}{n}"
         candidate = f"{base[: max(3, 32 - len(suffix))]}{suffix}"
@@ -496,6 +503,7 @@ async def _login_or_create_from_oauth(
     login = await _unique_login(db, username, provider)
     user = User(
         login=login,
+        nickname=login,
         email=None,
         elo=None,
         password_hash=hash_password(secrets.token_urlsafe(32)),
