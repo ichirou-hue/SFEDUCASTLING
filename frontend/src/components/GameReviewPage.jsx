@@ -243,10 +243,10 @@ export default function GameReviewPage() {
           <button type="button" key={key} className={`review-player ${side === color ? "is-selected" : ""}`} onClick={() => setSide(color)}>
             <span>{parsed.headers[color === "w" ? "White" : "Black"] || fallback}</span>
             <strong>{report[key].accuracy == null ? "—" : `${report[key].accuracy}%`}</strong>
-            <small>точность · {report[key].moves_scored} оценено</small>
+            <small>точность · {report[key].moves_scored} ходов оценено из {report[key].moves_analyzed}</small>
           </button>)}</div>
         <div className="review-grade-summary">{Object.entries(GRADES).map(([key, [symbol, label]]) =>
-          <span key={key} className={`review-grade review-grade--${key}`}>{symbol} {label}: {report[side === "w" ? "white" : "black"].counts[key] || 0}</span>)}</div>
+          <span key={key} className={`review-grade review-grade--${key}`}>{label}: {report[side === "w" ? "white" : "black"].counts[key] || 0}</span>)}</div>
         <div className="review-chart-panel"><h2>Оценка партии</h2><p className="review-chart-current">{evalLabel(currentEval)}</p><EvalChart plies={analysisPlies} selected={selected} onSelect={navigateTo} /></div></>}
       <div className="review-workspace"><div className="review-board-column"><div className="review-board-with-eval">
         <div className="review-eval-bar" role="img" aria-label={evalLabel(currentEval)} title={evalLabel(currentEval)}>
