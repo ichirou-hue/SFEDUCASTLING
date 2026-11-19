@@ -1684,6 +1684,8 @@ textarea {
 
 /* Аватар ассистента в маленьком золотом кольце. */
 .chat-strip-avatar {
+  display: grid;
+  place-items: center;
   width: 34px;
   height: 34px;
   flex: 0 0 34px;
@@ -1693,6 +1695,14 @@ textarea {
   background: rgba(255, 253, 248, 0.95);
   border: 1px solid rgba(180, 135, 44, 0.5);
   box-shadow: 0 1px 4px rgba(74, 50, 32, 0.12);
+}
+
+.chat-strip-avatar-glyph {
+  display: block;
+  font-family: "Segoe UI Symbol", "Noto Sans Symbols 2", serif;
+  font-size: 22px;
+  line-height: 1;
+  transform: translateY(1px);
 }
 
 .chat-strip-avatar img {
