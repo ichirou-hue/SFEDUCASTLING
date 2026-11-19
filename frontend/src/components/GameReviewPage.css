@@ -23,3 +23,4 @@
 
 .review-moves-panel h2{text-align:center;font-size:clamp(24px,2.5vw,30px);font-weight:800;line-height:1.2;margin:0 0 16px}
 .review-moves{overflow-x:hidden;min-width:0;scrollbar-width:thin}.review-move{overflow:hidden}.review-move>span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:.95em}.review-move-grade{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.review-board-with-eval{display:flex;align-items:stretch;gap:10px;width:100%}.review-eval-bar{position:relative;flex:0 0 28px;align-self:stretch;min-height:250px;border:1px solid #ad986b;border-radius:8px;background:#f4f1e9;overflow:hidden}.review-eval-black{position:absolute;inset:0 0 auto;background:#182728;transition:height .25s}.review-eval-bar strong{position:absolute;bottom:7px;left:50%;transform:translateX(-50%) rotate(-90deg);color:#172b2b;font-size:12px;white-space:nowrap;text-shadow:0 0 3px #fff}.review-board-with-eval .review-board{min-width:0}

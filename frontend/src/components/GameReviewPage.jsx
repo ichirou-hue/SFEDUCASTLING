@@ -66,6 +66,12 @@ function formatGameDate(value) {
   }).format(date);
 }
 
+function evalLabel(cp) {
+  if (cp == null) return "Оценка недоступна";
+  const value = (cp / 100).toFixed(1);
+  return `${cp > 0 ? "+" : ""}${value} · ${cp > 0 ? "лучше у белых" : cp < 0 ? "лучше у чёрных" : "равная позиция"}`;
+}
+
 function EvalChart({ plies, selected, onSelect }) {
   const points = plies.filter((ply) => ply.eval_cp != null).map((ply) => ({
     index: ply.ply - 1,
@@ -163,6 +169,7 @@ export default function GameReviewPage() {
   })) || [], [parsed, report]);
   const current = parsed?.positions[selected + 1] || new Chess().fen();
   const analysisPlies = report?.white?.plies || [];
+  const currentEval = selected >= 0 ? analysisPlies[selected]?.eval_cp : null;
   const stage = busy
     ? selected < plies.length - 1 ? "Воспроизводим партию и оцениваем ходы…" : "Готовим оценки и классификацию ходов…"
     : report ? "Разбор готов. Выберите ход или запустите повтор." : "Просмотр партии";
@@ -238,11 +245,15 @@ export default function GameReviewPage() {
         <div className="review-grade-summary">{Object.entries(GRADES).map(([key, [symbol, label]]) =>
           <span key={key} className={`review-grade review-grade--${key}`}>{symbol} {label}: {report[side === "w" ? "white" : "black"].counts[key] || 0}</span>)}</div>
         <div className="review-chart-panel"><h2>Оценка партии</h2><EvalChart plies={analysisPlies} selected={selected} onSelect={navigateTo} /></div></>}
-      <div className="review-workspace"><div className="review-board-column"><div className="review-board">
+      <div className="review-workspace"><div className="review-board-column"><div className="review-board-with-eval">
+        <div className="review-eval-bar" role="img" aria-label={evalLabel(currentEval)} title={evalLabel(currentEval)}>
+          <span className="review-eval-black" style={{ height: `${currentEval == null ? 50 : Math.max(5, Math.min(95, 50 - Math.tanh(currentEval / 450) * 45))}%` }} />
+          <strong>{currentEval == null ? "—" : `${currentEval > 0 ? "+" : ""}${(currentEval / 100).toFixed(1)}`}</strong>
+        </div><div className="review-board">
         <MiniBoard fen={practice && selected >= 0 ? plies[selected].fen : current}
           width={Math.min(600, Math.max(250, window.innerWidth - 360))}
           orientation={side === "w" ? "white" : "black"} arePiecesDraggable={practice}
-          onPieceDrop={tryPracticeMove} /></div>
+          onPieceDrop={tryPracticeMove} /></div></div>
         {selected >= 0 && ["inaccuracy", "mistake", "blunder"].includes(plies[selected]?.classification) &&
           <div className="review-practice"><button type="button" onClick={startPractice} disabled={practiceLoading}>
             {practiceLoading ? "Ищем лучший ход…" : "Переиграть ошибку"}</button>
