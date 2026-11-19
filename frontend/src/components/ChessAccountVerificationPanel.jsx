@@ -280,9 +280,6 @@ export default function ChessAccountVerificationPanel({
       {historyOpen && (
         <div className="chess-account-history">
           <div className="chess-account-history__title">История подтверждений</div>
-          {!history.length && !historyLoading && (
-            <div className="chess-account-history__empty">Проверок ещё не было.</div>
-          )}
           {history.map((item) => {
             const itemState = STATUS[item.status] || STATUS.linked;
             return (
