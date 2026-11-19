@@ -131,15 +131,18 @@ textarea {
   white-space: nowrap;
 }
 
+/* Линия стоит ровно посередине между заголовком и чипами. Снизу отступ
+   ровно такой, как задан, а сверху из него вычитаются ~3px межстрочного
+   «воздуха» под строчными буквами заголовка (line-height: 1.15) - иначе
+   зазор до надписи визуально выходит больше, чем до чипов. */
 .maia-level-progress .title-separator {
-  margin: 8px 0 6px;
+  margin: 9px 0 12px;
 }
 
 .maia-level-progress-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 6px;
-  margin-top: 10px;
 }
 
 .maia-level-chip {
