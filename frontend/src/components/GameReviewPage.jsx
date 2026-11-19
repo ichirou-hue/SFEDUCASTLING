@@ -80,6 +80,9 @@ function EvalChart({ plies, selected, onSelect }) {
     evalCp: ply.eval_cp,
   }));
   return <svg className="review-chart" viewBox="0 0 800 180" role="img" aria-label="График оценки партии">
+    <text x="2" y="18" className="review-chart-label">Белые +</text>
+    <text x="2" y="87" className="review-chart-label">0</text>
+    <text x="2" y="174" className="review-chart-label">Чёрные −</text>
     <line x1="18" x2="782" y1="90" y2="90" className="review-chart-zero" />
     {points.length > 1 && <polyline points={points.map((p) => `${p.x},${p.y}`).join(" ")} className="review-chart-line" />}
     {points.map((point) => <circle key={point.index} cx={point.x} cy={point.y} r={point.index === selected ? 7 : 4}
@@ -244,7 +247,7 @@ export default function GameReviewPage() {
           </button>)}</div>
         <div className="review-grade-summary">{Object.entries(GRADES).map(([key, [symbol, label]]) =>
           <span key={key} className={`review-grade review-grade--${key}`}>{symbol} {label}: {report[side === "w" ? "white" : "black"].counts[key] || 0}</span>)}</div>
-        <div className="review-chart-panel"><h2>Оценка партии</h2><EvalChart plies={analysisPlies} selected={selected} onSelect={navigateTo} /></div></>}
+        <div className="review-chart-panel"><h2>Оценка партии</h2><p className="review-chart-current">{evalLabel(currentEval)}</p><EvalChart plies={analysisPlies} selected={selected} onSelect={navigateTo} /></div></>}
       <div className="review-workspace"><div className="review-board-column"><div className="review-board-with-eval">
         <div className="review-eval-bar" role="img" aria-label={evalLabel(currentEval)} title={evalLabel(currentEval)}>
           <span className="review-eval-black" style={{ height: `${currentEval == null ? 50 : Math.max(5, Math.min(95, 50 - Math.tanh(currentEval / 450) * 45))}%` }} />
