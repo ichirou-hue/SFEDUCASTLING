@@ -205,7 +205,7 @@ export default function MiniProfilePopover({
             доступен всегда, даже если прогресс не загрузился. */}
         <div className="mini-profile__footer">
           <Link to="/profile" className="mini-profile__details-link">
-            Открыть полный профиль →
+            Открыть полный профиль
           </Link>
           <button
             type="button"
