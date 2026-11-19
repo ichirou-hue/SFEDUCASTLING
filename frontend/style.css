@@ -4984,8 +4984,10 @@ textarea {
 
   .training-board-column {
     min-height: 0;
-    justify-content: center;
+    justify-content: flex-start;
   }
+
+  .training-board-wrapper { order: -1; }
 }
 
 .training-theory-panel,
