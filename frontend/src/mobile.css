@@ -413,6 +413,12 @@
     margin-bottom: 0 !important;
   }
 
+  .main-page-scroll { padding-bottom: 0; }
+  .main-page-scroll > .site-footer {
+    margin-top: auto;
+    padding-bottom: calc(92px + env(safe-area-inset-bottom, 0px));
+  }
+
   .site-footer-docs {
     width: 100%;
     gap: 4px 12px;
