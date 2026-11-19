@@ -215,7 +215,7 @@ export default function GameReviewPage() {
   </main>;
 
   return <main className="review-page review-page--detail">
-    <header className="review-heading"><Link className="review-back" to="/review">← Все партии</Link>
+    <header className="review-heading"><Link className="review-back" to="/review">Все партии</Link>
       <span className="review-kicker">РАЗБОР ПАРТИИ</span><h1>{selectedGame ? resultLabel(selectedGame) : "Загружаем партию"}</h1>
       {selectedGame && <p className="review-meta">
         <span className="review-meta-elo">Maia {selectedGame.elo ?? "—"}</span>
