@@ -241,7 +241,7 @@ export default function GameReviewPage() {
       {report && <><div className="review-summary">
         {[["w", "white", "Белые"], ["b", "black", "Чёрные"]].map(([color, key, fallback]) =>
           <button type="button" key={key} className={`review-player ${side === color ? "is-selected" : ""}`} onClick={() => setSide(color)}>
-            <span>{parsed.headers[color === "w" ? "White" : "Black"] || fallback}</span>
+            <span>{["?", "", null].includes(parsed.headers[color === "w" ? "White" : "Black"]) ? fallback : parsed.headers[color === "w" ? "White" : "Black"]}</span>
             <strong>{report[key].accuracy == null ? "—" : `${report[key].accuracy}%`}</strong>
             <small>точность · {report[key].moves_scored} ходов оценено из {report[key].moves_analyzed}</small>
           </button>)}</div>
