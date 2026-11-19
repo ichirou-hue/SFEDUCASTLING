@@ -20,3 +20,5 @@
 .review-game-row{min-height:204px}.review-game-board{line-height:normal}.review-workspace{grid-template-columns:minmax(0,620px) minmax(320px,460px)}.review-moves{grid-template-columns:repeat(2,minmax(0,1fr));max-height:560px}.review-move{padding:7px 8px;gap:5px}.review-move>span:first-child{white-space:nowrap}.review-move-grade{font-size:11px;padding:3px 6px}
 @media(max-width:1200px){.review-workspace{grid-template-columns:minmax(0,620px)}}
 @media(max-width:560px){.review-heading .review-meta{gap:8px;padding:6px 11px;font-size:12px}.review-meta-divider{height:12px}}
+
+.review-moves-panel h2{text-align:center;font-size:clamp(24px,2.5vw,30px);font-weight:800;line-height:1.2;margin:0 0 16px}
