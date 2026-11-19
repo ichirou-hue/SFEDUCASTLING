@@ -22,3 +22,4 @@
 @media(max-width:560px){.review-heading .review-meta{gap:8px;padding:6px 11px;font-size:12px}.review-meta-divider{height:12px}}
 
 .review-moves-panel h2{text-align:center;font-size:clamp(24px,2.5vw,30px);font-weight:800;line-height:1.2;margin:0 0 16px}
+.review-moves{overflow-x:hidden;min-width:0;scrollbar-width:thin}.review-move{overflow:hidden}.review-move>span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:.95em}.review-move-grade{min-width:0;overflow:hidden;text-overflow:ellipsis}
