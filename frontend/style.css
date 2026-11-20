@@ -3765,6 +3765,14 @@ img[src^="/pieces/"] {
   justify-content: flex-start;
 }
 
+/* В левой колонке задач расстояние между карточками задаёт flex-gap.
+   У кросс-ссылки свой margin-top для других контекстов — здесь он
+   удваивал зазор перед кнопкой «Пройти урок по теме», поэтому
+   обнуляем его только внутри панели. */
+.puzzle-info-panel .learning-crosslink--compact {
+  margin-top: 0;
+}
+
 .puzzle-info-heading {
   position: relative;
   display: flex;
