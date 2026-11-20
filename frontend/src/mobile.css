@@ -632,14 +632,17 @@
     font-size: 9px;
   }
 
-  .main-area .maia-level-progress-separator {
-    margin: 6px 0 4px;
+  /* Тот же оптический центр, что и на десктопе, с поправкой на
+     уменьшенный кегль заголовка (15px вместо 20px).
+     Селектор на класс длиннее, чтобы перебить `.main-area .title-separator`
+     ниже в этом же медиазапросе. */
+  .main-area .maia-level-progress .title-separator {
+    margin: 7px 0 9px;
   }
 
   .main-area .maia-level-progress-grid {
     grid-template-columns: repeat(10, minmax(0, 1fr));
     gap: 4px;
-    margin-top: 8px;
   }
 
   .main-area .maia-level-chip {

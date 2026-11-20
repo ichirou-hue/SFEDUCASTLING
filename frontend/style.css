@@ -131,15 +131,18 @@ textarea {
   white-space: nowrap;
 }
 
+/* Линия стоит ровно посередине между заголовком и чипами. Снизу отступ
+   ровно такой, как задан, а сверху из него вычитаются ~3px межстрочного
+   «воздуха» под строчными буквами заголовка (line-height: 1.15) - иначе
+   зазор до надписи визуально выходит больше, чем до чипов. */
 .maia-level-progress .title-separator {
-  margin: 8px 0 6px;
+  margin: 9px 0 12px;
 }
 
 .maia-level-progress-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 6px;
-  margin-top: 10px;
 }
 
 .maia-level-chip {
@@ -368,7 +371,10 @@ textarea {
   justify-content: center;
   flex-wrap: wrap;
   gap: 6px 18px;
-  padding: 7px 16px;
+  /* Снизу на 2px больше: сверху добавляется 1px рамки, а строчные буквы
+     садятся в строке чуть ниже её центра. Так текст встаёт ровно
+     посередине между верхней и нижней границами полосы. */
+  padding: 6px 16px 8px;
   border-top: 1px solid rgba(180, 135, 44, 0.35);
   background: rgba(255, 255, 255, 0.55);
   font-size: 12px;
@@ -3760,6 +3766,14 @@ img[src^="/pieces/"] {
   overflow-y: visible;
   scrollbar-width: none;
   justify-content: flex-start;
+}
+
+/* В левой колонке задач расстояние между карточками задаёт flex-gap.
+   У кросс-ссылки свой margin-top для других контекстов — здесь он
+   удваивал зазор перед кнопкой «Пройти урок по теме», поэтому
+   обнуляем его только внутри панели. */
+.puzzle-info-panel .learning-crosslink--compact {
+  margin-top: 0;
 }
 
 .puzzle-info-heading {

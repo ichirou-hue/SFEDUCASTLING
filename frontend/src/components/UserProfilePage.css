@@ -182,6 +182,20 @@
   color: #9a3f38;
 }
 
+/* В основной карточке профиля подсказка стоит между кнопками и
+   разделителем блока аккаунтов. Выравниваем зазоры по краске текста
+   (~20px сверху и снизу), иначе подсказка липнет к кнопкам.
+   Селектор с `.user-profile-main >` не задевает такие же подсказки
+   внутри секций ниже, а `+` включает отступ только при показанной
+   подсказке. */
+.user-profile-main > .user-profile-warning {
+  margin-top: 16px;
+}
+
+.user-profile-main > .user-profile-warning + .chess-accounts-section--embedded {
+  margin-top: 19px;
+}
+
 .user-profile-progress-section {
   padding: 22px;
 }
