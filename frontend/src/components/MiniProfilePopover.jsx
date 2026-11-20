@@ -135,7 +135,7 @@ export default function MiniProfilePopover({
         className="user-name mini-profile__trigger"
         title="Открыть профиль и прогресс"
       >
-        {profile?.is_admin ? "♛ " : "👤 "}
+        {profile?.is_admin ? "♛ " : "♟ "}
         {profile?.nickname || profile?.login || user?.nickname || user?.login || "Пользователь"}
       </Link>
 
