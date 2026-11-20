@@ -1816,9 +1816,7 @@ img[src^="/pieces/"] {
   width: 44px;
   height: 44px;
   box-sizing: border-box;
-  /* Глиф коня стоит на baseline и визуально уезжает вверх. Небольшой
-     верхний отступ возвращает его в геометрический центр рамки. */
-  padding-top: 0.35em;
+  padding: 0;
   border: 1px solid rgba(34, 90, 115, 0.2);
   border-radius: 12px;
   background: rgba(34, 90, 115, 0.08);
@@ -1827,6 +1825,7 @@ img[src^="/pieces/"] {
   font-size: 32px;
   line-height: 1;
 }
+.chat-avatar-glyph > span { display: block; transform: translate(-1px, 1px); }
 
 .chat-title-block {
   display: flex;
