@@ -371,7 +371,10 @@ textarea {
   justify-content: center;
   flex-wrap: wrap;
   gap: 6px 18px;
-  padding: 7px 16px;
+  /* Снизу на 2px больше: сверху добавляется 1px рамки, а строчные буквы
+     садятся в строке чуть ниже её центра. Так текст встаёт ровно
+     посередине между верхней и нижней границами полосы. */
+  padding: 6px 16px 8px;
   border-top: 1px solid rgba(180, 135, 44, 0.35);
   background: rgba(255, 255, 255, 0.55);
   font-size: 12px;
