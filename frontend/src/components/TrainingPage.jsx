@@ -1917,9 +1917,6 @@ export default function TrainingPage({ user, onRegister }) {
                   {hintVisible && (
                     <div className="training-hint-box">
                       {getTaskHint(currentTask)}
-                      <span className="training-hint-meta">
-                        Использовано подсказок: {hintsUsed}
-                      </span>
                     </div>
                   )}
                 </>
