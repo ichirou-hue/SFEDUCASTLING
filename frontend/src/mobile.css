@@ -91,6 +91,20 @@
     overflow-y: auto;
   }
 
+  /* Пустая история остаётся компактной: резерв под список нужен только
+     когда в нём действительно есть ходы. */
+  .main-area .game-history-column .move-history-panel--empty .move-list {
+    min-height: 0;
+  }
+
+  /* На широкой одноколоночной раскладке карточка из узкой колонки 260px
+     не должна растягиваться на всю ширину панели. */
+  .main-area .game-history-column .player-info {
+    max-width: 340px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
   /* На широкой колонке (планшетный stacked-лейаут) чипы не должны
      растягиваться в огромные плитки: добавляем колонки по ширине. */
   .main-area .maia-level-progress-grid {
@@ -343,6 +357,9 @@
     min-height: 38px;
     padding: 0 10px;
   }
+
+  /* На узком экране текст «Выйти» не помещается рядом с бейджем анкеты:
+     оставляем иконку, доступное имя - в aria-label (см. ниже). */
 
   .main-page-scroll,
   .home-page,
@@ -799,6 +816,12 @@
   .main-area > .game-history-column,
   .main-area > .chat-section {
     display: none;
+  }
+
+  /* Нижняя навигация фиксирована; оставляем под панелью запас, чтобы
+     кнопка «Позиция» после ходов оставалась выше неё. */
+  .main-area--mobile-history {
+    padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px));
   }
 
   .main-area--mobile-history > .game-history-column {
@@ -1291,6 +1314,25 @@
   .admin-panel,
   .user-profile-section {
     overflow-wrap: anywhere;
+  }
+}
+
+@media (max-width: 430px) {
+  .top-bar-logout-compact {
+    width: 36px;
+    min-width: 36px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .top-bar-logout-label {
+    display: none;
+  }
+
+  .top-bar-logout-icon {
+    display: inline;
+    font-size: 16px;
+    line-height: 1;
   }
 }
 

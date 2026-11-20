@@ -67,29 +67,40 @@ export default function PositionMenu({ fen, onLoadFen, getPgn }) {
 
   useLayoutEffect(() => {
     if (!open) return;
-    const button = buttonRef.current;
-    const panel = panelRef.current;
-    if (!button || !panel) return;
 
-    // На телефоне меню рисуется фиксированным листом снизу - адаптив не нужен.
-    if (window.matchMedia("(max-width: 760px)").matches) {
-      setPlacement({ up: false, maxHeight: null });
-      return;
-    }
+    const place = () => {
+      const button = buttonRef.current;
+      const panel = panelRef.current;
+      if (!button || !panel) return;
 
-    const rect = button.getBoundingClientRect();
-    const gap = 10;
-    const edge = 12;
-    const natural = panel.scrollHeight;
-    const spaceBelow = window.innerHeight - rect.bottom - gap - edge;
-    const spaceAbove = rect.top - gap - edge;
-    const up = natural > spaceBelow && spaceAbove > spaceBelow;
-    const maxHeight = Math.max(160, up ? spaceAbove : spaceBelow);
-    setPlacement((current) =>
-      current.up === up && current.maxHeight === maxHeight
-        ? current
-        : { up, maxHeight },
-    );
+      // На телефоне меню рисуется фиксированным листом снизу - адаптив не нужен.
+      if (window.matchMedia("(max-width: 760px)").matches) {
+        setPlacement({ up: false, maxHeight: null });
+        return;
+      }
+
+      const rect = button.getBoundingClientRect();
+      const gap = 10;
+      const edge = 12;
+      const natural = panel.scrollHeight;
+      const spaceBelow = window.innerHeight - rect.bottom - gap - edge;
+      const spaceAbove = rect.top - gap - edge;
+      const up = natural > spaceBelow && spaceAbove > spaceBelow;
+      const maxHeight = Math.max(160, up ? spaceAbove : spaceBelow);
+      setPlacement((current) =>
+        current.up === up && current.maxHeight === maxHeight
+          ? current
+          : { up, maxHeight },
+      );
+    };
+
+    place();
+    window.addEventListener("resize", place);
+    window.addEventListener("orientationchange", place);
+    return () => {
+      window.removeEventListener("resize", place);
+      window.removeEventListener("orientationchange", place);
+    };
   }, [open]);
 
   const close = () => {

@@ -657,6 +657,10 @@ textarea {
   display: none;
 }
 
+.top-bar-logout-icon {
+  display: none;
+}
+
 @media (max-width: 640px) {
   .top-bar-logout-compact {
     display: inline-flex;

@@ -92,6 +92,15 @@ function MainPage({ user }) {
     const nextPanel = mobileGamePanel === panel ? null : panel;
     setMobileGamePanel(nextPanel);
     setChatCollapsed(nextPanel !== "chat");
+    if (nextPanel === "history") {
+      // Панель истории живёт ниже доски; при открытии «Ходов» сразу
+      // показываем её, иначе кнопка «Позиция» остаётся под нижней навигацией.
+      requestAnimationFrame(() => {
+        document
+          .querySelector(".main-area--mobile-history > .game-history-column")
+          ?.scrollIntoView({ block: "start", behavior: "smooth" });
+      });
+    }
   };
 
   return (

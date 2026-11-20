@@ -110,6 +110,13 @@
 
 .user-profile-heading h1 {
   font-size: 28px;
+  /* Никнейм до 32 символов не должен давать горизонтальный скролл. */
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.user-profile-heading > div {
+  min-width: 0;
 }
 
 .user-profile-section-heading h2 {
@@ -144,8 +151,8 @@
    специфичнее .user-profile-stat ниже: иначе базовый серый фон перекрывает
    золотую заливку в светлой теме. */
 .user-profile-page .user-profile-stat.user-profile-stat--coins {
-  border-color: rgba(180, 135, 44, 0.27);
-  background: linear-gradient(135deg, #fffaf0, #f6f0df);
+  border-color: rgba(180, 135, 44, 0.45);
+  background: linear-gradient(135deg, #fff7e6, #f4ead2);
 }
 
 .user-profile-page .user-profile-stat.user-profile-stat--coins strong {

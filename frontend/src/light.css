@@ -51,8 +51,10 @@
   background: linear-gradient(180deg, rgba(253, 250, 243, 0.97), rgba(247, 242, 232, 0.95));
   border-bottom-color: rgba(160, 124, 54, 0.26);
   box-shadow: 0 6px 24px rgba(48, 65, 52, 0.08);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  /* Без backdrop-filter: он создаёт containing block, и вложенная мобильная
+     навигация с position: fixed уезжает наверх шапки вместо низа экрана. */
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 /* Логотип уже нарисован тёмно-коричневым, фильтр тёмной темы не нужен. */

@@ -83,7 +83,7 @@ export default function MoveHistory({
       <div className="player-info">
         <div className="player-info__row player-info__row--opponent">
           <div className="bot-avatar">
-            <img src="/bot-icon.svg" alt="Maia 3" />
+            <img src="/bot-icon.svg" alt="" />
           </div>
           <div className="bot-details">
             <span className="bot-name">Maia 3</span>
@@ -96,7 +96,7 @@ export default function MoveHistory({
 
         <div className="player-info__row player-info__row--self">
           <div className="player-avatar">
-            <img src="/user-icon.svg" alt="Вы" />
+            <img src="/user-icon.svg" alt="" />
           </div>
           <div className="player-details">
             <span className="player-name">Вы</span>

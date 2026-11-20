@@ -96,7 +96,8 @@ export default function TopBar({ user, theme, onThemeChange, onUserChange, onReg
             onClick={handleLogout}
             aria-label="Выйти из аккаунта"
           >
-            Выйти
+            <span className="top-bar-logout-icon" aria-hidden="true">⎋</span>
+            <span className="top-bar-logout-label">Выйти</span>
           </button>
         </div>
       ) : (
