@@ -272,11 +272,11 @@ export default function GameReviewPage() {
               {grade && <span className={`review-move-grade review-grade--${ply.classification || "unscored"}`}>{grade[0]} {grade[1]}</span>}
             </button>;
           })}</div>
-          <div className="review-navigation"><button type="button" onClick={() => navigateTo(-1)}>⏮ Начало</button>
-            <button type="button" disabled={selected < 0} onClick={() => navigateTo(selected - 1)}>←</button>
+          <div className="review-navigation"><button type="button" onClick={() => navigateTo(-1)}>Начало</button>
+            <button type="button" disabled={selected < 0} onClick={() => navigateTo(selected - 1)}>Назад</button>
             <button type="button" onClick={() => { if (selected >= plies.length - 1) setSelected(-1); setPlaying((value) => !value); }}>
-              {playing ? "Пауза" : "▶ Воспроизвести"}</button>
-            <button type="button" disabled={selected >= plies.length - 1} onClick={() => navigateTo(selected + 1)}>→</button>
+              {playing ? "Пауза" : "Воспроизвести"}</button>
+            <button type="button" disabled={selected >= plies.length - 1} onClick={() => navigateTo(selected + 1)}>Далее</button>
             <span>{selected < 0 ? "Начало партии" : `${selected + 1} / ${plies.length}`}</span></div>
         </div></div>
     </section>}
