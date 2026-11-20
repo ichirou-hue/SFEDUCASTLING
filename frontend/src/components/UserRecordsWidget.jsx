@@ -219,7 +219,6 @@ export default function UserRecordsWidget({ variant = "profile" }) {
         <div className="user-records__activity-heading">
           <div>
             <h3>Твой ритм</h3>
-            <p>Занятия день за днём</p>
           </div>
           <div className="user-records__tabs" role="tablist" aria-label="Тип активности">
             {Object.entries(CHART_MODES).map(([key, config]) => (
