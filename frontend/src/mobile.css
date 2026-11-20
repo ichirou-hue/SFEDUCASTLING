@@ -63,7 +63,7 @@
   .main-area > .move-history-panel {
     grid-area: history;
     width: 100%;
-    max-height: 290px;
+    max-height: min(560px, 70vh);
   }
 
   .main-area > .game-history-column {
@@ -76,7 +76,9 @@
 
   .main-area .game-history-column > .move-history-panel {
     height: auto;
-    max-height: 290px;
+    /* Хватает на заголовок, список, вертикальную карточку игроков,
+       навигацию и кнопку «Позиция». Прежние 290px оставляли списку 0px. */
+    max-height: min(560px, 70vh);
     min-height: 0;
     width: 100%;
     /* Не обрезаем поповер «Позиция» по правому краю колонки. */
@@ -84,6 +86,7 @@
   }
 
   .main-area .game-history-column .move-list {
+    min-height: 88px;
     max-height: 280px;
     overflow-y: auto;
   }
@@ -705,10 +708,12 @@
   }
 
   .main-area .btn-position {
-    width: min(100%, 132px);
-    height: 32px;
+    width: auto;
+    min-width: 104px;
+    height: 28px;
+    padding: 0 12px;
     gap: 6px;
-    font-size: 14px;
+    font-size: 13px;
   }
 
   .main-area .btn-position__chevron {

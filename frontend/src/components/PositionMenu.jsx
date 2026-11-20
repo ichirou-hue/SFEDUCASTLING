@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Chess } from "chess.js";
 import copyText from "../clipboard.js";
 import "./PositionMenu.css";
@@ -55,9 +55,42 @@ export default function PositionMenu({ fen, onLoadFen, getPgn }) {
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const rootRef = useRef(null);
+  const buttonRef = useRef(null);
+  const panelRef = useRef(null);
   const inputRef = useRef(null);
   const fileRef = useRef(null);
   const noticeTimerRef = useRef(0);
+  // Меню открываем вниз, если под кнопкой есть место, иначе вверх.
+  // maxHeight не даёт панели выйти за пределы окна: на странице /play
+  // внешний скролл-контейнер обрезает содержимое по вертикали.
+  const [placement, setPlacement] = useState({ up: false, maxHeight: null });
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    const button = buttonRef.current;
+    const panel = panelRef.current;
+    if (!button || !panel) return;
+
+    // На телефоне меню рисуется фиксированным листом снизу - адаптив не нужен.
+    if (window.matchMedia("(max-width: 760px)").matches) {
+      setPlacement({ up: false, maxHeight: null });
+      return;
+    }
+
+    const rect = button.getBoundingClientRect();
+    const gap = 10;
+    const edge = 12;
+    const natural = panel.scrollHeight;
+    const spaceBelow = window.innerHeight - rect.bottom - gap - edge;
+    const spaceAbove = rect.top - gap - edge;
+    const up = natural > spaceBelow && spaceAbove > spaceBelow;
+    const maxHeight = Math.max(160, up ? spaceAbove : spaceBelow);
+    setPlacement((current) =>
+      current.up === up && current.maxHeight === maxHeight
+        ? current
+        : { up, maxHeight },
+    );
+  }, [open]);
 
   const close = () => {
     setOpen(false);
@@ -188,6 +221,7 @@ export default function PositionMenu({ fen, onLoadFen, getPgn }) {
   return (
     <div className="position-menu" ref={rootRef}>
       <button
+        ref={buttonRef}
         type="button"
         className="btn-position"
         aria-haspopup="dialog"
@@ -206,7 +240,11 @@ export default function PositionMenu({ fen, onLoadFen, getPgn }) {
             onClick={close}
           />
           <div
-            className="position-menu__panel"
+            ref={panelRef}
+            className={`position-menu__panel${
+              placement.up && placement.maxHeight ? " position-menu__panel--up" : ""
+            }`}
+            style={placement.maxHeight ? { maxHeight: `${placement.maxHeight}px` } : undefined}
             role="dialog"
             aria-label="Импорт и экспорт позиции"
           >

@@ -92,6 +92,13 @@ textarea {
   width: 100%;
 }
 
+/* Пустая история не растягивается на всю высоту колонки: иначе под
+   кнопкой «Позиция» остаётся огромное белое поле. Как только появляются
+   ходы, панель снова занимает доступную высоту. */
+.game-history-column > .move-history-panel--empty {
+  flex: 0 0 auto;
+}
+
 .game-history-column > .maia-level-progress {
   order: 1;
 }
@@ -2355,29 +2362,29 @@ img[src^="/pieces/"] {
   box-sizing: border-box;
 }
 
-/* --- Р‘Р»РѕРє РїСЂРѕС„РёР»СЏ --- */
+/* --- Блок профиля --- */
 .player-info {
   display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 2px;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 0;
   position: relative;
-  border-radius: 999px;
-  /* Чистая двухцветная заливка вместо размытого диагонального градиента:
-     своя половина с зелёным подтоном, половина соперника - тёплая бумага.
-     Стык приходится ровно под жетоном VS. */
+  border-radius: 22px;
+  /* Вертикальная двухцветная заливка: сверху соперник (тёплая бумага),
+     снизу игрок (зелёный подтон) - как на самой доске. */
   background: linear-gradient(
-    90deg,
-    rgba(131, 183, 135, 0.42) 0%,
-    rgba(131, 183, 135, 0.16) 45%,
-    rgba(255, 253, 248, 0.94) 55%,
-    rgba(255, 253, 248, 0.94) 100%
+    180deg,
+    rgba(255, 253, 248, 0.94) 0%,
+    rgba(255, 253, 248, 0.94) 46%,
+    rgba(131, 183, 135, 0.2) 54%,
+    rgba(131, 183, 135, 0.42) 100%
   );
   border: 2px solid rgba(180, 135, 44, 0.5);
   box-shadow:
     0 1px 4px rgba(74, 50, 32, 0.12),
     inset 0 1px 0 rgba(255, 255, 255, 0.6);
-  padding: 6px 8px;
+  padding: 5px 10px;
   /* Живёт под списком ходов: отступ сверху от списка, снизу - до навигации. */
   margin: 14px 0 18px;
   width: 100%;
@@ -2385,9 +2392,20 @@ img[src^="/pieces/"] {
   flex-shrink: 0;
   box-sizing: border-box;
 }
-/* Р-РґРµСЃСЊ РјРѕР¶РЅРѕ РґРѕР±Р°РІРёС‚СЊ СЃС‚РёР»Рё С€СЂРёС„С‚РѕРІ РґР»СЏ .player-names РїРѕ РґР°РЅРЅС‹Рј РёР· Dev Mode */
 
-/* --- РЎРїРёСЃРѕРє С…РѕРґРѕРІ (С‡РµСЂРµРґРѕРІР°РЅРёРµ С†РІРµС‚РѕРІ РєР°Рє РЅР° РјР°РєРµС‚Рµ) --- */
+.player-info__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 4px 0;
+}
+
+.player-info__row--opponent {
+  justify-content: flex-start;
+}
+
+/* --- Список ходов (чередование цветов как на макете) --- */
 .move-pair {
   position: relative;
   display: flex;
@@ -2731,9 +2749,6 @@ img[src^="/pieces/"] {
   white-space: nowrap;
 }
 
-.bot-name {
-  text-align: right;
-}
 .vs-text {
   display: flex;
   align-items: center;
@@ -2743,15 +2758,15 @@ img[src^="/pieces/"] {
   top: 50%;
   transform: translate(-50%, -50%);
   z-index: 1;
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   flex-shrink: 0;
   border-radius: 50%;
   background: rgba(255, 253, 248, 0.96);
   border: 1px solid rgba(180, 135, 44, 0.6);
   box-shadow: 0 1px 2px rgba(74, 50, 32, 0.16);
   font-family: var(--font-ui);
-  font-size: 12px;
+  font-size: 11px;
   letter-spacing: 0.02em;
   color: #8a6a26;
   margin: 0;
@@ -2791,9 +2806,9 @@ img[src^="/pieces/"] {
 .bot-details {
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
+  align-items: flex-start;
   flex: 0 0 auto;
-  margin-left: auto;
+  margin-left: 0;
 }
 .player-rating,
 .bot-rating {
@@ -2803,7 +2818,8 @@ img[src^="/pieces/"] {
   letter-spacing: 0.03em;
   color: #837053;
   line-height: 1;
-  margin-bottom: 3px;
+  margin-top: 2px;
+  margin-bottom: 0;
   white-space: nowrap;
 }
 

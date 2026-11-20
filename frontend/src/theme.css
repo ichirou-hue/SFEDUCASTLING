@@ -200,14 +200,14 @@
   color: var(--sf-muted);
 }
 
-/* Жетон игрока: слева свой зелёный тон, справа - нейтральный тёмный. */
+/* Жетон игрока: сверху соперник (нейтральный тёмный), снизу свой зелёный тон. */
 :root[data-theme="dark"] .player-info {
   background: linear-gradient(
-    90deg,
-    rgba(102, 180, 128, 0.22) 0%,
-    rgba(102, 180, 128, 0.08) 45%,
-    rgba(246, 244, 239, 0.05) 55%,
-    rgba(246, 244, 239, 0.05) 100%
+    180deg,
+    rgba(246, 244, 239, 0.05) 0%,
+    rgba(246, 244, 239, 0.05) 46%,
+    rgba(102, 180, 128, 0.08) 54%,
+    rgba(102, 180, 128, 0.22) 100%
   );
   border-color: var(--sf-line);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
@@ -1409,7 +1409,6 @@
 }
 
 :root[data-theme="dark"] .user-profile-card,
-:root[data-theme="dark"] .user-profile-rating-section,
 :root[data-theme="dark"] .user-profile-progress-section,
 :root[data-theme="dark"] .user-profile-section,
 :root[data-theme="dark"] .user-profile-empty {

@@ -471,7 +471,6 @@
    ========================================================================= */
 
 :root[data-theme="light"] .user-profile-card,
-:root[data-theme="light"] .user-profile-rating-section,
 :root[data-theme="light"] .user-profile-progress-section,
 :root[data-theme="light"] .user-profile-section,
 :root[data-theme="light"] .admin-card,

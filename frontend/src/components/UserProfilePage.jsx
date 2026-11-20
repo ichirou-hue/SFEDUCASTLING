@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   changeNickname,
@@ -301,9 +301,22 @@ export default function UserProfilePage({ user, onUserChange }) {
   const [profile, setProfile] = useState(user || null);
   const [loading, setLoading] = useState(Boolean(user));
   const [error, setError] = useState("");
+  // Ошибку снимаем только при смене пользователя, а не при каждом обновлении
+  // user (серия, GigaCoin): иначе настоящая ошибка загрузки исчезает молча.
+  const lastUserIdRef = useRef(user?.id ?? null);
 
   useEffect(() => {
-    if (user) setProfile(user);
+    if (user) {
+      const sameUser = lastUserIdRef.current === user.id;
+      lastUserIdRef.current = user.id;
+      setProfile(user);
+      if (!sameUser) setError("");
+    } else if (!getAccessToken()) {
+      // Токена нет - пользователь вышел. Кэшированный профиль больше не
+      // показываем, иначе он выглядит как активная сессия.
+      lastUserIdRef.current = null;
+      setProfile(null);
+    }
   }, [user]);
 
   const handleNicknameChanged = useCallback(
@@ -319,6 +332,12 @@ export default function UserProfilePage({ user, onUserChange }) {
     let cancelled = false;
 
     async function loadProfile() {
+      // Без токена /me гарантированно вернёт 401. Не превращаем это
+      // в ошибку профиля: страница покажет приглашение войти.
+      if (!getAccessToken()) {
+        setLoading(false);
+        return;
+      }
       try {
         setLoading(true);
         setError("");
@@ -328,16 +347,17 @@ export default function UserProfilePage({ user, onUserChange }) {
         onUserChange?.(freshUser);
       } catch (err) {
         if (cancelled) return;
-        // Профиль мог отрисоваться из кэша localStorage, а /me вернул 401:
-        // вместо технического «Требуется авторизация» просим пройти анкету.
+        // 401 - истёкшая сессия: интерсептор уже очистил токены и открыл
+        // форму входа, а профиль ниже покажет приглашение войти. Не выдаём
+        // это за непройденную анкету: она хранится на сервере.
         const status = err?.response?.status;
-        setError(
-          status === 401
-            ? "Требуется пройти анкету"
-            : err?.response?.data?.detail ||
-                err?.message ||
-                "Не удалось обновить данные профиля.",
-        );
+        if (status !== 401) {
+          setError(
+            err?.response?.data?.detail ||
+              err?.message ||
+              "Не удалось обновить данные профиля.",
+          );
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -437,16 +457,6 @@ export default function UserProfilePage({ user, onUserChange }) {
       <UserRecordsWidget />
       <PhaseAccuracyWidget />
 
-      <section className="user-profile-rating-section">
-        <div className="user-profile-section-heading">
-          <div>
-            <h2>Прогресс уровня</h2>
-          </div>
-        </div>
-        <RatingBandProgress userId={profile?.id ?? user?.id} />
-      </section>
-
-
       <section className="user-profile-progress-section">
         <div className="user-profile-section-heading">
           <div>
@@ -454,6 +464,7 @@ export default function UserProfilePage({ user, onUserChange }) {
           </div>
         </div>
 
+        <RatingBandProgress compact userId={profile?.id ?? user?.id} />
         <ProgressWidget />
       </section>
       <SiteFooter />

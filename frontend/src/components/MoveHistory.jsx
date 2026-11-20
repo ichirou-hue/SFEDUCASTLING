@@ -30,6 +30,7 @@ export default function MoveHistory({
 
   const isPrevDisabled = safeHistory.length === 0 || viewIndex === 0;
   const isNextDisabled = safeHistory.length === 0 || viewIndex === -1;
+  const isEmpty = safeHistory.length === 0;
 
   // НОВОЕ: Группируем плоский массив строк в красивые пары (белые/черные)
   const movePairs = [];
@@ -43,7 +44,7 @@ export default function MoveHistory({
     });
   }
   return (
-    <div className="move-history-panel">
+    <div className={`move-history-panel${isEmpty ? " move-history-panel--empty" : ""}`}>
       <h3 className="history-title">История ходов</h3>
       <div className="title-separator"></div>
 
@@ -76,27 +77,31 @@ export default function MoveHistory({
         ))}
       </div>
 
-      {/* Карточка соперника - под списком ходов, рядом с навигацией */}
+      {/* Карточка игроков - под списком ходов, рядом с навигацией.
+          Соперник всегда сверху, игрок снизу - независимо от того,
+          какой стороной развёрнута доска. */}
       <div className="player-info">
-        {/* Левая часть: Пользователь */}
-        <div className="player-avatar">
-          <img src="/user-icon.svg" alt="Вы" />
-        </div>
-        <div className="player-details">
-          <span className="player-rating">{userRating || "1500"}</span>
-          <span className="player-name">Вы</span>
+        <div className="player-info__row player-info__row--opponent">
+          <div className="bot-avatar">
+            <img src="/bot-icon.svg" alt="Maia 3" />
+          </div>
+          <div className="bot-details">
+            <span className="bot-name">Maia 3</span>
+            {/* Сюда мы передаем проп с рейтингом от доски */}
+            <span className="bot-rating">{maiaRating}</span>
+          </div>
         </div>
 
         <div className="vs-text">VS</div>
 
-        {/* Правая часть: Бот Maia */}
-        <div className="bot-details">
-          <span className="bot-name">Maia 3</span>
-          {/* Сюда мы передаем проп с рейтингом от доски */}
-          <span className="bot-rating">{maiaRating}</span>
-        </div>
-        <div className="bot-avatar">
-          <img src="/bot-icon.svg" alt="Maia 3" />
+        <div className="player-info__row player-info__row--self">
+          <div className="player-avatar">
+            <img src="/user-icon.svg" alt="Вы" />
+          </div>
+          <div className="player-details">
+            <span className="player-name">Вы</span>
+            <span className="player-rating">{userRating || "1500"}</span>
+          </div>
         </div>
       </div>
 

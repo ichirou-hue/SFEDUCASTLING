@@ -40,7 +40,6 @@
 /* Промежутки между крупными блоками профиля задаёт gap контейнера. */
 .user-profile-page > .user-records,
 .user-profile-page > .phase-accuracy,
-.user-profile-page > .user-profile-rating-section,
 .user-profile-page > .user-profile-progress-section {
   margin-top: 0;
 }
@@ -63,7 +62,6 @@
 }
 
 .user-profile-card,
-.user-profile-rating-section,
 .user-profile-progress-section,
 .user-profile-empty {
   border: 1px solid rgba(34, 90, 115, 0.16);
@@ -142,12 +140,15 @@
   margin-top: 18px;
 }
 
-.user-profile-stat--coins {
+/* Баланс GigaCoin выделен золотом в обеих темах. Селекторы намеренно
+   специфичнее .user-profile-stat ниже: иначе базовый серый фон перекрывает
+   золотую заливку в светлой теме. */
+.user-profile-page .user-profile-stat.user-profile-stat--coins {
   border-color: rgba(180, 135, 44, 0.27);
   background: linear-gradient(135deg, #fffaf0, #f6f0df);
 }
 
-.user-profile-stat--coins strong {
+.user-profile-page .user-profile-stat.user-profile-stat--coins strong {
   color: #806127;
 }
 
@@ -186,16 +187,26 @@
   padding: 22px;
 }
 
-.user-profile-rating-section {
-  padding: 22px;
-  border: 1px solid rgba(34, 90, 115, 0.16);
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 10px 32px rgba(25, 52, 43, 0.07);
+/* Уровень встроен в блок «Прогресс»: это не отдельная карточка,
+   а заголовочная полоса виджета, отделённая тонкой линией. */
+.user-profile-progress-section .rating-band-progress--compact {
+  width: 100%;
+  padding: 0 0 16px;
+  margin-bottom: 16px;
+  border: none;
+  border-bottom: 1px solid rgba(34, 90, 115, 0.14);
+  border-radius: 0;
+  background: transparent;
 }
 
-.user-profile-rating-section .rating-band-progress {
-  width: min(100%, 620px);
+/* Виджет прогресса живёт внутри карточки «Прогресс»: убираем вторую
+   рамку, чтобы блок уровня и виджет читались как одна поверхность. */
+.user-profile-page .user-profile-progress-section .progress-widget {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .user-profile-section-heading {
@@ -407,7 +418,6 @@
 }
 
 :root[data-theme="dark"] .user-profile-page .user-profile-card,
-:root[data-theme="dark"] .user-profile-page .user-profile-rating-section,
 :root[data-theme="dark"] .user-profile-page .user-profile-progress-section,
 :root[data-theme="dark"] .user-profile-page .user-profile-section,
 :root[data-theme="dark"] .user-profile-page .user-profile-empty,
@@ -451,6 +461,17 @@
 :root[data-theme="dark"] .user-profile-page .user-profile-stat--coins {
   border-color: rgba(213, 180, 118, 0.3);
   background: linear-gradient(145deg, rgba(213, 180, 118, 0.13), rgba(213, 180, 118, 0.045));
+}
+
+:root[data-theme="dark"] .user-profile-page .user-profile-progress-section .rating-band-progress--compact {
+  border-bottom-color: rgba(213, 180, 118, 0.22);
+  background: transparent;
+}
+
+:root[data-theme="dark"] .user-profile-page .user-profile-progress-section .progress-widget {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .user-profile-page .user-profile-stat--link {

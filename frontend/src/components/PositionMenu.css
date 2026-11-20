@@ -11,14 +11,16 @@
 }
 
 .btn-position {
-  width: min(100%, 144px);
-  height: 34px;
-  gap: 8px;
+  width: auto;
+  min-width: 116px;
+  height: 30px;
+  padding: 0 16px;
+  gap: 7px;
   border-radius: 30px;
   background: #83b787;
   border: none;
   font-family: var(--font-ui);
-  font-size: 16px;
+  font-size: 14px;
   color: #333;
   cursor: pointer;
   display: flex;
@@ -47,14 +49,18 @@
   transform: rotate(180deg);
 }
 
-/* Всплывающее меню импорта/экспорта: открывается над кнопкой. */
+/* Всплывающее меню импорта/экспорта: открывается под кнопкой. История
+   ходов теперь по высоте контента, поэтому место над кнопкой не гарантировано. */
 .position-menu__panel {
   position: absolute;
   z-index: 60;
-  bottom: calc(100% + 10px);
+  top: calc(100% + 10px);
+  bottom: auto;
   left: 0;
   width: 372px;
   max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
   box-sizing: border-box;
   padding: 16px 18px 14px;
   border: 1px solid rgba(180, 135, 44, 0.55);
@@ -67,6 +73,12 @@
   color: #20332d;
   text-align: left;
   font-family: var(--font-ui);
+}
+
+/* Не хватило места под кнопкой - раскрываем вверх (см. useLayoutEffect). */
+.position-menu__panel--up {
+  top: auto;
+  bottom: calc(100% + 10px);
 }
 
 .position-menu__title {
@@ -190,6 +202,7 @@
 
   .position-menu__panel {
     position: fixed;
+    top: auto;
     right: 12px;
     bottom: calc(96px + env(safe-area-inset-bottom, 0px));
     left: 12px;
