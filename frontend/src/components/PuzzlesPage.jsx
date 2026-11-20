@@ -265,17 +265,19 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
     const layout = layoutRef.current;
     const boardSection = layout?.querySelector(".puzzle-board-section");
     const board = boardSection?.querySelector(".puzzle-board-wrapper");
+    const result = boardSection?.querySelector(".puzzle-result");
     const controls = boardSection?.querySelector(".puzzle-controls");
 
-    if (!layout || !boardSection || !board || !controls) return undefined;
+    if (!layout || !boardSection || !board || !result || !controls) return undefined;
 
     const measureRow = () => {
       const boardHeight = board.getBoundingClientRect().height;
       const controlsHeight = controls.getBoundingClientRect().height;
+      const resultHeight = result.getBoundingClientRect().height;
       const gap = parseFloat(getComputedStyle(boardSection).rowGap) || 0;
       layout.style.setProperty(
         "--puzzle-board-row-height",
-        `${Math.ceil(boardHeight + controlsHeight + gap)}px`,
+        `${Math.ceil(boardHeight + resultHeight + controlsHeight + 2 * gap)}px`,
       );
     };
 
@@ -1438,11 +1440,13 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
           )}
         </div>
 
-        {resultMessage && (
-          <div className={`puzzle-result puzzle-result--${resultMessage.type}`}>
-            {resultMessage.text}
-          </div>
-        )}
+        <div
+          className={`puzzle-result${resultMessage ? ` puzzle-result--${resultMessage.type}` : " puzzle-result--empty"}`}
+          role="status"
+          aria-live="polite"
+        >
+          {resultMessage?.text || ""}
+        </div>
 
         <div className="puzzle-controls">
           <button
