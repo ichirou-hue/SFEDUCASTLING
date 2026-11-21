@@ -103,6 +103,27 @@ function MainPage({ user }) {
     }
   };
 
+  // Если история открыта и ходы добавляются, её нижние кнопки могут уехать
+  // под фиксированную навигацию. Поднимаем страницу ровно на перекрытие.
+  useEffect(() => {
+    if (mobileGamePanel !== "history") return undefined;
+    const frame = requestAnimationFrame(() => {
+      const actions = document.querySelector(
+        ".main-area--mobile-history .action-buttons",
+      );
+      if (!actions) return;
+      const rect = actions.getBoundingClientRect();
+      const nav = document.querySelector(".top-nav")?.getBoundingClientRect();
+      const navTop = nav ? nav.top : window.innerHeight;
+      if (rect.top >= window.innerHeight) return;
+      const overlap = rect.bottom - (navTop - 16);
+      if (overlap > 0) {
+        window.scrollBy({ top: overlap, behavior: "smooth" });
+      }
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [boardState.moveHistory.length, mobileGamePanel]);
+
   return (
     // Своя скролл-колонка: футер в потоке контента (внизу при проскролле),
     // а не зафиксированной полосой поверх страницы.

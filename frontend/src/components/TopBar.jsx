@@ -96,7 +96,9 @@ export default function TopBar({ user, theme, onThemeChange, onUserChange, onReg
             onClick={handleLogout}
             aria-label="Выйти из аккаунта"
           >
-            <span className="top-bar-logout-icon" aria-hidden="true">⎋</span>
+            <svg className="top-bar-logout-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M10 4H5v16h5M14 8l4 4-4 4M8 12h10" />
+            </svg>
             <span className="top-bar-logout-label">Выйти</span>
           </button>
         </div>

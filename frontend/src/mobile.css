@@ -1330,9 +1330,7 @@
   }
 
   .top-bar-logout-icon {
-    display: inline;
-    font-size: 16px;
-    line-height: 1;
+    display: block;
   }
 }
 

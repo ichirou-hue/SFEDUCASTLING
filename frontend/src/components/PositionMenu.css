@@ -11,6 +11,7 @@
 }
 
 .btn-position {
+  position: relative;
   width: auto;
   min-width: 116px;
   height: 30px;
@@ -33,6 +34,13 @@
 .btn-position:hover,
 .btn-position[aria-expanded="true"] {
   background: #76a87a;
+}
+
+/* Компактная плашка остаётся 30px, но зона нажатия - не меньше 44px. */
+.btn-position::before {
+  content: "";
+  position: absolute;
+  inset: -7px -10px;
 }
 
 .btn-position__chevron {
