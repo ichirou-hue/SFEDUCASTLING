@@ -64,26 +64,6 @@ function OAuthCallbackPage({ onSuccess }) {
   );
 }
 
-const EVAL_MODE_KEY = "sfedu-eval-mode";
-
-function readEvalMode() {
-  try {
-    return window.localStorage.getItem(EVAL_MODE_KEY) === "engine"
-      ? "engine"
-      : "material";
-  } catch {
-    return "material";
-  }
-}
-
-function storeEvalMode(mode) {
-  try {
-    window.localStorage.setItem(EVAL_MODE_KEY, mode);
-  } catch {
-    // Приватный режим браузера: настройка просто не запомнится.
-  }
-}
-
 function MainPage({ user }) {
   const boardRef = useRef(null);
   const [boardState, setBoardState] = useState({
@@ -98,24 +78,8 @@ function MainPage({ user }) {
     maiaVictory: null,
     hintMessage: null,
     isComparing: false,
-    sidePickerOpen: true,
     levelLocked: false,
   });
-
-  /*
-   * Режим шкалы у доски: материальный перевес или оценка движка.
-   * Выбор запоминаем в браузере - это личная настройка показа,
-   * а не данные пользователя, поэтому server-side хранение не нужно.
-   */
-  const [evalMode, setEvalMode] = useState(readEvalMode);
-
-  const toggleEvalMode = () => {
-    setEvalMode((current) => {
-      const next = current === "engine" ? "material" : "engine";
-      storeEvalMode(next);
-      return next;
-    });
-  };
 
   /*
    * Чат можно свернуть в узкую полосу - тогда освободившаяся ширина
@@ -146,7 +110,6 @@ function MainPage({ user }) {
             maiaRating={boardState.maiaRating}
             userRating={user?.elo || undefined}
             onNavigate={(dir) => boardRef.current?.onNavigate(dir)}
-            navigationDisabled={boardState.sidePickerOpen}
             fen={boardState.fen}
             onLoadFen={(nextFen) =>
               boardRef.current?.loadFen?.(nextFen) ?? false
@@ -165,7 +128,6 @@ function MainPage({ user }) {
           <EvalBar
             diff={boardState.materialDiff}
             engineEval={boardState.evalScore}
-            mode={evalMode}
             flipped={boardState.boardFlipped}
             height={boardState.boardHeight}
           />
@@ -173,8 +135,6 @@ function MainPage({ user }) {
             ref={boardRef}
             onStateChange={setBoardState}
             chatCollapsed={chatCollapsed}
-            evalMode={evalMode}
-            onToggleEvalMode={toggleEvalMode}
           />
         </div>
         <ChatPanel
@@ -365,11 +325,11 @@ export default function App() {
     let gigacoinToastTimer;
     const showGigacoinReward = (event) => {
       const amount = Number(event?.detail?.amount || 0);
-      if (amount <= 0) return;
       const balance = Number(event?.detail?.balance);
       if (Number.isFinite(balance)) {
         setUser((current) => current ? { ...current, gigacoins: balance } : current);
       }
+      if (amount <= 0) return;
       setGigacoinToast({
         amount,
         balance: Number.isFinite(balance) ? balance : null,
@@ -425,6 +385,9 @@ export default function App() {
           aria-live="polite"
           aria-atomic="true"
         >
+          <span className="gigacoin-reward-toast__sparkles" aria-hidden="true">
+            {Array.from({ length: 8 }, (_, index) => <i key={index} />)}
+          </span>
           <span className="gigacoin-reward-toast__icon" aria-hidden="true">
             <svg viewBox="0 0 20 20">
               <circle cx="10" cy="10" r="7.2" />
@@ -433,7 +396,7 @@ export default function App() {
           </span>
           <span className="gigacoin-reward-toast__copy">
             <strong>
-              <span className="gigacoin-reward-toast__label">Получено</span>{" "}
+              <span className="gigacoin-reward-toast__label">Поздравляем!</span>{" "}
               <span className="gigacoin-reward-toast__amount">
                 +{gigacoinToast.amount} GigaCoin
               </span>
@@ -579,6 +542,14 @@ export default function App() {
         onDone={(freshUser) => {
           if (freshUser) setUser(freshUser);
           setShowOnboarding(false);
+          // Новичок, не знающий правил, идёт сразу в «Шахматную азбуку»:
+          // входной тест ему пока не нужен. Остальные - на тест уровня.
+          const knowsRules = freshUser?.onboarding?.answers?.knows_rules;
+          if (knowsRules === "no") {
+            setAutoStartTest(false);
+            navigate("/training?module=pieces");
+            return;
+          }
           // Сразу после анкеты - входной тест (страница сама его запускает).
           setAutoStartTest(true);
           navigate("/level-test");

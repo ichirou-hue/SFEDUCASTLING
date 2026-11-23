@@ -125,7 +125,7 @@
   color: #315d47;
   font-size: 12px;
   font-weight: 700;
-  text-align: right;
+  text-align: center;
   text-decoration: none;
 }
 
@@ -142,7 +142,7 @@
   margin-top: 0;
   padding-top: 0;
   border-top: 0;
-  text-align: left;
+  text-align: center;
 }
 
 .mini-profile__logout {

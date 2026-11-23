@@ -4,6 +4,7 @@ import {
   fetchGigacoinShop,
   getAccessToken,
   purchaseGigacoinCosmetic,
+  unequipGigacoinCosmetic,
 } from "../api.js";
 import "./GigacoinShop.css";
 
@@ -68,6 +69,23 @@ export default function GigacoinShop({ onUserChange }) {
     }
   };
 
+  const handleUnequip = async (item) => {
+    if (busyId) return;
+    setBusyId(item.id);
+    setNotice("");
+    setError("");
+    try {
+      const result = await unequipGigacoinCosmetic(item.id);
+      onUserChange?.(result.user);
+      setNotice(`${item.title}: снято.`);
+      await load();
+    } catch (err) {
+      setError(friendlyError(err, "Не удалось снять предмет. Попробуй ещё раз."));
+    } finally {
+      setBusyId("");
+    }
+  };
+
   if (!getAccessToken()) return null;
 
   const groups = Object.entries(SLOT_TITLES).map(([slot, title]) => ({
@@ -82,7 +100,7 @@ export default function GigacoinShop({ onUserChange }) {
         <div>
           <div className="user-profile-kicker">Косметика без влияния на игру</div>
           <h2 id="gigacoin-shop-title">Магазин GigaCoin</h2>
-          <p>Покупки постоянные. Купленные предметы можно бесплатно переключать.</p>
+          <p>Покупки постоянные. Купленные предметы можно бесплатно надевать, переключать и снимать.</p>
         </div>
         <div className="gigacoin-shop__balance" aria-live="polite">
           <span>Баланс</span><strong>✦ {Number(shop?.balance ?? 0).toLocaleString("ru-RU")}</strong>
@@ -103,21 +121,25 @@ export default function GigacoinShop({ onUserChange }) {
           <h3>{group.title}</h3>
           <div className="gigacoin-shop__grid">
             {group.items.map((item) => (
-              <article className={`gigacoin-shop__item gigacoin-shop__item--${item.id}`} key={item.id}>
+              <article className={`gigacoin-shop__item gigacoin-shop__item--${item.id}${item.equipped ? " is-equipped" : ""}`} key={item.id}>
                 <div className="gigacoin-shop__preview" aria-hidden="true">
                   {group.slot === "avatar_frame" ? <span className="gigacoin-shop__avatar">♟</span> : <span>✦</span>}
                 </div>
                 <div className="gigacoin-shop__copy">
                   <h4>{item.title}</h4>
                   <p>{item.description}</p>
-                  <strong className="gigacoin-shop__price">✦ {item.price}</strong>
+                  <div className="gigacoin-shop__meta">
+                    <strong className="gigacoin-shop__price">✦ {item.price}</strong>
+                    {item.equipped && <span className="gigacoin-shop__status">Надето</span>}
+                  </div>
                 </div>
                 <button
                   type="button"
-                  onClick={() => handleAction(item)}
+                  onClick={() => (item.equipped ? handleUnequip(item) : handleAction(item))}
                   disabled={Boolean(busyId) || (!item.owned && Number(shop?.balance || 0) < item.price)}
+                  aria-label={item.equipped ? `Снять ${item.title}` : undefined}
                 >
-                  {busyId === item.id ? "Подождите…" : item.equipped ? "Надето" : item.owned ? "Надеть" : "Купить"}
+                  {busyId === item.id ? "Подождите…" : item.equipped ? "Снять" : item.owned ? "Надеть" : "Купить"}
                 </button>
               </article>
             ))}

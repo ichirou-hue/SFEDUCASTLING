@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+  changeNickname,
   fetchCurrentUser,
   fetchLinkedChessAccounts,
   getAccessToken,
@@ -181,6 +182,120 @@ function LinkedAccountsSection() {
   );
 }
 
+/*
+ * Смена логина и отображаемого имени за GigaCoin. Старый логин освобождается.
+ * Каждая следующая смена дороже: цену и счётчик смен считает сервер.
+ */
+/*
+ * Дата последней смены логина. Сервер хранит время в UTC, но SQLite может
+ * отдать ISO-строку без зоны - тогда дописываем Z, иначе браузер примет
+ * её за локальное время и у даты появится сдвиг на часовой пояс.
+ */
+function formatNicknameChangedAt(value) {
+  if (!value) return null;
+  const normalized = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(value) ? value : `${value}Z`;
+  const date = new Date(normalized);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleDateString("ru-RU", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+function NicknameSection({ profile, onChanged }) {
+  const currentNickname = profile?.login || profile?.nickname || "";
+  const price = Number(profile?.nickname_change_price ?? 10);
+  const balance = Number(profile?.gigacoins || 0);
+  const changes = Number(profile?.nickname_changes || 0);
+  const changedAt = formatNicknameChangedAt(profile?.nickname_changed_at);
+  const [nickname, setNickname] = useState(currentNickname);
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState(null);
+
+  useEffect(() => {
+    setNickname(currentNickname);
+  }, [currentNickname]);
+
+  const trimmed = nickname.trim();
+  const canSubmit =
+    !busy &&
+    trimmed.length >= 3 &&
+    trimmed.length <= 32 &&
+    trimmed.toLocaleLowerCase("ru") !== currentNickname.toLocaleLowerCase("ru");
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    if (!canSubmit) return;
+    setBusy(true);
+    setNotice(null);
+    try {
+      const result = await changeNickname(trimmed);
+      onChanged?.(result.user);
+      setNickname(result.user?.login || result.user?.nickname || trimmed);
+      setNotice({
+        type: "ok",
+        text: `Логин изменён. Вход теперь выполняется по новому логину. Списано ${result.price_paid} GigaCoin, следующая смена будет стоить ${result.next_price}.`,
+      });
+    } catch (err) {
+      setNotice({
+        type: "error",
+        text:
+          err?.response?.data?.detail ||
+          err?.message ||
+          "Не удалось изменить никнейм. Попробуйте ещё раз.",
+      });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section className="user-profile-section">
+      <div className="user-profile-section-heading">
+        <div>
+          <div className="user-profile-kicker">Вход в аккаунт</div>
+          <h2>Логин</h2>
+        </div>
+        <p>
+          Смена логина стоит GigaCoin. После смены вход выполняется по новому
+          логину, а старый логин освобождается. Цена каждой следующей смены удваивается.
+        </p>
+      </div>
+
+      <form className="user-profile-account-form" onSubmit={handleSubmit}>
+        <input
+          type="text"
+          value={nickname}
+          onChange={(e) => setNickname(e.target.value)}
+          placeholder="Новый логин"
+          aria-label="Новый логин"
+          maxLength={32}
+          disabled={busy}
+        />
+        <button type="submit" disabled={!canSubmit}>
+          {busy ? "Меняем…" : `Сменить за ✦ ${price}`}
+        </button>
+      </form>
+
+      <p className="user-profile-muted">
+        Баланс: ✦ {balance.toLocaleString("ru-RU")}. Смен никнейма: {changes}.
+        {changedAt ? ` Последняя смена: ${changedAt}.` : ""}
+      </p>
+
+      {notice && (
+        <div
+          className={`user-profile-warning ${
+            notice.type === "ok" ? "user-profile-warning--ok" : ""
+          }`}
+        >
+          {notice.text}
+        </div>
+      )}
+    </section>
+  );
+}
+
 export default function UserProfilePage({ user, onUserChange }) {
   const navigate = useNavigate();
   const [profile, setProfile] = useState(user || null);
@@ -190,6 +305,15 @@ export default function UserProfilePage({ user, onUserChange }) {
   useEffect(() => {
     if (user) setProfile(user);
   }, [user]);
+
+  const handleNicknameChanged = useCallback(
+    (updatedUser) => {
+      if (!updatedUser) return;
+      setProfile(updatedUser);
+      onUserChange?.(updatedUser);
+    },
+    [onUserChange],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -204,10 +328,15 @@ export default function UserProfilePage({ user, onUserChange }) {
         onUserChange?.(freshUser);
       } catch (err) {
         if (cancelled) return;
+        // Профиль мог отрисоваться из кэша localStorage, а /me вернул 401:
+        // вместо технического «Требуется авторизация» просим пройти анкету.
+        const status = err?.response?.status;
         setError(
-          err?.response?.data?.detail ||
-            err?.message ||
-            "Не удалось обновить данные профиля.",
+          status === 401
+            ? "Требуется пройти анкету"
+            : err?.response?.data?.detail ||
+                err?.message ||
+                "Не удалось обновить данные профиля.",
         );
       } finally {
         if (!cancelled) setLoading(false);
@@ -240,7 +369,8 @@ export default function UserProfilePage({ user, onUserChange }) {
         <div className="user-profile-main">
           <div className="user-profile-heading">
             <div>
-              <h1>{profile?.login || "Пользователь"}</h1>
+              <div className="user-profile-kicker">Профиль пользователя</div>
+              <h1>{profile?.nickname || profile?.login || "Пользователь"}</h1>
             </div>
             {profile?.is_admin && (
               <span className="user-profile-badge">Администратор</span>
@@ -302,6 +432,8 @@ export default function UserProfilePage({ user, onUserChange }) {
         </div>
       </section>
 
+      <NicknameSection profile={profile} onChanged={handleNicknameChanged} />
+
       <UserRecordsWidget />
       <PhaseAccuracyWidget />
 
@@ -310,7 +442,6 @@ export default function UserProfilePage({ user, onUserChange }) {
           <div>
             <h2>Прогресс уровня</h2>
           </div>
-          <p>Путь от текущего уровня к следующему по рейтингу.</p>
         </div>
         <RatingBandProgress userId={profile?.id ?? user?.id} />
       </section>
@@ -321,9 +452,6 @@ export default function UserProfilePage({ user, onUserChange }) {
           <div>
             <h2>Прогресс</h2>
           </div>
-          <p>
-            Здесь объединены оба учебных трека: курс и шахматные задачи.
-          </p>
         </div>
 
         <ProgressWidget />

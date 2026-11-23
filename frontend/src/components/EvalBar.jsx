@@ -1,16 +1,13 @@
 import { useEffect, useRef } from "react";
 
 /*
- * Шкала двух режимов:
+ * Шкала показывает оценку Stockfish, переведённую в вероятность победы
+ * по кривой Lichess: разница в пешку почти не двигает шкалу, а
+ * разгромная позиция прижимает её к краю.
  *
- * - "material" - материальный перевес в пешках (как раньше);
- * - "engine"   - оценка Stockfish, переведённая в вероятность победы
- *                по кривой Lichess: разница в пешку почти не двигает
- *                шкалу, а разгромная позиция прижимает её к краю.
- *
- * Сам переключатель живёт не на шкале, а в панели управления доской:
- * на капсуле кнопка занимала место у доски и на узком экране мешала
- * читать оценку.
+ * Пока оценки нет (первый ответ движка ещё не пришёл или движок
+ * недоступен), шкала показывает материальный перевес в пешках - иначе
+ * пустая капсула выглядела бы как сломанная.
  */
 
 // Материальный перевес, при котором шкала упирается в край.
@@ -76,16 +73,13 @@ function engineLabelTitle(engineEval) {
 export default function EvalBar({
   diff = 0,
   engineEval = null,
-  mode = "material",
   flipped,
   height,
 }) {
   const barRef = useRef(null);
 
-  // Выбор пользователя и фактический режим шкалы расходятся, пока не
-  // пришла оценка движка: пустая капсула выглядела бы как сломанная,
-  // поэтому до первого ответа показываем материал.
-  const showEngine = mode === "engine" && Boolean(engineEval);
+  // Оценки ещё нет - до первого ответа движка показываем материал.
+  const showEngine = Boolean(engineEval);
   const signed = Number.isFinite(diff) ? diff : 0;
 
   /*
@@ -108,14 +102,12 @@ export default function EvalBar({
     bottomAdv = flipped ? -clamped : clamped;
     fillPct = 50 + (bottomAdv / MAX_MATERIAL) * 50;
     const rounded = Math.round(bottomAdv);
-    label = rounded === 0 ? "" : rounded > 0 ? `+${rounded}` : `${rounded}`;
+    label = rounded === 0 ? "0" : rounded > 0 ? `+${rounded}` : `${rounded}`;
   }
 
   const title = showEngine
-    ? `Оценка движка: ${engineLabelTitle(engineEval) || "0,0"}`
-    : mode === "engine"
-      ? "Оценка движка недоступна - показан материальный перевес"
-      : `Материальный перевес: ${label || "0"}`;
+    ? `Оценка Stockfish: ${engineLabelTitle(engineEval) || "0,0"}`
+    : "Оценка Stockfish недоступна - показан материальный перевес";
 
   /*
    * Шкала держится за игровое поле, а не за карточку целиком: сверху в
@@ -203,9 +195,7 @@ export default function EvalBar({
   return (
     <div
       ref={barRef}
-      className={`eval-bar${
-        flipped ? " eval-bar--bottom-black" : ""
-      }${showEngine ? " eval-bar--engine" : ""}`}
+      className={`eval-bar${flipped ? " eval-bar--bottom-black" : ""}`}
       style={{ height: height || undefined, "--eval-fill": `${fillPct}%` }}
       title={title}
       aria-label={title}

@@ -55,17 +55,17 @@ RATING_FEN = "k7/8/8/8/8/8/8/1R4K1 w - - 0 1"
 RATING_MOVES = "b1b8 a8a7 b8b7 a7a8 b7b1"
 RATING_PUZZLES = {
     "puzzles": [
-        # группа 1 (0-1000)
+        # группа 1 (0-999)
         {"id": "low1", "fen": RATING_FEN, "moves": RATING_MOVES, "rating": 500, "themes": ["fork"]},
         {"id": "low2", "fen": RATING_FEN, "moves": RATING_MOVES, "rating": 900, "themes": ["fork"]},
-        # группа 2 (1001-1500) - своя для рейтинга 1200
+        # группа 2 (1000-1499) - своя для рейтинга 1200
         {"id": "mid1", "fen": RATING_FEN, "moves": RATING_MOVES, "rating": 1200, "themes": ["pin"]},
         {"id": "mid2", "fen": RATING_FEN, "moves": RATING_MOVES, "rating": 1350, "themes": ["pin"]},
         {"id": "mid3", "fen": RATING_FEN, "moves": RATING_MOVES, "rating": 1400, "themes": ["fork"]},
-        # группа 3 (1501-1900) - соседняя, но выше потолка 1200+200=1400
+        # группа 3 (1500-1899) - соседняя, но выше потолка 1200+200=1400
         {"id": "high1", "fen": RATING_FEN, "moves": RATING_MOVES, "rating": 1600, "themes": ["sacrifice"]},
         {"id": "high2", "fen": RATING_FEN, "moves": RATING_MOVES, "rating": 1800, "themes": ["sacrifice"]},
-        # группа 4 (1901+) - отсекается и диапазоном, и потолком
+        # группа 4 (1900+) - отсекается и диапазоном, и потолком
         {"id": "top1", "fen": RATING_FEN, "moves": RATING_MOVES, "rating": 2100, "themes": ["sacrifice"]},
     ]
 }
@@ -104,7 +104,7 @@ def _level_test_pool() -> dict:
     """
     puzzles: list[dict] = []
     plan = [(1, 12), (2, 5), (3, 2), (4, 1)]
-    bounds = {1: (500, 1000), 2: (1001, 1500), 3: (1501, 1900), 4: (1901, 2000)}
+    bounds = {1: (500, 999), 2: (1000, 1499), 3: (1500, 1899), 4: (1900, 2000)}
     for group, count in plan:
         low, high = bounds[group]
         step = max(1, (high - low) // max(1, count))
@@ -364,6 +364,95 @@ class TestGigaCoinLearningRewards:
         assert second.json()["gigacoins_balance"] == 15
 
 
+class TestPuzzleStreakWithHint:
+    """Решение пазла с подсказкой сбрасывает серию (стрик) в 0."""
+
+    def test_hint_solve_resets_streak(self, cleanup):
+        token, _ = _registered_user(cleanup)
+        with patch(MATCH_ANCHOR, NEW_PUZZLES):
+            # Без подсказки: первый пазл поднимает серию до 1.
+            first = client.post(
+                "/api/learning/puzzle/attempt",
+                json={
+                    "puzzle_id": "a1",
+                    "correct": True,
+                    "player_moves": ["b1b8", "b8b7", "b7b1"],
+                },
+                headers=_headers(token),
+            )
+            assert first.status_code == 200, first.text
+            assert first.json()["puzzle_streak"] == 1
+
+            # С подсказкой: задача засчитана как решённая, но серия обнуляется.
+            hinted = client.post(
+                "/api/learning/puzzle/attempt",
+                json={
+                    "puzzle_id": "a2",
+                    "correct": True,
+                    "player_moves": ["b1b8", "b8b7", "b7b1"],
+                    "used_hint": True,
+                },
+                headers=_headers(token),
+            )
+            assert hinted.status_code == 200, hinted.text
+            assert hinted.json()["puzzle_streak"] == 0
+
+            # Снова без подсказки: серия растёт с нуля.
+            third = client.post(
+                "/api/learning/puzzle/attempt",
+                json={
+                    "puzzle_id": "a3",
+                    "correct": True,
+                    "player_moves": ["b1b8", "b8b7", "b7b1"],
+                },
+                headers=_headers(token),
+            )
+            assert third.status_code == 200, third.text
+            assert third.json()["puzzle_streak"] == 1
+
+
+class TestPuzzleStreakRetryAfterError:
+    """Пазл, на котором была ошибка, больше не может расти серию."""
+
+    def test_retry_after_error_does_not_grow_streak(self, cleanup):
+        token, _ = _registered_user(cleanup)
+        with patch(MATCH_ANCHOR, NEW_PUZZLES):
+            # Ошибка на a1 обнуляет серию.
+            failed = client.post(
+                "/api/learning/puzzle/attempt",
+                json={"puzzle_id": "a1", "correct": False, "player_moves": []},
+                headers=_headers(token),
+            )
+            assert failed.status_code == 200, failed.text
+            assert failed.json()["puzzle_streak"] == 0
+
+            # Повторное верное решение того же a1 серию не поднимает.
+            retry = client.post(
+                "/api/learning/puzzle/attempt",
+                json={
+                    "puzzle_id": "a1",
+                    "correct": True,
+                    "player_moves": ["b1b8", "b8b7", "b7b1"],
+                },
+                headers=_headers(token),
+            )
+            assert retry.status_code == 200, retry.text
+            assert retry.json()["puzzle_streak"] == 0
+
+            # Новый пазл a2 уже поднимает серию до 1.
+            fresh = client.post(
+                "/api/learning/puzzle/attempt",
+                json={
+                    "puzzle_id": "a2",
+                    "correct": True,
+                    "player_moves": ["b1b8", "b8b7", "b7b1"],
+                },
+                headers=_headers(token),
+            )
+            assert fresh.status_code == 200, fresh.text
+            assert fresh.json()["puzzle_streak"] == 1
+
+
 class TestLevelTestStart:
     def test_without_puzzle_base(self, cleanup):
         token = _authed_user(cleanup)
@@ -531,6 +620,12 @@ class TestLevelTestSubmitDeterminism:
         # задачам опускает её на 300 до нижней границы «Начального».
         assert result["rating"] == 500
         assert result["band"] == 1
+
+        # Реальный тест помечает placement: повторная анкета не должна
+        # принять это за автоматически назначенный минимум и всё сбросить.
+        me = client.get("/api/auth/me", headers=_headers(token))
+        assert me.status_code == 200, me.text
+        assert me.json()["user"]["onboarding"]["placement"] == "level_test"
 
     def test_unlinked_user_is_capped_even_with_perfect_score(self, cleanup):
         """Без Lichess/Chess.com итог не выше 800 при любом числе верных."""

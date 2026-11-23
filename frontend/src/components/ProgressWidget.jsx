@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  fetchLearningDifficulty,
   fetchLearningProgress,
   fetchTrainingProgress,
   fetchWeaknessProfile,
@@ -31,6 +32,10 @@ export default function ProgressWidget() {
   const [training, setTraining] = useState(null);
   const [learning, setLearning] = useState(null);
   const [weakness, setWeakness] = useState(null);
+  // Текущая B2-сложность по темам и правило её изменения. Отдельный запрос
+  // и fail-soft: если база паззлов ещё не загружена, виджет прогресса
+  // должен работать как раньше, просто без значков сложности.
+  const [difficulty, setDifficulty] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -39,6 +44,7 @@ export default function ProgressWidget() {
       setTraining(null);
       setLearning(null);
       setWeakness(null);
+      setDifficulty(null);
       setLoading(false);
       setError(null);
       return;
@@ -47,14 +53,17 @@ export default function ProgressWidget() {
     try {
       setLoading(true);
       setError(null);
-      const [trainingData, learningData, weaknessData] = await Promise.all([
-        fetchTrainingProgress(),
-        fetchLearningProgress(),
-        fetchWeaknessProfile(),
-      ]);
+      const [trainingData, learningData, weaknessData, difficultyData] =
+        await Promise.all([
+          fetchTrainingProgress(),
+          fetchLearningProgress(),
+          fetchWeaknessProfile(),
+          fetchLearningDifficulty().catch(() => null),
+        ]);
       setTraining(trainingData);
       setLearning(learningData);
       setWeakness(weaknessData);
+      setDifficulty(difficultyData);
     } catch (err) {
       setError(
         err?.response?.data?.detail ||
@@ -77,6 +86,15 @@ export default function ProgressWidget() {
     () => (weakness?.topics || []).filter((topic) => topic.attempts > 0),
     [weakness],
   );
+
+  // Сложность приходит отдельным списком; сопоставляем по слагу темы.
+  const difficultyBySlug = useMemo(() => {
+    const map = new Map();
+    (difficulty?.topics || []).forEach((topic) => {
+      map.set(topic.slug, topic);
+    });
+    return map;
+  }, [difficulty]);
 
   // Блок «Персональная тренировка» показываем, только когда профиль
   // настоящий с обеих сторон: есть подтверждённые попытками слабые темы
@@ -120,15 +138,12 @@ export default function ProgressWidget() {
   return (
     <section className="progress-widget" aria-label="Общий прогресс обучения">
       <div className="progress-widget__header">
-        <div className="progress-widget__streak-info">
-          <div className="progress-widget__streak" title="Серия дней занятий: 3+ разных решённых пазла или задание курса в день">
-            <span className="progress-widget__streak-icon">🔥</span>
-            <span>
-              <strong>{training?.streak ?? 0}</strong>
-              <small>дн. подряд</small>
-            </span>
-          </div>
-          <p className="progress-widget__streak-reward">За каждые 7 активных дней подряд: +10 GigaCoin</p>
+        <div className="progress-widget__streak" title="Серия дней занятий: 3+ разных решённых пазла или задание курса в день">
+          <span className="progress-widget__streak-icon">🔥</span>
+          <span>
+            <strong>{training?.streak ?? 0}</strong>
+            <small>дн. подряд</small>
+          </span>
         </div>
       </div>
 
@@ -192,30 +207,44 @@ export default function ProgressWidget() {
         </div>
       )}
 
-      {activeTopics.length > 0 ? (
+      {activeTopics.length > 0 && (
         <div className="progress-widget__topics">
           <div className="progress-topic-list">
-            {activeTopics.map((topic) => (
-              <div className="progress-topic" key={topic.slug}>
-                <span className="progress-topic__icon">
-                  {TOPIC_ICONS[topic.slug] || "♟"}
-                </span>
-                <span className="progress-topic__name">{topic.title}</span>
-                {topic.accuracy != null && (
-                  <span className="progress-topic__bar" aria-hidden="true">
-                    <span style={{ width: barWidth(topic.accuracy) }} />
+            {activeTopics.map((topic) => {
+              const info = difficultyBySlug.get(topic.slug);
+              return (
+                <div className="progress-topic" key={topic.slug}>
+                  <span className="progress-topic__icon">
+                    {TOPIC_ICONS[topic.slug] || "♟"}
                   </span>
-                )}
-                <strong>{percent(topic.accuracy)}</strong>
-              </div>
-            ))}
+                  <span className="progress-topic__name">{topic.title}</span>
+                  {info && (
+                    <span
+                      className="progress-topic__difficulty"
+                      title={`Задачи этой темы подбираются с рейтингом ${info.puzzle_rating_band.min}-${info.puzzle_rating_band.max}`}
+                    >
+                      ур. {info.current_difficulty}/3
+                    </span>
+                  )}
+                  {topic.accuracy != null && (
+                    <span className="progress-topic__bar" aria-hidden="true">
+                      <span style={{ width: barWidth(topic.accuracy) }} />
+                    </span>
+                  )}
+                  <strong>{percent(topic.accuracy)}</strong>
+                </div>
+              );
+            })}
           </div>
+          {difficulty?.rule && (
+            <p className="progress-widget__difficulty-rule">
+              Сложность тем подстраивается: растёт при точности выше{" "}
+              {difficulty.rule.increase_if_accuracy_gt}% и снижается ниже{" "}
+              {difficulty.rule.decrease_if_accuracy_lt}%.
+            </p>
+          )}
         </div>
-      ) : (
-          <div className="progress-widget__empty">
-            Выполните первое задание курса - здесь появится точность по темам.
-          </div>
-        )}
+      )}
     </section>
   );
 }

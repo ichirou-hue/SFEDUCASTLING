@@ -17,7 +17,12 @@ import PuzzleRegisterGate from "./PuzzleRegisterGate.jsx";
 import PuzzlePreviewGate from "./PuzzlePreviewGate.jsx";
 import SiteFooter from "./SiteFooter.jsx";
 import { getCheckState, getKingCheckStyle } from "../chessStatus.js";
-import { getCourseTopicForPuzzle, getCourseTopicMeta } from "../learningLinks.js";
+import { playMoveSound } from "../moveSound.js";
+import {
+  getCourseTopicForPuzzle,
+  getCourseTopicMeta,
+  getNextCourseTopicMeta,
+} from "../learningLinks.js";
 import "./LearningCrossLinks.css";
 
 const PIECE_IMAGES = {
@@ -38,7 +43,7 @@ const PIECE_IMAGES = {
 const customPieces = Object.fromEntries(
   Object.entries(PIECE_IMAGES).map(([code, src]) => [
     code,
-    () => <img src={src} style={{ width: "100%", height: "100%" }} />,
+    () => <img src={src} draggable={false} style={{ width: "100%", height: "100%" }} />,
   ]),
 );
 
@@ -260,17 +265,19 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
     const layout = layoutRef.current;
     const boardSection = layout?.querySelector(".puzzle-board-section");
     const board = boardSection?.querySelector(".puzzle-board-wrapper");
+    const result = boardSection?.querySelector(".puzzle-result");
     const controls = boardSection?.querySelector(".puzzle-controls");
 
-    if (!layout || !boardSection || !board || !controls) return undefined;
+    if (!layout || !boardSection || !board || !result || !controls) return undefined;
 
     const measureRow = () => {
       const boardHeight = board.getBoundingClientRect().height;
       const controlsHeight = controls.getBoundingClientRect().height;
+      const resultHeight = result.getBoundingClientRect().height;
       const gap = parseFloat(getComputedStyle(boardSection).rowGap) || 0;
       layout.style.setProperty(
         "--puzzle-board-row-height",
-        `${Math.ceil(boardHeight + controlsHeight + gap)}px`,
+        `${Math.ceil(boardHeight + resultHeight + controlsHeight + 2 * gap)}px`,
       );
     };
 
@@ -411,10 +418,16 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
   const solutionMovesRef = useRef([]);
   const playerMovesRef = useRef([]);
   const solutionIndexRef = useRef(0);
+  // Пользовался ли игрок подсказкой при решении текущей задачи. Решение
+  // с подсказкой сбрасывает серию пазлов в 0.
+  const usedHintRef = useRef(false);
   const puzzlesRef = useRef([]);
   // Уникальные задачи, решённые за текущую загрузку страницы. Повторное
   // решение той же задачи не приближает пробный лимит.
   const solvedPuzzleIdsRef = useRef(new Set());
+  // Задачи, на которых за эту загрузку страницы была ошибка. Пазл с ошибкой
+  // больше не может расти серию: его повторное решение нейтрально.
+  const failedPuzzleIdsRef = useRef(new Set());
   const loadSeqRef = useRef(0);
 
   useEffect(() => {
@@ -509,6 +522,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
       const moves = (puzzle.moves || "").trim().split(/\s+/).filter(Boolean);
       solutionMovesRef.current = moves;
       playerMovesRef.current = [];
+      usedHintRef.current = false;
       solutionIndexRef.current = 0;
       setMovesLeft(countPlayerMoves(puzzle.moves));
     },
@@ -521,6 +535,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
     setError(null);
     setSolvedCount(0);
     solvedPuzzleIdsRef.current = new Set();
+    failedPuzzleIdsRef.current = new Set();
     setAdaptiveMeta(null);
     setPreviewInfo(null);
 
@@ -605,6 +620,12 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
     getCourseTopicMeta(currentPuzzle?.adaptive_topic) ||
     requestedTopic ||
     getCourseTopicForPuzzle(currentPuzzle);
+  // Последняя задача текущей пачки: после её решения вместо автоперехода
+  // показываем выбор - следующая тема или список уроков.
+  const isLastPuzzle =
+    puzzles.length > 0 && currentIndex === puzzles.length - 1;
+  const completionTopic = requestedTopic || relatedCourseTopic;
+  const nextTopic = getNextCourseTopicMeta(completionTopic?.slug);
 
   // Пробный доступ исчерпан: либо бэкенд уже вернул пусто (лимит на сегодня
   // выбран), либо на третьей решённой задаче открыт гейт анкеты.
@@ -638,15 +659,29 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
   }, [navigate]);
 
   const savePuzzleProgress = useCallback(
-    (correct) => {
+    (correct, usedHint = false) => {
       if (!currentPuzzle?.id || !getAccessToken()) return;
       recordPuzzleAttempt(
         currentPuzzle.id,
         correct,
         correct ? playerMovesRef.current : [],
+        usedHint,
       )
-        .then(() => {
+        .then((data) => {
           window.dispatchEvent(new Event("sfedu-progress-updated"));
+          // Сервер - источник истины для серии: локальный счётчик
+          // синхронизируем с его значением. Так повторное решение пазла
+          // с ошибкой (в том числе с прошлых заходов на страницу) не
+          // оставляет завышенный локальный стрик.
+          const serverStreak = Number(data?.puzzle_streak);
+          if (Number.isFinite(serverStreak)) {
+            setStreak(serverStreak);
+            setBestStreak((prev) => {
+              const nextBest = Math.max(prev, serverStreak);
+              persistPuzzleStreak(serverStreak, nextBest);
+              return nextBest;
+            });
+          }
         })
         .catch(() => {
           // Ошибка статистики не должна мешать решению самой задачи.
@@ -714,6 +749,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
         if (!move) return false;
         playerMovesRef.current.push(`${move.from}${move.to}${move.promotion || ""}`.toLowerCase());
 
+        playMoveSound();
         setFen(game.fen());
         setLastMove({ from: sourceSquare, to: targetSquare });
         setSelectedSquare(null);
@@ -728,11 +764,30 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
 
         if (solutionIndexRef.current >= totalMoves) {
           setResultMessage({ type: "success", text: "Правильно! Задача решена!" });
+          // Пазл, на котором в этой загрузке страницы уже была ошибка,
+          // больше не может расти серию: его решение нейтрально.
+          const isFailedRetry = failedPuzzleIdsRef.current.has(currentPuzzle?.id);
           if (currentPuzzle?.id) {
             solvedPuzzleIdsRef.current.add(currentPuzzle.id);
           }
           setSolvedCount(solvedPuzzleIdsRef.current.size);
-          // Серия растёт: задача решена без неверных ставок
+          if (usedHintRef.current) {
+            // Решение с подсказкой не растягивает серию, а обрывает её:
+            // задача засчитана как решённая, стрик сбрасывается в 0.
+            persistPuzzleStreak(0, bestStreak);
+            setStreak(0);
+            setPuzzleSolved(true);
+            savePuzzleProgress(true, true);
+            return true;
+          }
+          if (isFailedRetry) {
+            // Серия не растёт за повторное решение пазла с ошибкой в прошлом,
+            // но и не обрывается (ошибка уже обнулила счётчик).
+            setPuzzleSolved(true);
+            savePuzzleProgress(true);
+            return true;
+          }
+          // Серия растёт: задача решена без подсказок и неверных ставок
           // (ошибка в ветке ниже уже обнулила счётчик).
           const nextStreak = streak + 1;
           const nextBestStreak = Math.max(bestStreak, nextStreak);
@@ -769,6 +824,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
                 promotion: oppPromo || "q",
               });
               if (oppMove) {
+                playMoveSound();
                 setFen(game.fen());
                 setLastMove({ from: oppFrom, to: oppTo });
                 solutionIndexRef.current++;
@@ -809,6 +865,11 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
       }
       persistPuzzleStreak(0, bestStreak);
       setStreak(0);
+      if (currentPuzzle?.id) {
+        // С этого момента пазл «пробован с ошибкой»: его повторное верное
+        // решение в этой сессии не будет расти серию.
+        failedPuzzleIdsRef.current.add(currentPuzzle.id);
+      }
       savePuzzleProgress(false);
       return false;
     },
@@ -922,6 +983,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
       const promo = uci.length > 4 ? uci[4] : undefined;
       const move = game.move({ from, to, promotion: promo || "q" });
       if (move) {
+        playMoveSound();
         setFen(game.fen());
         setLastMove({ from, to });
         i++;
@@ -939,6 +1001,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
     const nextUci = solutionMovesRef.current[solutionIndexRef.current];
     if (!nextUci) return;
 
+    usedHintRef.current = true;
     const from = nextUci.substring(0, 2);
     const to = nextUci.substring(2, 4);
 
@@ -954,6 +1017,21 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
     if (currentIndex < puzzles.length - 1) {
       setCurrentIndex((i) => i + 1);
     }
+  };
+
+  // Завершение набора: уводим на следующую тему курса либо в уроки по
+  // текущей теме (если тему определить не удалось - в общий список модулей).
+  const handleNextTopic = () => {
+    if (!nextTopic) return;
+    navigate(`/puzzles?topic=${encodeURIComponent(nextTopic.slug)}`);
+  };
+
+  const handleGoToLessons = () => {
+    if (completionTopic?.slug) {
+      navigate(`/training?module=${encodeURIComponent(completionTopic.slug)}`);
+      return;
+    }
+    navigate("/training");
   };
 
   // Автопереключение после решения: даём полюбоваться оверлеем «Задача
@@ -1200,15 +1278,6 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
           </div>
         </div>
 
-        {bestStreak > 0 && (
-          <div className="puzzle-streak-best">Рекорд серии: {bestStreak}</div>
-        )}
-
-        <details className="puzzle-rewards-details">
-          <summary>Награды за серию</summary>
-          <p>5 задач: +3 · 10: +5 · 20: +10 · 30: +15 GigaCoin</p>
-        </details>
-
         {showModeSwitcher && (
           <section className="puzzle-mode-card" aria-label="Режим задач">
             <div className="puzzle-mode-card-heading">
@@ -1358,6 +1427,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
                       <img
                         src={PIECE_IMAGES[`${pendingPromotion.color}${piece.toUpperCase()}`]}
                         alt=""
+                        draggable={false}
                       />
                       <span>{label}</span>
                     </button>
@@ -1383,7 +1453,31 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
                     🔥 Серия: {streak}
                   </div>
                 )}
-                {currentIndex < puzzles.length - 1 && (
+                {isLastPuzzle ? (
+                  <>
+                    <div className="puzzle-solved-hint">
+                      Вы прошли последнюю задачу набора.
+                    </div>
+                    <div className="puzzle-solved-actions">
+                      {nextTopic && (
+                        <button
+                          type="button"
+                          className="learning-crosslink puzzle-complete-primary"
+                          onClick={handleNextTopic}
+                        >
+                          Следующая тема: {nextTopic.icon} {nextTopic.title}
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className="learning-crosslink puzzle-complete-secondary"
+                        onClick={handleGoToLessons}
+                      >
+                        К урокам
+                      </button>
+                    </div>
+                  </>
+                ) : (
                   <div className="puzzle-solved-hint">
                     Следующая задача откроется автоматически…
                   </div>
@@ -1393,11 +1487,13 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
           )}
         </div>
 
-        {resultMessage && (
-          <div className={`puzzle-result puzzle-result--${resultMessage.type}`}>
-            {resultMessage.text}
-          </div>
-        )}
+        <div
+          className={`puzzle-result${resultMessage ? ` puzzle-result--${resultMessage.type}` : " puzzle-result--empty"}`}
+          role="status"
+          aria-live="polite"
+        >
+          {resultMessage?.text || ""}
+        </div>
 
         <div className="puzzle-controls">
           <button
@@ -1433,7 +1529,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
         <div className="puzzle-chat-section" ref={chatPanelRef}>
           <div className="chat-header">
             <div className="chat-avatar">
-              <span className="chat-avatar-glyph" aria-hidden="true">♘</span>
+              <span className="chat-avatar-glyph" aria-hidden="true"><span>♘</span></span>
             </div>
             <div className="chat-title-block">
               <h2 className="chat-panel-title">Шахматный гуру</h2>

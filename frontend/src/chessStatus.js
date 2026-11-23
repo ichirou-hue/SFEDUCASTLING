@@ -14,6 +14,19 @@ const NO_CHECK = Object.freeze({
   kingSquare: null,
 });
 
+/*
+ * Стартовая раскладка фигур. Сравниваем только её: счётчики ходов
+ * и права рокировки на «партия ещё не начата» не влияют.
+ */
+const STARTING_PLACEMENT =
+  "rnbqkbnr/pppppppp/8/8/8/8/pppppppp/rnbqkbnr";
+
+export function isStartingPosition(fen) {
+  if (typeof fen !== "string") return false;
+  const placement = fen.trim().split(/\s+/)[0].toLowerCase();
+  return placement === STARTING_PLACEMENT;
+}
+
 const CHECK_KING_STYLE = Object.freeze({
   backgroundImage:
     "radial-gradient(ellipse at center, rgba(220, 30, 30, 0.88) 0%, rgba(220, 30, 30, 0.72) 55%, rgba(220, 30, 30, 0.42) 100%)",

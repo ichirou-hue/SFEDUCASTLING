@@ -100,11 +100,30 @@ async def get_due_training_reviews(
     user_id: int,
     limit: int = 50,
     now: datetime | None = None,
+    locked_slugs: set[str] | None = None,
 ) -> list[dict]:
-    """Возвращает просроченные и уже наступившие повторения пользователя."""
+    """Возвращает просроченные и уже наступившие повторения пользователя.
+
+    ``locked_slugs`` - модули, закрытые пользователю по Elo. Фильтр стоит
+    в SQL, а не после выборки: иначе закрытые повторения занимали бы место
+    в ``limit`` и пользователь получал бы меньше доступных заданий.
+    """
     current = now or datetime.now(UTC)
     if current.tzinfo is None:
         current = current.replace(tzinfo=UTC)
+
+    conditions = [
+        TrainingReview.user_id == user_id,
+        TrainingReview.next_review_at <= current,
+        TrainingTask.enabled.is_(True),
+        TrainingLesson.enabled.is_(True),
+        TrainingModule.enabled.is_(True),
+    ]
+    if locked_slugs:
+        conditions.append(TrainingModule.slug.notin_(sorted(locked_slugs)))
+    # Публичный список курса определяется декларативными данными: строки
+    # БД, которых нет в MODULES, не должны попадать в повторения.
+    conditions.append(TrainingModule.slug.in_(COURSE_MODULE_SLUGS))
 
     rows = (
         await db.execute(
@@ -112,14 +131,7 @@ async def get_due_training_reviews(
             .join(TrainingTask, TrainingReview.task_id == TrainingTask.id)
             .join(TrainingLesson, TrainingTask.lesson_id == TrainingLesson.id)
             .join(TrainingModule, TrainingLesson.module_id == TrainingModule.id)
-            .where(
-                TrainingReview.user_id == user_id,
-                TrainingReview.next_review_at <= current,
-                TrainingTask.enabled.is_(True),
-                TrainingLesson.enabled.is_(True),
-                TrainingModule.enabled.is_(True),
-                TrainingModule.slug.in_(COURSE_MODULE_SLUGS),
-            )
+            .where(*conditions)
             .order_by(TrainingReview.next_review_at.asc(), TrainingReview.id.asc())
             .limit(limit)
         )

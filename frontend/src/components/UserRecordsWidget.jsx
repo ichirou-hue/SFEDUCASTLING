@@ -203,14 +203,14 @@ export default function UserRecordsWidget({ variant = "profile" }) {
           icon="♜"
           label="Победная серия"
           value={records.longest_win_streak}
-          detail={records.longest_win_streak ? "партий подряд · личный максимум" : "победы появятся после первой партии"}
+          detail={records.longest_win_streak ? "партий подряд, личный максимум" : "победы появятся после первой партии"}
           accent="green"
         />
         <MetricCard
           icon="♞"
           label="Серия задач"
           value={records.best_puzzle_streak}
-          detail={records.best_puzzle_streak ? "решено подряд · личный максимум" : "реши задачу, чтобы начать серию"}
+          detail={records.best_puzzle_streak ? "решено подряд, личный максимум" : "реши задачу, чтобы начать серию"}
           accent="blue"
         />
       </div>
@@ -219,7 +219,6 @@ export default function UserRecordsWidget({ variant = "profile" }) {
         <div className="user-records__activity-heading">
           <div>
             <h3>Твой ритм</h3>
-            <p>Занятия день за днём</p>
           </div>
           <div className="user-records__tabs" role="tablist" aria-label="Тип активности">
             {Object.entries(CHART_MODES).map(([key, config]) => (

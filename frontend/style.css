@@ -48,8 +48,9 @@ textarea {
   justify-content: stretch;
   align-items: stretch;
   gap: 24px;
-  width: auto;
-  margin: 10px 24px 0;
+  width: calc(100% - 48px);
+  max-width: 1630px;
+  margin: 10px auto 0;
   /* Ширину колонок при сворачивании чата анимирует ChatPanel.jsx
      через Web Animations API. CSS-transition здесь нельзя: переход
      между minmax() и 48px браузер делает дискретным скачком. */
@@ -70,7 +71,7 @@ textarea {
   display: flex;
   flex: initial;
   flex-direction: column;
-  gap: 12px;
+  gap: 24px;
   height: auto;
   min-height: 0;
   order: 1;
@@ -96,51 +97,68 @@ textarea {
   order: 1;
 }
 
+/* «Победы над Maia» - вторая карточка той же серии, что и история ходов:
+   та же золотая рамка, радиус и поверхность, поэтому блоки читаются
+   как один набор, а не как большой виджет и мелкая служебная плашка. */
 .maia-level-progress {
   flex: 0 0 auto;
-  padding: 12px;
-  border: 1px solid rgba(180, 135, 44, 0.58);
-  border-left: 3px solid rgba(180, 135, 44, 0.9);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+  padding: 16px 20px 18px;
+  border: 3px solid rgba(180, 135, 44, 0.85);
+  border-radius: 30px;
+  background: rgba(255, 255, 255, 0.87);
+  box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.25);
 }
 
 .maia-level-progress-title {
   color: #80652f;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.07em;
-  line-height: 1.3;
-  text-transform: uppercase;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: normal;
+  letter-spacing: 0.01em;
+  line-height: 1.15;
+  text-align: center;
+  text-transform: none;
 }
 
-.maia-level-progress-title span {
+.maia-level-progress-count {
+  display: inline-block;
+  margin-left: 4px;
   color: #4f4a3f;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
   font-variant-numeric: tabular-nums;
-  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+/* Линия стоит ровно посередине между заголовком и чипами. Снизу отступ
+   ровно такой, как задан, а сверху из него вычитаются ~3px межстрочного
+   «воздуха» под строчными буквами заголовка (line-height: 1.15) - иначе
+   зазор до надписи визуально выходит больше, чем до чипов. */
+.maia-level-progress .title-separator {
+  margin: 9px 0 12px;
 }
 
 .maia-level-progress-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 5px;
-  margin-top: 9px;
+  gap: 6px;
 }
 
 .maia-level-chip {
   display: flex;
   min-width: 0;
-  aspect-ratio: 1.45;
+  aspect-ratio: 1.3;
   align-items: center;
   justify-content: center;
   padding: 3px;
   border: 1px solid rgba(180, 135, 44, 0.16);
-  border-radius: 9px;
+  border-radius: 11px;
   background: rgba(243, 240, 232, 0.9);
   color: #6f6759;
   cursor: pointer;
-  font: 600 10px/1 var(--font-ui);
+  font: 600 12px/1 var(--font-ui);
   transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease, transform 0.16s ease;
 }
 
@@ -159,8 +177,10 @@ textarea {
    обычного hover-подъёма чипов. */
 .maia-level-progress-title .maia-level-progress-lock {
   display: block;
-  margin-top: 2px;
+  margin-top: 3px;
   color: #8a7a58;
+  font-family: var(--font-ui);
+  font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: none;
@@ -170,7 +190,7 @@ textarea {
   border-color: rgba(180, 135, 44, 0.58);
   background: rgba(201, 169, 110, 0.24);
   color: #765518;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 800;
 }
 
@@ -352,7 +372,10 @@ textarea {
   justify-content: center;
   flex-wrap: wrap;
   gap: 6px 18px;
-  padding: 7px 16px;
+  /* Снизу на 2px больше: сверху добавляется 1px рамки, а строчные буквы
+     садятся в строке чуть ниже её центра. Так текст встаёт ровно
+     посередине между верхней и нижней границами полосы. */
+  padding: 6px 16px 8px;
   border-top: 1px solid rgba(180, 135, 44, 0.35);
   background: rgba(255, 255, 255, 0.55);
   font-size: 12px;
@@ -620,6 +643,31 @@ textarea {
   }
 }
 
+.gigacoin-reward-toast {
+  left: 50%;
+  right: auto;
+  bottom: clamp(32px, 8vh, 90px);
+  width: min(420px, calc(100vw - 32px));
+  max-width: none;
+  justify-content: center;
+  padding: 22px 28px;
+  border: 1px solid #e9cd97;
+  border-radius: 24px;
+  pointer-events: none;
+  animation: reward-celebration-in 480ms cubic-bezier(.18,.85,.3,1.25) both,
+    gigacoin-toast-out 320ms ease-in 3.65s forwards;
+}
+.gigacoin-reward-toast__icon { flex-basis: 58px; width: 58px; height: 58px; animation: gigacoin-toast-icon-pop 650ms cubic-bezier(.18,1.6,.4,1) both; }
+.gigacoin-reward-toast__icon svg { width: 30px; height: 30px; }
+.gigacoin-reward-toast__label { display: block; color: #f6f4ef; font-size: 13px; }
+.gigacoin-reward-toast__amount { font-size: clamp(22px, 5vw, 30px); }
+.gigacoin-reward-toast__sparkles { position: absolute; inset: 0; pointer-events: none; }
+.gigacoin-reward-toast__sparkles i { position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; border-radius: 2px; background: #e9cd97; opacity: 0; animation: reward-spark 850ms ease-out both; }
+.gigacoin-reward-toast__sparkles i:nth-child(1) { --x:-155px; --y:-50px; animation-delay:100ms; }.gigacoin-reward-toast__sparkles i:nth-child(2) { --x:-110px; --y:-85px; animation-delay:180ms; }.gigacoin-reward-toast__sparkles i:nth-child(3) { --x:75px; --y:-90px; animation-delay:120ms; }.gigacoin-reward-toast__sparkles i:nth-child(4) { --x:155px; --y:-45px; animation-delay:210ms; }.gigacoin-reward-toast__sparkles i:nth-child(5) { --x:-145px; --y:55px; animation-delay:160ms; }.gigacoin-reward-toast__sparkles i:nth-child(6) { --x:-65px; --y:85px; animation-delay:230ms; }.gigacoin-reward-toast__sparkles i:nth-child(7) { --x:85px; --y:75px; animation-delay:170ms; }.gigacoin-reward-toast__sparkles i:nth-child(8) { --x:145px; --y:40px; animation-delay:250ms; }
+@keyframes reward-celebration-in { from { opacity:0; transform:translate(-50%,30px) scale(.75); } to { opacity:1; transform:translate(-50%,0) scale(1); } }
+@keyframes reward-spark { 0% { opacity:0; transform:translate(0,0) rotate(0); } 30% { opacity:1; } 100% { opacity:0; transform:translate(var(--x),var(--y)) rotate(120deg); } }
+@media (prefers-reduced-motion: reduce) { .gigacoin-reward-toast__sparkles { display:none; } .gigacoin-reward-toast { animation:none; transform:translateX(-50%); } }
+
 @media (prefers-reduced-motion: reduce) {
   .gigacoin-reward-toast,
   .gigacoin-reward-toast__icon {
@@ -670,15 +718,14 @@ textarea {
 }
 
 .board-section {
-  /* Центрируем всю связку «перевес + доска + кнопки» по вертикали
-     относительно колонок истории и чата. */
-  align-self: center;
+  /* Верх доски совпадает с верхом истории и чата. */
+  align-self: flex-start;
   flex: 0 0 auto;
   min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 12px;
   padding: 0;
   order: 2;
@@ -695,10 +742,10 @@ textarea {
   grid-area: board;
 }
 
-/* Строка материального перевеса верхней стороны: живёт над карточкой
-   доски, а не внутри неё. Высота фиксирована - появление перевеса не
-   сдвигает доску и не меняет её рассчитанный размер. */
+/* Строка материального перевеса верхней стороны находится под доской.
+   Её высота фиксирована, поэтому появление перевеса не сдвигает поле. */
 .board-material-row {
+  order: 1;
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -710,6 +757,7 @@ textarea {
 }
 
 .board-wrapper {
+  order: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -724,6 +772,28 @@ textarea {
   padding: 12px 16px;
   box-sizing: border-box;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+}
+
+/* Фигуры — это <img>, и браузер по умолчанию умеет выделять их
+   протяжкой мыши и тащить как картинки: можно было «схватить» сразу
+   несколько фигур и утащить их за пределы доски (а при вставке в поле
+   ввода получалась пустая строка — это картинка, а не текст).
+   Перетаскивание фигур обрабатывает сама доска (react-chessboard),
+   поэтому нативное поведение выключаем на всех досках, а не только
+   на игровой: селектор по src не зависит от разметки конкретной
+   страницы. */
+img[src^="/pieces/"] {
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
+.eval-board-surface,
+.chat-board,
+.puzzle-board-wrapper,
+.training-board-wrapper,
+.level-test-board-wrap {
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 /* Итог партии на главной доске (в духе chess.com):
@@ -742,6 +812,39 @@ textarea {
   border-radius: 15px;
   animation: gameoverFadeIn 0.25s ease;
 }
+
+.resign-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 25;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  border-radius: 15px;
+  background: rgba(7, 22, 24, .68);
+  backdrop-filter: blur(5px);
+}
+
+.resign-dialog {
+  width: min(100%, 390px);
+  padding: clamp(20px, 4vw, 30px);
+  border: 1px solid rgba(201, 169, 110, .65);
+  border-radius: 20px;
+  background: #10272a;
+  color: #f5eedf;
+  box-shadow: 0 20px 54px rgba(0, 0, 0, .45);
+  text-align: center;
+}
+
+.resign-dialog__eyebrow { color: #d6b77c; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
+.resign-dialog h2 { margin: 12px 0 8px; font-size: clamp(25px, 5vw, 32px); }
+.resign-dialog p { margin: 0; color: #d5ded8; line-height: 1.5; }
+.resign-dialog__actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
+.resign-dialog__actions button { flex: 1 1 140px; min-height: 44px; padding: 10px 14px; border-radius: 11px; font: inherit; font-weight: 600; cursor: pointer; }
+.resign-dialog__cancel { border: 1px solid #bd9b62; background: #dfc18a; color: #182a2a; }
+.resign-dialog__confirm { border: 1px solid #c46f5e; background: #8d3e32; color: #fff5ee; }
+.resign-dialog__actions button:hover { filter: brightness(1.1); }
+.resign-dialog__actions button:focus-visible { outline: 3px solid #f8dca2; outline-offset: 2px; }
 
 /* Карточка - одна вертикальная колонка: заголовок, причина и действия
    идут с общим ритмом, поэтому высота не скачет при появлении разбора. */
@@ -772,6 +875,20 @@ textarea {
 .gameover-card--draw {
   border-color: rgba(180, 135, 44, 0.85);
 }
+
+.gameover-coins {
+  width: 100%;
+  margin: 12px 0 4px;
+  padding: 12px 14px;
+  border: 1px solid rgba(94, 148, 99, .5);
+  border-radius: 12px;
+  background: rgba(94, 148, 99, .12);
+  color: #285d37;
+  font-size: clamp(18px, 4vw, 25px);
+  font-weight: 800;
+  line-height: 1.25;
+}
+.gameover-coins--loss { border-color: rgba(179, 84, 58, .5); background: rgba(179, 84, 58, .1); color: #8b3d2c; }
 
 /* Заголовок - тем же display-шрифтом, что и крупные заголовки сайта. */
 .gameover-title {
@@ -874,6 +991,7 @@ textarea {
   width: 100%;
   margin-top: 0;
 }
+.gameover-actions a.gameover-btn{display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
 
 /* Итог разбора: три звезды, точность и счётчики ходов игрока. */
 .gameover-review {
@@ -1115,12 +1233,6 @@ textarea {
   box-shadow: 0 1px 3px rgba(74, 50, 32, 0.22);
 }
 
-/* Шкала в режиме движка: золотая риска границы становится ярче, чтобы
-   режим отличался от материального без дополнительных подписей. */
-.eval-bar--engine .eval-bar-fill {
-  border-top-color: rgba(201, 154, 62, 1);
-}
-
 .maia-engine-error {
   width: 100%;
   display: flex;
@@ -1159,6 +1271,7 @@ textarea {
 /* Кнопки живут под рамкой доски, как на вкладке «Задачи»: отдельная
    центрированная строка, а не нижняя панель карточки. */
 .controls-row {
+  order: 2;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1286,6 +1399,22 @@ textarea {
   opacity: 0.65;
 }
 
+.ctrl-btn--resign {
+  border: 1px solid rgba(179, 84, 58, 0.55);
+  background: #f7e7e2;
+  color: #8b3d2c;
+}
+
+.ctrl-btn--resign:hover:not(:disabled) {
+  border-color: rgba(179, 84, 58, 0.85);
+  background: #f1d7d0;
+}
+
+.ctrl-btn--resign:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
 /* Постоянная кнопка разбора под доской: итоговую карточку можно
    закрыть кликом по фону, а разбор должен остаться доступным. */
 .ctrl-btn--review {
@@ -1302,15 +1431,9 @@ textarea {
   opacity: 0.65;
 }
 
-/* Переключатель шкалы: «Материал / Движок». Живёт в панели управления
-   доской - на самой шкале кнопка больше не нужна. */
-.ctrl-btn--eval-mode {
-  display: inline-block;
-}
-
 @media (max-width: 1150px) {
   /* Кнопки под доской на узком экране переносятся, а не вылезают
-     за край: к переключателю шкалы добавляется ещё одна плашка. */
+     за край. */
   .controls-actions {
     gap: 10px;
   }
@@ -1318,10 +1441,6 @@ textarea {
   .ctrl-btn {
     padding: 9px 18px;
     font-size: 15px;
-  }
-
-  .ctrl-btn--eval-mode {
-    min-width: 0;
   }
 }
 
@@ -1460,7 +1579,7 @@ textarea {
 }
 
 .move-pair span {
-  padding: 4px 10px;
+  padding: 2px 3px;
   border-radius: 8px;
   cursor: pointer;
   transition: background 0.2s;
@@ -1522,6 +1641,9 @@ textarea {
 
   /* Скруглённые углы: содержимое не должно вылезать за рамку. */
   overflow: hidden;
+
+  /* Каталог дебютов позиционируется поверх ленты сообщений. */
+  position: relative;
 }
 
 /* --- Свёрнутый чат --- */
@@ -1604,6 +1726,8 @@ textarea {
 
 /* Аватар ассистента в маленьком золотом кольце. */
 .chat-strip-avatar {
+  display: grid;
+  place-items: center;
   width: 34px;
   height: 34px;
   flex: 0 0 34px;
@@ -1613,6 +1737,14 @@ textarea {
   background: rgba(255, 253, 248, 0.95);
   border: 1px solid rgba(180, 135, 44, 0.5);
   box-shadow: 0 1px 4px rgba(74, 50, 32, 0.12);
+}
+
+.chat-strip-avatar-glyph {
+  display: block;
+  font-family: "Segoe UI Symbol", "Noto Sans Symbols 2", serif;
+  font-size: 22px;
+  line-height: 1;
+  transform: translateY(1px);
 }
 
 .chat-strip-avatar img {
@@ -1628,21 +1760,13 @@ textarea {
   color: #3f6a46;
 }
 
-/* Подпись читается снизу вверх - вертикальная, чтобы влезть в 48px. */
-.chat-strip-title {
-  margin: auto 0;
-  writing-mode: vertical-rl;
-  font-family: var(--font-ui);
-  font-size: 13px;
-  letter-spacing: 0.06em;
-  color: #456b4b;
-  white-space: nowrap;
-}
-
 /* --- Шапка чата --- */
 .chat-header {
   padding: 16px 24px 14px;
-  display: flex;
+  display: grid;
+  /* Симметричные боковые колонки держат заголовок ровно по центру панели,
+     независимо от ширины аватара и кнопки сворачивания. */
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: 16px;
   flex-shrink: 0;
@@ -1669,6 +1793,10 @@ textarea {
 }
 
 /* Аватар ассистента в золотом кольце на бумажной подложке. */
+.chat-avatar {
+  justify-self: start;
+}
+
 .chat-avatar img {
   width: 52px;
   height: 52px;
@@ -1688,6 +1816,7 @@ textarea {
   width: 44px;
   height: 44px;
   box-sizing: border-box;
+  padding: 0;
   border: 1px solid rgba(34, 90, 115, 0.2);
   border-radius: 12px;
   background: rgba(34, 90, 115, 0.08);
@@ -1696,10 +1825,14 @@ textarea {
   font-size: 32px;
   line-height: 1;
 }
+.chat-avatar-glyph > span { display: block; transform: translate(-1px, 1px); }
 
 .chat-title-block {
   display: flex;
   flex-direction: column;
+  align-items: center;
+  min-width: 0;
+  text-align: center;
 }
 
 .chat-title-block h2 {
@@ -1733,6 +1866,7 @@ textarea {
    волоском, по hover становится плотнее. */
 .chat-collapse-btn {
   margin-left: auto;
+  justify-self: end;
   flex: 0 0 auto;
   width: 34px;
   height: 34px;
@@ -1765,6 +1899,146 @@ textarea {
 .chat-collapse-btn:focus-visible {
   outline: 2px solid rgba(47, 92, 54, 0.55);
   outline-offset: 2px;
+}
+
+/* Кнопки в шапке: каталог дебютов + свернуть. */
+.chat-header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-left: auto;
+  justify-self: end;
+}
+
+.chat-catalog-toggle {
+  font-size: 15px;
+}
+
+/* --- Каталог дебютов поверх ленты сообщений --- */
+.chat-catalog {
+  position: absolute;
+  inset: 62px 12px 12px;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 14px 14px 10px;
+  border: 1px solid rgba(180, 135, 44, 0.6);
+  border-radius: 20px;
+  background: rgba(255, 253, 248, 0.97);
+  box-shadow: 0 12px 28px rgba(25, 52, 43, 0.22);
+}
+
+.chat-catalog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+  color: #3f6a46;
+  font-size: 15px;
+}
+
+.chat-catalog-close {
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid rgba(180, 135, 44, 0.45);
+  border-radius: 50%;
+  background: rgba(255, 253, 248, 0.75);
+  color: #3f6a46;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.chat-catalog-close:hover {
+  background: #fffdf8;
+  border-color: rgba(180, 135, 44, 0.75);
+}
+
+.chat-catalog-search {
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid rgba(180, 135, 44, 0.4);
+  border-radius: 10px;
+  background: rgba(255, 253, 248, 0.85);
+  color: #333;
+  font: inherit;
+  font-size: 13px;
+}
+
+.chat-catalog-search:focus {
+  outline: none;
+  border-color: #83b787;
+  box-shadow: 0 0 0 3px rgba(131, 183, 135, 0.16);
+}
+
+.chat-catalog-list {
+  flex: 1;
+  min-height: 0;
+  margin-top: 10px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.chat-catalog-item {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 1px 8px;
+  padding: 7px 8px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.chat-catalog-item:hover {
+  background: rgba(131, 183, 135, 0.14);
+  border-color: rgba(131, 183, 135, 0.45);
+}
+
+.chat-catalog-eco {
+  grid-row: 1 / span 2;
+  align-self: center;
+  color: #8b7440;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.chat-catalog-name {
+  overflow: hidden;
+  color: #2f4b35;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-catalog-line {
+  overflow: hidden;
+  color: #7d8478;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-catalog-note {
+  padding: 10px 4px;
+  color: #7d8478;
+  font-size: 12px;
+}
+
+.chat-catalog-note--error {
+  color: #9a3f38;
 }
 
 /* --- Лента сообщений --- */
@@ -2085,7 +2359,9 @@ textarea {
 .move-list {
   flex: 1;
   min-height: 0;
-  max-height: 280px; /* Пять строк истории по 56px. */
+  max-height: 200px; /* Примерно пять строк истории по 36px. */
+  /* Keep the controls at the bottom when the capped list leaves free space. */
+  margin-bottom: auto;
   overflow-y: auto;
   padding-right: 8px;
 }
@@ -2125,8 +2401,9 @@ textarea {
 .player-info {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 2px;
+  position: relative;
   border-radius: 999px;
   /* Чистая двухцветная заливка вместо размытого диагонального градиента:
      своя половина с зелёным подтоном, половина соперника - тёплая бумага.
@@ -2157,9 +2434,12 @@ textarea {
   position: relative;
   display: flex;
   align-items: center;
-  padding: 12px 6px;
+  height: auto;
+  min-height: 36px;
+  padding: 5px 3px;
   font-family: var(--font-ui);
-  font-size: 22px;
+  font-size: clamp(13px, 1.05vw, 15px);
+  line-height: 1.25;
   color: #333;
 }
 
@@ -2191,7 +2471,7 @@ textarea {
   border-radius: 10px;
 }
 .move-pair span {
-  padding: 4px 10px;
+  padding: 2px 3px;
   border-radius: 8px;
   cursor: pointer;
   transition: background 0.2s;
@@ -2201,14 +2481,14 @@ textarea {
   justify-content: center;
   align-items: center;
   text-align: center;
-  min-width: 45px; /* Р§С‚РѕР±С‹ РІСЃРµ РїР»Р°С€РєРё Р±С‹Р»Рё РѕРґРёРЅР°РєРѕРІРѕР№ С€РёСЂРёРЅС‹ Рё СЃРјРѕС‚СЂРµР»РёСЃСЊ СЃРёРјРјРµС‚СЂРёС‡РЅРѕ */
+  min-width: 30px; /* Р§С‚РѕР±С‹ РІСЃРµ РїР»Р°С€РєРё Р±С‹Р»Рё РѕРґРёРЅР°РєРѕРІРѕР№ С€РёСЂРёРЅС‹ Рё СЃРјРѕС‚СЂРµР»РёСЃСЊ СЃРёРјРјРµС‚СЂРёС‡РЅРѕ */
 }
 .move-pair .num {
-  flex: 0 0 32px;
-  width: 32px;
+  flex: 0 0 24px;
+  width: 24px;
   padding-inline: 0;
   color: #555;
-  font-size: 22px;
+  font-size: 13px;
 }
 .move-pair .move-w {
   flex: 1 1 0;
@@ -2347,14 +2627,14 @@ textarea {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
   margin-bottom: 16px;
 }
 
 /* Р”РµР»Р°РµРј СЃР°РјСѓ РєРЅРѕРїРєСѓ РЅРµРІРёРґРёРјРѕР№ РѕР±РµСЂС‚РєРѕР№ РґР»СЏ SVG */
 .arrow-btn {
-  width: 55px;
-  height: 44px;
+  width: 40px;
+  height: 32px;
   background: transparent; /* РЈР±РёСЂР°РµРј Р·РµР»РµРЅС‹Р№ С„РѕРЅ РёР· CSS, С„РѕРЅ С‚РµРїРµСЂСЊ РІРЅСѓС‚СЂРё SVG */
   border: none;
   padding: 0;
@@ -2363,6 +2643,12 @@ textarea {
   justify-content: center;
   align-items: center;
   transition: transform 0.2s; /* Р›РµРіРєР°СЏ Р°РЅРёРјР°С†РёСЏ РїСЂРё РЅР°РІРµРґРµРЅРёРё */
+}
+
+/* SVG стрелок масштабируется вместе с кнопкой. */
+.arrow-btn svg {
+  width: 100%;
+  height: 100%;
 }
 
 /* РџСЂРё РЅР°РІРµРґРµРЅРёРё РєРЅРѕРїРєР° Р±СѓРґРµС‚ СЃР»РµРіРєР° СѓРІРµР»РёС‡РёРІР°С‚СЊСЃСЏ (РІРјРµСЃС‚Рѕ СЃРјРµРЅС‹ С†РІРµС‚Р°) */
@@ -2494,6 +2780,11 @@ textarea {
   display: flex;
   align-items: center;
   justify-content: center;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1;
   width: 28px;
   height: 28px;
   flex-shrink: 0;
@@ -2505,7 +2796,7 @@ textarea {
   font-size: 12px;
   letter-spacing: 0.02em;
   color: #8a6a26;
-  margin: 0 2px;
+  margin: 0;
 }
 
 /* РЎС‚РёР»РёР·Р°С†РёСЏ Р°РІР°С‚Р°СЂРѕРє (РµСЃР»Рё С‚С‹ РЅРµ СЌРєСЃРїРѕСЂС‚РёСЂСѓРµС€СЊ РёС… СЃ С„РѕРЅРѕРј) */
@@ -2544,6 +2835,7 @@ textarea {
   flex-direction: column;
   align-items: flex-end;
   flex: 0 0 auto;
+  margin-left: auto;
 }
 .player-rating,
 .bot-rating {
@@ -2764,6 +3056,9 @@ textarea {
   padding: 40px 36px;
 }
 .auth-side--brand {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   background: linear-gradient(160deg, rgba(201, 169, 110, 0.22), rgba(131, 183, 135, 0.18));
   border-right: 1px solid rgba(201, 169, 110, 0.4);
 }
@@ -2773,17 +3068,8 @@ textarea {
   justify-content: center;
 }
 
-/* --- Бренд --- */
-.auth-brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 22px;
-}
-.auth-brand-icon {
-  font-size: 30px;
-  color: #b88a3e;
-}
+/* Бренд на странице OAuth-колбэка (app.jsx); в модалке заголовок
+   начинается сразу с названия шага, без отдельной надписи. */
 .auth-brand-name {
   font-family: var(--font-ui);
   font-weight: 800;
@@ -2793,27 +3079,36 @@ textarea {
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
   text-transform: uppercase;
 }
-
+/* Крупные заголовки сайта набраны Calypso — шапка модалки следует
+   той же системе. */
 .auth-title {
-  font-family: var(--font-ui);
+  font-family: var(--font-display);
   font-weight: normal;
-  font-size: 30px;
-  line-height: 1.1;
+  font-size: 36px;
+  line-height: 1.05;
+  letter-spacing: 0.01em;
   color: #2f5c36;
-  margin: 0 0 8px;
+  margin: 0 0 12px;
 }
 .auth-subtitle {
   font-family: var(--font-ui);
-  font-size: 17px;
-  color: #6b7a6e;
-  line-height: 1.35;
-  margin: 0 0 24px;
+  font-size: 15px;
+  color: #66746b;
+  line-height: 1.55;
+  margin: 0 0 26px;
   max-width: 380px;
+}
+/* В двухколоночной модалке описание тянется на всю ширину панели:
+   иначе оно рвётся на три короткие строки и не совпадает с карточкой. */
+.auth-side--brand .auth-subtitle {
+  max-width: none;
+  text-wrap: pretty;
 }
 
 /* --- Секция импорта --- */
 .auth-section {
   padding: 18px;
+  margin-top: 24px;
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.55);
   border: 1px solid rgba(180, 200, 175, 0.6);
@@ -2823,15 +3118,19 @@ textarea {
   align-items: baseline;
   justify-content: space-between;
   margin-bottom: 12px;
+  padding: 0 14px;
 }
 .auth-section-label {
   font-family: var(--font-ui);
-  font-size: 16px;
-  color: #3a513f;
-  letter-spacing: 0.02em;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #8d6d31;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 .auth-optional {
-  font-size: 13px;
+  font-size: 12px;
   color: #8a908b;
 }
 
@@ -3011,6 +3310,7 @@ textarea {
 }
 .auth-label-text {
   display: block;
+  padding-left: 15px;
   font-size: 15px;
   color: #555;
   margin-bottom: 6px;
@@ -3117,11 +3417,14 @@ textarea {
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  margin-top: 14px;
+  margin: 14px 0;
   padding: 12px 14px;
   border: 1px solid rgba(150, 190, 160, 0.7);
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.55);
+}
+.auth-consent + .auth-submit {
+  margin-top: 0;
 }
 .auth-consent-input {
   width: 18px;
@@ -3167,10 +3470,6 @@ textarea {
 
 .auth-link-head {
   margin-bottom: 18px;
-}
-
-.auth-link-head .auth-brand {
-  margin-bottom: 16px;
 }
 
 .auth-link-head .auth-subtitle {
@@ -3470,6 +3769,14 @@ textarea {
   justify-content: flex-start;
 }
 
+/* В левой колонке задач расстояние между карточками задаёт flex-gap.
+   У кросс-ссылки свой margin-top для других контекстов — здесь он
+   удваивал зазор перед кнопкой «Пройти урок по теме», поэтому
+   обнуляем его только внутри панели. */
+.puzzle-info-panel .learning-crosslink--compact {
+  margin-top: 0;
+}
+
 .puzzle-info-heading {
   position: relative;
   display: flex;
@@ -3609,15 +3916,9 @@ textarea {
   background: rgba(255, 255, 255, .45);
 }
 
-.puzzle-quick-stat span,
-.puzzle-streak-best {
+.puzzle-quick-stat span {
   color: #77817b;
   font: 600 11px/1.3 var(--font-ui);
-}
-
-.puzzle-quick-stat-hint {
-  color: #77817b;
-  font: 500 10px/1.25 var(--font-ui);
 }
 
 .puzzle-quick-stat strong {
@@ -3628,21 +3929,6 @@ textarea {
 
 .puzzle-quick-stat strong.puzzle-streak-value--hot {
   color: #b3541e;
-}
-
-.puzzle-rewards-details {
-  width: 100%;
-  color: #68736c;
-  font: 500 10px/1.4 var(--font-ui);
-}
-
-.puzzle-rewards-details summary {
-  cursor: pointer;
-  text-underline-offset: 2px;
-}
-
-.puzzle-rewards-details p {
-  padding: 5px 0 0 12px;
 }
 
 .puzzle-mode-card {
@@ -3728,12 +4014,6 @@ textarea {
   color: #b3541e;
 }
 
-.puzzle-streak-best {
-  font-family: var(--font-ui);
-  font-size: 12px;
-  color: #888;
-}
-
 /* Строчка серии в оверлее "Задача решена!". */
 .puzzle-solved-streak {
   margin-top: 6px;
@@ -3789,11 +4069,20 @@ textarea {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: flex-start;
   gap: 12px;
 }
 
 .puzzle-board-wrapper {
   position: relative;
+  /* Как .board-wrapper на «Игре»: доска центрируется в рамке по обеим
+     осям, а строчный baseline-зазор у .puzzle-board-surface исчезает. */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  max-width: 100%;
   border-radius: 15px;
   border: 3px solid rgba(180, 135, 44, 0.85);
   background: #f0f2ea;
@@ -3970,7 +4259,43 @@ textarea {
   font: 500 12px/1.4 var(--font-ui);
 }
 
+/* Завершение набора: выбор следующей темы или переход к урокам. */
+.puzzle-solved-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.puzzle-solved-actions .learning-crosslink {
+  min-height: 34px;
+  padding: 7px 12px;
+  border-radius: 10px;
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.puzzle-solved-actions .puzzle-complete-primary {
+  border-color: rgba(201, 169, 110, 0.85);
+  background: #e7c884;
+  color: #3d2a10;
+}
+
+.puzzle-solved-actions .puzzle-complete-primary:hover {
+  background: #f0d79f;
+  box-shadow: 0 6px 18px rgba(201, 169, 110, 0.28);
+}
+
 .puzzle-result {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 100%;
+  height: 72px;
+  overflow: hidden;
   font-family: var(--font-ui);
   font-size: 18px;
   padding: 10px 20px;
@@ -3978,6 +4303,7 @@ textarea {
   text-align: center;
   max-width: 100%;
 }
+.puzzle-result--empty { visibility: hidden; }
 .puzzle-result--success {
   background: rgba(131, 183, 135, 0.35);
   color: #2f5c36;
@@ -4248,13 +4574,6 @@ textarea {
   font-size: 15px;
 }
 
-.training-hero p {
-  width: min(100%, 820px);
-  max-width: 820px;
-  margin: 0 auto 16px;
-  text-align: center;
-}
-
 .training-hero .rating-band-progress {
   align-self: center;
   text-align: center;
@@ -4357,7 +4676,8 @@ textarea {
   width: 100%;
 }
 
-.training-module-due-badge {
+.training-module-due-badge,
+.training-path-due-badge {
   position: absolute;
   top: -10px;
   right: -10px;
@@ -4380,29 +4700,35 @@ textarea {
   transition: transform 0.16s ease, box-shadow 0.16s ease;
 }
 
-.training-module-due-badge:hover {
+.training-module-due-badge:hover,
+.training-path-due-badge:hover {
   transform: translateY(-1px) scale(1.06);
   box-shadow:
     0 9px 22px rgba(198, 40, 40, 0.46),
     0 0 0 3px rgba(198, 40, 40, 0.14);
 }
 
-.training-module-due-badge:active {
+.training-module-due-badge:active,
+.training-path-due-badge:active {
   transform: scale(0.98);
 }
 
-.training-module-due-badge:focus-visible {
+.training-module-due-badge:focus-visible,
+.training-path-due-badge:focus-visible {
   outline: 2px solid #8b1d1d;
   outline-offset: 2px;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .training-module-due-badge {
+  .training-module-due-badge,
+  .training-path-due-badge {
     transition: none;
   }
 
   .training-module-due-badge:hover,
-  .training-module-due-badge:active {
+  .training-module-due-badge:active,
+  .training-path-due-badge:hover,
+  .training-path-due-badge:active {
     transform: none;
   }
 }
@@ -4419,9 +4745,17 @@ textarea {
   filter: grayscale(0.15);
 }
 
+/* Модуль выше Elo-корзины пользователя: карточка видна, но закрыта. */
+.training-module-node--locked {
+  opacity: 0.62;
+  cursor: not-allowed;
+  filter: grayscale(0.3);
+  border-style: dashed;
+}
+
 .training-module-node-icon {
   flex-shrink: 0;
-  font-family: var(--font-ui);
+  font-family: "Segoe UI Symbol", "Noto Sans Symbols 2", sans-serif;
   font-size: 56px;
   line-height: 1;
   color: #225a73;
@@ -4447,7 +4781,7 @@ textarea {
   color: #666;
 }
 
-/* Метка уровня из программы курса: только подсказка, доступ не ограничивает. */
+/* Метка уровня из программы курса. Её нижняя граница задаёт порог доступа. */
 .training-module-level {
   align-self: flex-start;
   padding: 4px 10px;
@@ -4472,6 +4806,11 @@ textarea {
   color: #775f30;
   font-size: 12px;
   font-weight: 600;
+}
+
+.training-module-meta--locked {
+  background: rgba(120, 120, 120, 0.16);
+  color: #5f5f5f;
 }
 
 /* Конь над текущим модулем: планирует (transition) + прыгает (hop). */
@@ -4509,6 +4848,7 @@ textarea {
   justify-content: center;
   width: 100%;
   height: 100%;
+  font-family: "Segoe UI Symbol", "Noto Sans Symbols 2", sans-serif;
   font-size: 68px;
   line-height: 1;
   color: #4f935c;
@@ -4598,6 +4938,15 @@ textarea {
   gap: 24px;
 }
 
+.training-module-header > div:last-child {
+  display: grid;
+  gap: 8px;
+}
+
+.training-module-header h1 {
+  margin: 0;
+}
+
 .training-module-header-icon {
   flex-shrink: 0;
   width: 88px;
@@ -4606,7 +4955,7 @@ textarea {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: var(--font-ui);
+  font-family: "Segoe UI Symbol", "Noto Sans Symbols 2", sans-serif;
   font-size: 64px;
   color: #225a73;
   background: rgba(131, 183, 135, 0.18);
@@ -4674,6 +5023,30 @@ textarea {
   transform: translateX(-50%);
   border-radius: 4px;
   background: rgba(131, 183, 135, 0.3);
+}
+
+/* Обёртка узла урока: держит значок повторений в углу, не вкладывая
+   кнопку в кнопку. */
+.training-path-node-shell {
+  position: relative;
+  width: min(430px, 78%);
+}
+
+.training-path-node-shell--left {
+  align-self: flex-start;
+}
+
+.training-path-node-shell--right {
+  align-self: flex-end;
+}
+
+.training-path-node-shell .training-path-node {
+  width: 100%;
+}
+
+.training-path-due-badge {
+  top: -9px;
+  right: -9px;
 }
 
 .training-path-node {
@@ -4800,14 +5173,20 @@ textarea {
     min-height: 0;
     height: 100%;
     overflow-y: auto;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(128, 101, 47, 0.38) transparent;
+    scrollbar-width: none;
+  }
+
+  .training-theory-panel::-webkit-scrollbar,
+  .training-task-panel::-webkit-scrollbar {
+    display: none;
   }
 
   .training-board-column {
     min-height: 0;
-    justify-content: center;
+    justify-content: flex-start;
   }
+
+  .training-board-wrapper { order: -1; }
 }
 
 .training-theory-panel,
@@ -4835,6 +5214,30 @@ textarea {
   font-size: 14px;
   color: #555;
   text-align: justify;
+}
+
+.training-share-row {
+  margin-top: 12px;
+}
+
+.training-share-btn {
+  padding: 6px 12px;
+  border: 1px dashed rgba(180, 135, 44, 0.7);
+  border-radius: 999px;
+  background: rgba(251, 248, 239, 0.9);
+  color: #7a5a24;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.training-share-btn:hover:not(:disabled) {
+  background: #f6edd9;
+}
+
+.training-share-btn:disabled {
+  cursor: default;
+  opacity: 0.55;
 }
 
 .training-lesson-progress {
@@ -5608,5 +6011,3 @@ textarea {
 .oauth-callback-card a {
   color: #2f6b3a;
 }
-
-

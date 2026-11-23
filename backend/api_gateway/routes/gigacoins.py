@@ -23,6 +23,10 @@ class EquipRequest(BaseModel):
     cosmetic_id: str = Field(min_length=1, max_length=64)
 
 
+class UnequipRequest(BaseModel):
+    cosmetic_id: str = Field(min_length=1, max_length=64)
+
+
 def _item_payload(item_id: str, user: User, owned: set[str]) -> dict:
     item = COSMETICS[item_id]
     equipped_id = (
@@ -126,3 +130,40 @@ async def equip_cosmetic(
         user.equipped_profile_accent = payload.cosmetic_id
     await db.commit()
     return {"ok": True, "user": user.public(), "cosmetic_id": payload.cosmetic_id}
+
+
+@router.post("/shop/unequip")
+async def unequip_cosmetic(
+    payload: UnequipRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    item = COSMETICS.get(payload.cosmetic_id)
+    if item is None:
+        raise HTTPException(status_code=404, detail="Предмет не найден")
+    user = await db.scalar(select(User).where(User.id == user.id).with_for_update())
+    if user is None:
+        raise HTTPException(status_code=401, detail="Пользователь не найден")
+
+    slot = item["slot"]
+    row = await db.scalar(select(UserCosmetic).where(
+        UserCosmetic.user_id == user.id,
+        UserCosmetic.cosmetic_id == payload.cosmetic_id,
+    ))
+    if row is not None:
+        row.is_equipped = False
+
+    equipped_field = (
+        "equipped_avatar_frame" if slot == "avatar_frame"
+        else "equipped_profile_accent"
+    )
+    if getattr(user, equipped_field) == payload.cosmetic_id:
+        setattr(user, equipped_field, None)
+
+    await db.commit()
+    return {
+        "ok": True,
+        "user": user.public(),
+        "cosmetic_id": payload.cosmetic_id,
+        "slot": slot,
+    }

@@ -21,7 +21,8 @@ from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from pydantic import BaseModel, Field, field_validator, model_validator
-from sqlalchemy import select
+from sqlalchemy import func, or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api_gateway.dependecies import get_current_admin, get_current_user
@@ -36,13 +37,19 @@ from backend.api_gateway.security import (
 )
 from backend.config.settings import settings
 from backend.db.session import get_db
+from backend.models.gigacoin_event import GigacoinEvent
 from backend.models.user import ROLE_ADMIN, ROLE_LEARNER, RefreshToken, User
 from backend.models.user_chess_account import (
     UserChessAccount,
     VERIFICATION_VERIFIED,
 )
-from backend.services.assessment import onboarding_rating
+from backend.services.assessment import (
+    RATING_FLOOR,
+    onboarding_rating,
+    rating_group_for,
+)
 from backend.services.login_throttle import LoginThrottle
+from backend.services.nickname import nickname_change_price, validate_nickname
 from backend.services.user_activity import record_user_visit
 from backend.services.gigacoin_service import ONBOARDING_REWARD, award_gigacoins
 
@@ -154,6 +161,7 @@ class RefreshRequest(BaseModel):
 # users.onboarding IS NOT NULL.
 
 Q1_CHOICES = {"never", "know_moves", "sometimes", "regular", "tournaments"}
+KNOWS_RULES_CHOICES = {"yes", "no"}
 Q3_CHOICES = {"family", "online_rating", "tournaments", "child"}
 Q4_CHOICES = {"lt1", "h1_3", "h3_5", "h5plus"}
 Q5_CHOICES = {"puzzles", "games", "lessons"}
@@ -181,7 +189,7 @@ Q8_CHOICES = {"coach", "friends", "internet", "school"}
 #      users.rating_estimate int     - шкала Lichess blitz;
 #      users.rating_scale str        - происхождение шкалы;
 #      users.pedagogy     str        - ответ Q6 (подсказки);
-#      users.skill_band   int 0..4   - пишет входной тест, не анкета.
+#      users.skill_band   int 0..4   - пишет входной тест (или минимум для новичка без правил).
 #    Пока эти колонок нет - источник истины users.onboarding (см. public()).
 #
 # 3) parental_consent: сейчас только валидация ответа в JSON. Нужно:
@@ -209,6 +217,10 @@ class ParentalConsent(BaseModel):
 
 class OnboardingRequest(BaseModel):
     q1: str
+    # Отдельный вопрос про знание правил. Необязателен для обратной
+    # совместимости со старыми клиентами: без него маршрут после анкеты
+    # остаётся прежним (входной тест). "no" уводит в модуль «Шахматная азбука».
+    knows_rules: str | None = None
     q2: Q2Answer | None = None
     q3: list[str] = Field(min_length=1, max_length=2)
     q4: str
@@ -223,6 +235,13 @@ class OnboardingRequest(BaseModel):
     def _q1(cls, v: str) -> str:
         if v not in Q1_CHOICES:
             raise ValueError(f"q1: допустимы {sorted(Q1_CHOICES)}")
+        return v
+
+    @field_validator("knows_rules")
+    @classmethod
+    def _knows_rules(cls, v: str | None) -> str | None:
+        if v is not None and v not in KNOWS_RULES_CHOICES:
+            raise ValueError(f"knows_rules: допустимы {sorted(KNOWS_RULES_CHOICES)}")
         return v
 
     @field_validator("q3")
@@ -286,6 +305,10 @@ class RoleUpdateRequest(BaseModel):
     role: Literal["learner", "admin"]
 
 
+class NicknameChangeRequest(BaseModel):
+    nickname: str = Field(min_length=3, max_length=32)
+
+
 def _as_utc(value: datetime) -> datetime:
     if value.tzinfo is None:
         return value.replace(tzinfo=UTC)
@@ -317,7 +340,16 @@ async def _issue_tokens(db: AsyncSession, user: User) -> dict:
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
-    existing = await db.scalar(select(User).where(User.login == req.login))
+    # login становится стартовым никнеймом, поэтому проверяем занятость
+    # и по логинам, и по отображаемым именам (без учёта регистра).
+    existing = await db.scalar(
+        select(User).where(
+            or_(
+                User.login == req.login,
+                func.lower(User.nickname) == req.login.lower(),
+            )
+        )
+    )
     if existing:
         raise HTTPException(status_code=409, detail="Логин уже занят")
     if req.email:
@@ -327,6 +359,7 @@ async def register(req: RegisterRequest, db: AsyncSession = Depends(get_db)):
 
     user = User(
         login=req.login,
+        nickname=req.login,
         email=req.email or None,
         elo=req.elo,
         password_hash=hash_password(req.password),
@@ -433,6 +466,109 @@ async def me(
     return {"user": user.public()}
 
 
+@router.patch("/nickname")
+async def change_nickname(
+    req: NicknameChangeRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Меняет логин и отображаемое имя за GigaCoin.
+
+    Старый логин после успешной транзакции освобождается. Цена удваивается
+    после каждой смены (10, 20, 40, ...). Баланс, счётчик смен и запись
+    в журнале GigaCoin обновляются в одной транзакции под блокировкой
+    строки пользователя.
+    """
+    try:
+        new_nickname = validate_nickname(req.nickname)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    locked = await db.scalar(select(User).where(User.id == user.id).with_for_update())
+    if locked is None:
+        raise HTTPException(status_code=401, detail="Пользователь не найден")
+
+    current_nickname = locked.nickname or locked.login
+
+    # Записи, сделанные до исправления смены логина: отображаемое имя уже
+    # новое, а ``users.login`` остался прежним, поэтому новый логин занят
+    # собственным никнеймом. Досинхронизируем его бесплатно и без счётчика
+    # смен: иначе пользователь не сможет ни войти по новому логину, ни
+    # зарегистрировать его.
+    if (
+        new_nickname.casefold() == current_nickname.casefold()
+        and new_nickname.casefold() != locked.login.casefold()
+    ):
+        locked.login = new_nickname
+        locked.nickname = new_nickname
+        await db.commit()
+        await db.refresh(locked)
+        return {
+            "ok": True,
+            **await _issue_tokens(db, locked),
+            "price_paid": 0,
+            "next_price": nickname_change_price(int(locked.nickname_changes or 0)),
+        }
+
+    if new_nickname.casefold() == locked.login.casefold():
+        raise HTTPException(status_code=400, detail="Новый логин совпадает с текущим")
+
+    # Новый логин не должен повторять чужой логин или отображаемое имя.
+    conflict = await db.scalar(
+        select(User.id)
+        .where(
+            User.id != locked.id,
+            or_(
+                func.lower(User.nickname) == new_nickname.lower(),
+                func.lower(User.login) == new_nickname.lower(),
+            ),
+        )
+        .limit(1)
+    )
+    if conflict is not None:
+        raise HTTPException(status_code=409, detail="Этот логин уже занят")
+
+    changes = int(locked.nickname_changes or 0)
+    price = nickname_change_price(changes)
+    balance = int(locked.gigacoins or 0)
+    if balance < price:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Недостаточно GigaCoin: смена стоит {price}",
+        )
+
+    now = datetime.now(UTC)
+    locked.gigacoins = balance - price
+    locked.login = new_nickname
+    locked.nickname = new_nickname
+    locked.nickname_changes = changes + 1
+    locked.nickname_changed_at = now
+    db.add(
+        GigacoinEvent(
+            user_id=locked.id,
+            reason="nickname_change",
+            ref=f"{changes + 1}:{new_nickname}"[:128],
+            amount=-price,
+            created_at=now,
+        )
+    )
+    try:
+        await db.commit()
+    except IntegrityError as exc:
+        # Параллельная смена на тот же никнейм: уникальный индекс БД
+        # остаётся последней линией защиты.
+        await db.rollback()
+        raise HTTPException(status_code=409, detail="Этот логин уже занят") from exc
+    await db.refresh(locked)
+    tokens = await _issue_tokens(db, locked)
+    return {
+        "ok": True,
+        **tokens,
+        "price_paid": price,
+        "next_price": nickname_change_price(changes + 1),
+    }
+
+
 async def _linked_rating(db: AsyncSession, user_id: int) -> dict[str, Any] | None:
     """Последний подтверждённый внешний рейтинг для стартовой оценки.
 
@@ -486,12 +622,37 @@ async def save_onboarding(
     # подбор пазлов и стартовая сложность опираются на колонки.
     linked = await _linked_rating(db, user.id)
     rating_estimate, rating_scale, prior_band = onboarding_rating(payload, linked=linked)
-    user.onboarding = {
+
+    previous = user.onboarding if isinstance(user.onboarding, dict) else {}
+    placement: str | None = None
+    if payload.get("knows_rules") == "no":
+        # Новичку, не знающему правил, входной тест не нужен: сразу фиксируем
+        # минимальный уровень. Это закрывает оценку (assessment_completed_at),
+        # поэтому профиль больше не предлагает пройти тест уровня.
+        minimum_band = int(rating_group_for(RATING_FLOOR)["id"])
+        rating_estimate = RATING_FLOOR
+        rating_scale = "self_report"
+        prior_band = minimum_band
+        user.elo = RATING_FLOOR
+        user.skill_band = minimum_band
+        user.assessment_completed_at = datetime.now(UTC)
+        placement = "minimum"
+    elif previous.get("placement") == "minimum":
+        # Пользователь повторно прошёл анкету и теперь знает правила: снимаем
+        # автоматически назначенный минимум, чтобы снова стал доступен тест.
+        user.elo = None
+        user.skill_band = None
+        user.assessment_completed_at = None
+
+    onboarding = {
         "answers": payload,
         "prior_band": prior_band,
         "linked_rating": linked,
         "submitted_at": datetime.now(UTC).isoformat(),
     }
+    if placement:
+        onboarding["placement"] = placement
+    user.onboarding = onboarding
     user.prior_band = prior_band
     user.rating_estimate = rating_estimate
     user.rating_scale = rating_scale

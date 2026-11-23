@@ -1,13 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import {
   fetchLinkedChessAccounts,
-  fetchOAuthProviders,
-  linkChessAccount,
   saveOnboarding,
 } from "../api.js";
 import { formatApiError } from "../apiErrors.js";
 import "./OnboardingModal.css";
-import ChessAccountVerificationPanel from "./ChessAccountVerificationPanel.jsx";
 
 // Дословно из «Анкеты оценки уровня игры», раздел 1 / приложение Д.1.
 // Ключи - те же коды, что уходит на бэкенд (тексты могут меняться, коды - нет).
@@ -18,6 +15,13 @@ const Q1 = [
   ["sometimes", "Играю иногда"],
   ["regular", "Регулярно"],
   ["tournaments", "Турниры"],
+];
+
+// Отдельный вопрос про правила: ответ "no" уводит новичка в модуль
+// «Шахматная азбука» сразу после анкеты, минуя входной тест.
+const KNOWS_RULES = [
+  ["yes", "Да"],
+  ["no", "Нет"],
 ];
 
 const Q3 = [
@@ -61,11 +65,7 @@ const Q8 = [
 
 const INITIAL = {
   q1: null,
-  // Q2 - только привязка: платформа и логин для поиска профиля.
-  // Рейтинг и тип контроля в форму не вводятся - берутся из проверенной
-  // привязки в submit. Руками присвоенный рейтинг изменить нельзя.
-  q2: { platform: "lichess", login: "" },
-  useQ2: false,
+  knowsRules: null,
   q3: [],
   q4: null,
   q5: ["puzzles", "games", "lessons"],
@@ -100,39 +100,19 @@ export default function OnboardingModal({ isOpen, onClose, onDone }) {
   const [a, setA] = useState(INITIAL);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  // Мягкая привязка внешнего аккаунта (Q2): ищет публичный профиль через
-  // POST /api/chess-profile/link и подставляет проверенный рейтинг в форму.
-  // Непривязанная отправка по-прежнему допустима - рейтинг тогда идёт на веру.
-  const [linking, setLinking] = useState(false);
-  const [linkError, setLinkError] = useState("");
-  const [linked, setLinked] = useState(null);
-  const [oauthProviders, setOauthProviders] = useState(null);
+  const [linkedAccount, setLinkedAccount] = useState(null);
 
-  // Если аккаунт уже был добавлен при регистрации или в профиле, показываем
-  // его сразу. OAuth-возможности нужны для кнопки подтверждения владения.
+  // Анкета использует уже привязанный профиль без повторного запроса привязки.
   useEffect(() => {
     if (!isOpen) return;
     let cancelled = false;
-    Promise.allSettled([fetchOAuthProviders(), fetchLinkedChessAccounts()]).then(
-      ([providers, accounts]) => {
-        if (cancelled) return;
-        if (providers.status === "fulfilled") setOauthProviders(providers.value);
-        if (accounts.status === "fulfilled") {
-          const account = accounts.value?.items?.[0] || null;
-          if (account) {
-            setLinked({ account });
-            setA((prev) => ({
-              ...prev,
-              useQ2: true,
-              q2: { platform: account.platform, login: account.username },
-            }));
-          }
-        }
-      },
-    );
-    return () => {
-      cancelled = true;
-    };
+    setLinkedAccount(null);
+    fetchLinkedChessAccounts()
+      .then((accounts) => {
+        if (!cancelled) setLinkedAccount(accounts?.items?.find((item) => item.rating_usable) || null);
+      })
+      .catch(() => { if (!cancelled) setLinkedAccount(null); });
+    return () => { cancelled = true; };
   }, [isOpen]);
 
   // Хуки перетаскивания Q5 - строго до раннего return ниже:
@@ -166,38 +146,6 @@ export default function OnboardingModal({ isOpen, onClose, onDone }) {
   if (!isOpen) return null;
 
   const set = (patch) => setA((prev) => ({ ...prev, ...patch }));
-
-  // Смена платформы/логина инвалидирует предыдущую привязку.
-  const setQ2 = (patch) => {
-    setLinked(null);
-    setLinkError("");
-    setA((prev) => ({ ...prev, q2: { ...prev.q2, ...patch } }));
-  };
-
-  const linkExternalAccount = async () => {
-    const login = a.q2.login.trim();
-    if (!login) {
-      setLinkError("Укажите логин на платформе");
-      return;
-    }
-    if (linking) return;
-    setLinking(true);
-    setLinkError("");
-    try {
-      const data = await linkChessAccount(login, a.q2.platform);
-      setLinked(data);
-      // Ничего в форму не пишем: рейтинг и тип контроля берутся только из
-      // проверенной привязки в момент отправки (см. submit). Руками рейтинг
-      // изменить нельзя - только перепривязать другой аккаунт.
-    } catch (e) {
-      setLinked(null);
-      setLinkError(
-        e?.response?.data?.detail || e?.message || "Не удалось найти профиль",
-      );
-    } finally {
-      setLinking(false);
-    }
-  };
 
   const toggleQ3 = (code) =>
     setA((prev) => {
@@ -255,11 +203,7 @@ export default function OnboardingModal({ isOpen, onClose, onDone }) {
 
   const validate = () => {
     if (!a.q1) return "Ответьте на вопрос 1";
-    if (a.useQ2 && !a.q2.login.trim())
-      return "Укажите логин на платформе или снимите галочку «Есть аккаунт»";
-    // Q2 - только через привязку: рейтинг всегда проверенный, руками не вводится.
-    if (a.useQ2 && !linked?.account)
-      return "Привяжите аккаунт кнопкой «Найти и привязать аккаунт» или снимите галочку «Есть аккаунт»";
+    if (!a.knowsRules) return "Ответьте на вопрос 2";
     if (!a.q3.length) return "Выберите хотя бы один ответ на вопрос 3";
     if (!a.q4) return "Ответьте на вопрос 4";
     if (!a.q6) return "Ответьте на вопрос 6";
@@ -282,20 +226,21 @@ export default function OnboardingModal({ isOpen, onClose, onDone }) {
       // Q2 собирается только из проверенной привязки: логин - канонический
       // с платформы, рейтинг и тип контроля - из профиля. Руками рейтинг
       // не вводится. Нет рейтинга в профиле - шлём null, бэкенд откатится к Q1.
-      const linkedAccount = linked?.account || {};
+      const account = linkedAccount || {};
       const verifiedTimeControl = ["blitz", "rapid", "bullet"].includes(
-        linkedAccount.rating_type,
+        account.rating_type,
       )
-        ? linkedAccount.rating_type
+        ? account.rating_type
         : "blitz";
       const payload = {
         q1: a.q1,
-        q2: a.useQ2
+        knows_rules: a.knowsRules,
+        q2: linkedAccount
           ? {
-              platform: linkedAccount.platform || a.q2.platform,
-              login: (linkedAccount.username || a.q2.login).trim(),
+              platform: account.platform,
+              login: account.username,
               time_control: verifiedTimeControl,
-              rating: linkedAccount.rating ?? null,
+              rating: account.rating ?? null,
             }
           : null,
         q3: a.q3,
@@ -309,15 +254,10 @@ export default function OnboardingModal({ isOpen, onClose, onDone }) {
             ? { granted: true, contact: a.consentContact.trim() || null }
             : null,
       };
-      if (a.useQ2) {
-        await linkChessAccount(a.q2.login.trim(), a.q2.platform);
-      }
       const user = await saveOnboarding(payload);
       onDone?.(user);
       onClose();
       setA(INITIAL);
-      setLinked(null);
-      setLinkError("");
     } catch (e) {
       // Ошибки валидации бэкенда переводим на русский (см. apiErrors.js).
       setError(
@@ -351,7 +291,7 @@ export default function OnboardingModal({ isOpen, onClose, onDone }) {
           </span>
           <h2 className="onb-title">Анкета оценки уровня игры</h2>
           <p className="onb-subtitle">
-            Восемь коротких вопросов. От неё зависит, с чего начнётся обучение.
+            Девять коротких вопросов. От неё зависит, с чего начнётся обучение.
           </p>
           <div className="onb-divider" />
         </div>
@@ -366,130 +306,20 @@ export default function OnboardingModal({ isOpen, onClose, onDone }) {
 
           <section className="onb-q">
             <h3 className="onb-q-title">
-              2. Аккаунт + платформа + тип рейтинга?{" "}
-              <span className="onb-optional">необязательно</span>
+              2. Знаете ли вы правила игры в шахматы?
             </h3>
-            <label className="onb-check">
-              <input
-                type="checkbox"
-                checked={a.useQ2}
-                onChange={(e) => {
-                  setLinked(null);
-                  setLinkError("");
-                  set({ useQ2: e.target.checked });
-                }}
-              />
-              У меня есть аккаунт на Lichess или Chess.com
-            </label>
-
-            {a.useQ2 && (
-              <div className="onb-q2">
-                <div className="onb-row">
-                  <span className="onb-row-label">Платформа</span>
-                  <div className="onb-pills">
-                    {[
-                      ["lichess", "Lichess"],
-                      ["chesscom", "Chess.com"],
-                    ].map(([code, label]) => (
-                      <button
-                        key={code}
-                        type="button"
-                        className={`onb-pill ${a.q2.platform === code ? "onb-pill--active" : ""}`}
-                        onClick={() => setQ2({ platform: code })}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="onb-row">
-                  <span className="onb-row-label">Логин</span>
-                  <input
-                    className="onb-input"
-                    value={a.q2.login}
-                    maxLength={64}
-                    placeholder="ваш ник на платформе"
-                    onChange={(e) => setQ2({ login: e.target.value })}
-                  />
-                </div>
-
-                <button
-                  type="button"
-                  className="onb-link-btn"
-                  onClick={linkExternalAccount}
-                  disabled={linking || !a.q2.login.trim()}
-                >
-                  {linking ? "Проверяем профиль…" : "Найти и привязать аккаунт"}
-                </button>
-
-                {linkError && <div className="onb-link-error">{linkError}</div>}
-
-                {linked?.account && (
-                  <div
-                    className={`onb-linked ${
-                      linked.account.rating_usable ? "onb-linked--ok" : "onb-linked--warn"
-                    }`}
-                  >
-                    <div className="onb-linked-head">
-                      <strong>
-                        {linked.account.platform === "chesscom" ? "Chess.com" : "Lichess"}
-                        {" · "}
-                        {linked.account.username}
-                      </strong>
-                      <span className="onb-linked-badge">Привязан</span>
-                    </div>
-                    {linked.account.rating != null ? (
-                      <p className="onb-linked-rating">
-                        Рейтинг для оценки: <strong>{linked.account.rating}</strong>
-                        {linked.account.rating_type ? ` (${linked.account.rating_type})` : ""}
-                        {linked.account.games ? ` · ${linked.account.games} партий` : ""}
-                      </p>
-                    ) : (
-                      <p className="onb-linked-rating">
-                        У профиля пока нет рейтинга в блиц/рапид/пулю.
-                      </p>
-                    )}
-                    {linked.account.rating_usable ? (
-                      <p className="onb-linked-note">
-                        Проверенный рейтинг подставлен в анкету и будет
-                        использован для стартовой оценки. Изменить его вручную
-                        нельзя - только перепривязать другой аккаунт.
-                      </p>
-                    ) : (
-                      <p className="onb-linked-note">
-                        Аккаунт привязан, но его рейтинг не прошёл критерии
-                        надёжности - для оценки возьмём ответ на вопрос 1.
-                      </p>
-                    )}
-                    <p className="onb-linked-note onb-linked-note--dim">
-                      {linked.account.rating_trusted
-                        ? "Владение аккаунтом подтверждено. Этот рейтинг считается доверенным."
-                        : "Профиль найден, но владение ещё не подтверждено. До OAuth рейтинг не повышает стартовую оценку."}
-                    </p>
-                  </div>
-                )}
-
-                {linked?.account && (
-                  <ChessAccountVerificationPanel
-                    account={linked.account}
-                    oauthProviders={oauthProviders}
-                    compact
-                    onChanged={(account) => {
-                      if (account) {
-                        setLinked({ account });
-                        setA((prev) => ({
-                          ...prev,
-                          q2: { platform: account.platform, login: account.username },
-                        }));
-                      } else {
-                        setLinked(null);
-                      }
-                    }}
-                    onError={setLinkError}
-                  />
-                )}
-              </div>
+            <RadioGroup
+              name="knowsRules"
+              value={a.knowsRules}
+              options={KNOWS_RULES}
+              onChange={(v) => set({ knowsRules: v })}
+            />
+            {a.knowsRules === "no" && (
+              <p className="onb-question-note">
+                Назначим минимальный стартовый уровень — тест проходить не
+                нужно. Начнём с модуля «Шахматная азбука»: доска, фигуры,
+                шах и мат, специальные правила.
+              </p>
             )}
           </section>
 
@@ -498,7 +328,7 @@ export default function OnboardingModal({ isOpen, onClose, onDone }) {
               3. Зачем вам шахматы?{" "}
               <span className="onb-optional">можно выбрать до 2</span>
             </h3>
-            <div className="onb-options onb-options--wrap onb-options--multi">
+            <div className="onb-options onb-options--multi">
               {Q3.map(([code, label]) => {
                 const active = a.q3.includes(code);
                 const disabled = !active && a.q3.length >= 2;

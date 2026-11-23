@@ -36,6 +36,30 @@ def _unique(base: str) -> str:
     return f"{base}_{uuid.uuid4().hex[:8]}"
 
 
+def set_gigacoins(login: str, amount: int) -> None:
+    async def _set():
+        async with async_session_factory() as db:
+            u = await db.scalar(select(User).where(User.login == login))
+            assert u is not None
+            u.gigacoins = amount
+            await db.commit()
+
+    asyncio.run(_set())
+
+
+def set_nickname_only(login: str, nickname: str) -> None:
+    """Имитирует данные старой версии смены: никнейм новый, логин прежний."""
+
+    async def _set():
+        async with async_session_factory() as db:
+            u = await db.scalar(select(User).where(User.login == login))
+            assert u is not None
+            u.nickname = nickname
+            await db.commit()
+
+    asyncio.run(_set())
+
+
 def get_hash_from_db(login: str) -> str:
     async def _get():
         async with async_session_factory() as db:
@@ -294,6 +318,238 @@ class TestOnboarding:
         assert user["rating_scale"] == "self_report"
         assert user["prior_band"] == 2
         assert user["onboarding_completed"] is True
+        assert user["assessment_completed"] is False
+
+    def test_persists_knows_rules_answer(self, cleanup):
+        login = cleanup(_unique("onb_rules"))
+        token = client.post(
+            "/api/auth/register", json={"login": login, "password": PASSWORD}
+        ).json()["access_token"]
+        r = client.post(
+            "/api/auth/onboarding",
+            json={**ONBOARDING, "knows_rules": "no"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert r.status_code == 200, r.text
+        user = r.json()["user"]
+        assert user["onboarding"]["answers"]["knows_rules"] == "no"
+        # Новичку без знания правил сразу назначается минимум, тест не нужен.
+        assert user["elo"] == 500
+        assert user["skill_band"] == 1
+        assert user["rating_estimate"] == 500
+        assert user["prior_band"] == 1
+        assert user["assessment_completed"] is True
+        assert user["onboarding"]["placement"] == "minimum"
+
+    def test_answering_rules_yes_after_minimum_unlocks_test(self, cleanup):
+        login = cleanup(_unique("onb_rules_retry"))
+        token = client.post(
+            "/api/auth/register", json={"login": login, "password": PASSWORD}
+        ).json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+        first = client.post(
+            "/api/auth/onboarding",
+            json={**ONBOARDING, "knows_rules": "no"},
+            headers=headers,
+        )
+        assert first.status_code == 200, first.text
+
+        second = client.post(
+            "/api/auth/onboarding",
+            json={**ONBOARDING, "knows_rules": "yes"},
+            headers=headers,
+        )
+        assert second.status_code == 200, second.text
+        user = second.json()["user"]
+        # Минимум снят: оценка снова считается непройденной, колонки очищены.
+        assert user["assessment_completed"] is False
+        assert user["elo"] is None
+        assert user["skill_band"] is None
+        assert user["rating_estimate"] == 800
+        assert user["prior_band"] == 2
+        assert "placement" not in user["onboarding"]
+
+    def test_rejects_unknown_knows_rules_answer(self, cleanup):
+        login = cleanup(_unique("onb_rules_bad"))
+        token = client.post(
+            "/api/auth/register", json={"login": login, "password": PASSWORD}
+        ).json()["access_token"]
+        r = client.post(
+            "/api/auth/onboarding",
+            json={**ONBOARDING, "knows_rules": "maybe"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert r.status_code == 422
+
+
+class TestNickname:
+    def _register(self, cleanup):
+        login = cleanup(_unique("nick"))
+        r = client.post(
+            "/api/auth/register", json={"login": login, "password": PASSWORD}
+        )
+        assert r.status_code == 201, r.text
+        body = r.json()
+        return login, body["access_token"], body["user"]
+
+    def test_register_sets_nickname_and_initial_price(self, cleanup):
+        login, _, user = self._register(cleanup)
+        assert user["nickname"] == login
+        assert user["nickname_changes"] == 0
+        assert user["nickname_change_price"] == 10
+
+    def test_syncs_login_for_legacy_nickname_without_charge(self, cleanup):
+        """Никнейм, изменённый старой версией, бесплатно становится логином."""
+        login, token, _ = self._register(cleanup)
+        set_gigacoins(login, 0)
+        new_login = cleanup(_unique("sync"))
+        set_nickname_only(login, new_login)
+
+        r = client.patch(
+            "/api/auth/nickname",
+            json={"nickname": new_login},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert body["price_paid"] == 0
+        assert body["user"]["login"] == new_login
+        assert body["user"]["nickname"] == new_login
+        assert body["user"]["nickname_changes"] == 0
+        assert body["user"]["gigacoins"] == 0
+
+        by_new = client.post(
+            "/api/auth/login", json={"login": new_login, "password": PASSWORD}
+        )
+        assert by_new.status_code == 200, by_new.text
+        by_old = client.post(
+            "/api/auth/login", json={"login": login, "password": PASSWORD}
+        )
+        assert by_old.status_code == 401
+
+    def test_each_change_costs_twice_as_much(self, cleanup):
+        login, token, _ = self._register(cleanup)
+        set_gigacoins(login, 100)
+        headers = {"Authorization": f"Bearer {token}"}
+        expected = [(10, 20), (20, 40), (40, 80)]
+
+        for index, (price, next_price) in enumerate(expected, start=1):
+            nickname = f"login_{uuid.uuid4().hex[:8]}"
+            cleanup(nickname)
+            r = client.patch(
+                "/api/auth/nickname",
+                json={"nickname": nickname},
+                headers=headers,
+            )
+            assert r.status_code == 200, r.text
+            body = r.json()
+            assert body["price_paid"] == price
+            assert body["next_price"] == next_price
+            assert body["user"]["nickname"] == nickname
+            assert body["user"]["nickname_changes"] == index
+            assert body["user"]["login"] == nickname
+            assert body["user"]["gigacoins"] == 100 - sum(
+                paid for paid, _ in expected[:index]
+            )
+            token = body["access_token"]
+            headers = {"Authorization": f"Bearer {token}"}
+
+        # Баланс 30, следующая смена стоит 80.
+        r = client.patch(
+            "/api/auth/nickname",
+            json={"nickname": f"login_{uuid.uuid4().hex[:8]}"},
+            headers=headers,
+        )
+        assert r.status_code == 409
+        assert "Недостаточно GigaCoin" in r.json()["detail"]
+
+        # После смены старый логин снова доступен для регистрации.
+        old_login = cleanup(_unique("released"))
+        old_body = client.post(
+            "/api/auth/register", json={"login": old_login, "password": PASSWORD}
+        ).json()
+        set_gigacoins(old_login, 10)
+        old_token = old_body["access_token"]
+        fresh_login = f"new_{uuid.uuid4().hex[:8]}"
+        cleanup(fresh_login)
+        changed = client.patch(
+            "/api/auth/nickname",
+            json={"nickname": fresh_login},
+            headers={"Authorization": f"Bearer {old_token}"},
+        )
+        assert changed.status_code == 200
+        released = client.post(
+            "/api/auth/register", json={"login": old_login, "password": PASSWORD}
+        )
+        assert released.status_code == 201, released.text
+
+    def test_login_by_new_login_and_old_login_released(self, cleanup):
+        login, token, _ = self._register(cleanup)
+        set_gigacoins(login, 10)
+        new_login = f"login_{uuid.uuid4().hex[:8]}"
+        cleanup(new_login)
+        r = client.patch(
+            "/api/auth/nickname",
+            json={"nickname": new_login},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert body["user"]["login"] == new_login
+        assert body["access_token"] and body["refresh_token"]
+
+        # Вход по новому логину и новому access-токену работает.
+        old_login_attempt = client.post(
+            "/api/auth/login", json={"login": login, "password": PASSWORD}
+        )
+        assert old_login_attempt.status_code == 401
+        new_login_attempt = client.post(
+            "/api/auth/login", json={"login": new_login, "password": PASSWORD}
+        )
+        assert new_login_attempt.status_code == 200, new_login_attempt.text
+        me = client.get(
+            "/api/auth/me",
+            headers={"Authorization": f"Bearer {body['access_token']}"},
+        )
+        assert me.status_code == 200
+        assert me.json()["user"]["login"] == new_login
+
+        # Старый логин освободился для регистрации.
+        released = client.post(
+            "/api/auth/register", json={"login": login, "password": PASSWORD}
+        )
+        assert released.status_code == 201, released.text
+
+    def test_same_nickname_rejected(self, cleanup):
+        login, token, _ = self._register(cleanup)
+        set_gigacoins(login, 100)
+        r = client.patch(
+            "/api/auth/nickname",
+            json={"nickname": login},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert r.status_code == 400
+
+    def test_duplicate_nickname_rejected(self, cleanup):
+        first_login, _, _ = self._register(cleanup)
+        second_login, second_token, _ = self._register(cleanup)
+        set_gigacoins(second_login, 100)
+        r = client.patch(
+            "/api/auth/nickname",
+            json={"nickname": first_login},
+            headers={"Authorization": f"Bearer {second_token}"},
+        )
+        assert r.status_code == 409
+
+    def test_invalid_nickname_rejected(self, cleanup):
+        login, token, _ = self._register(cleanup)
+        set_gigacoins(login, 100)
+        r = client.patch(
+            "/api/auth/nickname",
+            json={"nickname": "bad<script>"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert r.status_code == 422
 
 
 class TestAdmin:

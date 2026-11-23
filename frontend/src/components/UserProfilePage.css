@@ -12,6 +12,9 @@
   /* Колонка ради футера (см. .training-page). */
   display: flex;
   flex-direction: column;
+  /* Единый вертикальный ритм: отступ между всеми блоками страницы задаёт
+     контейнер, а не margin-top отдельных карточек. */
+  gap: 18px;
   /* Тонкий скроллбар в стиле сайта (как в админке, чате, списке ходов) */
   scrollbar-width: thin;
   scrollbar-color: #79b180 transparent;
@@ -28,8 +31,18 @@
 
 .user-profile-page > .site-footer {
   width: 100%;
+  /* Футер отделяется тем же gap, а не глобальным margin-top: auto. */
+  margin-top: 0;
   margin-left: 0;
   margin-right: 0;
+}
+
+/* Промежутки между крупными блоками профиля задаёт gap контейнера. */
+.user-profile-page > .user-records,
+.user-profile-page > .phase-accuracy,
+.user-profile-page > .user-profile-rating-section,
+.user-profile-page > .user-profile-progress-section {
+  margin-top: 0;
 }
 
 .user-profile-page::-webkit-scrollbar {
@@ -169,13 +182,25 @@
   color: #9a3f38;
 }
 
+/* В основной карточке профиля подсказка стоит между кнопками и
+   разделителем блока аккаунтов. Выравниваем зазоры по краске текста
+   (~20px сверху и снизу), иначе подсказка липнет к кнопкам.
+   Селектор с `.user-profile-main >` не задевает такие же подсказки
+   внутри секций ниже, а `+` включает отступ только при показанной
+   подсказке. */
+.user-profile-main > .user-profile-warning {
+  margin-top: 16px;
+}
+
+.user-profile-main > .user-profile-warning + .chess-accounts-section--embedded {
+  margin-top: 19px;
+}
+
 .user-profile-progress-section {
-  margin-top: 18px;
   padding: 22px;
 }
 
 .user-profile-rating-section {
-  margin-top: 18px;
   padding: 22px;
   border: 1px solid rgba(34, 90, 115, 0.16);
   border-radius: 20px;
@@ -242,6 +267,9 @@
 
 .user-profile-actions {
   margin-top: 18px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
 .user-profile-level-test-btn {
@@ -463,8 +491,7 @@
 :root[data-theme="dark"] .user-profile-page .progress-topic strong,
 :root[data-theme="dark"] .user-profile-page .progress-widget__empty,
 :root[data-theme="dark"] .user-profile-page .phase-accuracy__header p,
-:root[data-theme="dark"] .user-profile-page .phase-accuracy__details-heading span,
-:root[data-theme="dark"] .user-profile-page .phase-accuracy__footnote {
+:root[data-theme="dark"] .user-profile-page .phase-accuracy__details-heading span {
   color: var(--profile-muted);
 }
 
@@ -615,4 +642,3 @@
 .user-profile-page .user-profile-card--accent-accent_aurora { border-color: rgba(118, 214, 197, .5); box-shadow: 0 20px 52px rgba(0, 0, 0, .24), 0 0 24px rgba(118, 214, 197, .08); }
 .user-profile-page .user-profile-card--accent-accent_ruby { border-color: rgba(232, 139, 147, .5); box-shadow: 0 20px 52px rgba(0, 0, 0, .24), 0 0 24px rgba(232, 139, 147, .08); }
 .user-profile-page .user-profile-card--accent-accent_amethyst { border-color: rgba(187, 160, 242, .5); box-shadow: 0 20px 52px rgba(0, 0, 0, .24), 0 0 24px rgba(187, 160, 242, .08); }
-:root[data-theme="dark"] .user-profile-page .progress-widget__streak-reward { color: var(--profile-muted); }

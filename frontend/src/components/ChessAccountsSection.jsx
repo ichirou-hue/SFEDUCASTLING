@@ -116,7 +116,6 @@ export default function ChessAccountsSection({
             ♞
           </div>
           <div>
-            <div className="chess-accounts-section__kicker">Шахматные платформы</div>
             <h2>Шахматные аккаунты</h2>
             <p>
               Добавьте публичный профиль или подтвердите владение через OAuth.

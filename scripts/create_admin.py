@@ -26,6 +26,7 @@ async def create_admin(login: str, password: str, email: str | None, set_passwor
         if user is None:
             user = User(
                 login=login,
+                nickname=login,
                 email=email,
                 password_hash=hash_password(password),
                 role="admin",

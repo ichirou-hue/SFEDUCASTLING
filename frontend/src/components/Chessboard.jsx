@@ -12,6 +12,7 @@ import { Chessboard as ReactChessboard } from "react-chessboard";
 import { Chess } from "chess.js";
 import { Link } from "react-router-dom";
 import { saveLocalBotGame } from "../localBotGames.js";
+import { playMoveSound } from "../moveSound.js";
 
 import { getCheckState, getKingCheckStyle } from "../chessStatus.js";
 import {
@@ -22,6 +23,7 @@ import {
   fetchExplainMove,
   finishGame,
   reviewGame,
+  getAccessToken,
   getStoredUser,
 } from "../api.js";
 
@@ -120,6 +122,8 @@ function formatAccuracy(accuracy) {
  * в точности по этапам.
  */
 const MIN_RELIABLE_MOVES = 8;
+
+const AI_MOVE_DELAY_MS = 450;
 
 /*
  * Описание итога партии для карточки. На мате ход принадлежит
@@ -250,43 +254,10 @@ function GameReviewSummary({ review }) {
   );
 }
 
-let audioCtx = null;
-
-function playMoveSound() {
-  if (!audioCtx)
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-
-  const now = audioCtx.currentTime;
-
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
-  const filter = audioCtx.createBiquadFilter();
-
-  filter.type = "lowpass";
-  filter.frequency.setValueAtTime(1200, now);
-  filter.frequency.exponentialRampToValueAtTime(300, now + 0.08);
-
-  osc.type = "triangle";
-  osc.frequency.setValueAtTime(180, now);
-  osc.frequency.exponentialRampToValueAtTime(60, now + 0.06);
-
-  gain.gain.setValueAtTime(0.5, now);
-  gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-
-  osc.connect(filter);
-  filter.connect(gain);
-  gain.connect(audioCtx.destination);
-
-  osc.start(now);
-  osc.stop(now + 0.12);
-}
-
 const ChessboardComponent = forwardRef(function ChessboardComponent(
   {
     onStateChange,
     chatCollapsed = false,
-    evalMode = "material",
-    onToggleEvalMode,
   },
   ref,
 ) {
@@ -322,6 +293,8 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
    * ходе игрока - поражение, мат при ходе соперника - победа.
    */
   const [gameResult, setGameResult] = useState(null);
+  const [coinChange, setCoinChange] = useState(null);
+  const [resignConfirmOpen, setResignConfirmOpen] = useState(false);
   const [reviewArchiveId, setReviewArchiveId] = useState(null);
   /*
    * Карточку итога можно закрыть кликом по фону, чтобы рассмотреть
@@ -419,6 +392,9 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
   const [review, setReview] = useState(null);
   const [reviewError, setReviewError] = useState("");
   const [reviewLoading, setReviewLoading] = useState(false);
+  // Разбор только что пришёл: доску нужно вернуть к начальной позиции,
+  // чтобы ходы листались сначала, а не с финальной позиции партии.
+  const resetForReviewRef = useRef(false);
 
   /*
    * Две независимые стрелки:
@@ -462,6 +438,20 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
   const [boardKey, setBoardKey] = useState(0);
 
   const game = gameRef.current;
+
+  /*
+   * Сдаться можно только после того, как игрок сделал хотя бы один ход.
+   * Во время ответа Maia кнопка временно недоступна, чтобы не сохранять
+   * полупартию ровно в момент применения ответа движка. Если Maia вернула
+   * ошибку, сдача снова разрешена — пользователь не должен застревать.
+   */
+  const canResign =
+    playerMovesPlayed > 0 &&
+    !gameResult &&
+    !sidePickerOpen &&
+    !isViewMode &&
+    !isAiThinking &&
+    (game.turn() === playerColor || Boolean(maiaError));
 
   /*
    * Шах и мат считаем по отображаемому FEN: при листании истории
@@ -624,21 +614,6 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
       }));
     }
   }, [boardFlipped, onStateChange]);
-
-  /*
-   * Пока открыта карточка выбора стороны, история ходов должна быть
-   * недоступна: иначе поверх «За кого играем?» можно откатить партию
-   * назад. Флаг уходит в общее состояние страницы, чтобы панель истории
-   * погасила стрелки и клики по ходам.
-   */
-  useEffect(() => {
-    if (typeof onStateChange === "function") {
-      onStateChange((prev) => ({
-        ...prev,
-        sidePickerOpen,
-      }));
-    }
-  }, [sidePickerOpen, onStateChange]);
 
   /*
    * Фиксация уровня Maia3 тоже живёт в общем состоянии страницы:
@@ -965,6 +940,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
     });
     setReviewArchiveId(archiveId);
 
+    const finishGeneration = gameGenRef.current;
     finishGame({
       moves: uciMoves,
       elo: gameLevelRef.current ?? elo,
@@ -972,8 +948,93 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
       result,
       status,
       playerColor,
-    }).catch(() => {});
+    }).then((data) => {
+      if (finishGeneration === gameGenRef.current) setCoinChange(Number(data.gigacoins_earned || 0));
+    }).catch(() => {
+      if (finishGeneration === gameGenRef.current) setCoinChange("unavailable");
+    });
   }, [moveHistory, fen, elo, playerColor, onStateChange, showGameOverCard]);
+
+  /*
+   * Добровольная сдача партии.
+   *
+   * chess.js не считает сдачу шахматным окончанием позиции, поэтому
+   * результат фиксируем отдельно: останавливаем взаимодействие с доской,
+   * инвалидируем отложенный/текущий запрос Maia и вручную отправляем
+   * /api/game/finish со статусом "resigned".
+   */
+  const handleResign = useCallback(() => {
+    if (!canResign) return;
+    setResignConfirmOpen(false);
+
+    gameGenRef.current += 1;
+    finishSentRef.current = true;
+
+    clearPremove();
+    setIsAiThinking(false);
+    setMaiaError("");
+    setDragFrom(null);
+    setSelectedSquare(null);
+    setLegalMovesForSelected([]);
+    setStockfishArrow(null);
+    setMaiaArrow(null);
+    setCompareData(null);
+    setIsComparing(false);
+
+    setReview(null);
+    setReviewError("");
+    setReviewLoading(false);
+    setReviewArchiveId(null);
+
+    setGameResult({
+      outcome: "loss",
+      reason: "Вы сдались — победа Maia3",
+    });
+    setResultCardDismissed(false);
+
+    const result = playerColor === "w" ? "0-1" : "1-0";
+    const uciMoves = toUciMoves(moveHistory);
+
+    if (uciMoves.length === 0 || uciMoves.length !== moveHistory.length) {
+      return;
+    }
+
+    const archiveId = `${Date.now()}-${gameGenRef.current}`;
+    const resignGeneration = gameGenRef.current;
+    saveLocalBotGame({
+      id: archiveId,
+      userId: getCurrentUserId(),
+      pgn: game.pgn(),
+      playedAt: new Date().toISOString(),
+      playerColor,
+      elo: gameLevelRef.current ?? elo,
+      result,
+    });
+    setReviewArchiveId(archiveId);
+
+    finishGame({
+      moves: uciMoves,
+      elo: gameLevelRef.current ?? elo,
+      engine: "maia3",
+      result,
+      status: "resigned",
+      playerColor,
+    }).then((data) => {
+      if (resignGeneration === gameGenRef.current) setCoinChange(Number(data.gigacoins_earned || 0));
+    }).catch(() => {
+      if (resignGeneration === gameGenRef.current) {
+        setCoinChange("unavailable");
+        setReviewError("Вы сдались. Партия сохранена на этом устройстве, но не отправлена на сервер.");
+      }
+    });
+  }, [
+    canResign,
+    clearPremove,
+    elo,
+    game,
+    moveHistory,
+    playerColor,
+  ]);
 
   /*
    * Разбор партии по кнопке в итоговой карточке. Считает сервер:
@@ -1003,6 +1064,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
     reviewGame(uciMoves, playerColor)
       .then((data) => {
         if (gen === gameGenRef.current) {
+          resetForReviewRef.current = true;
           setReview(data);
         }
       })
@@ -1179,19 +1241,51 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
       } else {
         setIsViewMode(true);
         setViewIndex(index);
+
+        /*
+         * Игрок отматывает партию назад, чтобы её пересмотреть: плашки
+         * «итог партии» и «За кого играем?» закрываем, иначе они
+         * закрывают доску и мешают смотреть ходы. Итог при этом
+         * сохраняется - кнопка «Разобрать партию» остаётся доступной.
+         */
+        setResultCardDismissed(true);
+        setSidePickerOpen(false);
       }
     },
     [moveHistory, applyReviewEval],
   );
 
+  /*
+   * Разбор пришёл: показываем доску в начальной позиции, чтобы листать
+   * партию с первого хода. Раньше доска оставалась на финальной позиции,
+   * и разбор начинался с конца.
+   */
+  useEffect(() => {
+    if (!review || !resetForReviewRef.current) return;
+
+    resetForReviewRef.current = false;
+    showPosition(-1);
+  }, [review, showPosition]);
+
+  /*
+   * «Разбор по ходам»: закрываем карточку итога и всегда возвращаемся
+   * к началу партии - даже если разбор был открыт повторно с середины.
+   */
+  const openReviewMoves = useCallback(() => {
+    setResultCardDismissed(true);
+    if (review) {
+      showPosition(-1);
+    }
+  }, [review, showPosition]);
+
   const onNavigate = useCallback(
     (direction) => {
       /*
-       * Под карточкой выбора стороны навигация запрещена. Это вторая
-       * линия защиты: панель истории тоже гасит кнопки, но onNavigate
-       * можно вызвать и через boardRef.
+       * Явный переход по истории важнее предложения новой игры:
+       * если меню выбора стороны открыто, закрываем его и продолжаем
+       * навигацию, чтобы можно было пересмотреть партию.
        */
-      if (sidePickerOpen) return;
+      if (sidePickerOpen) setSidePickerOpen(false);
 
       /*
        * Переход по истории меняет позицию на доске. Предход,
@@ -1241,12 +1335,15 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
   );
 
   /*
-   * Листание партии стрелками, как на Lichess. Включается только после
-   * завершения партии (иначе перехватывало бы прокрутку во время игры)
-   * и не трогает поля ввода - прежде всего поле чата.
+   * Листание партии стрелками, как на Lichess. Включается после
+   * завершения партии или при открытом меню выбора стороны, если ходы
+   * уже есть (иначе перехватывало бы прокрутку во время игры и гасило
+   * стартовое меню), и не трогает поля ввода - прежде всего поле чата.
    */
   useEffect(() => {
-    if (!gameResult) return undefined;
+    if (!gameResult && !(sidePickerOpen && moveHistory.length > 0)) {
+      return undefined;
+    }
 
     const onKeyDown = (event) => {
       if (event.altKey || event.ctrlKey || event.metaKey) return;
@@ -1279,7 +1376,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
     window.addEventListener("keydown", onKeyDown);
 
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [gameResult, onNavigate]);
+  }, [gameResult, sidePickerOpen, moveHistory.length, onNavigate]);
 
   /*
    * Новая игра.
@@ -1302,6 +1399,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
     setMoveHistory([]);
     setPlayerMovesPlayed(0);
     setGameResult(null);
+    setCoinChange(null);
     setReviewArchiveId(null);
     setResultCardDismissed(false);
     setPositionSnapshots([startFen]);
@@ -1375,6 +1473,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
   const openSidePicker = useCallback(() => {
     onNavigate("last");
     setGameResult(null);
+    setCoinChange(null);
     setResultCardDismissed(false);
     setSidePickerOpen(true);
   }, [onNavigate]);
@@ -1402,6 +1501,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
         setMoveHistory([]);
         setPlayerMovesPlayed(0);
         setGameResult(null);
+        setCoinChange(null);
         setPositionSnapshots([validFen]);
 
         setViewIndex(-1);
@@ -1880,13 +1980,13 @@ const fetchBestMove = useCallback(
       /*
        * Историю берём из живого объекта партии, а не из состояния React.
        *
-       * moveHistory обновляется через setState, и в момент вызова (через
-       * 500 мс после хода игрока) замыкание держит значение с прошлого
-       * рендера - без только что сыгранного хода. Сервер получал историю,
-       * которая не сходилась с присланным FEN, писал "History FEN
-       * mismatch" и работал только с текущей позицией. Maia3 запущена
-       * с --use-uci-history и без истории играет вслепую: не видит, что
-       * было в партии, и её уровень резко падает.
+       * moveHistory обновляется через setState, и в момент вызова
+       * замыкание держит значение с прошлого рендера - без только что
+       * сыгранного хода. Сервер получал историю, которая не сходилась
+       * с присланным FEN, писал "History FEN mismatch" и работал только
+       * с текущей позицией. Maia3 запущена с --use-uci-history и без
+       * истории играет вслепую: не видит, что было в партии, и её
+       * уровень резко падает.
        */
       const uciMoves = toUciMoves(game.history());
 
@@ -2003,25 +2103,14 @@ const fetchBestMove = useCallback(
   ]);
 
   /*
-   * Первичная оценка позиции.
+   * Оценка текущей позиции. Шкала у доски по умолчанию показывает
+   * Stockfish, поэтому оценку запрашиваем сразу после монтирования
+   * и подхватываем её, если первого ответа ещё нет (запрос упал или
+   * пришёл без оценки). Как только оценка появилась, повторно движок
+   * не дёргаем.
    */
   useEffect(() => {
-    fetchEval(game.fen())
-      .then((data) => {
-        if (data.evaluation) {
-          setEvalScore(data.evaluation);
-        }
-      })
-      .catch(() => {});
-  }, []);
-
-  /*
-   * Если шкалу переключили на движок, а оценки ещё нет (первый запрос
-   * не удался или прошёл до переключения), запрашиваем её для текущей
-   * позиции. Без этого капсула осталась бы материальной.
-   */
-  useEffect(() => {
-    if (evalMode !== "engine" || evalScore) return undefined;
+    if (evalScore) return undefined;
 
     let cancelled = false;
 
@@ -2036,7 +2125,7 @@ const fetchBestMove = useCallback(
     return () => {
       cancelled = true;
     };
-  }, [evalMode, evalScore, game]);
+  }, [evalScore, game]);
 
   /*
    * Передаём evaluation наверх.
@@ -2083,6 +2172,8 @@ const fetchBestMove = useCallback(
    */
   const processPlayerMove = useCallback(
     (sourceSquare, targetSquare) => {
+      if (gameResult) return false;
+
       let move;
       try {
         move = game.move({
@@ -2202,7 +2293,7 @@ const fetchBestMove = useCallback(
         const gen = gameGenRef.current;
         setTimeout(() => {
           if (gen === gameGenRef.current) makeAiMove();
-        }, 500);
+        }, AI_MOVE_DELAY_MS);
       }
 
       return true;
@@ -2217,6 +2308,7 @@ const fetchBestMove = useCallback(
       onStateChange,
       clearPremove,
       showGameOverCard,
+      gameResult,
     ],
   );
 
@@ -2290,7 +2382,7 @@ const fetchBestMove = useCallback(
     const gen = gameGenRef.current;
     const timer = setTimeout(() => {
       if (gen === gameGenRef.current) makeAiMove();
-    }, 600);
+    }, AI_MOVE_DELAY_MS);
 
     return () => clearTimeout(timer);
   }, [
@@ -2311,7 +2403,7 @@ const fetchBestMove = useCallback(
    */
   const handlePremoveSquareClick = useCallback(
     (square) => {
-      if (game.isGameOver() || game.isDraw()) return;
+      if (gameResult || game.isGameOver() || game.isDraw()) return;
 
       /*
        * Клик по уже подсвеченной цели снимает предход - удобная
@@ -2380,6 +2472,7 @@ const fetchBestMove = useCallback(
       getPremoveTargets,
       setPremoveMove,
       clearPremove,
+      gameResult,
     ],
   );
 
@@ -2388,7 +2481,7 @@ const fetchBestMove = useCallback(
    */
   const onDrop = useCallback(
     (sourceSquare, targetSquare) => {
-      if (isViewMode || sidePickerOpen) return false;
+      if (gameResult || isViewMode || sidePickerOpen) return false;
       if (game.isGameOver() || game.isDraw()) return false;
 
       /*
@@ -2431,6 +2524,7 @@ const fetchBestMove = useCallback(
       processPlayerMove,
       setPremoveMove,
       clearPremove,
+      gameResult,
     ],
   );
 
@@ -2439,7 +2533,7 @@ const fetchBestMove = useCallback(
    */
   const onSquareClick = useCallback(
     (square) => {
-      if (isViewMode || sidePickerOpen) return;
+      if (gameResult || isViewMode || sidePickerOpen) return;
       if (game.isGameOver() || game.isDraw()) return;
 
       /*
@@ -2533,6 +2627,7 @@ const fetchBestMove = useCallback(
       handlePremoveSquareClick,
       processPlayerMove,
       clearPremove,
+      gameResult,
     ],
   );
 
@@ -2564,10 +2659,11 @@ const fetchBestMove = useCallback(
 
   const isDraggablePiece = useCallback(
     ({ piece }) =>
+      !gameResult &&
       !isViewMode &&
       !sidePickerOpen &&
       piece?.[0] === playerColor,
-    [isViewMode, sidePickerOpen, playerColor],
+    [gameResult, isViewMode, sidePickerOpen, playerColor],
   );
 
   /*
@@ -2818,6 +2914,7 @@ const fetchBestMove = useCallback(
               src={`/pieces/${pieceColor}_${PIECE_FILE_NAMES[type]}.svg`}
               alt=""
               aria-hidden="true"
+              draggable={false}
             />
           ))}
         </span>
@@ -2898,26 +2995,15 @@ const fetchBestMove = useCallback(
    */
   for (const sq of legalMovesForSelected) {
     const targetPiece = game.get(sq);
-
-    if (!customSquareStyles[sq]) {
-      if (targetPiece) {
-        customSquareStyles[sq] = {
-          backgroundImage:
-            "radial-gradient(circle, transparent 48%, rgba(100,80,40,0.25) 50%, rgba(100,80,40,0.25) 80%, transparent 82%)",
-          backgroundPosition: "center",
-          backgroundSize: "100% 100%",
-          backgroundRepeat: "no-repeat",
-        };
-      } else {
-        customSquareStyles[sq] = {
-          backgroundImage:
-            "radial-gradient(circle, rgba(100,80,40,0.2) 15%, transparent 16%)",
-          backgroundPosition: "center",
-          backgroundSize: "100% 100%",
-          backgroundRepeat: "no-repeat",
-        };
-      }
-    }
+    customSquareStyles[sq] = {
+      ...(customSquareStyles[sq] || {}),
+      backgroundImage: targetPiece
+        ? "radial-gradient(circle, transparent 48%, rgba(100,80,40,0.25) 50%, rgba(100,80,40,0.25) 80%, transparent 82%)"
+        : "radial-gradient(circle, rgba(100,80,40,0.2) 15%, transparent 16%)",
+      backgroundPosition: "center",
+      backgroundSize: "100% 100%",
+      backgroundRepeat: "no-repeat",
+    };
   }
 
   /*
@@ -3060,9 +3146,8 @@ const fetchBestMove = useCallback(
   return (
     <div className="board-section">
       {/*
-       * Перевес верхней стороны - над карточкой доски, а не внутри
-       * неё. Строка имеет фиксированную высоту, поэтому появление
-       * перевеса не сдвигает поле и не пересчитывает его размер.
+       * Перевес верхней стороны находится под карточкой доски.
+       * Фиксированная высота строки не сдвигает поле при взятии.
        */}
       <div className="board-material-row">
         <MaterialDisplay
@@ -3143,6 +3228,7 @@ const fetchBestMove = useCallback(
             customPieces={{
               wK: () => (
                 <img
+                  draggable={false}
                   src="/pieces/white_king.svg"
                   style={{
                     width: "100%",
@@ -3153,6 +3239,7 @@ const fetchBestMove = useCallback(
 
               wQ: () => (
                 <img
+                  draggable={false}
                   src="/pieces/white_queen.svg"
                   style={{
                     width: "100%",
@@ -3163,6 +3250,7 @@ const fetchBestMove = useCallback(
 
               wR: () => (
                 <img
+                  draggable={false}
                   src="/pieces/white_rook.svg"
                   style={{
                     width: "100%",
@@ -3173,6 +3261,7 @@ const fetchBestMove = useCallback(
 
               wB: () => (
                 <img
+                  draggable={false}
                   src="/pieces/white_bishop.svg"
                   style={{
                     width: "100%",
@@ -3183,6 +3272,7 @@ const fetchBestMove = useCallback(
 
               wN: () => (
                 <img
+                  draggable={false}
                   src="/pieces/white_knight.svg"
                   style={{
                     width: "100%",
@@ -3193,6 +3283,7 @@ const fetchBestMove = useCallback(
 
               wP: () => (
                 <img
+                  draggable={false}
                   src="/pieces/white_pawn.svg"
                   style={{
                     width: "100%",
@@ -3203,6 +3294,7 @@ const fetchBestMove = useCallback(
 
               bK: () => (
                 <img
+                  draggable={false}
                   src="/pieces/black_king.svg"
                   style={{
                     width: "100%",
@@ -3213,6 +3305,7 @@ const fetchBestMove = useCallback(
 
               bQ: () => (
                 <img
+                  draggable={false}
                   src="/pieces/black_queen.svg"
                   style={{
                     width: "100%",
@@ -3223,6 +3316,7 @@ const fetchBestMove = useCallback(
 
               bR: () => (
                 <img
+                  draggable={false}
                   src="/pieces/black_rook.svg"
                   style={{
                     width: "100%",
@@ -3233,6 +3327,7 @@ const fetchBestMove = useCallback(
 
               bB: () => (
                 <img
+                  draggable={false}
                   src="/pieces/black_bishop.svg"
                   style={{
                     width: "100%",
@@ -3243,6 +3338,7 @@ const fetchBestMove = useCallback(
 
               bN: () => (
                 <img
+                  draggable={false}
                   src="/pieces/black_knight.svg"
                   style={{
                     width: "100%",
@@ -3253,6 +3349,7 @@ const fetchBestMove = useCallback(
 
               bP: () => (
                 <img
+                  draggable={false}
                   src="/pieces/black_pawn.svg"
                   style={{
                     width: "100%",
@@ -3333,8 +3430,10 @@ const fetchBestMove = useCallback(
                   >
                     <img
                       className="side-pick-piece"
+                      draggable={false}
                       src="/pieces/white_king.svg"
                       alt=""
+                      draggable={false}
                     />
                     <span className="side-pick-name">
                       Белые
@@ -3347,13 +3446,33 @@ const fetchBestMove = useCallback(
                   >
                     <img
                       className="side-pick-piece"
+                      draggable={false}
                       src="/pieces/black_king.svg"
                       alt=""
+                      draggable={false}
                     />
                     <span className="side-pick-name">
                       Чёрные
                     </span>
                   </button>
+                </div>
+              </div>
+            </div>
+          )}
+          {resignConfirmOpen && !gameResult && (
+            <div className="resign-overlay" onClick={() => setResignConfirmOpen(false)}>
+              <div className="resign-dialog" role="dialog" aria-modal="true" aria-labelledby="resign-title"
+                onClick={(event) => event.stopPropagation()} onKeyDown={(event) => {
+                  if (event.key === "Escape") setResignConfirmOpen(false);
+                }}>
+                <span className="resign-dialog__eyebrow">Партия против Maia</span>
+                <h2 id="resign-title">Сдаться?</h2>
+                <p>Партия будет засчитана как поражение.</p>
+                <div className="resign-dialog__actions">
+                  <button type="button" className="resign-dialog__cancel" autoFocus
+                    onClick={() => setResignConfirmOpen(false)}>Продолжить игру</button>
+                  <button type="button" className="resign-dialog__confirm" onClick={handleResign}
+                    disabled={!canResign}>Сдаться</button>
                 </div>
               </div>
             </div>
@@ -3382,6 +3501,12 @@ const fetchBestMove = useCallback(
                 </div>
                 <div className="gameover-reason">
                   {gameResult.reason}
+                </div>
+                <div className={`gameover-coins ${typeof coinChange === "number" && coinChange < 0 ? "gameover-coins--loss" : ""}`} aria-live="polite">
+                  {coinChange === null ? "Подсчитываем GigaCoin…"
+                    : coinChange === "unavailable" ? "Баланс GigaCoin недоступен"
+                      : !getAccessToken() ? "Войдите, чтобы получать GigaCoin"
+                        : `${coinChange > 0 ? "+" : ""}${coinChange} GigaCoin`}
                 </div>
 
                 {reviewError && (
@@ -3414,7 +3539,7 @@ const fetchBestMove = useCallback(
                     <button
                       type="button"
                       className="gameover-btn gameover-btn--review"
-                      onClick={() => setResultCardDismissed(true)}
+                      onClick={openReviewMoves}
                     >
                       Разбор по ходам
                     </button>
@@ -3494,6 +3619,16 @@ const fetchBestMove = useCallback(
             Новая игра
           </button>
 
+          <button
+            type="button"
+            className="ctrl-btn ctrl-btn--resign"
+            onClick={() => setResignConfirmOpen(true)}
+            disabled={!canResign}
+            title={canResign ? "Сдаться и завершить партию поражением" : "Сдаться можно во время активной партии"}
+          >
+            Сдаться
+          </button>
+
           {/*
            * Разбор доступен и после того, как итоговую карточку закрыли
            * кликом по фону: кнопка открывает её снова и запускает разбор.
@@ -3508,19 +3643,6 @@ const fetchBestMove = useCallback(
               Разобрать партию
             </Link>
           )}
-
-          {/*
-           * Переключатель режима шкалы: материальный перевес или оценка
-           * движка. Выбор запоминается в браузере.
-           */}
-          <button
-            type="button"
-            className="ctrl-btn ctrl-btn--eval-mode"
-            onClick={onToggleEvalMode}
-            disabled={!onToggleEvalMode}
-          >
-            {evalMode === "engine" ? "Оценка: движок" : "Оценка: материал"}
-          </button>
         </div>
 
         {/*

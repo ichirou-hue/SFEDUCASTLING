@@ -135,8 +135,8 @@ export default function MiniProfilePopover({
         className="user-name mini-profile__trigger"
         title="Открыть профиль и прогресс"
       >
-        {profile?.is_admin ? "♛ " : "👤 "}
-        {profile?.login || user?.login || "Пользователь"}
+        {profile?.is_admin ? "♛ " : "♟ "}
+        {profile?.nickname || profile?.login || user?.nickname || user?.login || "Пользователь"}
       </Link>
 
       <div
@@ -153,7 +153,9 @@ export default function MiniProfilePopover({
             {profile?.is_admin ? "♛" : "♟"}
           </div>
           <div className="mini-profile__identity">
-            <strong>{profile?.login || user?.login || "Пользователь"}</strong>
+            <strong>
+              {profile?.nickname || profile?.login || user?.nickname || user?.login || "Пользователь"}
+            </strong>
             <span>Elo {profile?.elo ?? 0}</span>
           </div>
         </div>
@@ -205,7 +207,7 @@ export default function MiniProfilePopover({
             доступен всегда, даже если прогресс не загрузился. */}
         <div className="mini-profile__footer">
           <Link to="/profile" className="mini-profile__details-link">
-            Открыть полный профиль →
+            Открыть полный профиль
           </Link>
           <button
             type="button"

@@ -82,17 +82,16 @@
 /* Панель уровней Maia стоит под историей ходов и должна выглядеть
    частью того же набора: та же тёмная поверхность и золото. */
 :root[data-theme="dark"] .maia-level-progress {
-  border-color: var(--sf-line);
-  border-left-color: var(--sf-gold);
-  background: var(--sf-surface-raised);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.26);
+  border-color: var(--sf-line-strong);
+  background: var(--sf-surface);
+  box-shadow: 0 20px 52px rgba(0, 0, 0, 0.3);
 }
 
 :root[data-theme="dark"] .maia-level-progress-title {
   color: var(--sf-gold);
 }
 
-:root[data-theme="dark"] .maia-level-progress-title span {
+:root[data-theme="dark"] .maia-level-progress-count {
   color: var(--sf-muted);
 }
 
@@ -366,6 +365,25 @@
 :root[data-theme="dark"] .onb-submit:hover:not(:disabled) {
   background: var(--sf-gold-bright);
   border-color: var(--sf-gold-bright);
+}
+
+:root[data-theme="dark"] .ctrl-btn--resign {
+  border-color: rgba(211, 112, 91, 0.58);
+  background: rgba(179, 84, 58, 0.18);
+  color: #efb2a5;
+}
+
+:root[data-theme="dark"] .ctrl-btn--resign:hover:not(:disabled) {
+  border-color: rgba(239, 178, 165, 0.78);
+  background: rgba(179, 84, 58, 0.3);
+  color: #ffd0c6;
+}
+
+:root[data-theme="dark"] .ctrl-btn--resign:disabled {
+  background: rgba(179, 84, 58, 0.1);
+  color: rgba(239, 178, 165, 0.62);
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* Вторичные кнопки: прозрачные, с золотым кантом. */
@@ -675,8 +693,7 @@
 }
 
 :root[data-theme="dark"] .chat-strip,
-:root[data-theme="dark"] .chat-strip-chevron,
-:root[data-theme="dark"] .chat-strip-title {
+:root[data-theme="dark"] .chat-strip-chevron {
   color: var(--sf-gold);
 }
 
@@ -772,8 +789,7 @@
 :root[data-theme="dark"] .puzzle-moves-left-label,
 :root[data-theme="dark"] .puzzle-streak-label,
 :root[data-theme="dark"] .puzzle-nav-index,
-:root[data-theme="dark"] .puzzle-rating,
-:root[data-theme="dark"] .puzzle-streak-best {
+:root[data-theme="dark"] .puzzle-rating {
   color: var(--sf-muted-2);
 }
 
@@ -810,8 +826,6 @@
 
 :root[data-theme="dark"] .puzzle-theme-label,
 :root[data-theme="dark"] .puzzle-quick-stat span,
-:root[data-theme="dark"] .puzzle-streak-best,
-:root[data-theme="dark"] .puzzle-rewards-details,
 :root[data-theme="dark"] .puzzle-mode-card p,
 :root[data-theme="dark"] .puzzle-mode-level,
 :root[data-theme="dark"] .puzzle-mode-difficulty {
@@ -857,10 +871,6 @@
 
 :root[data-theme="dark"] .puzzle-moves-left-count {
   color: var(--sf-blue);
-}
-
-:root[data-theme="dark"] .puzzle-quick-stat-hint {
-  color: var(--sf-muted);
 }
 
 :root[data-theme="dark"] .puzzle-quick-stat strong {
@@ -986,7 +996,8 @@
   color: var(--sf-muted);
 }
 
-:root[data-theme="dark"] .training-module-due-badge {
+:root[data-theme="dark"] .training-module-due-badge,
+:root[data-theme="dark"] .training-path-due-badge {
   border-color: var(--sf-surface-raised);
   box-shadow:
     0 6px 16px rgba(0, 0, 0, 0.42),
@@ -1775,8 +1786,7 @@
 
 :root[data-theme="dark"] .phase-accuracy__summary-item span,
 :root[data-theme="dark"] .phase-accuracy__summary-item small,
-:root[data-theme="dark"] .phase-accuracy__details-heading span,
-:root[data-theme="dark"] .phase-accuracy__footnote {
+:root[data-theme="dark"] .phase-accuracy__details-heading span {
   color: var(--sf-muted-2);
 }
 
@@ -1836,7 +1846,6 @@
   background: linear-gradient(160deg, rgba(213, 180, 118, 0.12), rgba(102, 180, 128, 0.08));
 }
 
-:root[data-theme="dark"] .auth-brand-icon,
 :root[data-theme="dark"] .prg-brand-icon,
 :root[data-theme="dark"] .onb-brand-icon {
   color: var(--sf-gold);
@@ -2235,6 +2244,39 @@
 :root[data-theme="dark"] .level-test-page,
 :root[data-theme="dark"] .admin-page {
   scrollbar-color: rgba(213, 180, 118, 0.35) transparent;
+}
+
+/* Page content remains scrollable without browser chrome along the viewport. */
+html,
+body {
+  overflow-x: clip;
+  scrollbar-width: none;
+}
+
+.main-page-scroll,
+.puzzles-page-shell,
+.training-page,
+.user-profile-page,
+.gigacoin-shop-page,
+.level-test-page,
+.admin-page,
+.home-page,
+.review-page {
+  scrollbar-width: none;
+}
+
+.main-page-scroll::-webkit-scrollbar,
+.puzzles-page-shell::-webkit-scrollbar,
+.training-page::-webkit-scrollbar,
+.user-profile-page::-webkit-scrollbar,
+.gigacoin-shop-page::-webkit-scrollbar,
+.level-test-page::-webkit-scrollbar,
+.admin-page::-webkit-scrollbar,
+.home-page::-webkit-scrollbar,
+.review-page::-webkit-scrollbar,
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  display: none;
 }
 
 /* The embedded chess accounts section sits on the dark profile surface. */

@@ -26,7 +26,7 @@ function announceGigacoinReward(data) {
   if (typeof window === "undefined" || !data) return;
   const balance = Number(data.gigacoins_balance);
   const amount = Number(data.gigacoins_earned || 0);
-  if (amount > 0) {
+  if (amount !== 0) {
     window.dispatchEvent(new CustomEvent("sfedu-gigacoins-earned", {
       detail: { amount, balance: Number.isFinite(balance) ? balance : null },
     }));
@@ -336,6 +336,12 @@ export async function saveOnboarding(answers) {
   return user;
 }
 
+export async function changeNickname(nickname) {
+  const { data } = await api.patch("/api/auth/nickname", { nickname });
+  if (data?.access_token && data?.refresh_token && data?.user) saveAuth(data);
+  return data;
+}
+
 export async function fetchGigacoinShop() {
   const { data } = await api.get("/api/gigacoins/shop");
   return data;
@@ -348,6 +354,11 @@ export async function purchaseGigacoinCosmetic(cosmeticId) {
 
 export async function equipGigacoinCosmetic(cosmeticId) {
   const { data } = await api.post("/api/gigacoins/shop/equip", { cosmetic_id: cosmeticId });
+  return data;
+}
+
+export async function unequipGigacoinCosmetic(cosmeticId) {
+  const { data } = await api.post("/api/gigacoins/shop/unequip", { cosmetic_id: cosmeticId });
   return data;
 }
 
@@ -538,11 +549,12 @@ export async function checkPuzzle(puzzleId, move) {
   return data;
 }
 
-export async function recordPuzzleAttempt(puzzleId, correct, playerMoves = []) {
+export async function recordPuzzleAttempt(puzzleId, correct, playerMoves = [], usedHint = false) {
   const { data } = await api.post("/api/learning/puzzle/attempt", {
     puzzle_id: puzzleId,
     correct,
     player_moves: playerMoves,
+    used_hint: usedHint,
   });
   announceGigacoinReward(data);
   if (typeof window !== "undefined" && Number.isFinite(Number(data?.puzzle_streak))) {
@@ -575,6 +587,11 @@ export async function fetchRatingBandProgress() {
 
 export async function fetchWeaknessProfile() {
   const { data } = await api.get("/api/learning/weaknesses");
+  return data;
+}
+
+export async function fetchLearningDifficulty() {
+  const { data } = await api.get("/api/learning/difficulty");
   return data;
 }
 
@@ -618,6 +635,11 @@ export async function fetchTrainingLesson(lessonId) {
   return normalizeTrainingText(data);
 }
 
+export async function fetchTrainingTask(taskId) {
+  const { data } = await api.get(`/api/training/tasks/${taskId}`);
+  return normalizeTrainingText(data);
+}
+
 export async function checkTrainingTask(
   taskId,
   answer,
@@ -651,6 +673,16 @@ export async function fetchOpeningByFen(fen) {
   const { data } = await api.get("/api/knowledge/opening", {
     params: { fen },
   });
+  return data;
+}
+
+export async function fetchOpenings() {
+  const { data } = await api.get("/api/knowledge/openings");
+  return data;
+}
+
+export async function checkOpeningMove(fen) {
+  const { data } = await api.post("/api/knowledge/check-move", { fen });
   return data;
 }
 

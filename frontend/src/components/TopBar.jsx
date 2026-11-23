@@ -76,7 +76,8 @@ export default function TopBar({ user, theme, onThemeChange, onUserChange, onReg
               onClick={() => onOpenOnboarding?.()}
               title="Пройти онбординг-анкету"
             >
-              Заполните анкету
+              <span className="onb-badge-label">Заполните анкету</span>
+              <span className="onb-badge-label-mobile">Анкета</span>
             </button>
           )}
           <MiniProfilePopover

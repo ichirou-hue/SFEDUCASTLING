@@ -18,9 +18,364 @@
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import chess
 
 Step = str | tuple[str, str, str, str]
+
+PIECE_RU = {
+    chess.PAWN: "пешку",
+    chess.KNIGHT: "коня",
+    chess.BISHOP: "слона",
+    chess.ROOK: "ладью",
+    chess.QUEEN: "ферзя",
+    chess.KING: "короля",
+}
+CENTER = {"d4", "e4", "c4", "d5", "e5"}
+THEORY_PATH = Path(__file__).resolve().parents[1] / "knowledge" / "openings.json"
+_THEORY: list[dict] | None = None
+_POSITIONS: dict[tuple, list[tuple[int, dict, int]]] | None = None
+BASE_MOVES: dict[str, list[str]] = {}
+
+# Сколько первых полуходов урока проигрывается без заданий. Так урок не
+# начинается каждый раз с общих 1.e4/1.d4/1.Nf3: ученик сразу видит
+# позицию дебюта, а первым заданием становится характерный ход.
+START_PLIES: dict[str, int] = {
+    "italian": 4,
+    "ruy-lopez": 4,
+    "scotch": 4,
+    "petrov": 4,
+    "vienna": 2,
+    "kings-gambit": 2,
+    "four-knights": 4,
+    "danish-gambit": 4,
+    "sicilian": 1,
+    "french": 1,
+    "caro-kann": 1,
+    "scandinavian": 1,
+    "alekhine": 1,
+    "pirc": 1,
+    "modern": 1,
+    "queens-gambit": 2,
+    "slav": 2,
+    "catalan": 2,
+    "london": 2,
+    "nimzo-indian": 2,
+    "queens-indian": 2,
+    "kings-indian": 2,
+    "grunfeld": 2,
+    "dutch": 1,
+    "benoni": 2,
+    "budapest": 2,
+    "english": 0,
+    "reti": 2,
+    "bird": 0,
+    "trompowsky": 2,
+}
+
+
+def _theory() -> list[dict]:
+    """Теория дебютов из lichess-org/chess-openings (читается один раз)."""
+    global _THEORY
+    if _THEORY is None:
+        data = json.loads(THEORY_PATH.read_text(encoding="utf-8"))
+        _THEORY = data["openings"]
+    return _THEORY
+
+
+def _positions() -> dict[tuple, list[tuple[int, dict, int]]]:
+    """Индекс "позиция -> линии базы", который строится за один проход.
+
+    Без него каждый урок заново переигрывал всю базу (3 МБ теории) для
+    поиска продолжений: сборка LESSONS на импорте занимала ~55 с.
+    """
+
+    global _POSITIONS
+    if _POSITIONS is None:
+        index: dict[tuple, list[tuple[int, dict, int]]] = {}
+        for order, entry in enumerate(_theory()):
+            entry_moves = entry.get("moves") or []
+            if not entry_moves:
+                continue
+            board = chess.Board()
+            for position, uci in enumerate(entry_moves):
+                index.setdefault(board._transposition_key(), []).append(
+                    (order, entry, position)
+                )
+                try:
+                    board.push(chess.Move.from_uci(uci))
+                except ValueError:
+                    break
+        _POSITIONS = index
+    return _POSITIONS
+
+
+def _describe(board: chess.Board, move: chess.Move) -> tuple[str, str, str]:
+    """Заголовок, инструкция и пояснение для хода из теории дебютов."""
+    san = board.san(move)
+    dest = chess.square_name(move.to_square)
+    piece = board.piece_at(move.from_square)
+    after = board.copy()
+    after.push(move)
+    if (
+        piece is not None
+        and piece.piece_type == chess.KING
+        and abs(move.to_square - move.from_square) == 2
+    ):
+        side = "короткая" if move.to_square > move.from_square else "длинная"
+        return (
+            "Рокировка",
+            "Уведите короля из центра рокировкой.",
+            f"{san} - {side} рокировка: король в безопасности, ладья вступает в игру.",
+        )
+    if board.is_capture(move):
+        target = board.piece_at(move.to_square)
+        name = PIECE_RU[target.piece_type] if target is not None else "фигуру"
+        return (
+            f"Взятие на {dest}",
+            f"Возьмите {name} на {dest}.",
+            f"{san}: белые берут {name} на {dest} и сохраняют инициативу.",
+        )
+    if after.is_checkmate():
+        return (
+            "Мат",
+            "Завершите атаку матующим ходом.",
+            f"{san} ставит мат.",
+        )
+    if after.is_check():
+        return (
+            "Шах",
+            "Объявите шах, продолжая линию.",
+            f"{san} объявляет шах и заставляет соперника реагировать.",
+        )
+    if piece is not None and piece.piece_type == chess.PAWN and dest in CENTER:
+        return (
+            f"Центр: {dest}",
+            "Займите центр пешкой.",
+            f"{san} укрепляет центр и открывает пространство фигурам.",
+        )
+    if piece is not None and piece.piece_type in (chess.KNIGHT, chess.BISHOP) and chess.square_rank(move.from_square) in (0, 7):
+        return (
+            f"Развитие: {dest}",
+            "Развейте фигуру к центру.",
+            f"{san} выводит фигуру с последней горизонтали и усиливает контроль над центром.",
+        )
+    return (
+        f"План: {san}",
+        "Продолжите теоретическую линию.",
+        f"Теория рекомендует {san}: ход продолжает развитие и борется за центр.",
+    )
+
+
+def _candidates(board: chess.Board, prefix: list[str]):
+    """Линии из базы, продолжающие позицию: сначала точный порядок ходов."""
+    seen: set[str] = set()
+    key = board._transposition_key()
+    scoped: set[int] = set()
+    if prefix:
+        for order, entry in enumerate(_theory()):
+            moves = entry.get("moves") or []
+            if moves[: len(prefix)] != prefix:
+                continue
+            rest = moves[len(prefix) :]
+            if not rest:
+                continue
+            token = " ".join(rest)
+            if token in seen:
+                continue
+            seen.add(token)
+            scoped.add(order)
+            yield entry, rest
+    yielded: set[int] = set()
+    for order, entry, position in _positions().get(key, ()):
+        if order in scoped or order in yielded:
+            continue
+        yielded.add(order)
+        rest = (entry.get("moves") or [])[position:]
+        token = " ".join(rest)
+        if not rest or token in seen:
+            continue
+        seen.add(token)
+        yield entry, rest
+
+
+def _signature(board: chess.Board, move: chess.Move) -> tuple:
+    """Ключ задания, совпадающий с сигнатурой в training_course_data."""
+    return (
+        board.fen(),
+        chess.square_name(move.from_square),
+        "make_move",
+        ("accepted_moves", (move.uci(),)),
+    )
+
+
+def _task_signature(task: dict) -> tuple:
+    payload = task.get("payload") or {}
+    return (
+        task["fen"],
+        task["source_square"],
+        task["task_type"],
+        (payload.get("mode"), tuple(payload.get("accepted_moves") or ())),
+    )
+
+
+def _line_signatures(start: chess.Board, variations: list[dict]) -> set[tuple]:
+    """Сигнатуры заданий из уже написанных веток."""
+    result: set[tuple] = set()
+    for variation in variations:
+        board = start.copy()
+        for step in variation["line"]:
+            san = step if isinstance(step, str) else step[0]
+            try:
+                move = board.parse_san(san)
+            except (ValueError, AssertionError):
+                break
+            if isinstance(step, tuple):
+                result.add(_signature(board, move))
+            board.push(move)
+    return result
+
+
+def _auto_variations(
+    base_board: chess.Board,
+    base_moves: list[str],
+    used_keys: set[tuple[str, str]],
+    need: int,
+    used_intros: set[str] | None = None,
+    used_signatures: set[tuple] | None = None,
+) -> list[dict]:
+    """Добирает ветки из базы дебютов, пока в уроке не станет 12 заданий."""
+    if need <= 0:
+        return []
+    result: list[dict] = []
+    used: set[tuple[str, str]] = set(used_keys)
+    intros: set[str] = set(used_intros or ())
+    signatures: set[tuple] = set(used_signatures or ())
+    for entry, rest in sorted(
+        _candidates(base_board, base_moves), key=lambda item: len(item[1]), reverse=True
+    ):
+        if len(rest) < 2:
+            continue
+        board = base_board.copy()
+        intro_uci = rest[0]
+        first_uci = rest[1]
+        key = (intro_uci, first_uci)
+        if key in used or intro_uci in intros:
+            continue
+        try:
+            intro_move = chess.Move.from_uci(intro_uci)
+        except ValueError:
+            continue
+        if intro_move not in board.legal_moves:
+            continue
+        intro_san = board.san(intro_move)
+        intros.add(intro_uci)
+        board.push(intro_move)
+        steps: list[Step] = [intro_san]
+        new_signatures: list[tuple] = []
+        white_moves = 0
+        for index, uci in enumerate(rest[1:]):
+            try:
+                move = chess.Move.from_uci(uci)
+            except ValueError:
+                break
+            if move not in board.legal_moves:
+                break
+            san = board.san(move)
+            if index % 2 == 0:
+                signature = _signature(board, move)
+                if signature in signatures or signature in new_signatures:
+                    break
+                steps.append((san, *_describe(board, move)))
+                new_signatures.append(signature)
+                white_moves += 1
+                if white_moves >= 3:
+                    break
+            else:
+                steps.append(san)
+            board.push(move)
+        if white_moves < 2:
+            continue
+        used.add(key)
+        signatures.update(new_signatures)
+        result.append(
+            {
+                "id": f"auto-{len(result) + 1}-{intro_uci}-{first_uci}",
+                "label": f"Вариант {intro_san} {steps[1][0] if len(steps) > 1 else ''}".strip(),
+                "description": f"Теория: {entry.get('pgn', '')}.",
+                "line": steps,
+                "_white": white_moves,
+            }
+        )
+        need -= white_moves
+        if need <= 0:
+            break
+    return result
+
+
+def _extend_variations(
+    base_board: chess.Board,
+    base_moves: list[str],
+    variations: list[dict],
+    need: int,
+    used_signatures: set[tuple] | None = None,
+) -> int:
+    """Удлиняет уже написанные ветки, продолжая их линией из базы дебютов."""
+    if need <= 0:
+        return need
+    signatures: set[tuple] = set(used_signatures or ())
+    while need > 0:
+        progress = False
+        for variation in variations:
+            if need <= 0:
+                break
+            board = base_board.copy()
+            try:
+                for step in variation["line"]:
+                    san = step if isinstance(step, str) else step[0]
+                    board.push(board.parse_san(san))
+            except (ValueError, AssertionError):
+                continue
+            for entry, rest in sorted(_candidates(board, []), key=lambda item: len(item[1]), reverse=True):
+                if not rest:
+                    continue
+                trial = board.copy()
+                additions: list[Step] = []
+                added_signatures: list[tuple] = []
+                added = 0
+                for uci in rest:
+                    try:
+                        move = chess.Move.from_uci(uci)
+                    except ValueError:
+                        break
+                    if move not in trial.legal_moves:
+                        break
+                    san = trial.san(move)
+                    if trial.turn == chess.WHITE:
+                        signature = _signature(trial, move)
+                        if signature in signatures:
+                            break
+                        additions.append((san, *_describe(trial, move)))
+                        added_signatures.append(signature)
+                        added += 1
+                    else:
+                        additions.append(san)
+                    trial.push(move)
+                    if added >= min(need, 3):
+                        break
+                if added:
+                    variation["line"] = list(variation["line"]) + additions
+                    signatures.update(added_signatures)
+                    need -= added
+                    progress = True
+                    break
+        if not progress:
+            break
+    if used_signatures is not None:
+        used_signatures.update(signatures)
+    return need
 
 
 def _task(
@@ -121,7 +476,14 @@ def _lesson(
     common_sans: list[str] = []
     player_move = 0
 
-    for step in line:
+    steps = list(line)
+    start_plies = START_PLIES.get(slug, 0)
+    for step in steps[:start_plies]:
+        san = step if isinstance(step, str) else step[0]
+        board.push(board.parse_san(san))
+        common_sans.append(san)
+
+    for step in steps[start_plies:]:
         player_move += 1 if isinstance(step, tuple) else 0
         _play(
             board,
@@ -135,6 +497,54 @@ def _lesson(
 
     base_fen = board.fen()
     base_board = board.copy()
+    base_moves = [move.uci() for move in board.move_stack]
+    BASE_MOVES[slug] = base_moves
+
+    # Если в рукописной линии мало заданий, добираем продолжения из базы
+    # дебютов: так урок получает 12-15 ходов вместо 2-3 веток по два хода.
+    variations = list(variations) + [
+        dict(item) for item in EXTRA_VARIATIONS.get(slug, [])
+    ]
+    used_keys: set[tuple[str, str]] = set()
+    intro_ucis: set[str] = set()
+    existing_moves = 0
+    for variation in variations:
+        steps = variation["line"]
+        existing_moves += sum(1 for step in steps if isinstance(step, tuple))
+        probe = base_board.copy()
+        intro_uci = None
+        first_uci = None
+        try:
+            for step in steps:
+                san = step if isinstance(step, str) else step[0]
+                move = probe.parse_san(san)
+                if intro_uci is None and not isinstance(step, tuple):
+                    intro_uci = move.uci()
+                if first_uci is None and isinstance(step, tuple):
+                    first_uci = move.uci()
+                probe.push(move)
+        except (ValueError, AssertionError):
+            continue
+        if intro_uci and first_uci:
+            used_keys.add((intro_uci, first_uci))
+            intro_ucis.add(intro_uci)
+    need = 12 - len(tasks) - existing_moves
+    used_signatures = {_task_signature(task) for task in tasks}
+    used_signatures |= _line_signatures(base_board, variations)
+    if need > 0:
+        need = _extend_variations(
+            base_board, base_moves, variations, need, used_signatures
+        )
+    if need > 0:
+        need = _apply_tails(base_board, slug, variations, need, used_signatures)
+    if need > 0:
+        auto = _auto_variations(
+            base_board, base_moves, used_keys, need, intro_ucis, used_signatures
+        )
+        for item in auto:
+            item.pop("_white", None)
+        variations.extend(auto)
+
     variations_meta: list[dict] = []
 
     for index, variation in enumerate(variations, start=1):
@@ -177,6 +587,16 @@ def _lesson(
             }
         )
 
+    unique_tasks: list[dict] = []
+    seen_tasks: set[tuple] = set()
+    for task in tasks:
+        signature = _task_signature(task)
+        if signature in seen_tasks:
+            continue
+        seen_tasks.add(signature)
+        unique_tasks.append(task)
+    tasks = unique_tasks
+
     return {
         "slug": slug,
         "title": title,
@@ -186,6 +606,495 @@ def _lesson(
         "variations": variations_meta,
         "tasks": tasks,
     }
+
+
+# Дополнительные ветки для дебютов, у которых база openings.json
+# заканчивается раньше 12 заданий. Ходы проверены python-chess и
+# соответствуют общепринятой теории: развивающие ходы обеих сторон.
+EXTRA_VARIATIONS: dict[str, list[dict]] = {
+    "vienna": [
+        {
+            "id": "bc5",
+            "label": "2...Bc5 - симметричное развитие",
+            "description": (
+                "Чёрные выводят слона на активную диагональ. Белые играют "
+                "Bc4, d3 и Nf3, спокойно заканчивая развитие."
+            ),
+            "line": [
+                "Bc5",
+                ("Bc4", "Слон на c4", "Чёрные вывели слона на c5. Поставьте слона f1 на c4.",
+                 "3.Bc4 занимает активную диагональ и смотрит на f7."),
+                "Nf6",
+                ("d3", "Пешка d3", "Чёрные развили коня и напали на пешку e4. Сыграйте d2-d3.",
+                 "4.d3 защищает пешку e4 и открывает слону c1 дорогу."),
+                "d6",
+                ("Nf3", "Развитие коня", "Чёрные сыграли d6. Развивайте коня g1 на f3.",
+                 "5.Nf3 завершает развитие: белые готовы рокироваться."),
+            ],
+        },
+    ],
+    "danish-gambit": [
+        {
+            "id": "d3",
+            "label": "4...d3 - пешка вклинивается",
+            "description": (
+                "Чёрные отдают пешку, чтобы задержать развитие белых. Белые "
+                "забирают её слонами и заканчивают развитие."
+            ),
+            "line": [
+                "d3",
+                ("Bxd3", "Слон забирает пешку", "Чёрные толкнули пешку на d3. Возьмите её слоном f1.",
+                 "5.Bxd3 забирает пешку и выводит слона на диагональ a6-f1."),
+                "d5",
+                ("exd5", "Размен в центре", "Чёрные ударили по центру. Возьмите пешку d5.",
+                 "6.exd5 вскрывает линию e и оставляет чёрным изолированную пешку."),
+                "Qxd5",
+                ("O-O", "Рокировка", "Ферзь чёрных отыграл пешку. Рокируйтесь.",
+                 "7.O-O завершает развитие: у белых пара слонов и открытые линии."),
+            ],
+        },
+    ],
+    "caro-kann": [
+        {
+            "id": "g6",
+            "label": "3...g6 - фианкетто",
+            "description": (
+                "Чёрные строят фианкетто и давят на центр слоном g7. Белые "
+                "спокойно развиваются и рокируются."
+            ),
+            "line": [
+                "g6",
+                ("Nf3", "Развитие коня", "Чёрные готовят слона на g7. Развивайте коня g1 на f3.",
+                 "4.Nf3 занимает центр и готовит короткую рокировку."),
+                "Bg7",
+                ("Bc4", "Слон на c4", "Слон чёрных встал на g7. Выведите слона f1 на c4.",
+                 "5.Bc4 нацелен на f7 и поддерживает давление в центре."),
+                "Nf6",
+                ("O-O", "Рокировка", "Чёрные развили коня. Рокируйтесь.",
+                 "6.O-O уводит короля и завершает развитие белых."),
+            ],
+        },
+        {
+            "id": "e6",
+            "label": "3...e6 - закрытый центр",
+            "description": (
+                "Чёрные укрепляют центр пешкой e6 и развивают слона на e7. "
+                "Белые заканчивают развитие без осложнений."
+            ),
+            "line": [
+                "e6",
+                ("Nf3", "Развитие коня", "Чёрные укрепили центр пешкой e6. Выведите коня g1 на f3.",
+                 "4.Nf3 развивает фигуру и защищает пешку e4."),
+                "Nf6",
+                ("Bd3", "Слон на d3", "Чёрные развили коня. Поставьте слона f1 на d3.",
+                 "5.Bd3 готовит рокировку и смотрит на королевский фланг."),
+                "Be7",
+                ("O-O", "Рокировка", "Чёрные вывели слона на e7. Рокируйтесь.",
+                 "6.O-O завершает развитие: у белых надёжный центр и пара слонов."),
+            ],
+        },
+    ],
+    "alekhine": [
+        {
+            "id": "exchange",
+            "label": "3...Nxc3 - разменный вариант",
+            "description": (
+                "Чёрные разменивают коня, чтобы испортить белым пешки. Белые "
+                "получают пару слонов и открытую линию b."
+            ),
+            "line": [
+                "Nxc3",
+                ("bxc3", "Взятие пешкой", "Конь чёрных взял вашего коня. Возьмите его пешкой b2.",
+                 "4.bxc3 укрепляет центр: у белых пара слонов и полуоткрытая линия b."),
+                "d6",
+                ("Nf3", "Развитие коня", "Чёрные напали на пешку e5. Развивайте коня g1 на f3.",
+                 "5.Nf3 защищает пешку e5 и готовит развитие."),
+                "dxe5",
+                ("Nxe5", "Возврат пешки", "Чёрные взяли на e5. Заберите их пешку конём.",
+                 "6.Nxe5 ставит коня в центр и сохраняет перевес в развитии."),
+            ],
+        },
+    ],
+    "pirc": [
+        {
+            "id": "a6",
+            "label": "4...a6 - подготовка b5",
+            "description": (
+                "Чёрные готовят наступление на ферзевом фланге. Белые "
+                "заканчивают развитие и рокируются в длинную сторону."
+            ),
+            "line": [
+                "a6",
+                ("f3", "Укрепление e4", "Чёрные готовят b5. Сыграйте f2-f3.",
+                 "5.f3 защищает пешку e4 и не даёт чёрным ударить по центру."),
+                "b5",
+                ("Qd2", "Ферзь на d2", "Чёрные начали наступление. Поставьте ферзя на d2.",
+                 "6.Qd2 готовит длинную рокировку и связывает план."),
+                "Bb7",
+                ("O-O-O", "Длинная рокировка", "Слон чёрных вышел на b7. Рокируйтесь в длинную сторону.",
+                 "7.O-O-O уводит короля и подключает ладью d1 к борьбе за центр."),
+            ],
+        },
+        {
+            "id": "nbd7",
+            "label": "4...Nbd7 - схема с c6",
+            "description": (
+                "Чёрные развивают коня и готовят c6. Белые играют f3, Qd2 и "
+                "закрывают центр ходом d5."
+            ),
+            "line": [
+                "Nbd7",
+                ("f3", "Укрепление e4", "Чёрные развили коня. Сыграйте f2-f3.",
+                 "5.f3 забирает у чёрных поле e5 и защищает центр."),
+                "c6",
+                ("Qd2", "Ферзь на d2", "Чёрные сыграли c6. Поставьте ферзя на d2.",
+                 "6.Qd2 готовит длинную рокировку."),
+                "e5",
+                ("d5", "Закрытие центра", "Чёрные ударили по центру. Продвиньте пешку d4 на d5.",
+                 "7.d5 закрывает центр и оставляет белым больше пространства."),
+            ],
+        },
+    ],
+    "modern": [
+        {
+            "id": "c6",
+            "label": "4...c6 - подготовка b5",
+            "description": (
+                "Чёрные готовят b5 и давление на ферзевом фланге. Белые "
+                "заканчивают развитие и рокируются в длинную сторону."
+            ),
+            "line": [
+                "c6",
+                ("Qd2", "Ферзь на d2", "Чёрные сыграли c6. Поставьте ферзя на d2.",
+                 "5.Qd2 готовит длинную рокировку."),
+                "b5",
+                ("f3", "Укрепление e4", "Чёрные начали b5. Сыграйте f2-f3.",
+                 "6.f3 защищает пешку e4 и готовит g4."),
+                "Nbd7",
+                ("O-O-O", "Длинная рокировка", "Чёрные развили коня. Рокируйтесь в длинную сторону.",
+                 "7.O-O-O уводит короля из центра и подключает ладью d1."),
+            ],
+        },
+        {
+            "id": "b6",
+            "label": "4...b6 - фианкетто ферзевого слона",
+            "description": (
+                "Чёрные выводят слона на b7. Белые играют f3 и Qd2, готовя "
+                "длинную рокировку."
+            ),
+            "line": [
+                "b6",
+                ("f3", "Укрепление e4", "Чёрные готовят слона на b7. Сыграйте f2-f3.",
+                 "5.f3 защищает пешку e4."),
+                "Bb7",
+                ("Qd2", "Ферзь на d2", "Слон чёрных встал на b7. Поставьте ферзя на d2.",
+                 "6.Qd2 готовит длинную рокировку и план атаки."),
+                "Nbd7",
+                ("O-O-O", "Длинная рокировка", "Чёрные развили коня. Рокируйтесь в длинную сторону.",
+                 "7.O-O-O завершает расстановку: белые готовы к атаке на королевском фланге."),
+            ],
+        },
+    ],
+    "london": [
+        {
+            "id": "be7",
+            "label": "4...Be7 - спокойное развитие",
+            "description": (
+                "Чёрные не торопятся с c5 и просто развиваются. Белые ставят "
+                "слона на d3 и коня на d2."
+            ),
+            "line": [
+                "Be7",
+                ("Bd3", "Слон на d3", "Чёрные вывели слона на e7. Поставьте слона f1 на d3.",
+                 "5.Bd3 развивает слона на активную диагональ."),
+                "O-O",
+                ("Nbd2", "Конь на d2", "Чёрные рокировались. Развивайте коня b1 на d2.",
+                 "6.Nbd2 укрепляет центр и готовит Ne5."),
+            ],
+        },
+        {
+            "id": "c6",
+            "label": "4...c6 - крепкий центр",
+            "description": (
+                "Чёрные укрепляют центр пешкой c6. Белые развивают слона и "
+                "коня, не торопясь с активными действиями."
+            ),
+            "line": [
+                "c6",
+                ("Bd3", "Слон на d3", "Чёрные сыграли c6. Поставьте слона f1 на d3.",
+                 "5.Bd3 выводит слона на активную диагональ."),
+                "Be7",
+                ("Nbd2", "Конь на d2", "Чёрные развили слона. Развивайте коня b1 на d2.",
+                 "6.Nbd2 готовит Ne5 и укрепляет центр."),
+            ],
+        },
+    ],
+    "queens-indian": [
+        {
+            "id": "d5",
+            "label": "4...d5 - захват центра",
+            "description": (
+                "Чёрные занимают центр пешкой d5. Белые завершают фианкетто "
+                "и рокируются."
+            ),
+            "line": [
+                "d5",
+                ("Bg2", "Фианкетто", "Чёрные заняли центр. Поставьте слона f1 на g2.",
+                 "5.Bg2 защищает короля и давит по большой диагонали."),
+                "Be7",
+                ("O-O", "Рокировка", "Чёрные вывели слона на e7. Рокируйтесь.",
+                 "6.O-O завершает развитие белых."),
+            ],
+        },
+    ],
+    "dutch": [
+        {
+            "id": "d6",
+            "label": "4...d6 - классическая схема",
+            "description": (
+                "Чёрные играют d6 и заканчивают развитие. Белые строят "
+                "фианкетто и рокируются."
+            ),
+            "line": [
+                "d6",
+                ("g3", "Фианкетто", "Чёрные сыграли d6. Завершите фианкетто ходом g2-g3.",
+                 "5.g3 готовит слона на g2 и укрепляет короля."),
+                "Be7",
+                ("Bg2", "Слон на g2", "Чёрные вывели слона на e7. Поставьте слона f1 на g2.",
+                 "6.Bg2 защищает короля и давит по большой диагонали."),
+                "O-O",
+                ("O-O", "Рокировка", "Чёрные рокировались. Рокируйтесь и вы.",
+                 "7.O-O завершает развитие: обе стороны разыграли классическую схему."),
+            ],
+        },
+        {
+            "id": "bb4",
+            "label": "4...Bb4 - связка коня",
+            "description": (
+                "Чёрные связывают коня c3. Белые снимают связку слоном d2 и "
+                "спокойно развиваются."
+            ),
+            "line": [
+                "Bb4",
+                ("Bd2", "Развязка коня", "Чёрные связали коня c3. Поставьте слона c1 на d2.",
+                 "5.Bd2 снимает связку и готовит e3."),
+                "O-O",
+                ("e3", "Пешка e3", "Чёрные рокировались. Сыграйте e2-e3.",
+                 "6.e3 укрепляет центр и открывает слону f1 дорогу."),
+                "d6",
+                ("Bd3", "Слон на d3", "Чёрные сыграли d6. Поставьте слона f1 на d3.",
+                 "7.Bd3 завершает развитие ферзевого фланга."),
+            ],
+        },
+    ],
+    "budapest": [
+        {
+            "id": "g5",
+            "label": "4...g5 - гамбитное продолжение",
+            "description": (
+                "Чёрные прогоняют слона и продолжают атаку на пешку e5. "
+                "Белые отступают слоном и развиваются."
+            ),
+            "line": [
+                "g5",
+                ("Bg3", "Отступление слона", "Чёрные ударили пешкой g5 по слону. Отступите на g3.",
+                 "5.Bg3 сохраняет слона на диагонали h2-b8."),
+                "Bg7",
+                ("Nf3", "Развитие коня", "Чёрные вывели слона. Развивайте коня g1 на f3.",
+                 "6.Nf3 защищает пешку e5 и готовит рокировку."),
+            ],
+        },
+        {
+            "id": "d6",
+            "label": "4...d6 - удар по пешке e5",
+            "description": (
+                "Чёрные сразу атакуют пешку e5. Белые развивают коня и "
+                "удерживают лишнюю пешку."
+            ),
+            "line": [
+                "d6",
+                ("Nf3", "Развитие коня", "Чёрные напали на пешку e5. Развивайте коня g1 на f3.",
+                 "5.Nf3 защищает пешку e5."),
+                "Nc6",
+                ("exd6", "Размен в центре", "Чёрные развили коня. Возьмите пешку d6.",
+                 "6.exd6 вскрывает центр и оставляет чёрным отсталую пешку."),
+                "Bxd6",
+                ("Bxd6", "Размен слонов", "Слон чёрных взял на d6. Разменяйтесь.",
+                 "7.Bxd6 убирает активного слона и упрощает позицию."),
+            ],
+        },
+    ],
+    "english": [
+        {
+            "id": "nd4",
+            "label": "4...Nd4 - конь в центре",
+            "description": (
+                "Чёрные ставят коня на d4 и разменивают его. Белые получают "
+                "пару слонов и удобную игру."
+            ),
+            "line": [
+                "Nd4",
+                ("Bg2", "Фианкетто", "Чёрные заняли поле d4. Завершите фианкетто ходом Bg2.",
+                 "5.Bg2 защищает короля и давит на центр."),
+                "Nxf3+",
+                ("Bxf3", "Взятие слоном", "Конь чёрных взял вашего коня с шахом. Возьмите его слоном g2.",
+                 "6.Bxf3 сохраняет белым пару слонов и контроль над центром."),
+            ],
+        },
+    ],
+    "reti": [
+        {
+            "id": "b6",
+            "label": "5...b6 - фианкетто ферзевого слона",
+            "description": (
+                "Чёрные готовят слона на b7. Белые играют b3 и Bb2, занимая "
+                "большую диагональ."
+            ),
+            "line": [
+                "b6",
+                ("b3", "Пешка b3", "Чёрные готовят фианкетто. Сыграйте b2-b3.",
+                 "6.b3 готовит слона c1 на b2."),
+                "Bb7",
+                ("Bb2", "Слон на b2", "Слон чёрных встал на b7. Поставьте слона c1 на b2.",
+                 "7.Bb2 занимает большую диагональ и поддерживает центр."),
+            ],
+        },
+    ],
+    "bird": [
+        {
+            "id": "nbd7",
+            "label": "5...Nbd7 - развитие ферзевого коня",
+            "description": (
+                "Чёрные развивают коня и готовят c6. Белые играют d3 и Qe1, "
+                "готовя атаку на королевском фланге."
+            ),
+            "line": [
+                "Nbd7",
+                ("d3", "Пешка d3", "Чёрные развили коня. Сыграйте d2-d3.",
+                 "6.d3 открывает слону c1 дорогу."),
+                "c6",
+                ("Qe1", "Ферзь на e1", "Чёрные сыграли c6. Поставьте ферзя на e1.",
+                 "7.Qe1 готовит перевод ферзя на h4 для атаки."),
+            ],
+        },
+        {
+            "id": "b6",
+            "label": "5...b6 - фианкетто ферзевого слона",
+            "description": (
+                "Чёрные выводят слона на b7. Белые играют d3 и Qe1."
+            ),
+            "line": [
+                "b6",
+                ("d3", "Пешка d3", "Чёрные готовят слона на b7. Сыграйте d2-d3.",
+                 "6.d3 открывает слону c1 дорогу."),
+                "Bb7",
+                ("Qe1", "Ферзь на e1", "Слон чёрных встал на b7. Поставьте ферзя на e1.",
+                 "7.Qe1 готовит атаку на королевском фланге."),
+            ],
+        },
+    ],
+    "trompowsky": [
+        {
+            "id": "a6",
+            "label": "5...a6 - подготовка b5",
+            "description": (
+                "Чёрные готовят b5 и игру на ферзевом фланге. Белые ставят "
+                "ферзя на d2 и рокируются в длинную сторону."
+            ),
+            "line": [
+                "a6",
+                ("Qd2", "Ферзь на d2", "Чёрные сыграли a6. Поставьте ферзя на d2.",
+                 "6.Qd2 готовит длинную рокировку."),
+                "b5",
+                ("O-O-O", "Длинная рокировка", "Чёрные начали b5. Рокируйтесь в длинную сторону.",
+                 "7.O-O-O уводит короля из центра и подключает ладью d1."),
+            ],
+        },
+        {
+            "id": "c5",
+            "label": "5...c5 - удар по центру",
+            "description": (
+                "Чёрные атакуют пешку d4. Белые продвигают её вперёд и "
+                "развивают ферзя."
+            ),
+            "line": [
+                "c5",
+                ("d5", "Продвижение d5", "Чёрные ударили по центру. Продвиньте пешку d4 на d5.",
+                 "6.d5 вскрывает игру и оставляет чёрным слабую пешку e6."),
+                "Bd6",
+                ("Qd2", "Ферзь на d2", "Чёрные вывели слона на d6. Поставьте ферзя на d2.",
+                 "7.Qd2 готовит длинную рокировку и защищает пешку d5."),
+            ],
+        },
+    ],
+}
+
+
+# Продолжения для уже написанных веток: короткий список SAN, который
+# дописывается к линии (используется там, где новая ветка дублировала бы
+# вступительный ход).
+EXTRA_TAILS: dict[str, dict[str, list[str]]] = {
+    "scandinavian": {"qd6": ["c6", "Bc4"], "qa5": ["Bg6", "h4"]},
+    "petrov": {"stafford": ["Bc5", "Nc3", "O-O", "Be2"]},
+    "danish-gambit": {
+        "declined": ["Bg4", "Be2"],
+        "accepted": ["d5", "exd5", "Qxd5", "Nc3"],
+    },
+    "alekhine": {"modern": ["c6", "Be2", "Nd7", "O-O"], "four-pawns": ["Be7", "O-O"]},
+}
+
+
+
+def _apply_tails(
+    base_board: chess.Board,
+    slug: str,
+    variations: list[dict],
+    need: int,
+    used_signatures: set[tuple] | None = None,
+) -> int:
+    """Дописывает ручные продолжения к конкретным веткам урока."""
+    tails = EXTRA_TAILS.get(slug, {})
+    if not tails or need <= 0:
+        return need
+    signatures: set[tuple] = set(used_signatures or ())
+    for variation in variations:
+        if need <= 0:
+            break
+        sans = tails.get(variation["id"])
+        if not sans:
+            continue
+        board = base_board.copy()
+        try:
+            for step in variation["line"]:
+                san = step if isinstance(step, str) else step[0]
+                board.push(board.parse_san(san))
+        except (ValueError, AssertionError):
+            continue
+        additions: list[Step] = []
+        for san in sans:
+            try:
+                move = board.parse_san(san)
+            except ValueError:
+                # Ход уже сыгран базой дебютов - пропускаем его.
+                continue
+            if board.turn == chess.WHITE:
+                signature = _signature(board, move)
+                if signature in signatures:
+                    break
+                additions.append((san, *_describe(board, move)))
+                signatures.add(signature)
+                need -= 1
+            else:
+                additions.append(san)
+            board.push(move)
+            if need <= 0:
+                break
+        if additions:
+            variation["line"] = list(variation["line"]) + additions
+    if used_signatures is not None:
+        used_signatures.update(signatures)
+    return need
+
 
 
 LESSONS: list[dict] = [
@@ -1675,8 +2584,8 @@ LESSONS: list[dict] = [
                 ),
                 "line": [
                     "Bb4+",
-                    ("Nbd2", "Блокировка шаха", "Чёрные дали шах слоном. Закройте его конём b1-d2.",
-                     "5.Nbd2 блокирует шах и развивает коня."),
+                    ("Nd2", "Блокировка шаха", "Чёрные дали шах слоном. Закройте его конём b1-d2.",
+                     "5.Nd2 блокирует шах и развивает коня."),
                     "Nc6",
                     ("Nf3", "Развитие", "Чёрные развили коня. Выведите коня g1 на f3.",
                      "6.Nf3 защищает пешку e5 и завершает развитие."),

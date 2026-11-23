@@ -1,6 +1,7 @@
 /* Mobile-first adjustments for the compact app shell and stacked chess views. */
 .mobile-nav-icon,
-.top-nav-label-mobile {
+.top-nav-label-mobile,
+.onb-badge-label-mobile {
   display: none;
 }
 
@@ -87,6 +88,12 @@
     overflow-y: auto;
   }
 
+  /* На широкой колонке (планшетный stacked-лейаут) чипы не должны
+     растягиваться в огромные плитки: добавляем колонки по ширине. */
+  .main-area .maia-level-progress-grid {
+    grid-template-columns: repeat(auto-fit, minmax(56px, 1fr));
+  }
+
   .main-area > .chat-section {
     grid-area: chat;
     width: 100%;
@@ -112,11 +119,6 @@
     justify-content: flex-start;
     gap: 12px;
     padding: 10px 14px;
-  }
-
-  .main-area .chat-strip-title {
-    margin: 0;
-    writing-mode: initial;
   }
 
   .main-area .chat-strip-chevron {
@@ -288,13 +290,13 @@
   }
 
   .gigacoin-reward-toast {
-    right: 14px;
-    left: 14px;
+    right: auto;
+    left: 50%;
     bottom: calc(84px + env(safe-area-inset-bottom, 0px));
-    width: auto;
+    width: min(420px, calc(100vw - 28px));
     min-width: 0;
     max-width: none;
-    padding: 12px 14px 12px 12px;
+    padding: 18px 20px;
   }
 
   .top-bar .onb-badge {
@@ -304,6 +306,14 @@
     font-size: 10px;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .onb-badge-label {
+    display: none;
+  }
+
+  .onb-badge-label-mobile {
+    display: inline;
   }
 
   .top-bar .reg-btn {
@@ -396,6 +406,12 @@
     text-align: center;
     transform: translateX(-50%);
     margin-bottom: 0 !important;
+  }
+
+  .main-page-scroll { padding-bottom: 0; }
+  .main-page-scroll > .site-footer {
+    margin-top: auto;
+    padding-bottom: calc(92px + env(safe-area-inset-bottom, 0px));
   }
 
   .site-footer-docs {
@@ -604,29 +620,40 @@
 
   .main-area .game-history-column > .maia-level-progress {
     order: 1;
-    padding: 9px;
-    border-radius: 16px;
+    padding: 10px 12px;
+    border-radius: 18px;
   }
 
   .main-area .maia-level-progress-title {
-    font-size: 8px;
+    font-size: 15px;
+  }
+
+  .main-area .maia-level-progress-count {
+    font-size: 9px;
+  }
+
+  /* Тот же оптический центр, что и на десктопе, с поправкой на
+     уменьшенный кегль заголовка (15px вместо 20px).
+     Селектор на класс длиннее, чтобы перебить `.main-area .title-separator`
+     ниже в этом же медиазапросе. */
+  .main-area .maia-level-progress .title-separator {
+    margin: 7px 0 9px;
   }
 
   .main-area .maia-level-progress-grid {
     grid-template-columns: repeat(10, minmax(0, 1fr));
-    gap: 3px;
-    margin-top: 6px;
+    gap: 4px;
   }
 
   .main-area .maia-level-chip {
-    aspect-ratio: 1.45;
-    border-radius: 6px;
-    font-size: 8px;
+    aspect-ratio: 1.3;
+    border-radius: 7px;
+    font-size: 9px;
     padding: 2px;
   }
 
   .main-area .maia-level-chip.is-earned {
-    font-size: 12px;
+    font-size: 13px;
   }
 
   .main-area .history-title {
@@ -686,9 +713,17 @@
     gap: 0;
   }
 
-  .main-area .btn-import {
-    height: 36px;
-    font-size: 16px;
+  .main-area .btn-position {
+    width: min(100%, 132px);
+    height: 32px;
+    gap: 6px;
+    font-size: 14px;
+  }
+
+  .main-area .btn-position__chevron {
+    border-left-width: 4px;
+    border-right-width: 4px;
+    border-top-width: 5px;
   }
 
   .main-area > .chat-section {
@@ -714,12 +749,6 @@
     justify-content: flex-start;
     gap: 10px;
     padding: 8px 12px;
-  }
-
-  .main-area .chat-strip-title {
-    margin: 0;
-    writing-mode: initial;
-    font-size: 14px;
   }
 
   .main-area .chat-strip-chevron {
@@ -953,8 +982,6 @@
   .puzzle-turn-indicator,
   .puzzle-moves-summary,
   .puzzle-quick-stats,
-  .puzzle-streak-best,
-  .puzzle-rewards-details,
   .puzzle-mode-card,
   .learning-topic-filter,
   .learning-crosslink {
@@ -1026,12 +1053,6 @@
     justify-content: flex-start;
     gap: 10px;
     padding: 8px 12px;
-  }
-
-  .puzzle-chat-section .chat-strip-title {
-    margin: 0;
-    writing-mode: initial;
-    font-size: 14px;
   }
 
   .puzzle-chat-section .chat-strip-chevron {
@@ -1147,6 +1168,11 @@
   }
 
   .training-module-due-badge {
+    top: -8px;
+    right: -8px;
+  }
+
+  .training-path-due-badge {
     top: -8px;
     right: -8px;
   }
@@ -1295,6 +1321,17 @@
     font-size: 10px;
   }
 
+  /* 19 чипов в 10 колонок на 320px: уменьшаем зазор и шрифт, чтобы
+     четырёхзначные уровни не выходили за пределы чипа. */
+  .main-area .maia-level-progress-grid {
+    gap: 3px;
+  }
+
+  .main-area .maia-level-chip {
+    border-radius: 6px;
+    font-size: 8px;
+  }
+
   .top-nav-link {
     gap: 2px;
     padding-right: 1px;
@@ -1368,6 +1405,14 @@
     min-width: 0;
     padding: 24px 18px;
   }
+
+  .auth-side--brand { padding: 18px 16px 14px; }
+  .auth-side--brand .auth-title { font-size: 28px; margin-bottom: 6px; }
+  .auth-side--brand .auth-subtitle { font-size: 13px; line-height: 1.35; margin-bottom: 0; }
+  .auth-side--brand .auth-section { margin-top: 12px; padding: 12px; }
+  .auth-side--brand .auth-section-head { margin-bottom: 8px; }
+  .auth-side--brand .auth-provider { padding: 7px 6px; }
+  .auth-side--brand .auth-import-row { margin-top: 8px; }
 
   .auth-section,
   .auth-fields,

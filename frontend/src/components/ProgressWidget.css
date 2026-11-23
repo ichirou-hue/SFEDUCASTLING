@@ -51,10 +51,6 @@
   background: #f6f1e6;
 }
 
-.progress-widget__streak-info { display: grid; justify-items: end; gap: 4px; margin-left: auto; }
-.progress-widget__streak-info .progress-widget__streak { margin-left: 0; }
-.progress-widget__streak-reward { margin: 0; color: #65736b; font-size: 11px; text-align: right; }
-
 .progress-widget__streak-icon {
   font-size: 24px;
 }
@@ -183,6 +179,24 @@
 .progress-topic strong {
   width: 40px;
   text-align: right;
+}
+
+.progress-topic__difficulty {
+  flex: 0 0 auto;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(79, 147, 92, 0.14);
+  color: #3f6a46;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.progress-widget__difficulty-rule {
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  opacity: 0.65;
 }
 
 .progress-widget__empty {

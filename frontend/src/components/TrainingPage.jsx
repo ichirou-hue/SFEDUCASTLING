@@ -9,10 +9,13 @@ import {
   fetchTrainingModule,
   fetchTrainingModules,
   fetchTrainingProgress,
+  fetchTrainingTask,
 } from "../api.js";
+import copyText from "../clipboard.js";
 import SiteFooter from "./SiteFooter.jsx";
 import RatingBandProgress from "./RatingBandProgress.jsx";
 import { getCheckState, getKingCheckStyle } from "../chessStatus.js";
+import { playMoveSound } from "../moveSound.js";
 import "./LearningCrossLinks.css";
 
 const PIECE_IMAGES = {
@@ -33,7 +36,7 @@ const PIECE_IMAGES = {
 const customPieces = Object.fromEntries(
   Object.entries(PIECE_IMAGES).map(([code, src]) => [
     code,
-    () => <img src={src} alt="" style={{ width: "100%", height: "100%" }} />,
+    () => <img src={src} alt="" draggable={false} style={{ width: "100%", height: "100%" }} />,
   ]),
 );
 
@@ -135,12 +138,16 @@ export default function TrainingPage({ user, onRegister }) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const requestedModuleSlug = searchParams.get("module");
+  // Deep link на конкретное задание: /training?task=42. Задание несёт
+  // только lesson_id, поэтому урок и модуль подтягиваются по нему.
+  const requestedTaskId = searchParams.get("task");
   const showBasicCourse = searchParams.get("basics") === "1";
 
   const [modules, setModules] = useState([]);
   const [dueItems, setDueItems] = useState([]);
-  // Слаг модуля, для которого открыто окно повторений. null - окно закрыто.
-  const [dueModalSlug, setDueModalSlug] = useState(null);
+  // Цель открытого окна повторений: модуль или конкретный урок.
+  // null - окно закрыто.
+  const [dueModalTarget, setDueModalTarget] = useState(null);
   // Прогресс курса: modules.items[] несёт счётчики заданий по каждому
   // модулю и его урокам. Грузится отдельно от списка модулей, потому что
   // требует JWT и считается по training_attempts.
@@ -172,6 +179,11 @@ export default function TrainingPage({ user, onRegister }) {
   const [hintVisible, setHintVisible] = useState(false);
   const taskStartedAtRef = useRef(Date.now());
   const openingModuleRef = useRef(null);
+  // Какое задание уже открыто по deep link: защищает от повторного запуска
+  // эффекта (StrictMode, обновление user/модулей) и зацикливания navigate.
+  const openingTaskRef = useRef(null);
+  // Плашка «ссылка скопирована» под теорией урока.
+  const [shareNotice, setShareNotice] = useState(null);
   // Слаг модуля, который реально открыт сейчас. Нужен против гонки в
   // backToModules: navigate("/training") + setSelectedModule(null) могут
   // отрендериться раньше, чем обновится searchParams, и эффект автооткрытия
@@ -248,14 +260,47 @@ export default function TrainingPage({ user, onRegister }) {
     return map;
   }, [dueItems]);
 
-  const dueModalItems = dueModalSlug
-    ? dueByModuleSlug.get(dueModalSlug) || []
-    : [];
-  const dueModalModule = dueModalSlug
-    ? modules.find((module) => module.slug === dueModalSlug) ||
+  // То же самое по урокам: внутри модуля «!» стоит над теми уроками,
+  // в которых остались задания к повторению.
+  const dueByLessonId = useMemo(() => {
+    const map = new Map();
+    for (const item of dueItems) {
+      const lessonId = item?.lesson?.id;
+      if (lessonId == null) continue;
+      const key = String(lessonId);
+      const list = map.get(key);
+      if (list) list.push(item);
+      else map.set(key, [item]);
+    }
+    return map;
+  }, [dueItems]);
+
+  const dueModalItems = useMemo(() => {
+    if (!dueModalTarget) return [];
+    if (dueModalTarget.kind === "module") {
+      return dueByModuleSlug.get(dueModalTarget.slug) || [];
+    }
+    return dueByLessonId.get(String(dueModalTarget.lessonId)) || [];
+  }, [dueModalTarget, dueByModuleSlug, dueByLessonId]);
+
+  const dueModalModule = dueModalTarget
+    ? modules.find(
+        (module) =>
+          dueModalTarget.kind === "module" &&
+          module.slug === dueModalTarget.slug,
+      ) ||
       dueModalItems[0]?.module ||
-      null
+      (dueModalTarget.kind === "lesson" ? selectedModule : null)
     : null;
+
+  const dueModalLesson =
+    dueModalTarget?.kind === "lesson"
+      ? lessons.find(
+          (item) => String(item.id) === String(dueModalTarget.lessonId),
+        ) ||
+        dueModalItems[0]?.lesson ||
+        null
+      : null;
 
   // Конь-маршрутчик на тропинке модулей: сидит над первым непройденным
   // модулем (изначально - над первым). Когда модуль закрывается, конь
@@ -263,7 +308,7 @@ export default function TrainingPage({ user, onRegister }) {
   const currentModuleIndex = useMemo(() => {
     if (modules.length === 0) return -1;
     const index = modules.findIndex((module) => {
-      if (!module.enabled) return false;
+      if (!module.enabled || module.locked) return false;
       const moduleProgress = moduleProgressBySlug.get(module.slug);
       if (!moduleProgress || !moduleProgress.tasks_total) return true;
       return moduleProgress.tasks_solved < moduleProgress.tasks_total;
@@ -423,7 +468,7 @@ export default function TrainingPage({ user, onRegister }) {
       // входа останутся старые данные (пустой список или гостевой 401).
       setModules([]);
       setDueItems([]);
-      setDueModalSlug(null);
+      setDueModalTarget(null);
       setProgress(null);
       setSelectedModule(null);
       setLessons([]);
@@ -458,10 +503,10 @@ export default function TrainingPage({ user, onRegister }) {
   // Окно повторений: закрытие по Escape, блокировка прокрутки страницы
   // под оверлеем и фокус на кнопке закрытия.
   useEffect(() => {
-    if (!dueModalSlug) return undefined;
+    if (!dueModalTarget) return undefined;
 
     const handleKeyDown = (event) => {
-      if (event.key === "Escape") setDueModalSlug(null);
+      if (event.key === "Escape") setDueModalTarget(null);
     };
     document.addEventListener("keydown", handleKeyDown);
 
@@ -474,13 +519,13 @@ export default function TrainingPage({ user, onRegister }) {
       document.removeEventListener("keydown", handleKeyDown);
       if (page) page.style.overflowY = previousOverflow || "";
     };
-  }, [dueModalSlug]);
+  }, [dueModalTarget]);
 
   // Повторение могло быть выполнено, пока окно открыто: если список
   // опустел, закрываем окно, чтобы не осталось пустой модалки.
   useEffect(() => {
-    if (dueModalSlug && dueModalItems.length === 0) setDueModalSlug(null);
-  }, [dueModalSlug, dueModalItems.length]);
+    if (dueModalTarget && dueModalItems.length === 0) setDueModalTarget(null);
+  }, [dueModalTarget, dueModalItems.length]);
 
   useEffect(() => {
     const updateSize = () => {
@@ -527,8 +572,26 @@ export default function TrainingPage({ user, onRegister }) {
     return () => clearTimeout(timer);
   }, [taskResult?.correct, taskIndex, visibleTasks.length]);
 
+  // Подсказка для закрытого модуля. Без пройденного теста уровня рейтинга
+  // ещё нет, поэтому обещать «откроется при Elo N» неверно: сначала тест.
+  const lockedModuleHint = useCallback(
+    (module) =>
+      user?.elo == null
+        ? `Модуль откроется после теста уровня: нужен Elo ${module.required_elo}+`
+        : `Откроется с Elo ${module.required_elo}+`,
+    [user?.elo],
+  );
+
   const openModule = useCallback(async (module) => {
     if (!module.enabled) return;
+    if (module.locked) {
+      setError(
+        user?.elo == null
+          ? `Модуль откроется после теста уровня: нужен рейтинг Elo ${module.required_elo} и выше.`
+          : `Модуль откроется при рейтинге Elo ${module.required_elo} и выше.`,
+      );
+      return;
+    }
 
     // Единая воронка открытия (эффект по URL, openDueItem): фиксируем,
     // что показываем именно этот модуль, до асинхронной загрузки.
@@ -551,9 +614,13 @@ export default function TrainingPage({ user, onRegister }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+    // Текст ошибки зависит от наличия Elo, поэтому подписка на него.
+  }, [user?.elo]);
 
   useEffect(() => {
+    // При deep link на задание модуль открывает отдельный эффект ниже:
+    // здесь он мог бы стартовать раньше и перетереть выбранное задание.
+    if (requestedTaskId) return;
     if (!requestedModuleSlug || modules.length === 0) return;
     if (selectedModule?.slug === requestedModuleSlug) return;
     if (requestedModuleSlug === displayedSlugRef.current) return;
@@ -568,7 +635,87 @@ export default function TrainingPage({ user, onRegister }) {
     openModule(module).finally(() => {
       openingModuleRef.current = null;
     });
-  }, [modules, openModule, requestedModuleSlug, selectedModule?.slug]);
+  }, [modules, openModule, requestedModuleSlug, requestedTaskId, selectedModule?.slug]);
+
+  // Deep link на задание. Задание отдаёт lesson_id; урок - module_id;
+  // модуль берём из уже загруженного списка, чтобы заодно проверить
+  // enabled/locked и взять slug для URL.
+  useEffect(() => {
+    if (!requestedTaskId) {
+      openingTaskRef.current = null;
+      return;
+    }
+    if (modules.length === 0) return;
+    if (openingTaskRef.current === requestedTaskId) return;
+    openingTaskRef.current = requestedTaskId;
+
+    (async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const taskData = await fetchTrainingTask(requestedTaskId);
+        const task = taskData.task;
+        if (!task?.lesson_id) {
+          throw new Error("Задание не привязано к уроку.");
+        }
+
+        const lessonData = await fetchTrainingLesson(task.lesson_id);
+        const module = modules.find(
+          (item) => item.id === lessonData.lesson?.module_id,
+        );
+        if (!module || !module.enabled) {
+          throw new Error("Модуль задания больше недоступен.");
+        }
+        if (module.locked) {
+          setError(
+            user?.elo == null
+              ? `Модуль откроется после теста уровня: нужен рейтинг Elo ${module.required_elo} и выше.`
+              : `Модуль откроется при рейтинге Elo ${module.required_elo} и выше.`,
+          );
+          return;
+        }
+
+        const moduleData = await fetchTrainingModule(module.slug);
+        const lessonTasks = lessonData.tasks || [];
+        /*
+         * Уроки дебютов состоят из общей линии и веток. visibleTasks на
+         * странице - это общая линия плюс задания выбранной ветки, поэтому
+         * номер задания считаем по тому же списку, а ветку открываем сразу.
+         */
+        const branch = task.payload?.branch || null;
+        const visibleList = branch
+          ? [
+              ...lessonTasks.filter((item) => !item.payload?.branch),
+              ...lessonTasks.filter((item) => item.payload?.branch === branch),
+            ]
+          : lessonTasks.filter((item) => !item.payload?.branch);
+        const index = visibleList.findIndex(
+          (item) => String(item.id) === String(task.id),
+        );
+
+        // URL держим в согласии с состоянием: без module= эффект
+        // синхронизации ниже сбросил бы только что открытый модуль.
+        displayedSlugRef.current = module.slug;
+        navigate(
+          `/training?module=${encodeURIComponent(module.slug)}&task=${encodeURIComponent(task.id)}`,
+          { replace: true },
+        );
+        saveBranchScroll("grid");
+        branchScrollRef.current.lesson = 0;
+
+        setSelectedModule(moduleData.module);
+        setLessons(moduleData.lessons || []);
+        setLesson(lessonData.lesson);
+        setTasks(lessonTasks);
+        setTaskIndex(index < 0 ? 0 : index);
+        setBranchId(branch);
+      } catch (err) {
+        setError(getApiError(err, "Не удалось открыть задание по ссылке."));
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [modules, navigate, requestedTaskId, user?.elo]);
 
   // Стрелка браузера назад: URL вернулся на /training без ?module=,
   // а состояние ещё держит открытый модуль - сбрасываем как backToModules.
@@ -588,6 +735,13 @@ export default function TrainingPage({ user, onRegister }) {
   }, [requestedModuleSlug, selectedModule]);
 
   const openLesson = useCallback(async (lessonId, opts = {}) => {
+    // Ссылка на конкретное задание (?task=) ведёт в старый урок: после
+    // явного выбора другого урока её нужно убрать из адреса.
+    if (requestedTaskId && selectedModule?.slug) {
+      navigate(`/training?module=${encodeURIComponent(selectedModule.slug)}`, {
+        replace: true,
+      });
+    }
     // По умолчанию уходим со списка уроков: запоминаем его скролл.
     // openDueItem идёт с сетки (контейнер ещё старый) - ему сохранять
     // "lessons" нельзя, иначе туда запишется чужая позиция.
@@ -607,7 +761,7 @@ export default function TrainingPage({ user, onRegister }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [navigate, requestedTaskId, selectedModule?.slug]);
 
   // Заполняем решённые задания урока из серверного прогресса.
   // Зависим только от id урока: перезагрузка прогресса после ответа не
@@ -636,7 +790,7 @@ export default function TrainingPage({ user, onRegister }) {
       }
 
       displayedSlugRef.current = moduleSlug;
-      setDueModalSlug(null);
+      setDueModalTarget(null);
       navigate(`/training?module=${encodeURIComponent(moduleSlug)}`);
       saveBranchScroll("grid");
       branchScrollRef.current.lesson = 0;
@@ -691,6 +845,13 @@ export default function TrainingPage({ user, onRegister }) {
   };
 
   const backToLessons = () => {
+    // Ссылка вида ?task=N ведёт в конкретное задание: после возврата к
+    // списку уроков она неактуальна и мешала бы эффекту deep link.
+    if (requestedTaskId && selectedModule?.slug) {
+      navigate(`/training?module=${encodeURIComponent(selectedModule.slug)}`, {
+        replace: true,
+      });
+    }
     saveBranchScroll("lesson");
     setLesson(null);
     setTasks([]);
@@ -796,7 +957,10 @@ export default function TrainingPage({ user, onRegister }) {
               to: moveToApply.to,
               promotion: "q",
             });
-            if (move) setBoardFen(game.fen());
+            if (move) {
+              playMoveSound();
+              setBoardFen(game.fen());
+            }
           } catch {
             // Визуальное применение хода не влияет на серверную проверку.
           }
@@ -833,6 +997,17 @@ export default function TrainingPage({ user, onRegister }) {
   const openPuzzlesForCurrentTopic = () => {
     if (!selectedModule?.slug) return;
     navigate(`/puzzles?topic=${encodeURIComponent(selectedModule.slug)}`);
+  };
+
+  // Ссылка на текущее задание: открывает тот же урок и сразу нужный номер
+  // через deep link ?task=. id задания уникален, модуль и урок
+  // восстанавливаются на странице.
+  const handleCopyTaskLink = async () => {
+    if (!currentTask) return;
+    const url = `${window.location.origin}/training?task=${currentTask.id}`;
+    const copied = await copyText(url);
+    setShareNotice(copied ? "Ссылка скопирована" : "Не удалось скопировать");
+    window.setTimeout(() => setShareNotice(null), 2500);
   };
 
   const submitMove = useCallback(
@@ -988,7 +1163,11 @@ export default function TrainingPage({ user, onRegister }) {
   ]);
 
   const nextTask = () => {
-    if (taskIndex < visibleTasks.length - 1) {
+    // Нельзя перескочить стрелкой через нерешённое задание. Кружочки
+    // используют то же правило: открыта только текущая или уже пройденная
+    // задача.
+    const currentSolved = currentTask && solvedTaskIds.has(currentTask.id);
+    if (currentSolved && taskIndex < visibleTasks.length - 1) {
       setTaskIndex((index) => index + 1);
     }
   };
@@ -1015,7 +1194,6 @@ export default function TrainingPage({ user, onRegister }) {
       <div className="training-page training-page--centered" ref={pageRef}>
         <div className="training-center-wrap">
           <div className="training-register-wall">
-            <div className="training-kicker">Учебный режим</div>
             <h1>Обучение доступно после регистрации</h1>
             <p>
               Зарегистрируйтесь, чтобы проходить учебные модули по шахматам
@@ -1081,12 +1259,7 @@ export default function TrainingPage({ user, onRegister }) {
         <div className="training-course-layout">
           <main className="training-course-main">
             <section className="training-hero">
-              <div className="training-kicker">Учебный режим</div>
               <h1>Обучение шахматам</h1>
-              <p>
-                Изучайте особенности каждой фигуры последовательно: сначала теория,
-                затем интерактивные задания на шахматной доске.
-              </p>
               <RatingBandProgress userId={userId} />
 
               {course && course.total > 0 && (
@@ -1122,15 +1295,34 @@ export default function TrainingPage({ user, onRegister }) {
                     }}
                     className={`training-module-node-shell training-module-node-shell--${side}`}
                   >
+                    {/*
+                     * Закрытый модуль виден в программе курса, но не
+                     * открывается: доступ задаёт Elo-корзина пользователя.
+                     * Подсказку объясняем в title и в плашке внутри.
+                     */}
                     <button
                       type="button"
                       className={`training-module-node training-module-node--${side} ${
                         module.enabled ? "" : "training-module-node--disabled"
-                      }`}
-                      onClick={() =>
-                        navigate(`/training?module=${encodeURIComponent(module.slug)}`)
+                      } ${module.locked ? "training-module-node--locked" : ""}`}
+                      onClick={() => {
+                        if (!module.enabled) return;
+                        if (module.locked) {
+                          setError(
+                            user?.elo == null
+                              ? `Модуль откроется после теста уровня: нужен рейтинг Elo ${module.required_elo} и выше.`
+                              : `Модуль откроется при рейтинге Elo ${module.required_elo} и выше.`,
+                          );
+                          return;
+                        }
+                        navigate(
+                          `/training?module=${encodeURIComponent(module.slug)}`,
+                        );
+                      }}
+                      disabled={!module.enabled || module.locked}
+                      title={
+                        module.locked ? lockedModuleHint(module) : undefined
                       }
-                      disabled={!module.enabled}
                     >
                       <span className="training-module-node-icon" aria-hidden="true">
                         {MODULE_ICONS[module.slug] || "♟"}
@@ -1146,7 +1338,7 @@ export default function TrainingPage({ user, onRegister }) {
                           {module.description}
                         </span>
 
-                        {module.enabled && moduleProgress && (
+                        {module.enabled && !module.locked && moduleProgress && (
                           <span className="training-module-progress">
                             <span className="training-module-progress__head">
                               <span>
@@ -1168,6 +1360,11 @@ export default function TrainingPage({ user, onRegister }) {
                         {!module.enabled && (
                           <span className="training-module-meta">Скоро</span>
                         )}
+                        {module.enabled && module.locked && (
+                          <span className="training-module-meta training-module-meta--locked">
+                            🔒 {lockedModuleHint(module)}
+                          </span>
+                        )}
                       </span>
                     </button>
 
@@ -1175,7 +1372,9 @@ export default function TrainingPage({ user, onRegister }) {
                       <button
                         type="button"
                         className="training-module-due-badge"
-                        onClick={() => setDueModalSlug(module.slug)}
+                        onClick={() =>
+                          setDueModalTarget({ kind: "module", slug: module.slug })
+                        }
                         aria-label={`Повторить по модулю «${module.title}»: ${formatTaskCount(
                           moduleDueItems.length,
                         )}`}
@@ -1204,10 +1403,10 @@ export default function TrainingPage({ user, onRegister }) {
           </main>
         </div>
 
-        {dueModalSlug && dueModalItems.length > 0 && (
+        {dueModalTarget && dueModalItems.length > 0 && (
           <div
             className="training-due-modal"
-            onClick={() => setDueModalSlug(null)}
+            onClick={() => setDueModalTarget(null)}
           >
             <section
               className="training-due-modal-card"
@@ -1219,7 +1418,7 @@ export default function TrainingPage({ user, onRegister }) {
               <button
                 type="button"
                 className="training-due-modal-close"
-                onClick={() => setDueModalSlug(null)}
+                onClick={() => setDueModalTarget(null)}
                 aria-label="Закрыть окно повторений"
                 ref={dueModalCloseRef}
               >
@@ -1230,6 +1429,11 @@ export default function TrainingPage({ user, onRegister }) {
                 <span className="training-due-modal-kicker">Пора повторить</span>
                 <h2 id={dueModalTitleId}>{dueModalModule?.title}</h2>
                 <p>
+                  {dueModalLesson && (
+                    <>
+                      Урок «{dueModalLesson.title}».{" "}
+                    </>
+                  )}
                   {formatTaskCount(dueModalItems.length)} ждут повторения.
                   Это займёт пару минут.
                 </p>
@@ -1308,38 +1512,71 @@ export default function TrainingPage({ user, onRegister }) {
                 </div>
               )}
               <div className="training-path-nodes">
-                {section.lessons.map(({ item, state, progress, globalIndex }) => (
-                  <button
-                    type="button"
-                    className={`training-path-node training-path-node--${state} ${
-                      globalIndex % 2 === 0 ? "training-path-node--left" : "training-path-node--right"
-                    }`}
-                    key={item.id}
-                    onClick={() => openLesson(item.id)}
-                    title={`${item.title}${
-                      state === "done" ? " - пройден" : state === "current" ? " - текущий" : ""
-                    }`}
-                  >
-                    <span className="training-path-circle" aria-hidden="true">
-                      {state === "done" ? "✓" : globalIndex + 1}
-                    </span>
-                    <span className="training-path-label">
-                      <span className="training-path-title">{item.title}</span>
-                      <span className="training-path-meta">
-                        {item.task_count}{" "}
-                        {item.task_count === 1 ? "задание" : "задания"}
-                      </span>
-                      {progress && (
-                        <span className="training-path-progress-bar">
-                          <ProgressBar
-                            value={progress.percent}
-                            label={`${item.title}: ${progress.tasks_solved} из ${progress.tasks_total}`}
-                          />
+                {section.lessons.map(({ item, state, progress, globalIndex }) => {
+                  const side = globalIndex % 2 === 0 ? "left" : "right";
+                  const lessonDueItems =
+                    dueByLessonId.get(String(item.id)) || [];
+
+                  return (
+                    <div
+                      className={`training-path-node-shell training-path-node-shell--${side}`}
+                      key={item.id}
+                    >
+                      <button
+                        type="button"
+                        className={`training-path-node training-path-node--${state} training-path-node--${side}`}
+                        onClick={() => openLesson(item.id)}
+                        title={`${item.title}${
+                          state === "done"
+                            ? " - пройден"
+                            : state === "current"
+                              ? " - текущий"
+                              : ""
+                        }`}
+                      >
+                        <span className="training-path-circle" aria-hidden="true">
+                          {state === "done" ? "✓" : globalIndex + 1}
                         </span>
+                        <span className="training-path-label">
+                          <span className="training-path-title">{item.title}</span>
+                          <span className="training-path-meta">
+                            {item.task_count}{" "}
+                            {item.task_count === 1 ? "задание" : "задания"}
+                          </span>
+                          {progress && (
+                            <span className="training-path-progress-bar">
+                              <ProgressBar
+                                value={progress.percent}
+                                label={`${item.title}: ${progress.tasks_solved} из ${progress.tasks_total}`}
+                              />
+                            </span>
+                          )}
+                        </span>
+                      </button>
+
+                      {lessonDueItems.length > 0 && (
+                        <button
+                          type="button"
+                          className="training-path-due-badge"
+                          onClick={() =>
+                            setDueModalTarget({
+                              kind: "lesson",
+                              lessonId: item.id,
+                            })
+                          }
+                          aria-label={`Повторить по уроку «${item.title}»: ${formatTaskCount(
+                            lessonDueItems.length,
+                          )}`}
+                          title={`Пора повторить: ${formatTaskCount(
+                            lessonDueItems.length,
+                          )}`}
+                        >
+                          <span aria-hidden="true">!</span>
+                        </button>
                       )}
-                    </span>
-                  </button>
-                ))}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           ))}
@@ -1364,6 +1601,18 @@ export default function TrainingPage({ user, onRegister }) {
           <div className="training-kicker">{selectedModule.title}</div>
           <h2>{lesson.title}</h2>
           <p>{lesson.theory}</p>
+
+          <div className="training-share-row">
+            <button
+              type="button"
+              className="training-share-btn"
+              onClick={handleCopyTaskLink}
+              disabled={!currentTask}
+              title="Скопировать ссылку на текущее задание"
+            >
+              {shareNotice || "Скопировать ссылку на задание"}
+            </button>
+          </div>
 
           <div className="training-theory-navigation">
             <button
@@ -1439,10 +1688,18 @@ export default function TrainingPage({ user, onRegister }) {
             <button
               type="button"
               className="training-progress-nav"
-              onClick={() => setTaskIndex((index) => Math.min(visibleTasks.length - 1, index + 1))}
-              disabled={taskIndex >= visibleTasks.length - 1}
+              onClick={nextTask}
+              disabled={
+                taskIndex >= visibleTasks.length - 1 ||
+                !currentTask ||
+                !solvedTaskIds.has(currentTask.id)
+              }
               aria-label="Следующее задание"
-              title="Следующее задание"
+              title={
+                currentTask && !solvedTaskIds.has(currentTask.id)
+                  ? "Сначала решите текущее задание"
+                  : "Следующее задание"
+              }
             >
               →
             </button>
@@ -1660,9 +1917,6 @@ export default function TrainingPage({ user, onRegister }) {
                   {hintVisible && (
                     <div className="training-hint-box">
                       {getTaskHint(currentTask)}
-                      <span className="training-hint-meta">
-                        Использовано подсказок: {hintsUsed}
-                      </span>
                     </div>
                   )}
                 </>

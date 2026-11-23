@@ -324,10 +324,9 @@ def review_game(
                     # его качество бессмысленно - в безнадёжном положении
                     # любой ход получает 100 % точности.
                     entry["decided"] = True
-                else:
-                    accuracy = move_accuracy(win_before, win_after)
-                    entry["accuracy"] = round(accuracy, 1)
-                    entry["classification"] = classify(win_before, win_after)
+                accuracy = move_accuracy(win_before, win_after)
+                entry["accuracy"] = round(accuracy, 1)
+                entry["classification"] = classify(win_before, win_after)
 
                 player_moves.append(entry)
                 analyzed += 1
@@ -346,7 +345,7 @@ def review_game(
 
     accuracy = game_accuracy(win_values, player_turn)
 
-    scored = [m for m in player_moves if m["classification"] is not None]
+    scored = [m for m in player_moves if m["classification"] is not None and not m["decided"]]
     decided = [m for m in player_moves if m["decided"]]
 
     losses = [m["loss_cp"] for m in scored if m["loss_cp"] is not None]

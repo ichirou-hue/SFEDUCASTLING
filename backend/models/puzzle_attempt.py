@@ -22,4 +22,6 @@ class PuzzleAttempt(Base):
     )
     puzzle_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     correct: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    # Решение с подсказкой засчитывается как решённое, но сбрасывает серию.
+    hint_used: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), nullable=False)

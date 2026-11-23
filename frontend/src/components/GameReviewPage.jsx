@@ -3,6 +3,7 @@ import { Chess } from "chess.js";
 import { Link, useParams } from "react-router-dom";
 import { fetchLocalGameHistory, fetchStockfishAnalysis, getAccessToken, getStoredUser, reviewGame } from "../api.js";
 import { getLocalBotGames } from "../localBotGames.js";
+import { playMoveSound } from "../moveSound.js";
 import MiniBoard from "./MiniBoard.jsx";
 import "./GameReviewPage.css";
 
@@ -16,7 +17,7 @@ function parsePgn(source) {
   const game = new Chess();
   game.loadPgn(source.trim());
   const history = game.history({ verbose: true });
-  if (history.length < 2) throw new Error("В партии должно быть хотя бы два хода.");
+  if (history.length < 1) throw new Error("В партии нет ходов.");
   const replay = new Chess();
   const positions = [replay.fen()];
   const moves = history.map((move) => {
@@ -51,6 +52,26 @@ function resultLabel(game) {
   return "Поражение";
 }
 
+function gameTimestamp(value) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function formatGameDate(value) {
+  const date = gameTimestamp(value);
+  if (!date) return "—";
+  return new Intl.DateTimeFormat("ru-RU", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
+}
+
+function evalLabel(cp) {
+  if (cp == null) return "Оценка недоступна";
+  const value = (cp / 100).toFixed(1);
+  return `${cp > 0 ? "+" : ""}${value} · ${cp > 0 ? "лучше у белых" : cp < 0 ? "лучше у чёрных" : "равная позиция"}`;
+}
+
 function EvalChart({ plies, selected, onSelect }) {
   const points = plies.filter((ply) => ply.eval_cp != null).map((ply) => ({
     index: ply.ply - 1,
@@ -59,6 +80,9 @@ function EvalChart({ plies, selected, onSelect }) {
     evalCp: ply.eval_cp,
   }));
   return <svg className="review-chart" viewBox="0 0 800 180" role="img" aria-label="График оценки партии">
+    <text x="2" y="18" className="review-chart-label">Белые +</text>
+    <text x="2" y="87" className="review-chart-label">0</text>
+    <text x="2" y="174" className="review-chart-label">Чёрные −</text>
     <line x1="18" x2="782" y1="90" y2="90" className="review-chart-zero" />
     {points.length > 1 && <polyline points={points.map((p) => `${p.x},${p.y}`).join(" ")} className="review-chart-line" />}
     {points.map((point) => <circle key={point.index} cx={point.x} cy={point.y} r={point.index === selected ? 7 : 4}
@@ -148,6 +172,7 @@ export default function GameReviewPage() {
   })) || [], [parsed, report]);
   const current = parsed?.positions[selected + 1] || new Chess().fen();
   const analysisPlies = report?.white?.plies || [];
+  const currentEval = selected >= 0 ? analysisPlies[selected]?.eval_cp : null;
   const stage = busy
     ? selected < plies.length - 1 ? "Воспроизводим партию и оцениваем ходы…" : "Готовим оценки и классификацию ходов…"
     : report ? "Разбор готов. Выберите ход или запустите повтор." : "Просмотр партии";
@@ -170,20 +195,27 @@ export default function GameReviewPage() {
 
   function tryPracticeMove(from, to) {
     if (!practice || !bestMove) return false;
+    try {
+      const game = new Chess(plies[selected].fen);
+      if (!game.move({ from, to, promotion: "q" })) return false;
+    } catch {
+      return false;
+    }
+    playMoveSound();
     setPracticeMessage(`${from}${to}` === bestMove.best_move.slice(0, 4)
       ? `Верно! Лучший ход: ${bestMove.san}` : "Попробуйте другой ход.");
     return false;
   }
 
   if (!detail) return <main className="review-page review-page--archive">
-    <header className="review-heading"><span className="review-kicker">МОИ ПАРТИИ</span>
+    <header className="review-heading">
       <h1>Партии против бота</h1><p>Откройте партию, чтобы просмотреть ходы и оценки.</p></header>
     <section className="review-archive">
       {games.length ? games.map((game) => <Link key={game.id} className="review-game-row"
         to={`/review/game/${encodeURIComponent(game.id)}`} target="_blank" rel="noopener noreferrer">
         <div className="review-game-info"><strong>{resultLabel(game)}</strong>
           <span>Maia {game.elo ?? "—"} · {game.playerColor === "b" ? "игра чёрными" : "игра белыми"}</span>
-          <span>{new Date(game.playedAt).toLocaleString("ru-RU")}</span>
+          <span>{formatGameDate(game.playedAt)}</span>
           <span className="review-game-open">Открыть разбор ↗</span></div>
         <div className="review-game-board" aria-label="Финальная позиция партии">
           <MiniBoard fen={finalPosition(game)} width={Math.min(180, Math.max(130, window.innerWidth - 225))} />
@@ -193,9 +225,14 @@ export default function GameReviewPage() {
   </main>;
 
   return <main className="review-page review-page--detail">
-    <header className="review-heading"><Link className="review-back" to="/review">← Все партии</Link>
+    <header className="review-heading"><Link className="review-back" to="/review">Все партии</Link>
       <span className="review-kicker">РАЗБОР ПАРТИИ</span><h1>{selectedGame ? resultLabel(selectedGame) : "Загружаем партию"}</h1>
-      {selectedGame && <p>Maia {selectedGame.elo ?? "—"} · {new Date(selectedGame.playedAt).toLocaleString("ru-RU")}</p>}</header>
+      {selectedGame && <p className="review-meta">
+        <span className="review-meta-elo">Maia {selectedGame.elo ?? "—"}</span>
+        <span className="review-meta-divider" aria-hidden="true" />
+        <time className="review-meta-date" dateTime={gameTimestamp(selectedGame.playedAt)?.toISOString()}
+          title={gameTimestamp(selectedGame.playedAt)?.toLocaleString("ru-RU")}>{formatGameDate(selectedGame.playedAt)}</time>
+      </p>}</header>
     {error && <p className="review-error" role="alert">{error}</p>}
     {!parsed && !error && <p className="review-loading" role="status">Загружаем ходы партии…</p>}
     {parsed && <section className="review-report">
@@ -204,18 +241,22 @@ export default function GameReviewPage() {
       {report && <><div className="review-summary">
         {[["w", "white", "Белые"], ["b", "black", "Чёрные"]].map(([color, key, fallback]) =>
           <button type="button" key={key} className={`review-player ${side === color ? "is-selected" : ""}`} onClick={() => setSide(color)}>
-            <span>{parsed.headers[color === "w" ? "White" : "Black"] || fallback}</span>
+            <span>{["?", "", null].includes(parsed.headers[color === "w" ? "White" : "Black"]) ? fallback : parsed.headers[color === "w" ? "White" : "Black"]}</span>
             <strong>{report[key].accuracy == null ? "—" : `${report[key].accuracy}%`}</strong>
-            <small>точность · {report[key].moves_scored} оценено</small>
+            <small>точность · {report[key].moves_scored} ходов оценено из {report[key].moves_analyzed}</small>
           </button>)}</div>
         <div className="review-grade-summary">{Object.entries(GRADES).map(([key, [symbol, label]]) =>
-          <span key={key} className={`review-grade review-grade--${key}`}>{symbol} {label}: {report[side === "w" ? "white" : "black"].counts[key] || 0}</span>)}</div>
-        <div className="review-chart-panel"><h2>Оценка партии</h2><EvalChart plies={analysisPlies} selected={selected} onSelect={navigateTo} /></div></>}
-      <div className="review-workspace"><div className="review-board-column"><div className="review-board">
+          <span key={key} className={`review-grade review-grade--${key}`}>{label}: {report[side === "w" ? "white" : "black"].counts[key] || 0}</span>)}</div>
+        <div className="review-chart-panel"><h2>Оценка партии</h2><p className="review-chart-current">{evalLabel(currentEval)}</p><EvalChart plies={analysisPlies} selected={selected} onSelect={navigateTo} /></div></>}
+      <div className="review-workspace"><div className="review-board-column"><div className="review-board-with-eval">
+        <div className="review-eval-bar" role="img" aria-label={evalLabel(currentEval)} title={evalLabel(currentEval)}>
+          <span className="review-eval-black" style={{ height: `${currentEval == null ? 50 : Math.max(5, Math.min(95, 50 - Math.tanh(currentEval / 450) * 45))}%` }} />
+          <strong>{currentEval == null ? "—" : `${currentEval > 0 ? "+" : ""}${(currentEval / 100).toFixed(1)}`}</strong>
+        </div><div className="review-board">
         <MiniBoard fen={practice && selected >= 0 ? plies[selected].fen : current}
           width={Math.min(600, Math.max(250, window.innerWidth - 360))}
           orientation={side === "w" ? "white" : "black"} arePiecesDraggable={practice}
-          onPieceDrop={tryPracticeMove} /></div>
+          onPieceDrop={tryPracticeMove} /></div></div>
         {selected >= 0 && ["inaccuracy", "mistake", "blunder"].includes(plies[selected]?.classification) &&
           <div className="review-practice"><button type="button" onClick={startPractice} disabled={practiceLoading}>
             {practiceLoading ? "Ищем лучший ход…" : "Переиграть ошибку"}</button>
@@ -224,20 +265,18 @@ export default function GameReviewPage() {
           </div>}</div>
         <div className="review-moves-panel"><h2>Ходы партии</h2>
           <div className="review-moves">{plies.map((ply, index) => {
-            const grade = GRADES[ply.classification] || (report && ply.analysis?.decided
-              ? ["◇", "Позиция решена"]
-              : report && ply.analysis?.eval_cp == null ? ["…", "Без оценки Stockfish"] : null);
+            const grade = ply.analysis?.decided ? null : GRADES[ply.classification] || (report && ply.analysis?.eval_cp == null ? ["…", "Без оценки Stockfish"] : null);
             return <button type="button" key={index} onClick={() => navigateTo(index)}
               className={`review-move ${index === selected ? "is-selected" : ""}`}>
               <span>{ply.move_no}{index % 2 ? "..." : "."} {ply.san}</span>
-              {grade && <span className={`review-move-grade review-grade--${ply.classification || (ply.analysis?.decided ? "decided" : "unscored")}`}>{grade[0]} {grade[1]}</span>}
+              {grade && <span className={`review-move-grade review-grade--${ply.classification || "unscored"}`}>{grade[0]} {grade[1]}</span>}
             </button>;
           })}</div>
-          <div className="review-navigation"><button type="button" onClick={() => navigateTo(-1)}>⏮ Начало</button>
-            <button type="button" disabled={selected < 0} onClick={() => navigateTo(selected - 1)}>←</button>
+          <div className="review-navigation"><button type="button" onClick={() => navigateTo(-1)}>Начало</button>
+            <button type="button" disabled={selected < 0} onClick={() => navigateTo(selected - 1)}>Назад</button>
             <button type="button" onClick={() => { if (selected >= plies.length - 1) setSelected(-1); setPlaying((value) => !value); }}>
-              {playing ? "Пауза" : "▶ Воспроизвести"}</button>
-            <button type="button" disabled={selected >= plies.length - 1} onClick={() => navigateTo(selected + 1)}>→</button>
+              {playing ? "Пауза" : "Воспроизвести"}</button>
+            <button type="button" disabled={selected >= plies.length - 1} onClick={() => navigateTo(selected + 1)}>Далее</button>
             <span>{selected < 0 ? "Начало партии" : `${selected + 1} / ${plies.length}`}</span></div>
         </div></div>
     </section>}
