@@ -67,3 +67,47 @@ frontend/test-results/
 frontend/playwright-report/
 release.json
 frontend/dist/version.json
+
+# Rules from docs/ml
+# Machine access settings remain local.
+/docs/ml/**/private/
+/docs/ml/**/*.ovpn
+
+# Rules from ml/dataset_gen
+# Local credentials, including editor backups.
+/ml/dataset_gen/**/.env*
+!/ml/dataset_gen/**/.env.example
+/ml/dataset_gen/**/.env*
+!/ml/dataset_gen/**/.env.example
+
+# Inputs, intermediate artifacts and training outputs.
+/ml/dataset_gen/**/data/
+/ml/dataset_gen/**/engines/
+/ml/dataset_gen/**/evidence/
+/ml/dataset_gen/**/work*/
+/ml/dataset_gen/**/out*/
+/ml/dataset_gen/**/handoff*/
+/ml/dataset_gen/**/runs/
+/ml/dataset_gen/**/base/
+/ml/dataset_gen/**/*.zip
+/ml/dataset_gen/**/*.zip
+
+# Rules from ml/gigabench
+/ml/gigabench/**/__pycache__/
+/ml/gigabench/**/*.pyc
+/ml/gigabench/**/.venv/
+/ml/gigabench/**/.env
+/ml/gigabench/data/private/
+/ml/gigabench/review20/draft/
+/ml/gigabench/review20/*.zip
+/ml/gigabench/**/runs/
+/ml/gigabench/**/dist/
+/ml/gigabench/**/*.nnue
+/ml/gigabench/**/*.safetensors
+/ml/gigabench/**/*.pt
+/ml/gigabench/**/*.pth
+/ml/gigabench/**/*.docx
+/ml/gigabench/**/*.log
+
+# Rules from ml/synthesis_pipeline/rag_module_chessclip/chessclip/src/training
+/ml/synthesis_pipeline/rag_module_chessclip/chessclip/src/training/**/logs/

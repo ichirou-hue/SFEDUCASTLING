@@ -6,17 +6,12 @@ from os import path
 
 here = path.abspath(path.dirname(__file__))
 
-# Get the long description from the README file
-with open(path.join(here, 'README.md'), encoding='utf-8') as f:
-    long_description = f.read()
+# The repository manual is maintained in the root README.
+long_description = 'ChessCLIP / OpenCLIP. See the SFEDUCASTLING root README for documentation.'
 
-def _read_reqs(relpath):
-    fullpath = path.join(path.dirname(__file__), relpath)
-    with open(fullpath) as f:
-        return [s.strip() for s in f.readlines() if (s.strip() and not s.startswith("#"))]
-
-REQUIREMENTS = _read_reqs("requirements.txt")
-TRAINING_REQUIREMENTS = _read_reqs("requirements-training.txt")
+# Shared dependencies are installed from the repository root requirements.txt.
+REQUIREMENTS = []
+TRAINING_REQUIREMENTS = []
 
 exec(open('src/open_clip/version.py').read())
 setup(
