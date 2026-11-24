@@ -89,6 +89,12 @@
     min-height: 88px;
     max-height: 280px;
     overflow-y: auto;
+    /* На широкой stacked-панели (860px) ходы разъезжались на пол-экрана:
+       номера у левого края, ходы - через сотни пикселей. Держим список
+       той же ширины, что и карточка игроков, по центру панели. */
+    width: 100%;
+    max-width: 340px;
+    margin-inline: auto;
   }
 
   /* Пустая история остаётся компактной: резерв под список нужен только
@@ -571,15 +577,6 @@
     border-radius: 18px;
   }
 
-  /* Легенда сравнения на телефоне: компактнее, чтобы вместе с доской
-     помещаться по высоте. */
-  .main-area .board-wrapper .compare-card {
-    padding: 8px 10px;
-    border-radius: 12px;
-    font-size: 13px;
-    line-height: 1.4;
-  }
-
   /* Кнопки под доской - той же сеткой, что и на вкладке «Задачи»:
      три равные колонки, а при появлении четвёртой кнопки («Разобрать
      партию») - две колонки в два ряда. */
@@ -679,13 +676,15 @@
   .main-area .move-list {
     flex: 0 1 auto;
     max-height: 160px;
-    padding-right: 3px;
+    padding-right: 0;
   }
 
   .main-area .move-pair {
     height: 32px;
     grid-template-columns: 26px minmax(0, 1fr) minmax(0, 1fr);
-    padding: 2px 0;
+    /* Симметричный отступ справа, чтобы колонки ходов не уезжали влево
+       относительно ромба заголовка (номер занимает 24px слева). */
+    padding: 2px 24px 2px 0;
     font-size: 15px;
   }
 
@@ -1422,6 +1421,16 @@
     min-height: 0;
     margin: auto;
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Вход на телефоне: та же компактная карточка, но с меньшими полями,
+     чтобы форма не прижималась к краям экрана. */
+  .auth-card--login {
+    max-width: 440px;
+  }
+
+  .auth-card--login .auth-side--form {
+    padding: 38px 24px 30px;
   }
 
   .auth-card--link {

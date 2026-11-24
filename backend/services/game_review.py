@@ -27,6 +27,12 @@
 а не по сантипешкам: потеря 100 cp в равной позиции и потеря 100 cp
 в безнадёжной - это разные по значению события.
 
+Поверх классов есть ``brilliant``: лучший или отличный ход, после
+которого соперник принимает жертву не меньше качества, а позиция
+игрока не проседает. Это консервативное приближение chess.com-разбора:
+непринятые жертвы и жертвы пешки намеренно не помечаются, чтобы значок
+не появлялся на обычных разменах.
+
 Звёзды (3/2/1) - пороги по итоговой точности, но результат партии
 ограничивает максимум: за победу доступны все три, за ничью - две,
 за поражение - одна.
@@ -48,6 +54,7 @@ from backend.analysis.engine_eval import (
 )
 from backend.analysis.win_probability import (
     DECIDED_WIN_PERCENT,
+    DROP_EXCELLENT,
     MATE_CP,
     classify,
     is_decided,
@@ -93,6 +100,114 @@ _WEIGHT_MAX = 12.0
 
 class EngineUnavailable(RuntimeError):
     """Stockfish не загружен - разбор партии невозможен."""
+
+
+# Ценность фигур для поиска жертвы. Король не участвует в материале:
+# его нельзя взять, а мат определяется отдельно.
+_PIECE_VALUES: dict[int, float] = {
+    chess.PAWN: 1.0,
+    chess.KNIGHT: 3.0,
+    chess.BISHOP: 3.0,
+    chess.ROOK: 5.0,
+    chess.QUEEN: 9.0,
+}
+
+# Бриллиантовый ход должен отдать хотя бы качество (две пешки). Пешки
+# тоже иногда жертвуют красиво, но без глубокого расчёта вариантов
+# отличать осмысленную жертву пешки от случайно подставленной слишком
+# шумно для значка.
+_MIN_BRILLIANT_SACRIFICE = 2.0
+
+
+def _material_value(board: chess.Board, color: chess.Color) -> float:
+    """Стоимость фигур одной стороны на доске в пешках."""
+    total = 0.0
+    for square in chess.SQUARES:
+        piece = board.piece_at(square)
+        if piece is not None and piece.color == color:
+            total += _PIECE_VALUES.get(piece.piece_type, 0.0)
+    return total
+
+
+def _material_balance(board: chess.Board, color: chess.Color) -> float:
+    """Материальный перевес стороны: свои фигуры минус фигуры соперника."""
+    opponent = chess.BLACK if color == chess.WHITE else chess.WHITE
+    return _material_value(board, color) - _material_value(board, opponent)
+
+
+def _is_brilliant_sacrifice(
+    plies: list[dict],
+    index: int,
+    win_values: list[float],
+    player_turn: chess.Color,
+) -> bool:
+    """Похож ли ход игрока на бриллиантовую жертву.
+
+    Достоверного определения «бриллианта» без перебора вариантов нет:
+    chess.com учитывает жертву, единственность хода и глубину расчёта.
+    Здесь используется консервативное приближение по фактам партии:
+
+    - ход признан лучшим или отличным и позиция ещё не решена;
+    - соперник ответил взятием, и за два полухода игрок суммарно
+      потерял не меньше качества (две пешки);
+    - после ответа соперника вероятность победы не просела сильнее,
+      чем допускает класс ``excellent``.
+
+    Принятая жертва без ухудшения оценки - это самый надёжный признак
+    красивой комбинации, доступный без дополнительных запросов к
+    движку. Отклонённые жертвы и жертвы с малым материальным уроном
+    намеренно не помечаются, чтобы значок не появлялся на обычных
+    разменах.
+    """
+    if not 0 <= index < len(plies):
+        return False
+
+    entry = plies[index]
+    if (
+        not entry.get("by_player")
+        or entry.get("decided")
+        or entry.get("classification") not in ("best", "excellent")
+        or entry.get("eval_cp") is None
+    ):
+        return False
+
+    if index + 1 >= len(plies):
+        return False
+
+    reply = plies[index + 1]
+    if (
+        reply.get("by_player")
+        or reply.get("eval_cp") is None
+        or not reply.get("fen_after")
+    ):
+        return False
+
+    try:
+        board_before = chess.Board(entry["fen"])
+        board_after_reply = chess.Board(reply["fen_after"])
+    except (KeyError, ValueError):
+        return False
+
+    # Смотрим баланс материала, а не «свои фигуры»: иначе обычный
+    # размен (взял коня, отдал слона) выглядел бы потерей слона.
+    lost = _material_balance(board_before, player_turn) - _material_balance(
+        board_after_reply, player_turn
+    )
+    if lost + 1e-9 < _MIN_BRILLIANT_SACRIFICE:
+        return False
+
+    # Ответ соперника не должен превращать ход в потерю позиции. Для
+    # чёрных вероятность победы в ``win_values`` хранится от белых.
+    if index + 2 >= len(win_values):
+        return False
+
+    win_before = win_values[index]
+    win_after_reply = win_values[index + 2]
+    if player_turn == chess.BLACK:
+        win_before = 100.0 - win_before
+        win_after_reply = 100.0 - win_after_reply
+
+    return win_after_reply >= win_before - DROP_EXCELLENT
 
 
 def stars_for_accuracy(accuracy: float | None) -> int:
@@ -345,6 +460,13 @@ def review_game(
 
     accuracy = game_accuracy(win_values, player_turn)
 
+    # Бриллиант - надстройка над классом хода, а не отдельная ступень
+    # падения оценки. Помечаем после прохода, когда известен ответ
+    # соперника и можно проверить, была ли жертва принята.
+    for index, entry in enumerate(plies):
+        if _is_brilliant_sacrifice(plies, index, win_values, player_turn):
+            entry["classification"] = "brilliant"
+
     scored = [m for m in player_moves if m["classification"] is not None and not m["decided"]]
     decided = [m for m in player_moves if m["decided"]]
 
@@ -352,6 +474,7 @@ def review_game(
     average_loss = round(sum(losses) / len(losses), 1) if losses else None
 
     counts = {
+        "brilliant": 0,
         "best": 0,
         "excellent": 0,
         "good": 0,

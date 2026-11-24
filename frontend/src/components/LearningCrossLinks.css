@@ -98,6 +98,11 @@
   border: 1px solid rgba(79, 147, 92, 0.22);
   color: #31583a;
   line-height: 1.4;
+  /* Длинная подсказка в узкой панели должна переноситься по словам,
+     а не растягивать пробелы выключкой по ширине. */
+  text-align: left;
+  text-wrap: pretty;
+  overflow-wrap: break-word;
 }
 
 .training-hint-meta {

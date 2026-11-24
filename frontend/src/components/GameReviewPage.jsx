@@ -8,6 +8,7 @@ import MiniBoard from "./MiniBoard.jsx";
 import "./GameReviewPage.css";
 
 const GRADES = {
+  brilliant: ["◆", "Бриллиантовый"],
   best: ["★", "Лучший"], excellent: ["!", "Отличный"],
   good: ["✓", "Хороший"], inaccuracy: ["?!", "Неточность"],
   mistake: ["?", "Ошибка"], blunder: ["??", "Зевок"],
@@ -236,7 +237,13 @@ export default function GameReviewPage() {
             <small>точность · {report[key].moves_scored} оценено</small>
           </button>)}</div>
         <div className="review-grade-summary">{Object.entries(GRADES).map(([key, [symbol, label]]) =>
-          <span key={key} className={`review-grade review-grade--${key}`}>{symbol} {label}: {report[side === "w" ? "white" : "black"].counts[key] || 0}</span>)}</div>
+          <span
+            key={key}
+            className={`review-grade review-grade--${key}`}
+            title={key === "brilliant"
+              ? "Лучший или отличный ход с принятой жертвой не меньше качества"
+              : undefined}
+          >{symbol} {label}: {report[side === "w" ? "white" : "black"].counts[key] || 0}</span>)}</div>
         <div className="review-chart-panel"><h2>Оценка партии</h2><EvalChart plies={analysisPlies} selected={selected} onSelect={navigateTo} /></div></>}
       <div className="review-workspace"><div className="review-board-column"><div className="review-board">
         <MiniBoard fen={practice && selected >= 0 ? plies[selected].fen : current}

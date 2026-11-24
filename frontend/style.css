@@ -712,15 +712,15 @@ textarea {
 }
 
 .board-section {
-  /* Центрируем всю связку «перевес + доска + кнопки» по вертикали
-     относительно колонок истории и чата. */
-  align-self: center;
+  /* Верх карточки доски совпадает с верхом колонок истории и чата,
+     как на странице задач. */
+  align-self: start;
   flex: 0 0 auto;
   min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 12px;
   padding: 0;
   order: 2;
@@ -737,27 +737,12 @@ textarea {
   grid-area: board;
 }
 
-/* Строка материального перевеса верхней стороны: живёт над карточкой
-   доски, а не внутри неё. Высота фиксирована - появление перевеса не
-   сдвигает доску и не меняет её рассчитанный размер. */
-.board-material-row {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  align-self: stretch;
-  min-height: 24px;
-  /* Соседние элементы секции разделяет gap: 12px; оставляем видимый
-     зазор 6px, чтобы плашка не отрывалась от доски. */
-  margin-bottom: -6px;
-}
-
 .board-wrapper {
   display: flex;
   flex-direction: column;
   align-items: center;
   width: fit-content;
-  /* Карточка не должна вылезать за колонку доски, даже если внутри
-     появится широкий элемент (см. .compare-card ниже). */
+  /* Карточка не должна вылезать за колонку доски. */
   max-width: 100%;
   height: fit-content;
   border-radius: 15px;
@@ -1296,63 +1281,6 @@ img[src^="/pieces/"] {
   flex: 1;
 }
 
-/* Легенда сравнения Stockfish и Maia под доской. Раньше была собрана
-   на inline-стилях и в тёмной теме давала светлый текст на светлой
-   плашке. Теперь это обычная карточка в палитре страницы: бумажная
-   поверхность, золотая окантовка и приглушённая подпись. */
-.compare-card {
-  /* width: 0 + min-width: 100% - важный приём: карточка растягивается
-     по ширине доски, но её длинный текст не участвует в расчёте
-     intrinsic-ширины .board-wrapper (у него width: fit-content).
-     Иначе после подсказки плашка сравнения распирала золотую карточку
-     доски шире колонки, и та наезжала на чат. */
-  width: 0;
-  min-width: 100%;
-  max-width: 100%;
-  overflow-wrap: anywhere;
-  /* Отступы и шрифт те же, что были у inline-версии: высота карточки
-     участвует в расчёте размера доски, менять её нельзя. */
-  margin-top: 10px;
-  padding: 10px 14px;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.87);
-  /* Окантовка рисуется тенью, а не border: так не добавляется 2px
-     к высоте и доска не пересчитывается. */
-  box-shadow:
-    inset 0 0 0 1px rgba(180, 135, 44, 0.55),
-    0 2px 6px rgba(0, 0, 0, 0.12);
-  color: #333;
-  font-family: var(--font-ui);
-  font-size: 15px;
-  line-height: 1.5;
-}
-
-.compare-card__dot {
-  display: inline-block;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  margin-right: 7px;
-  vertical-align: middle;
-}
-
-.compare-card__dot--stockfish {
-  background: #2f8a45;
-}
-
-.compare-card__dot--maia {
-  background: #c9781c;
-}
-
-.compare-card__label {
-  color: #5f4a24;
-}
-
-.compare-card__note {
-  margin-top: 4px;
-  color: #6b6b6b;
-}
-
 /* Скруглённые кнопки в духе вкладки «Задачи»: золотые pill-кнопки
    с мягкой тенью. */
 .ctrl-btn {
@@ -1885,6 +1813,10 @@ img[src^="/pieces/"] {
   outline-offset: 2px;
 }
 
+.chat-collapse-icon {
+  display: block;
+}
+
 /* Кнопки в шапке: каталог дебютов + свернуть. */
 .chat-header-actions {
   display: flex;
@@ -2339,15 +2271,23 @@ img[src^="/pieces/"] {
   box-sizing: border-box;
   order: 1;
 }
-/* РќР°СЃС‚СЂРѕР№РєР° СЃР°РјРѕРіРѕ СЃРїРёСЃРєР° С…РѕРґРѕРІ */
+/* Настройка самого списка ходов.
+   Раньше список был жёстко ограничен 200px (~5 строк): в партии из
+   шести ходов первый ход уезжал за верхнюю границу, а в растянутой
+   панели между списком и карточкой игроков оставалась пустота.
+   Теперь список занимает всю свободную высоту панели, а при
+   переполнении по-прежнему прокручивается. */
 .move-list {
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
-  max-height: 200px; /* Примерно пять строк истории по 36px. */
-  /* Keep the controls at the bottom when the capped list leaves free space. */
-  margin-bottom: auto;
+  max-height: none;
+  margin-bottom: 0;
   overflow-y: auto;
-  padding-right: 8px;
+  /* Список шире не становится, но и не сдвигается влево из-за места
+     под скроллбар: резервируем его с обеих сторон, поэтому колонки
+     ходов остаются по центру под ромбом заголовка. */
+  padding-right: 0;
+  scrollbar-gutter: stable both-edges;
 }
 
 /* РЎС‚РёР»РёР·Р°С†РёСЏ СЃРєСЂРѕР»Р»Р±Р°СЂР° РґР»СЏ Chrome, Edge, Safari */
@@ -2381,7 +2321,11 @@ img[src^="/pieces/"] {
   box-sizing: border-box;
 }
 
-/* --- Блок профиля --- */
+/* --- Блок профиля ---
+   Две строки карточки: соперник сверху, игрок снизу. В узкой колонке
+   истории горизонтальная компоновка не помещалась: имена уезжали за
+   рамку, а медальоны прилипали к краям. Вертикальный стек читается
+   ровно и оставляет место рейтингу справа. */
 .player-info {
   display: flex;
   flex-direction: column;
@@ -2390,8 +2334,8 @@ img[src^="/pieces/"] {
   gap: 0;
   position: relative;
   border-radius: 22px;
-  /* Вертикальная двухцветная заливка: сверху соперник (тёплая бумага),
-     снизу игрок (зелёный подтон) - как на самой доске. */
+  /* Соперник сверху (тёплая бумага), игрок снизу (зелёный подтон) -
+     как верхняя и нижняя половины доски. */
   background: linear-gradient(
     180deg,
     rgba(255, 253, 248, 0.94) 0%,
@@ -2403,17 +2347,48 @@ img[src^="/pieces/"] {
   box-shadow:
     0 1px 4px rgba(74, 50, 32, 0.12),
     inset 0 1px 0 rgba(255, 255, 255, 0.6);
-  padding: 5px 10px;
+  padding: 4px 10px;
   /* Живёт под списком ходов: отступ сверху от списка, снизу - до навигации. */
-  margin: 14px 0 18px;
+  margin: 12px 0 14px;
   width: 100%;
-  min-height: 58px;
+  min-height: 0;
   flex-shrink: 0;
   box-sizing: border-box;
 }
 
+/* Тонкая линия между соперником и игроком: рвём её по центру, чтобы
+   она не проходила под жетоном VS. */
+.player-info::before,
+.player-info::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  height: 1px;
+}
+
+.player-info::before {
+  left: 20px;
+  right: calc(50% + 20px);
+  background: linear-gradient(
+    90deg,
+    rgba(180, 135, 44, 0) 0%,
+    rgba(180, 135, 44, 0.4) 100%
+  );
+}
+
+.player-info::after {
+  right: 20px;
+  left: calc(50% + 20px);
+  background: linear-gradient(
+    90deg,
+    rgba(180, 135, 44, 0.4) 0%,
+    rgba(180, 135, 44, 0) 100%
+  );
+}
+
 .player-info__row {
   display: flex;
+  flex-direction: row;
   align-items: center;
   gap: 8px;
   min-width: 0;
@@ -2421,7 +2396,11 @@ img[src^="/pieces/"] {
 }
 
 .player-info__row--opponent {
-  justify-content: flex-start;
+  padding-bottom: 5px;
+}
+
+.player-info__row--self {
+  padding-top: 5px;
 }
 
 /* --- Список ходов (чередование цветов как на макете) --- */
@@ -2431,7 +2410,10 @@ img[src^="/pieces/"] {
   align-items: center;
   height: auto;
   min-height: 36px;
-  padding: 5px 3px;
+  /* Справа резервируем столько же, сколько занимает номер хода слева:
+     две колонки ходов остаются симметричными относительно центра, и
+     ромб под заголовком попадает ровно между ними. */
+  padding: 5px 27px 5px 3px;
   font-family: var(--font-ui);
   font-size: clamp(13px, 1.05vw, 15px);
   line-height: 1.25;
@@ -2481,22 +2463,26 @@ img[src^="/pieces/"] {
 .move-pair .num {
   flex: 0 0 24px;
   width: 24px;
+  min-width: 0;
   padding-inline: 0;
   color: #555;
   font-size: 13px;
+  text-align: left;
 }
 .move-pair .move-w {
   flex: 1 1 0;
   min-width: 0;
   white-space: nowrap;
-  text-align: left; /* Р‘РµР»С‹Рµ С…РѕРґС‹ РїСЂРёР¶Р°С‚С‹ РІР»РµРІРѕ (РїРѕРґ Р’С‹) */
+  justify-content: flex-start;
+  text-align: left; /* Белые ходы начинаются с одного x */
   padding-inline: 4px;
 }
 .move-pair .move-b {
   flex: 1 1 0;
   min-width: 0;
   white-space: nowrap;
-  text-align: right; /* Р§РµСЂРЅС‹Рµ С…РѕРґС‹ РїСЂРёР¶Р°С‚С‹ РІРїСЂР°РІРѕ (РїРѕРґ Maia 2) */
+  justify-content: flex-end;
+  text-align: right; /* Чёрные ходы заканчиваются на одном x */
   padding-inline: 4px;
 }
 
@@ -2763,32 +2749,33 @@ img[src^="/pieces/"] {
 .player-name,
 .bot-name {
   font-family: var(--font-ui);
-  font-size: clamp(13px, 0.9vw, 16px);
+  font-size: clamp(12px, 0.85vw, 14px);
   line-height: 1.15;
   white-space: nowrap;
 }
 
+/* VS - жетон на разделительной линии между строками соперника и игрока. */
 .vs-text {
-  display: flex;
-  align-items: center;
-  justify-content: center;
   position: absolute;
   left: 50%;
   top: 50%;
-  transform: translate(-50%, -50%);
   z-index: 1;
-  width: 26px;
-  height: 26px;
-  flex-shrink: 0;
-  border-radius: 50%;
-  background: rgba(255, 253, 248, 0.96);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 18px;
+  margin: 0;
+  transform: translate(-50%, -50%);
+  border-radius: 999px;
+  background: rgba(255, 253, 248, 0.97);
   border: 1px solid rgba(180, 135, 44, 0.6);
   box-shadow: 0 1px 2px rgba(74, 50, 32, 0.16);
   font-family: var(--font-ui);
-  font-size: 11px;
-  letter-spacing: 0.02em;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
   color: #8a6a26;
-  margin: 0;
 }
 
 /* РЎС‚РёР»РёР·Р°С†РёСЏ Р°РІР°С‚Р°СЂРѕРє (РµСЃР»Рё С‚С‹ РЅРµ СЌРєСЃРїРѕСЂС‚РёСЂСѓРµС€СЊ РёС… СЃ С„РѕРЅРѕРј) */
@@ -2797,13 +2784,13 @@ img[src^="/pieces/"] {
   /* Медальоны: иконка в цветном круге с золотым колечком.
      user-icon.svg нарисован белым, bot-icon.svg - тёмным,
      поэтому фон у них разный. */
-  width: clamp(26px, 1.7vw, 32px);
-  height: clamp(26px, 1.7vw, 32px);
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   object-fit: contain;
   flex-shrink: 0;
   box-sizing: border-box;
-  padding: 6px;
+  padding: 5px;
   border: 2px solid rgba(180, 135, 44, 0.55);
 }
 
@@ -2817,27 +2804,34 @@ img[src^="/pieces/"] {
 }
 .player-details {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  /* Ширина по содержимому: рейтинг и имя не должны сжиматься. */
-  flex: 0 0 auto;
+  flex-direction: row;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  /* Тянется на всю ширину карточки: имя слева, рейтинг справа,
+     как в привычной строке игрока. */
+  flex: 1 1 auto;
+  min-width: 0;
 }
 .bot-details {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  flex: 0 0 auto;
+  flex-direction: row;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  flex: 1 1 auto;
+  min-width: 0;
   margin-left: 0;
 }
 .player-rating,
 .bot-rating {
   /* Рейтинг - вторичная строка: спокойнее и мельче имени. */
   font-family: var(--font-ui);
-  font-size: 10.5px;
+  font-size: 10px;
   letter-spacing: 0.03em;
   color: #837053;
   line-height: 1;
-  margin-top: 2px;
+  margin-top: 0;
   margin-bottom: 0;
   white-space: nowrap;
 }
@@ -3042,6 +3036,19 @@ img[src^="/pieces/"] {
 .auth-close:hover {
   background: #fff;
   color: #333;
+}
+
+/* Вход: бренд-панели нет, остаётся только форма. Карточка сжимается
+   до её ширины и центрируется оверлеем, а не растягивается на 1040px. */
+.auth-card--login {
+  grid-template-columns: minmax(0, 1fr);
+  width: 460px;
+  min-height: 0;
+  max-width: min(94vw, 460px);
+}
+
+.auth-card--login .auth-side--form {
+  padding: 48px 44px 40px;
 }
 
 /* --- Панели --- */
@@ -4089,7 +4096,7 @@ img[src^="/pieces/"] {
   box-shadow: 0 0 24px rgba(131, 183, 135, 0.45), 0 2px 4px rgba(0, 0, 0, 0.25);
 }
 
-.puzzle-promotion-overlay {
+.promotion-overlay {
   position: absolute;
   inset: 0;
   z-index: 30;
@@ -4101,7 +4108,7 @@ img[src^="/pieces/"] {
   backdrop-filter: blur(5px);
 }
 
-.puzzle-promotion-dialog {
+.promotion-dialog {
   display: grid;
   width: min(100%, 440px);
   gap: 10px;
@@ -4114,22 +4121,22 @@ img[src^="/pieces/"] {
   text-align: center;
 }
 
-.puzzle-promotion-dialog h2 {
+.promotion-dialog h2 {
   font: 700 clamp(18px, 3vw, 22px)/1.25 var(--font-ui);
 }
 
-.puzzle-promotion-dialog > p {
+.promotion-dialog > p {
   color: #bdc4c0;
   font: 500 12px/1.4 var(--font-ui);
 }
 
-.puzzle-promotion-options {
+.promotion-options {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 
-.puzzle-promotion-options button {
+.promotion-options button {
   display: grid;
   place-items: center;
   gap: 3px;
@@ -4145,21 +4152,21 @@ img[src^="/pieces/"] {
   transition: background-color .15s ease, transform .15s ease, border-color .15s ease;
 }
 
-.puzzle-promotion-options button:hover,
-.puzzle-promotion-options button:focus-visible {
+.promotion-options button:hover,
+.promotion-options button:focus-visible {
   border-color: #e5c27d;
   background: rgba(213, 180, 118, .18);
   outline: none;
   transform: translateY(-1px);
 }
 
-.puzzle-promotion-options img {
+.promotion-options img {
   width: 42px;
   height: 42px;
   object-fit: contain;
 }
 
-.puzzle-promotion-cancel {
+.promotion-cancel {
   justify-self: center;
   padding: 5px 12px;
   border: 0;
@@ -4271,30 +4278,6 @@ img[src^="/pieces/"] {
 .puzzle-solved-actions .puzzle-complete-primary:hover {
   background: #f0d79f;
   box-shadow: 0 6px 18px rgba(201, 169, 110, 0.28);
-}
-
-.puzzle-result {
-  font-family: var(--font-ui);
-  font-size: 18px;
-  padding: 10px 20px;
-  border-radius: 12px;
-  text-align: center;
-  max-width: 100%;
-}
-.puzzle-result--success {
-  background: rgba(131, 183, 135, 0.35);
-  color: #2f5c36;
-  border: 1px solid rgba(131, 183, 135, 0.6);
-}
-.puzzle-result--error {
-  background: rgba(220, 120, 100, 0.2);
-  color: #8b3a2a;
-  border: 1px solid rgba(220, 120, 100, 0.4);
-}
-.puzzle-result--hint {
-  background: rgba(201, 169, 110, 0.25);
-  color: #6b5a2e;
-  border: 1px solid rgba(201, 169, 110, 0.5);
 }
 
 .puzzle-controls {
@@ -5188,7 +5171,13 @@ img[src^="/pieces/"] {
   line-height: 1.55;
   font-size: 14px;
   color: #555;
-  text-align: justify;
+  /* Выключка по левому краю: в узкой колонке теории text-align: justify
+     растягивал пробелы до «лесенки» и рвал строки по всей ширине.
+     text-wrap: pretty убирает «сиротскую» последнюю строку, а
+     overflow-wrap спасает от переполнения длинных слов. */
+  text-align: left;
+  text-wrap: pretty;
+  overflow-wrap: break-word;
 }
 
 .training-share-row {

@@ -214,7 +214,7 @@
 }
 
 :root[data-theme="dark"] .vs-text {
-  background: rgba(246, 244, 239, 0.07);
+  background: var(--sf-soft);
   border-color: var(--sf-line-strong);
   box-shadow: none;
   color: var(--sf-gold);
@@ -282,34 +282,6 @@
 :root[data-theme="dark"] .board-wrapper .player-name,
 :root[data-theme="dark"] .board-wrapper .bot-name {
   color: var(--sf-ink);
-}
-
-/* Легенда сравнения ходов под доской: та же тёмная поверхность и
-   золотая окантовка, что у истории ходов и карточки уровней Maia. */
-:root[data-theme="dark"] .compare-card {
-  background: var(--sf-surface-raised);
-  box-shadow:
-    inset 0 0 0 1px var(--sf-line-strong),
-    0 12px 30px rgba(0, 0, 0, 0.26);
-  color: var(--sf-ink);
-}
-
-:root[data-theme="dark"] .compare-card__label {
-  color: var(--sf-gold);
-}
-
-:root[data-theme="dark"] .compare-card__note {
-  color: var(--sf-muted);
-}
-
-:root[data-theme="dark"] .compare-card__dot--stockfish {
-  background: var(--sf-green);
-  box-shadow: 0 0 0 3px var(--sf-green-soft);
-}
-
-:root[data-theme="dark"] .compare-card__dot--maia {
-  background: #e8b07a;
-  box-shadow: 0 0 0 3px rgba(232, 176, 122, 0.14);
 }
 
 :root[data-theme="dark"] .board-wrapper .player-rating,
@@ -915,24 +887,6 @@
 
 :root[data-theme="dark"] .puzzle-solved-hint {
   color: var(--sf-ink);
-}
-
-:root[data-theme="dark"] .puzzle-result--success {
-  border-color: rgba(141, 199, 155, 0.4);
-  background: rgba(102, 180, 128, 0.16);
-  color: var(--sf-green);
-}
-
-:root[data-theme="dark"] .puzzle-result--error {
-  border-color: rgba(190, 106, 88, 0.4);
-  background: var(--sf-error-soft);
-  color: var(--sf-error);
-}
-
-:root[data-theme="dark"] .puzzle-result--hint {
-  border-color: var(--sf-line);
-  background: var(--sf-gold-soft);
-  color: var(--sf-gold-bright);
 }
 
 :root[data-theme="dark"] .puzzles-loading,
@@ -1754,12 +1708,6 @@
   border-color: var(--sf-line);
   background: var(--sf-soft);
   color: var(--sf-gold);
-}
-
-:root[data-theme="dark"] .phase-accuracy__games {
-  border-color: rgba(246, 244, 239, 0.1);
-  background: var(--sf-soft);
-  color: var(--sf-muted);
 }
 
 :root[data-theme="dark"] .phase-accuracy__insight {

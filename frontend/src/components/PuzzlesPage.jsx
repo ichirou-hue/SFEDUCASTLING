@@ -13,8 +13,10 @@ import formatMarkdown from "../formatMarkdown.js";
 import useChatAutoScroll from "../useChatAutoScroll.js";
 import MiniBoard from "./MiniBoard.jsx";
 import ChatCollapsedStrip from "./ChatCollapsedStrip.jsx";
+import ChatCollapseIcon from "./ChatCollapseIcon.jsx";
 import PuzzleRegisterGate from "./PuzzleRegisterGate.jsx";
 import PuzzlePreviewGate from "./PuzzlePreviewGate.jsx";
+import PromotionDialog from "./PromotionDialog.jsx";
 import SiteFooter from "./SiteFooter.jsx";
 import { getCheckState, getKingCheckStyle } from "../chessStatus.js";
 import { playMoveSound } from "../moveSound.js";
@@ -183,7 +185,6 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
   const [dragFrom, setDragFrom] = useState(null);
   const [waitingForOpponent, setWaitingForOpponent] = useState(false);
   const [showSolution, setShowSolution] = useState(false);
-  const [resultMessage, setResultMessage] = useState(null);
   const [movesLeft, setMovesLeft] = useState(0);
   const [solvedCount, setSolvedCount] = useState(0);
   /*
@@ -506,7 +507,6 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
       setDragFrom(null);
       setWaitingForOpponent(false);
       setShowSolution(false);
-      setResultMessage(null);
       setLastMove(null);
       setHintArrow(null);
       setBoardArrows([]);
@@ -761,7 +761,6 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
         setMovesLeft(Math.ceil(remaining / 2));
 
         if (solutionIndexRef.current >= totalMoves) {
-          setResultMessage({ type: "success", text: "Правильно! Задача решена!" });
           // Пазл, на котором в этой загрузке страницы уже была ошибка,
           // больше не может расти серию: его решение нейтрально.
           const isFailedRetry = failedPuzzleIdsRef.current.has(currentPuzzle?.id);
@@ -837,30 +836,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
         return true;
       }
 
-      // Ошибка рвёт серию: счётчик обнуляется, а если серия была,
-      // сообщаем об этом в сообщении над кнопками.
-      if (isPromotion && promotionChoice) {
-        const selectedName = {
-          q: "ферзь",
-          r: "ладья",
-          b: "слон",
-          n: "конь",
-        }[promotionChoice] || "выбранная фигура";
-        setResultMessage({
-          type: "error",
-          text: `Превращение в ${selectedName} не решает задачу. Попробуйте другой вариант.`,
-        });
-      } else if (streak > 0) {
-        setResultMessage({
-          type: "error",
-          text: `Неверный ход. Серия из ${streak} прервана.`,
-        });
-      } else {
-        setResultMessage({
-          type: "error",
-          text: "Неверный ход. Попробуйте ещё раз.",
-        });
-      }
+      // Ошибка рвёт серию: счётчик обнуляется.
       persistPuzzleStreak(0, bestStreak);
       setStreak(0);
       if (currentPuzzle?.id) {
@@ -968,7 +944,6 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
     const moves = solutionMovesRef.current;
 
     setShowSolution(true);
-    setResultMessage(null);
     setHintArrow(null);
 
     let i = 0;
@@ -1002,13 +977,25 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
     usedHintRef.current = true;
     const from = nextUci.substring(0, 2);
     const to = nextUci.substring(2, 4);
+    const hintArrowColor = "rgba(0, 150, 50, 0.85)";
 
     setHintArrow({ from, to });
-    setBoardArrows([[from, to, "rgba(0, 150, 50, 0.85)"]]);
-    setResultMessage({
-      type: "hint",
-      text: `Подсказка: попробуйте ход с ${from} на ${to}`,
-    });
+    setBoardArrows([[from, to, hintArrowColor]]);
+    /*
+     * Текст подсказки уходит в чат, а не отдельной плашкой над кнопками:
+     * плашка появлялась в потоке и сдвигала доску. В чате сообщение
+     * живёт вместе с остальной перепиской и не меняет высоту доски;
+     * стрелка на доске остаётся как визуальный ключ.
+     */
+    setChatMessages((prev) => [
+      ...prev,
+      {
+        role: "ai",
+        text: `💡 Подсказка: попробуйте ход с ${from} на ${to}.`,
+        fen: currentPuzzle.fen,
+        arrows: [{ from, to, color: hintArrowColor }],
+      },
+    ]);
   };
 
   const handleNextPuzzle = () => {
@@ -1400,46 +1387,11 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
             {dragGhost}
           </div>
           {pendingPromotion && (
-            <div className="puzzle-promotion-overlay">
-              <section
-                className="puzzle-promotion-dialog"
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="puzzle-promotion-title"
-              >
-                <h2 id="puzzle-promotion-title">Во что превратить пешку?</h2>
-                <p>Выберите фигуру, которой хотите продолжить решение.</p>
-                <div className="puzzle-promotion-options">
-                  {[
-                    ["q", "Ферзь"],
-                    ["r", "Ладья"],
-                    ["b", "Слон"],
-                    ["n", "Конь"],
-                  ].map(([piece, label]) => (
-                    <button
-                      type="button"
-                      key={piece}
-                      onClick={() => handlePromotionChoice(piece)}
-                      aria-label={`Превратить пешку в фигуру: ${label.toLowerCase()}`}
-                    >
-                      <img
-                        src={PIECE_IMAGES[`${pendingPromotion.color}${piece.toUpperCase()}`]}
-                        alt=""
-                        draggable={false}
-                      />
-                      <span>{label}</span>
-                    </button>
-                  ))}
-                </div>
-                <button
-                  type="button"
-                  className="puzzle-promotion-cancel"
-                  onClick={() => setPendingPromotion(null)}
-                >
-                  Отмена
-                </button>
-              </section>
-            </div>
+            <PromotionDialog
+              color={pendingPromotion.color}
+              onSelect={handlePromotionChoice}
+              onCancel={() => setPendingPromotion(null)}
+            />
           )}
           {puzzleSolved && (
             <div className="puzzle-solved-overlay">
@@ -1484,12 +1436,6 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
             </div>
           )}
         </div>
-
-        {resultMessage && (
-          <div className={`puzzle-result puzzle-result--${resultMessage.type}`}>
-            {resultMessage.text}
-          </div>
-        )}
 
         <div className="puzzle-controls">
           <button
@@ -1538,11 +1484,17 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
               aria-label="Свернуть чат"
               aria-expanded={true}
             >
-              »
+              <ChatCollapseIcon />
             </button>
           </div>
 
-          <div className="chat-messages" ref={chatMessagesRef}>
+          <div
+            className="chat-messages"
+            ref={chatMessagesRef}
+            role="log"
+            aria-live="polite"
+            aria-relevant="additions"
+          >
             {chatMessages.map((msg, i) => (
               <div
                 className={`chat-msg ${msg.role === "user" ? "user" : ""}`}

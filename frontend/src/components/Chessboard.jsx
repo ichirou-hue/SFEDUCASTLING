@@ -15,6 +15,8 @@ import { saveLocalBotGame } from "../localBotGames.js";
 import { playMoveSound } from "../moveSound.js";
 
 import { getCheckState, getKingCheckStyle } from "../chessStatus.js";
+import { promotionColorForMove } from "../promotion.js";
+import PromotionDialog from "./PromotionDialog.jsx";
 import {
   fetchMaiaMove,
   fetchEval,
@@ -102,6 +104,7 @@ function toUciMoves(sanMoves) {
  * Порядок - от лучших к худшим, чтобы строка читалась слева направо.
  */
 const REVIEW_COUNT_LABELS = [
+  ["brilliant", "бриллиантовых"],
   ["best", "лучших"],
   ["excellent", "отличных"],
   ["good", "хороших"],
@@ -348,6 +351,14 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
   const [legalMovesForSelected, setLegalMovesForSelected] = useState([]);
 
   /*
+   * Превращение пешки ждёт выбора фигуры: { from, to, color }.
+   * Свой диалог вместо встроенного в react-chessboard нужен потому,
+   * что встроенный открывается только при перетаскивании - при ходе
+   * кликами пешка молча становилась ферзём.
+   */
+  const [pendingPromotion, setPendingPromotion] = useState(null);
+
+  /*
    * Клетка и фигура, с которой началось перетаскивание: { square, piece }.
    * react-chessboard прячет фигуру на исходной клетке (opacity: 0),
    * поэтому подсвечиваем её и рисуем полупрозрачного «призрака».
@@ -405,12 +416,6 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
   const [stockfishArrow, setStockfishArrow] = useState(null);
   const [maiaArrow, setMaiaArrow] = useState(null);
 
-  /*
-   * Данные последнего сравнения.
-   * Нужны, чтобы при необходимости вывести информацию
-   * рядом с доской.
-   */
-  const [compareData, setCompareData] = useState(null);
   const [isComparing, setIsComparing] = useState(false);
 
   /*
@@ -731,9 +736,9 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
      * окно), оставляем прежний запас в 22px от скролл-контейнера.
      *
      * Из доступной высоты вычитаем всё, что лежит в карточке доски
-     * кроме самой доски: верхнюю панель, кнопки, карточку сравнения,
-     * ФЕН-панель, паддинги и рамку. Именно замером, потому что карточка
-     * сравнения появляется только после подсказки и добавляет ~100px.
+     * кроме самой доски: верхнюю панель, кнопки, ФЕН-панель, паддинги
+     * и рамку. Именно замером, потому что их высота зависит от темы и
+     * дополнительных элементов вокруг поля.
      *
      * Через scrollHeight, а не offsetHeight: когда содержимого больше,
      * чем места, карточка сжимается по высоте колонки и offsetHeight
@@ -756,8 +761,8 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
           boardBox.getBoundingClientRect().height
         : 0;
 
-    // Минимум - панель противника + строка кнопок + карточка сравнения
-    // + рамка с паддингами, когда доска ещё не разложена.
+    // Минимум - панель противника + строка кнопок + рамка с паддингами,
+    // когда доска ещё не разложена.
     const chromeH = measuredChrome > 0 ? measuredChrome : 150;
     const pageViewport = mainEl?.parentElement;
 
@@ -831,14 +836,6 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
       }
     };
   }, [updateBoardSize, chatCollapsed]);
-
-  /*
-   * Карточка сравнения появляется/меняет высоту после подсказки -
-   * пересчитываем размер доски, чтобы карточка и ФЕН-панель влезали.
-   */
-  useEffect(() => {
-    updateBoardSize();
-  }, [compareData, updateBoardSize]);
 
   const updateStatus = useCallback(() => {
     const g = gameRef.current;
@@ -976,9 +973,9 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
     setDragFrom(null);
     setSelectedSquare(null);
     setLegalMovesForSelected([]);
+    setPendingPromotion(null);
     setStockfishArrow(null);
     setMaiaArrow(null);
-    setCompareData(null);
     setIsComparing(false);
 
     setReview(null);
@@ -1229,11 +1226,15 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
       setLastMove(from && to ? { from, to } : null);
       setSelectedSquare(null);
       setLegalMovesForSelected([]);
+      /*
+       * Позиция на доске сменилась - отложенный выбор превращения
+       * относился к другой позиции и применился бы к просматриваемой.
+       */
+      setPendingPromotion(null);
       applyReviewEval(index);
 
       setStockfishArrow(null);
       setMaiaArrow(null);
-      setCompareData(null);
 
       if (index >= history.length - 1) {
         setIsViewMode(false);
@@ -1410,6 +1411,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
     setLastMove(null);
     setSelectedSquare(null);
     setLegalMovesForSelected([]);
+    setPendingPromotion(null);
 
     setIsAiThinking(false);
     setMaiaError("");
@@ -1423,7 +1425,6 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
 
     setStockfishArrow(null);
     setMaiaArrow(null);
-    setCompareData(null);
 
     fetchEval(startFen)
       .then((data) => {
@@ -1475,6 +1476,9 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
     setGameResult(null);
     setCoinChange(null);
     setResultCardDismissed(false);
+    // Меню выбора стороны рисуется под диалогом превращения: без сброса
+    // клик по «Новой игре» выглядел бы как «ничего не произошло».
+    setPendingPromotion(null);
     setSidePickerOpen(true);
   }, [onNavigate]);
 
@@ -1510,6 +1514,7 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
         setLastMove(null);
         setSelectedSquare(null);
         setLegalMovesForSelected([]);
+        setPendingPromotion(null);
 
         setIsAiThinking(false);
         setMaiaError("");
@@ -1523,7 +1528,6 @@ const ChessboardComponent = forwardRef(function ChessboardComponent(
 
         setStockfishArrow(null);
         setMaiaArrow(null);
-        setCompareData(null);
 
         fetchEval(validFen)
           .then((data) => {
@@ -1641,7 +1645,6 @@ const fetchBestMove = useCallback(
 
         setStockfishArrow(null);
         setMaiaArrow(null);
-        setCompareData(null);
 
         return;
       }
@@ -1690,14 +1693,30 @@ const fetchBestMove = useCallback(
       }
 
       /*
-       * Сохраняем результат сравнения.
-       *
-       * Он используется в блоке под доской:
-       *
-       * Stockfish: ...
-       * Maia3: ...
+       * Итог сравнения показываем в чате, а не отдельной карточкой под
+       * доской. Карточка появлялась только после подсказки, увеличивала
+       * высоту .board-wrapper, и доска пересчитывалась и уменьшалась.
+       * Сообщение чата живёт в соседней колонке и размер доски не меняет.
        */
-      setCompareData(data);
+      const compareLines = [];
+      if (data.stockfish?.san) {
+        compareLines.push(`**Stockfish:** ${data.stockfish.san}`);
+      }
+      if (data.maia3?.san) {
+        compareLines.push(`**Maia3:** ${data.maia3.san} (${elo} ELO)`);
+      }
+      if (
+        data.stockfish?.san &&
+        data.maia3?.san &&
+        typeof data.same_move === "boolean"
+      ) {
+        compareLines.push(
+          data.same_move
+            ? "Maia3 выбрала оптимальный ход Stockfish."
+            : "Maia3 выбрала другой ход - это и есть различие между оптимальной и человекоподобной игрой.",
+        );
+      }
+      const compareSummary = compareLines.join("\n\n");
 
       /*
        * ============================================================
@@ -1715,6 +1734,19 @@ const fetchBestMove = useCallback(
        * При ходе Maia3 GigaChess тоже не вызывается.
        */
 
+      let stockfishUci = null;
+      let explainedSan = data.stockfish?.san || "";
+      let explainedMove = null;
+      let explanationText = null;
+      let explanationSource = null;
+
+      /*
+       * Даже если объяснение не придёт, сравнение движков должно попасть
+       * в чат: иначе после подсказки пользователь увидит только стрелки
+       * без расшифровки, что они значат.
+       */
+      let hintText = ["### Подсказка Stockfish", "", compareSummary].join("\n");
+
       if (
         data.stockfish &&
         data.stockfish.from &&
@@ -1729,8 +1761,6 @@ const fetchBestMove = useCallback(
          * g1f3
          * e7e8q
          */
-        let stockfishUci = null;
-
         /*
          * Если compare-moves уже вернул готовый UCI,
          * используем его.
@@ -1764,6 +1794,15 @@ const fetchBestMove = useCallback(
             (data.stockfish.promotion || "");
         }
 
+        explainedSan = data.stockfish.san || stockfishUci;
+        hintText = [
+          "### Подсказка Stockfish",
+          "",
+          `**Лучший ход:** ${explainedSan}`,
+          "",
+          compareSummary,
+        ].join("\n");
+
         /*
          * Ошибка объяснения НЕ должна ломать основную подсказку.
          *
@@ -1773,7 +1812,7 @@ const fetchBestMove = useCallback(
          *
          * - стрелка Stockfish останется;
          * - стрелка Maia3 останется;
-         * - compareData останется.
+         * - сравнение движков останется в сообщении чата.
          */
         try {
           console.log(
@@ -1805,10 +1844,14 @@ const fetchBestMove = useCallback(
              * SAN лучше брать из нового explain-move,
              * поскольку именно этот ход фактически объяснялся.
              */
-            const explainedSan =
+            explainedSan =
               explanationData.explained_move?.san ||
               data.stockfish.san ||
               stockfishUci;
+            explainedMove = explanationData.explained_move || null;
+            explanationText = explanationData.explanation;
+            explanationSource =
+              explanationData.explanation_source || null;
 
             /*
              * Формируем сообщение для ChatPanel.
@@ -1818,101 +1861,15 @@ const fetchBestMove = useCallback(
              * ### заголовки
              * **жирный текст**
              */
-            const message = [
+            hintText = [
               "### Подсказка Stockfish",
               "",
               `**Лучший ход:** ${explainedSan}`,
               "",
-              explanationData.explanation,
+              explanationText,
+              "",
+              compareSummary,
             ].join("\n");
-
-            /*
-             * Передаём сообщение родительскому компоненту.
-             *
-             * Уникальный id нужен для того, чтобы пользователь
-             * мог нажать "Лучший ход" повторно даже в той же
-             * позиции - ChatPanel воспримет это как новое
-             * сообщение.
-             */
-            if (
-              typeof onStateChange === "function"
-            ) {
-              onStateChange((prev) => ({
-                ...prev,
-
-                hintMessage: {
-                  id:
-                    Date.now().toString() +
-                    "_" +
-                    Math.random()
-                      .toString(36)
-                      .slice(2),
-
-                  text: message,
-
-                  /*
-                   * Позицию, в которой был запрошен лучший ход,
-                   * ChatPanel рисует мини-доской прямо в сообщении.
-                   */
-                  fen: positionFen,
-
-                  /*
-                   * Можно сохранить исходные данные.
-                   *
-                   * Сейчас ChatPanel они не использует,
-                   * но в будущем пригодятся для красивой
-                   * карточки анализа.
-                   */
-                  explanation:
-                    explanationData.explanation,
-
-                  san: explainedSan,
-
-                  uci:
-                    explanationData.explained_move
-                      ?.uci || stockfishUci,
-
-                  from:
-                    explanationData.explained_move
-                      ?.from ||
-                    data.stockfish.from,
-
-                  to:
-                    explanationData.explained_move
-                      ?.to ||
-                    data.stockfish.to,
-
-                  /*
-                   * Обе стрелки (Stockfish + Maia3), чтобы мини-доска
-                   * в чате показывала их так же, как главная доска,
-                   * когда ходы движков различаются.
-                   */
-                  stockfishArrow:
-                    data.stockfish &&
-                    data.stockfish.from &&
-                    data.stockfish.to
-                      ? {
-                          from: data.stockfish.from,
-                          to: data.stockfish.to,
-                        }
-                      : null,
-
-                  maiaArrow:
-                    data.maia3 &&
-                    data.maia3.from &&
-                    data.maia3.to
-                      ? {
-                          from: data.maia3.from,
-                          to: data.maia3.to,
-                        }
-                      : null,
-
-                  source:
-                    explanationData.explanation_source ||
-                    null,
-                },
-              }));
-            }
           } else {
             console.warn(
               "[ExplainMove] Backend не вернул объяснение:",
@@ -1927,6 +1884,81 @@ const fetchBestMove = useCallback(
           );
         }
       }
+
+      /*
+       * Передаём сообщение родительскому компоненту.
+       *
+       * Уникальный id нужен для того, чтобы пользователь
+       * мог нажать "Лучший ход" повторно даже в той же
+       * позиции - ChatPanel воспримет это как новое
+       * сообщение.
+       */
+      if (typeof onStateChange === "function") {
+        onStateChange((prev) => ({
+          ...prev,
+
+          hintMessage: {
+            id:
+              Date.now().toString() +
+              "_" +
+              Math.random()
+                .toString(36)
+                .slice(2),
+
+            text: hintText,
+
+            /*
+             * Позицию, в которой был запрошен лучший ход,
+             * ChatPanel рисует мини-доской прямо в сообщении.
+             */
+            fen: positionFen,
+
+            /*
+             * Можно сохранить исходные данные.
+             *
+             * Сейчас ChatPanel они не использует,
+             * но в будущем пригодятся для красивой
+             * карточки анализа.
+             */
+            explanation: explanationText,
+
+            san: explainedSan,
+
+            uci: explainedMove?.uci || stockfishUci,
+
+            from: explainedMove?.from || data.stockfish?.from,
+
+            to: explainedMove?.to || data.stockfish?.to,
+
+            /*
+             * Обе стрелки (Stockfish + Maia3), чтобы мини-доска
+             * в чате показывала их так же, как главная доска,
+             * когда ходы движков различаются.
+             */
+            stockfishArrow:
+              data.stockfish &&
+              data.stockfish.from &&
+              data.stockfish.to
+                ? {
+                    from: data.stockfish.from,
+                    to: data.stockfish.to,
+                  }
+                : null,
+
+            maiaArrow:
+              data.maia3 &&
+              data.maia3.from &&
+              data.maia3.to
+                ? {
+                    from: data.maia3.from,
+                    to: data.maia3.to,
+                  }
+                : null,
+
+            source: explanationSource,
+          },
+        }));
+      }
     } catch (error) {
       /*
        * Ошибка самого сравнения Stockfish / Maia3.
@@ -1938,8 +1970,7 @@ const fetchBestMove = useCallback(
 
       setStockfishArrow(null);
       setMaiaArrow(null);
-      setCompareData(null);
-    } finally {
+      } finally {
       setIsComparing(false);
       onStateChange((prev) => ({ ...prev, isComparing: false }));
     }
@@ -1974,7 +2005,6 @@ const fetchBestMove = useCallback(
      */
     setStockfishArrow(null);
     setMaiaArrow(null);
-    setCompareData(null);
 
     try {
       /*
@@ -2170,8 +2200,9 @@ const fetchBestMove = useCallback(
    * ХОД ИГРОКА
    * ============================================================
    */
+
   const processPlayerMove = useCallback(
-    (sourceSquare, targetSquare) => {
+    (sourceSquare, targetSquare, promotionPiece = null) => {
       if (gameResult) return false;
 
       let move;
@@ -2179,7 +2210,7 @@ const fetchBestMove = useCallback(
         move = game.move({
           from: sourceSquare,
           to: targetSquare,
-          promotion: "q",
+          promotion: promotionPiece || "q",
         });
       } catch {
         // Illegal drops are normal input; chess.js throws instead of returning null.
@@ -2211,7 +2242,6 @@ const fetchBestMove = useCallback(
        */
       setStockfishArrow(null);
       setMaiaArrow(null);
-      setCompareData(null);
 
       setFen(currentFen);
 
@@ -2347,6 +2377,21 @@ const fetchBestMove = useCallback(
       }
 
       clearPremove();
+
+      /*
+       * Предход тоже может быть превращением: спрашиваем фигуру,
+       * иначе пешка молча превратилась бы в ферзя.
+       */
+      const promotionColor = promotionColorForMove(game, pending.from, pending.to);
+      if (promotionColor) {
+        setPendingPromotion({
+          from: pending.from,
+          to: pending.to,
+          color: promotionColor,
+        });
+        return;
+      }
+
       processPlayerMove(pending.from, pending.to);
     }, PREMOVE_EXECUTION_DELAY);
 
@@ -2490,6 +2535,23 @@ const fetchBestMove = useCallback(
        */
       if (game.turn() === playerColor) {
         clearPremove();
+
+        /*
+         * Превращение спрашиваем до хода: без выбора chess.js поставил
+         * бы ферзя, что бы игрок ни хотел.
+         */
+        const promotionColor = promotionColorForMove(game, sourceSquare, targetSquare);
+        if (promotionColor) {
+          setPendingPromotion({
+            from: sourceSquare,
+            to: targetSquare,
+            color: promotionColor,
+          });
+          setSelectedSquare(null);
+          setLegalMovesForSelected([]);
+          return false;
+        }
+
         return processPlayerMove(sourceSquare, targetSquare);
       }
 
@@ -2584,6 +2646,19 @@ const fetchBestMove = useCallback(
         /*
          * Попытка сделать ход.
          */
+        const promotionColor = promotionColorForMove(game, selectedSquare, square);
+
+        if (promotionColor) {
+          setPendingPromotion({
+            from: selectedSquare,
+            to: square,
+            color: promotionColor,
+          });
+          setSelectedSquare(null);
+          setLegalMovesForSelected([]);
+          return;
+        }
+
         const success = processPlayerMove(
           selectedSquare,
           square,
@@ -2632,6 +2707,35 @@ const fetchBestMove = useCallback(
   );
 
   /*
+   * Игрок выбрал фигуру превращения: применяем отложенный ход.
+   *
+   * Здесь нет тех проверок, что в onDrop/onSquareClick (isViewMode,
+   * gameResult, sidePickerOpen), поэтому их дублируем: выбор мог
+   * пережить переход по истории или итог партии.
+   */
+  const handlePromotionChoice = useCallback(
+    (pieceCode) => {
+      if (!pendingPromotion) return;
+
+      if (gameResult || isViewMode || sidePickerOpen || game.isGameOver()) {
+        setPendingPromotion(null);
+        return;
+      }
+
+      const { from, to } = pendingPromotion;
+      setPendingPromotion(null);
+      processPlayerMove(from, to, pieceCode);
+    },
+    [pendingPromotion, processPlayerMove, gameResult, isViewMode, sidePickerOpen, game],
+  );
+
+  const cancelPromotion = useCallback(() => {
+    setPendingPromotion(null);
+    setSelectedSquare(null);
+    setLegalMovesForSelected([]);
+  }, []);
+
+  /*
    * Если игрок начинает тянуть фигуру на своём ходу, ожидающий
    * предход уже не должен выполниться сам.
    */
@@ -2667,34 +2771,10 @@ const fetchBestMove = useCallback(
   );
 
   /*
-   * Стандартная проверка превращения из react-chessboard, но во время
-   * хода Maia3 диалог не нужен: это предход, а он всё равно
-   * превращается в ферзя в processPlayerMove.
+   * Свой диалог превращения работает и для перетаскивания, и для
+   * кликов, поэтому встроенный в react-chessboard отключён
+   * (см. onPromotionCheck/showPromotionDialog у доски).
    */
-  const handlePromotionCheck = useCallback(
-    (sourceSquare, targetSquare, piece) => {
-      if (game.turn() !== playerColor) return false;
-
-      return (
-        ((piece === "wP" &&
-          sourceSquare[1] === "7" &&
-          targetSquare[1] === "8") ||
-          (piece === "bP" &&
-            sourceSquare[1] === "2" &&
-            targetSquare[1] === "1")) &&
-        Math.abs(
-          sourceSquare.charCodeAt(0) -
-            targetSquare.charCodeAt(0),
-        ) <= 1
-      );
-    },
-    [game, playerColor],
-  );
-
-  const handlePromotionPieceSelect =
-    useCallback(() => {
-      return true;
-    }, []);
 
   const setMaiaLevel = useCallback(
     (level) => {
@@ -2712,8 +2792,7 @@ const fetchBestMove = useCallback(
       setElo(nextElo);
       setStockfishArrow(null);
       setMaiaArrow(null);
-      setCompareData(null);
-      if (typeof onStateChange === "function") {
+        if (typeof onStateChange === "function") {
         onStateChange((prev) => ({ ...prev, maiaRating: nextElo }));
       }
     },
@@ -3156,17 +3235,6 @@ const fetchBestMove = useCallback(
 
   return (
     <div className="board-section">
-      {/*
-       * Перевес верхней стороны - над карточкой доски, а не внутри
-       * неё. Строка имеет фиксированную высоту, поэтому появление
-       * перевеса не сдвигает поле и не пересчитывает его размер.
-       */}
-      <div className="board-material-row">
-        <MaterialDisplay
-          {...materialByColor[boardFlipped ? "w" : "b"]}
-        />
-      </div>
-
       <div className="board-wrapper" data-logo-anchor>
 
         {maiaError && (
@@ -3202,7 +3270,8 @@ const fetchBestMove = useCallback(
             onPieceDragBegin={handlePieceDragBegin}
             onPieceDragEnd={handlePieceDragEnd}
             onSquareRightClick={handleSquareRightClick}
-            onPromotionCheck={handlePromotionCheck}
+            onPromotionCheck={() => false}
+            showPromotionDialog={false}
             isDraggablePiece={isDraggablePiece}
             boardWidth={boardWidth}
             animationDuration={200}
@@ -3232,10 +3301,6 @@ const fetchBestMove = useCallback(
             customArrows={boardArrows}
 
             customArrowColor="rgba(0, 150, 50, 0.75)"
-
-            onPromotionPieceSelect={
-              handlePromotionPieceSelect
-            }
 
             customPieces={{
               wK: () => (
@@ -3414,6 +3479,14 @@ const fetchBestMove = useCallback(
 
           {premoveGhost}
 
+          {pendingPromotion && (
+            <PromotionDialog
+              color={pendingPromotion.color}
+              onSelect={handlePromotionChoice}
+              onCancel={cancelPromotion}
+            />
+          )}
+
           {/*
            * Выбор стороны - та же карточка, что и итог партии.
            * Открывается при входе на главную и по кнопке «Новая игра»;
@@ -3568,45 +3641,18 @@ const fetchBestMove = useCallback(
             </div>
           )}
         </div>
-
-        {/* =====================================================
-            Легенда сравнения
-        ====================================================== */}
-        {compareData && (
-          <div className="compare-card" role="status">
-            <div className="compare-card__row">
-              <span
-                className="compare-card__dot compare-card__dot--stockfish"
-                aria-hidden="true"
-              />
-              <strong className="compare-card__label">Stockfish:</strong>{" "}
-              {compareData.stockfish?.san || "0"}
-            </div>
-
-            <div className="compare-card__row">
-              <span
-                className="compare-card__dot compare-card__dot--maia"
-                aria-hidden="true"
-              />
-              <strong className="compare-card__label">Maia3:</strong>{" "}
-              {compareData.maia3?.san || "0"} ({elo} ELO)
-            </div>
-
-            {typeof compareData.same_move === "boolean" && (
-              <div className="compare-card__note">
-                {compareData.same_move
-                  ? "Maia3 выбрала оптимальный ход Stockfish."
-                  : "Maia3 выбрала другой ход - это и есть различие между оптимальной и человекоподобной игрой."}
-              </div>
-            )}
-          </div>
-        )}
       </div>
 
       {/* =====================================================
           Кнопки под доской
       ====================================================== */}
       <div className="controls-row">
+        {/* Обе плашки материала живут в строке под доской: верхняя -
+            слева, нижняя - справа. Карточка доски остаётся с ровными
+            полями вокруг поля, как на странице задач. */}
+        <MaterialDisplay
+          {...materialByColor[boardFlipped ? "w" : "b"]}
+        />
         <div className="controls-actions">
           <button
             className="ctrl-btn"
@@ -3634,7 +3680,12 @@ const fetchBestMove = useCallback(
           <button
             type="button"
             className="ctrl-btn ctrl-btn--resign"
-            onClick={() => setResignConfirmOpen(true)}
+            onClick={() => {
+              // Подтверждение сдачи рисуется под диалогом превращения:
+              // сначала закрываем его, иначе карточка будет не видна.
+              setPendingPromotion(null);
+              setResignConfirmOpen(true);
+            }}
             disabled={!canResign}
             title={canResign ? "Сдаться и завершить партию поражением" : "Сдаться можно во время активной партии"}
           >

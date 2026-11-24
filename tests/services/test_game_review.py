@@ -567,3 +567,183 @@ class TestReviewGame:
         assert result["moves_analyzed"] == 0
         assert result["accuracy"] is None
         assert result["stars"] == 0
+
+
+# --- brilliant ---
+
+def _legal_sacrifice_plies():
+    """Позиции вокруг 5.Nxe5! Bxd1 из мата Легаля."""
+    board = chess.Board()
+    for token in (
+        "e2e4", "e7e5", "g1f3", "b8c6",
+        "f1c4", "d7d6", "b1c3", "c8g4",
+    ):
+        board.push(chess.Move.from_uci(token))
+
+    fen_before = board.fen()
+    board.push(chess.Move.from_uci("f3e5"))
+    fen_after = board.fen()
+    board.push(chess.Move.from_uci("g4d1"))
+    fen_reply = board.fen()
+
+    return [
+        {
+            "by_player": True,
+            "classification": "best",
+            "decided": False,
+            "eval_cp": 0.0,
+            "fen": fen_before,
+            "fen_after": fen_after,
+        },
+        {
+            "by_player": False,
+            "classification": None,
+            "decided": False,
+            "eval_cp": 0.0,
+            "fen": fen_after,
+            "fen_after": fen_reply,
+        },
+    ]
+
+
+class TestBrilliantSacrifice:
+    def test_accepted_queen_sacrifice_is_brilliant(self):
+        plies = _legal_sacrifice_plies()
+        assert game_review._is_brilliant_sacrifice(
+            plies, 0, [50.0, 50.0, 50.0], chess.WHITE
+        )
+
+    def test_equal_exchange_is_not_brilliant(self):
+        # 4.Bxc6 dxc6: белые забрали коня и отдали слона. Размен равный,
+        # поэтому «жертвы» нет, хотя свой слон с доски исчез.
+        board = chess.Board()
+        for token in ("e2e4", "e7e5", "g1f3", "b8c6", "f1b5", "a7a6"):
+            board.push(chess.Move.from_uci(token))
+
+        fen_before = board.fen()
+        board.push(chess.Move.from_uci("b5c6"))
+        fen_after = board.fen()
+        board.push(chess.Move.from_uci("d7c6"))
+        fen_reply = board.fen()
+
+        plies = [
+            {
+                "by_player": True,
+                "classification": "best",
+                "decided": False,
+                "eval_cp": 0.0,
+                "fen": fen_before,
+                "fen_after": fen_after,
+            },
+            {
+                "by_player": False,
+                "classification": None,
+                "decided": False,
+                "eval_cp": 0.0,
+                "fen": fen_after,
+                "fen_after": fen_reply,
+            },
+        ]
+
+        assert not game_review._is_brilliant_sacrifice(
+            plies, 0, [50.0, 50.0, 50.0], chess.WHITE
+        )
+
+    def test_ordinary_capture_without_material_loss_is_not_brilliant(self):
+        plies = _legal_sacrifice_plies()
+        # Ответ без взятия: Nxe5 просто выиграла пешку, материального
+        # минуса нет.
+        plies[1]["fen_after"] = plies[0]["fen_after"]
+        assert not game_review._is_brilliant_sacrifice(
+            plies, 0, [50.0, 50.0, 50.0], chess.WHITE
+        )
+
+    def test_non_best_move_is_not_brilliant(self):
+        plies = _legal_sacrifice_plies()
+        plies[0]["classification"] = "good"
+        assert not game_review._is_brilliant_sacrifice(
+            plies, 0, [50.0, 50.0, 50.0], chess.WHITE
+        )
+
+    def test_decided_position_is_not_brilliant(self):
+        plies = _legal_sacrifice_plies()
+        plies[0]["decided"] = True
+        assert not game_review._is_brilliant_sacrifice(
+            plies, 0, [50.0, 50.0, 50.0], chess.WHITE
+        )
+
+    def test_missing_reply_is_not_brilliant(self):
+        plies = _legal_sacrifice_plies()[:1]
+        assert not game_review._is_brilliant_sacrifice(
+            plies, 0, [50.0, 50.0], chess.WHITE
+        )
+
+    def test_missing_eval_after_reply_is_not_brilliant(self):
+        plies = _legal_sacrifice_plies()
+        plies[1]["eval_cp"] = None
+        assert not game_review._is_brilliant_sacrifice(
+            plies, 0, [50.0, 50.0, 50.0], chess.WHITE
+        )
+
+    def test_big_eval_drop_after_sacrifice_is_not_brilliant(self):
+        plies = _legal_sacrifice_plies()
+        assert not game_review._is_brilliant_sacrifice(
+            plies, 0, [50.0, 50.0, 0.0], chess.WHITE
+        )
+
+    def test_black_sacrifice_uses_black_perspective(self):
+        # Чёрный ферзь стоит под боем и снимается ответом белых.
+        before = "4k3/8/8/8/8/8/8/4K2q b - - 0 1"
+        after_reply = "4k3/8/8/8/8/8/8/4K3 w - - 0 1"
+        plies = [
+            {
+                "by_player": False,
+                "classification": None,
+                "decided": False,
+                "eval_cp": 0.0,
+                "fen": before,
+                "fen_after": before,
+            },
+            {
+                "by_player": True,
+                "classification": "best",
+                "decided": False,
+                "eval_cp": 0.0,
+                "fen": before,
+                "fen_after": before,
+            },
+            {
+                "by_player": False,
+                "classification": None,
+                "decided": False,
+                "eval_cp": 0.0,
+                "fen": before,
+                "fen_after": after_reply,
+            },
+        ]
+        # Для чёрных 50% вероятности победы белых - это 50% для них,
+        # а 45% - 55%: просадки на 5 пунктов ещё допустимы.
+        assert game_review._is_brilliant_sacrifice(
+            plies, 1, [50.0, 50.0, 50.0, 45.0], chess.BLACK
+        )
+
+
+class TestReviewGameBrilliant:
+    def test_brilliant_move_is_counted(self, monkeypatch):
+        engine = FakeEngine()  # все оценки 0 - каждый ход «лучший»
+        monkeypatch.setattr(game_review, "ensure_stockfish", lambda: engine)
+
+        result = game_review.review_game(
+            [
+                "e2e4", "e7e5", "g1f3", "b8c6",
+                "f1c4", "d7d6", "b1c3", "c8g4",
+                "f3e5", "g4d1",
+            ],
+            player_color="w",
+            search_time_ms=1,
+        )
+
+        sacrificed = next(move for move in result["moves"] if move["san"] == "Nxe5")
+        assert sacrificed["classification"] == "brilliant"
+        assert result["counts"]["brilliant"] == 1
+        assert result["counts"]["best"] == result["moves_scored"] - 1

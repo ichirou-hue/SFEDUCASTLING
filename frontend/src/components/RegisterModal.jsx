@@ -168,23 +168,27 @@ export default function AuthModal({ isOpen, onClose, onSuccess, initialMode = "r
 
   return (
     <div className="auth-overlay" onClick={onClose}>
-      <div className="auth-card" onClick={(e) => e.stopPropagation()}>
+      <div
+        className={`auth-card ${isRegister ? "" : "auth-card--login"}`}
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label={isRegister ? "Регистрация" : "Вход в аккаунт"}
+      >
         <button className="auth-close" onClick={onClose} aria-label="Закрыть">
           ✕
         </button>
 
-        {/* Левая панель - заголовок и импорт профиля */}
-        <div className="auth-side auth-side--brand">
-          <h2 className="auth-title">
-            {isRegister ? "Регистрация" : "Вход в аккаунт"}
-          </h2>
-          <p className="auth-subtitle">
-            {isRegister
-              ? "Создайте аккаунт и при желании привяжите шахматный профиль. Привязка произойдёт сразу после регистрации."
-              : "С возвращением на доску"}
-          </p>
+        {/* Левая панель - заголовок и импорт профиля. Нужна только при
+            регистрации: у входа форма короткая и живёт одна по центру. */}
+        {isRegister && (
+          <div className="auth-side auth-side--brand">
+            <h2 className="auth-title">Регистрация</h2>
+            <p className="auth-subtitle">
+              Создайте аккаунт и при желании привяжите шахматный профиль.
+              Привязка произойдёт сразу после регистрации.
+            </p>
 
-          {isRegister && (
             <div className="auth-section">
               <div className="auth-section-head">
                 <span className="auth-section-label">Шахматный аккаунт</span>
@@ -271,10 +275,11 @@ export default function AuthModal({ isOpen, onClose, onSuccess, initialMode = "r
                 </div>
               )}
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
-        {/* Правая панель - форма */}
+        {/* Форма входа / регистрации. При входе - единственный блок
+            карточки, поэтому она стоит по центру страницы. */}
         <div className="auth-side auth-side--form">
           <div className="auth-fields">
             <label className="auth-label">

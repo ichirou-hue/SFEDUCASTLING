@@ -362,9 +362,6 @@ export default function PhaseAccuracyWidget() {
           <h2 id="phase-accuracy-title">Точность по этапам</h2>
           <p>Насколько точно вы играете в разных частях партии</p>
         </div>
-        <span className="phase-accuracy__games">
-          {pluralize(data.games_analyzed, { one: "партия", few: "партии", many: "партий" })}
-        </span>
       </header>
 
       <div className="phase-accuracy__insight">

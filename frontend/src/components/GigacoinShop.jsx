@@ -100,7 +100,6 @@ export default function GigacoinShop({ onUserChange }) {
         <div>
           <div className="user-profile-kicker">Косметика без влияния на игру</div>
           <h2 id="gigacoin-shop-title">Магазин GigaCoin</h2>
-          <p>Покупки постоянные. Купленные предметы можно бесплатно надевать, переключать и снимать.</p>
         </div>
         <div className="gigacoin-shop__balance" aria-live="polite">
           <span>Баланс</span><strong>✦ {Number(shop?.balance ?? 0).toLocaleString("ru-RU")}</strong>

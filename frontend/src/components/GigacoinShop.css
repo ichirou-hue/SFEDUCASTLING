@@ -11,7 +11,7 @@
 
 .gigacoin-shop__header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .gigacoin-shop__header h2 { margin: 4px 0 6px; color: #f6f4ef; font-size: clamp(20px, 2.2vw, 26px); }
-.gigacoin-shop__header p, .gigacoin-shop__message { margin: 0; color: rgba(246, 244, 239, 0.62); font-size: 13px; }
+.gigacoin-shop__message { margin: 0; color: rgba(246, 244, 239, 0.62); font-size: 13px; }
 .gigacoin-shop__balance { display: grid; gap: 4px; flex: 0 0 auto; padding: 10px 14px; border: 1px solid rgba(213, 180, 118, .24); border-radius: 14px; background: rgba(213, 180, 118, .08); }
 .gigacoin-shop__balance span { color: rgba(246, 244, 239, .58); font-size: 11px; }
 .gigacoin-shop__balance strong, .gigacoin-shop__price { color: #e2c68e; font-size: 14px; }

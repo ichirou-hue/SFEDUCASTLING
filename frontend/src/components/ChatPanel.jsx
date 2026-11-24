@@ -11,6 +11,7 @@ import formatMarkdown from "../formatMarkdown.js";
 import useChatAutoScroll from "../useChatAutoScroll.js";
 import MiniBoard from "./MiniBoard.jsx";
 import ChatCollapsedStrip from "./ChatCollapsedStrip.jsx";
+import ChatCollapseIcon from "./ChatCollapseIcon.jsx";
 
 const GREETING_ONLY = /^(привет|здравствуй|хай|hello|hi|hey|пока|до свидания|спасибо|благодарю)$/i;
 const CHESS_MARKERS = /позиц|ход|фигур|ферз|конь|ладь|пешк|слон|рокир|мат|шах|взят|игр|доск|парти|elo|rating|уровн|помоги|объясни|что делать|чем ход|лучш|ход\b|uci|fen|дебют/i;
@@ -547,7 +548,7 @@ export default function ChatPanel({
             aria-label="Свернуть чат"
             aria-expanded={true}
           >
-            »
+            <ChatCollapseIcon />
           </button>
         </div>
       </div>
@@ -605,7 +606,13 @@ export default function ChatPanel({
         </div>
       )}
 
-      <div className="chat-messages" ref={messagesListRef}>
+      <div
+        className="chat-messages"
+        ref={messagesListRef}
+        role="log"
+        aria-live="polite"
+        aria-relevant="additions"
+      >
         {messages.map((msg, i) => (
           <div
             className={`chat-msg ${msg.role === "user" ? "user" : ""}`}

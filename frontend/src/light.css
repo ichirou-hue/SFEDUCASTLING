@@ -559,37 +559,6 @@
 }
 
 /* =========================================================================
-   ЛЕГЕНДА СРАВНЕНИЯ ПОД ДОСКОЙ
-   -------------------------------------------------------------------------
-   Базовые стили уже светлые; здесь повторяем их через токены, чтобы
-   карточка жила в той же палитре, что и остальные панели.
-   ========================================================================= */
-
-:root[data-theme="light"] .compare-card {
-  background: var(--lt-surface);
-  box-shadow:
-    inset 0 0 0 1px var(--lt-line-gold),
-    var(--lt-shadow);
-  color: var(--lt-ink);
-}
-
-:root[data-theme="light"] .compare-card__label {
-  color: var(--lt-gold-strong);
-}
-
-:root[data-theme="light"] .compare-card__note {
-  color: var(--lt-muted);
-}
-
-:root[data-theme="light"] .compare-card__dot--stockfish {
-  background: var(--lt-green);
-}
-
-:root[data-theme="light"] .compare-card__dot--maia {
-  background: #b4661f;
-}
-
-/* =========================================================================
    МАГАЗИН GIGACOIN
    -------------------------------------------------------------------------
    Карточка магазина в тёмной теме - глубокий изумруд, в светлой - та же
@@ -992,6 +961,14 @@
   border-color: rgba(48, 82, 61, 0.16);
   background: #f1ede3;
   color: var(--lt-ink);
+}
+
+:root[data-theme="light"] .review-grade--brilliant {
+  border-color: rgba(32, 140, 163, 0.42);
+  background: #e2f7fb;
+  color: #0d5f70;
+  box-shadow: 0 0 10px rgba(58, 217, 255, 0.18);
+  animation: review-grade-enter 0.48s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
 :root[data-theme="light"] .review-grade--best {

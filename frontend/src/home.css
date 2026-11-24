@@ -15,6 +15,11 @@
 }
 .gigachess-logo {
   height:42px;
+  /* В SVG над словом есть корона, из-за неё прямоугольник картинки
+     выше букв. Центрируем именно надпись GIGACHESS по высоте шапки,
+     а не картинку целиком: сдвиг -11.5% равен смещению центра букв
+     внутри viewBox. */
+  transform: translateY(-11.5%);
   filter:brightness(0) saturate(100%) invert(77%) sepia(25%) saturate(575%) hue-rotate(2deg) brightness(88%) contrast(84%)
 }
 .top-nav {

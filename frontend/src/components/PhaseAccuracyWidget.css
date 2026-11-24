@@ -76,16 +76,6 @@
   font-size: 13px;
 }
 
-.phase-accuracy__games {
-  padding: 7px 11px;
-  border: 1px solid rgba(71, 112, 85, 0.13);
-  border-radius: 999px;
-  color: #62736a;
-  background: rgba(244, 248, 244, 0.9);
-  font-size: 11px;
-  white-space: nowrap;
-}
-
 .phase-accuracy__insight {
   display: flex;
   align-items: flex-start;
@@ -323,7 +313,6 @@
   .phase-accuracy { padding: 17px 14px 14px; }
   .phase-accuracy__header h2 { font-size: 20px; }
   .phase-accuracy__header p { max-width: 270px; font-size: 12px; }
-  .phase-accuracy__games { padding: 6px 8px; font-size: 10px; }
   .phase-accuracy__summary { gap: 6px; }
   .phase-accuracy__summary-item { padding: 9px 8px; }
   .phase-accuracy__summary-item span { font-size: 10px; }
@@ -333,7 +322,6 @@
 
 @media (max-width: 430px) {
   .phase-accuracy__header { flex-direction: column; gap: 9px; }
-  .phase-accuracy__games { align-self: flex-start; }
   .phase-accuracy__errors { gap: 6px; }
 }
 
