@@ -313,13 +313,13 @@
   }
 
   .gigacoin-reward-toast {
-    right: 14px;
-    left: 14px;
+    right: auto;
+    left: 50%;
     bottom: calc(84px + env(safe-area-inset-bottom, 0px));
-    width: auto;
+    width: min(420px, calc(100vw - 28px));
     min-width: 0;
     max-width: none;
-    padding: 12px 14px 12px 12px;
+    padding: 18px 20px;
   }
 
   .top-bar .onb-badge {
@@ -432,6 +432,12 @@
     text-align: center;
     transform: translateX(-50%);
     margin-bottom: 0 !important;
+  }
+
+  .main-page-scroll { padding-bottom: 0; }
+  .main-page-scroll > .site-footer {
+    margin-top: auto;
+    padding-bottom: calc(92px + env(safe-area-inset-bottom, 0px));
   }
 
   .site-footer-docs {
@@ -643,14 +649,17 @@
     font-size: 9px;
   }
 
-  .main-area .maia-level-progress-separator {
-    margin: 6px 0 4px;
+  /* Тот же оптический центр, что и на десктопе, с поправкой на
+     уменьшенный кегль заголовка (15px вместо 20px).
+     Селектор на класс длиннее, чтобы перебить `.main-area .title-separator`
+     ниже в этом же медиазапросе. */
+  .main-area .maia-level-progress .title-separator {
+    margin: 7px 0 9px;
   }
 
   .main-area .maia-level-progress-grid {
     grid-template-columns: repeat(10, minmax(0, 1fr));
     gap: 4px;
-    margin-top: 8px;
   }
 
   .main-area .maia-level-chip {
@@ -1450,6 +1459,14 @@
     min-width: 0;
     padding: 24px 18px;
   }
+
+  .auth-side--brand { padding: 18px 16px 14px; }
+  .auth-side--brand .auth-title { font-size: 28px; margin-bottom: 6px; }
+  .auth-side--brand .auth-subtitle { font-size: 13px; line-height: 1.35; margin-bottom: 0; }
+  .auth-side--brand .auth-section { margin-top: 12px; padding: 12px; }
+  .auth-side--brand .auth-section-head { margin-bottom: 8px; }
+  .auth-side--brand .auth-provider { padding: 7px 6px; }
+  .auth-side--brand .auth-import-row { margin-top: 8px; }
 
   .auth-section,
   .auth-fields,

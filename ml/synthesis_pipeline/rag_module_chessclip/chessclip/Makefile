@@ -3,10 +3,10 @@ install: ## [Local development] Upgrade pip, install requirements, install packa
 	python -m pip install -e .
 
 install-training:
-	python -m pip install -r requirements-training.txt
+	cd ../../../.. && python -m pip install -r requirements.txt
 
 install-test: ## [Local development] Install test requirements
-	python -m pip install -r requirements-test.txt
+	cd ../../../.. && python -m pip install -r requirements.txt
 
 test: ## [Local development] Run unit tests
-	python -m pytest -x -s -v tests
+	cd ../../../.. && python -m pytest -x -s -v tests/ml/integration/chessclip --run-ml-integration

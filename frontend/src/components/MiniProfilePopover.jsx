@@ -135,7 +135,7 @@ export default function MiniProfilePopover({
         className="user-name mini-profile__trigger"
         title="Открыть профиль и прогресс"
       >
-        {profile?.is_admin ? "♛ " : "👤 "}
+        {profile?.is_admin ? "♛ " : "♟ "}
         {profile?.nickname || profile?.login || user?.nickname || user?.login || "Пользователь"}
       </Link>
 
@@ -207,7 +207,7 @@ export default function MiniProfilePopover({
             доступен всегда, даже если прогресс не загрузился. */}
         <div className="mini-profile__footer">
           <Link to="/profile" className="mini-profile__details-link">
-            Открыть полный профиль →
+            Открыть полный профиль
           </Link>
           <button
             type="button"

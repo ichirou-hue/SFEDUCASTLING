@@ -266,11 +266,6 @@
   font-weight: 750;
 }
 
-.chess-account-history__empty {
-  color: rgba(32, 51, 45, 0.55);
-  font-size: 10.5px;
-}
-
 .chess-account-history__item {
   display: grid;
   grid-template-columns: minmax(105px, auto) minmax(55px, auto) minmax(130px, 1fr);

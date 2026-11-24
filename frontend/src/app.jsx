@@ -415,6 +415,9 @@ export default function App() {
           aria-live="polite"
           aria-atomic="true"
         >
+          <span className="gigacoin-reward-toast__sparkles" aria-hidden="true">
+            {Array.from({ length: 8 }, (_, index) => <i key={index} />)}
+          </span>
           <span className="gigacoin-reward-toast__icon" aria-hidden="true">
             <svg viewBox="0 0 20 20">
               <circle cx="10" cy="10" r="7.2" />
@@ -423,7 +426,7 @@ export default function App() {
           </span>
           <span className="gigacoin-reward-toast__copy">
             <strong>
-              <span className="gigacoin-reward-toast__label">Получено</span>{" "}
+              <span className="gigacoin-reward-toast__label">Поздравляем!</span>{" "}
               <span className="gigacoin-reward-toast__amount">
                 +{gigacoinToast.amount} GigaCoin
               </span>

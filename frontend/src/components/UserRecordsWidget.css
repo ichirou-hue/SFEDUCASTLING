@@ -125,12 +125,6 @@
   font-size: 16px;
 }
 
-.user-records__activity-heading p {
-  margin: 4px 0 0;
-  color: #7b877f;
-  font-size: 12px;
-}
-
 .user-records__tabs {
   display: inline-flex;
   gap: 3px;
@@ -381,7 +375,6 @@
   color: #fbfaf6;
 }
 
-.user-records__activity-heading p,
 .user-record-chart__empty,
 .user-record-chart__count,
 .user-record-chart__date,

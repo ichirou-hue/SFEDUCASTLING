@@ -268,6 +268,10 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
     const board = boardSection?.querySelector(".puzzle-board-wrapper");
     const controls = boardSection?.querySelector(".puzzle-controls");
 
+    /*
+     * Плашки с сообщением над кнопками больше нет, поэтому высота
+     * строки доски складывается только из самой доски и кнопок.
+     */
     if (!layout || !boardSection || !board || !controls) return undefined;
 
     const measureRow = () => {
@@ -1471,7 +1475,7 @@ export default function PuzzlesPage({ user, onRegister, onOpenOnboarding }) {
         <div className="puzzle-chat-section" ref={chatPanelRef}>
           <div className="chat-header">
             <div className="chat-avatar">
-              <span className="chat-avatar-glyph" aria-hidden="true">♘</span>
+              <span className="chat-avatar-glyph" aria-hidden="true"><span>♘</span></span>
             </div>
             <div className="chat-title-block">
               <h2 className="chat-panel-title">Шахматный гуру</h2>

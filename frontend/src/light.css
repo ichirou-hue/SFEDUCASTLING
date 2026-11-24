@@ -422,7 +422,6 @@
   color: var(--lt-ink);
 }
 
-:root[data-theme="light"] .user-records__activity-heading p,
 :root[data-theme="light"] .user-record-chart__empty,
 :root[data-theme="light"] .user-record-chart__count,
 :root[data-theme="light"] .user-record-chart__date,

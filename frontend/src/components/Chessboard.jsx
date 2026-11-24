@@ -3074,26 +3074,15 @@ const fetchBestMove = useCallback(
    */
   for (const sq of legalMovesForSelected) {
     const targetPiece = game.get(sq);
-
-    if (!customSquareStyles[sq]) {
-      if (targetPiece) {
-        customSquareStyles[sq] = {
-          backgroundImage:
-            "radial-gradient(circle, transparent 48%, rgba(100,80,40,0.25) 50%, rgba(100,80,40,0.25) 80%, transparent 82%)",
-          backgroundPosition: "center",
-          backgroundSize: "100% 100%",
-          backgroundRepeat: "no-repeat",
-        };
-      } else {
-        customSquareStyles[sq] = {
-          backgroundImage:
-            "radial-gradient(circle, rgba(100,80,40,0.2) 15%, transparent 16%)",
-          backgroundPosition: "center",
-          backgroundSize: "100% 100%",
-          backgroundRepeat: "no-repeat",
-        };
-      }
-    }
+    customSquareStyles[sq] = {
+      ...(customSquareStyles[sq] || {}),
+      backgroundImage: targetPiece
+        ? "radial-gradient(circle, transparent 48%, rgba(100,80,40,0.25) 50%, rgba(100,80,40,0.25) 80%, transparent 82%)"
+        : "radial-gradient(circle, rgba(100,80,40,0.2) 15%, transparent 16%)",
+      backgroundPosition: "center",
+      backgroundSize: "100% 100%",
+      backgroundRepeat: "no-repeat",
+    };
   }
 
   /*

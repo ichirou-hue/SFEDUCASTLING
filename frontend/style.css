@@ -48,8 +48,9 @@ textarea {
   justify-content: stretch;
   align-items: stretch;
   gap: 24px;
-  width: auto;
-  margin: 10px 24px 0;
+  width: calc(100% - 48px);
+  max-width: 1630px;
+  margin: 10px auto 0;
   /* Ширину колонок при сворачивании чата анимирует ChatPanel.jsx
      через Web Animations API. CSS-transition здесь нельзя: переход
      между minmax() и 48px браузер делает дискретным скачком. */
@@ -70,7 +71,7 @@ textarea {
   display: flex;
   flex: initial;
   flex-direction: column;
-  gap: 12px;
+  gap: 24px;
   height: auto;
   min-height: 0;
   order: 1;
@@ -138,15 +139,18 @@ textarea {
   white-space: nowrap;
 }
 
+/* Линия стоит ровно посередине между заголовком и чипами. Снизу отступ
+   ровно такой, как задан, а сверху из него вычитаются ~3px межстрочного
+   «воздуха» под строчными буквами заголовка (line-height: 1.15) - иначе
+   зазор до надписи визуально выходит больше, чем до чипов. */
 .maia-level-progress .title-separator {
-  margin: 8px 0 6px;
+  margin: 9px 0 12px;
 }
 
 .maia-level-progress-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 6px;
-  margin-top: 10px;
 }
 
 .maia-level-chip {
@@ -375,7 +379,10 @@ textarea {
   justify-content: center;
   flex-wrap: wrap;
   gap: 6px 18px;
-  padding: 7px 16px;
+  /* Снизу на 2px больше: сверху добавляется 1px рамки, а строчные буквы
+     садятся в строке чуть ниже её центра. Так текст встаёт ровно
+     посередине между верхней и нижней границами полосы. */
+  padding: 6px 16px 8px;
   border-top: 1px solid rgba(180, 135, 44, 0.35);
   background: rgba(255, 255, 255, 0.55);
   font-size: 12px;
@@ -643,6 +650,31 @@ textarea {
   }
 }
 
+.gigacoin-reward-toast {
+  left: 50%;
+  right: auto;
+  bottom: clamp(32px, 8vh, 90px);
+  width: min(420px, calc(100vw - 32px));
+  max-width: none;
+  justify-content: center;
+  padding: 22px 28px;
+  border: 1px solid #e9cd97;
+  border-radius: 24px;
+  pointer-events: none;
+  animation: reward-celebration-in 480ms cubic-bezier(.18,.85,.3,1.25) both,
+    gigacoin-toast-out 320ms ease-in 3.65s forwards;
+}
+.gigacoin-reward-toast__icon { flex-basis: 58px; width: 58px; height: 58px; animation: gigacoin-toast-icon-pop 650ms cubic-bezier(.18,1.6,.4,1) both; }
+.gigacoin-reward-toast__icon svg { width: 30px; height: 30px; }
+.gigacoin-reward-toast__label { display: block; color: #f6f4ef; font-size: 13px; }
+.gigacoin-reward-toast__amount { font-size: clamp(22px, 5vw, 30px); }
+.gigacoin-reward-toast__sparkles { position: absolute; inset: 0; pointer-events: none; }
+.gigacoin-reward-toast__sparkles i { position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; border-radius: 2px; background: #e9cd97; opacity: 0; animation: reward-spark 850ms ease-out both; }
+.gigacoin-reward-toast__sparkles i:nth-child(1) { --x:-155px; --y:-50px; animation-delay:100ms; }.gigacoin-reward-toast__sparkles i:nth-child(2) { --x:-110px; --y:-85px; animation-delay:180ms; }.gigacoin-reward-toast__sparkles i:nth-child(3) { --x:75px; --y:-90px; animation-delay:120ms; }.gigacoin-reward-toast__sparkles i:nth-child(4) { --x:155px; --y:-45px; animation-delay:210ms; }.gigacoin-reward-toast__sparkles i:nth-child(5) { --x:-145px; --y:55px; animation-delay:160ms; }.gigacoin-reward-toast__sparkles i:nth-child(6) { --x:-65px; --y:85px; animation-delay:230ms; }.gigacoin-reward-toast__sparkles i:nth-child(7) { --x:85px; --y:75px; animation-delay:170ms; }.gigacoin-reward-toast__sparkles i:nth-child(8) { --x:145px; --y:40px; animation-delay:250ms; }
+@keyframes reward-celebration-in { from { opacity:0; transform:translate(-50%,30px) scale(.75); } to { opacity:1; transform:translate(-50%,0) scale(1); } }
+@keyframes reward-spark { 0% { opacity:0; transform:translate(0,0) rotate(0); } 30% { opacity:1; } 100% { opacity:0; transform:translate(var(--x),var(--y)) rotate(120deg); } }
+@media (prefers-reduced-motion: reduce) { .gigacoin-reward-toast__sparkles { display:none; } .gigacoin-reward-toast { animation:none; transform:translateX(-50%); } }
+
 @media (prefers-reduced-motion: reduce) {
   .gigacoin-reward-toast,
   .gigacoin-reward-toast__icon {
@@ -738,6 +770,7 @@ textarea {
 }
 
 .board-wrapper {
+  order: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1250,6 +1283,7 @@ img[src^="/pieces/"] {
 /* Кнопки живут под рамкой доски, как на вкладке «Задачи»: отдельная
    центрированная строка, а не нижняя панель карточки. */
 .controls-row {
+  order: 2;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1647,6 +1681,8 @@ img[src^="/pieces/"] {
 
 /* Аватар ассистента в маленьком золотом кольце. */
 .chat-strip-avatar {
+  display: grid;
+  place-items: center;
   width: 34px;
   height: 34px;
   flex: 0 0 34px;
@@ -1656,6 +1692,14 @@ img[src^="/pieces/"] {
   background: rgba(255, 253, 248, 0.95);
   border: 1px solid rgba(180, 135, 44, 0.5);
   box-shadow: 0 1px 4px rgba(74, 50, 32, 0.12);
+}
+
+.chat-strip-avatar-glyph {
+  display: block;
+  font-family: "Segoe UI Symbol", "Noto Sans Symbols 2", serif;
+  font-size: 22px;
+  line-height: 1;
+  transform: translateY(1px);
 }
 
 .chat-strip-avatar img {
@@ -1727,9 +1771,7 @@ img[src^="/pieces/"] {
   width: 44px;
   height: 44px;
   box-sizing: border-box;
-  /* Глиф коня стоит на baseline и визуально уезжает вверх. Небольшой
-     верхний отступ возвращает его в геометрический центр рамки. */
-  padding-top: 0.35em;
+  padding: 0;
   border: 1px solid rgba(34, 90, 115, 0.2);
   border-radius: 12px;
   background: rgba(34, 90, 115, 0.08);
@@ -1738,6 +1780,7 @@ img[src^="/pieces/"] {
   font-size: 32px;
   line-height: 1;
 }
+.chat-avatar-glyph > span { display: block; transform: translate(-1px, 1px); }
 
 .chat-title-block {
   display: flex;
@@ -3769,6 +3812,14 @@ img[src^="/pieces/"] {
   justify-content: flex-start;
 }
 
+/* В левой колонке задач расстояние между карточками задаёт flex-gap.
+   У кросс-ссылки свой margin-top для других контекстов — здесь он
+   удваивал зазор перед кнопкой «Пройти урок по теме», поэтому
+   обнуляем его только внутри панели. */
+.puzzle-info-panel .learning-crosslink--compact {
+  margin-top: 0;
+}
+
 .puzzle-info-heading {
   position: relative;
   display: flex;
@@ -4061,7 +4112,7 @@ img[src^="/pieces/"] {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 12px;
 }
 
@@ -5143,8 +5194,10 @@ img[src^="/pieces/"] {
 
   .training-board-column {
     min-height: 0;
-    justify-content: center;
+    justify-content: flex-start;
   }
+
+  .training-board-wrapper { order: -1; }
 }
 
 .training-theory-panel,
