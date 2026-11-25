@@ -537,7 +537,7 @@ Comment facts проверяет факты о позиции; не заменя
 Полный список — в CHANGELOG.md. Коротко:
 
     # пересчитать метрики готового прогона новым кодом (без сервера)
-    python ml/gigabench/run.py rescore --source ml/gigabench/runs/baseline_full_20261101 --out ml/gigabench/runs/rescored
+    python ml/gigabench/run.py rescore --source /path/to/completed-run --out ml/gigabench/runs/rescored
 
     # подготовить полный набор: позиции из партий, задачи Lichess и оценка позиции
     # (замороженные выборки Lichess уже лежат в data/sources)
