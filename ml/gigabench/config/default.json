@@ -1,5 +1,6 @@
 {
   "version": "gigachess-unified-v1.1-dev",
+  "answer_protocol": "answer_first_v1",
   "seed": 20261101,
   "random_positions": {
     "smoke": 2,

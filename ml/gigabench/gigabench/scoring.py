@@ -1,7 +1,7 @@
 import random
 from collections import defaultdict
 import chess
-from .parsing import parse_bool, parse_move, parse_piece, parse_set, parse_scalar, compliant
+from .parsing import parse_bool, parse_move, parse_piece, parse_set, parse_scalar, compliant, final_answers, first_answer_fragment
 
 
 def answer_class(case):
@@ -27,9 +27,12 @@ def piece_bin(fen,bins):
 def score_case(case,response,engine=None,bins=None):
     text=response.get('text','')
     kind=case['score_type'];gold=case['gold']
+    original_text=text
+    answer_first=case.get('answer_protocol')=='answer_first_v1' and kind!='explanation'
+    if answer_first:text=first_answer_fragment(case,text,bool(response.get('truncated')))
     result={'id':case['id'],'suite':case['suite'],'task':case['task'],'group_id':case['group_id'],
             'correct':False,'protocol_compliant':compliant(kind,text),
-            'empty':not text.strip(),'error':response.get('error'),
+            'empty':not original_text.strip(),'error':response.get('error'),
             'truncated':bool(response.get('truncated')),'status':'scored',
             'answer_class':answer_class(case)}
     if bins:result['piece_bin']=piece_bin(case['fen'],bins)
@@ -82,6 +85,19 @@ def score_case(case,response,engine=None,bins=None):
         result.update(correct=None,status='pending_coach_ratings')
     else:
         raise ValueError('Unknown score type '+kind)
+    recognized=(result.get('predicted') is not None or (kind=='mate_move' and parse_bool(text) is False)
+                or (kind=='explanation' and bool(text.strip())))
+    if response.get('error'):answer_status='execution_error'
+    elif recognized:answer_status='answered'
+    elif response.get('truncated'):answer_status='budget_without_answer'
+    elif not original_text.strip():answer_status='no_answer'
+    else:answer_status='unparseable'
+    result['answer_status']=answer_status
+    result['content_correct']=result['correct'] if recognized and not response.get('error') else None
+    blocks=final_answers(text)
+    result['answer_source']=('final_block' if blocks else 'whole_response') if recognized else None
+    result['answer_fragment']='\n\n'.join(blocks) if recognized and blocks else (text if recognized else None)
+    if answer_first and recognized:result['answer_source']='first_line'
     return result
 
 
@@ -124,7 +140,11 @@ def accuracy(rows,bootstrap,ci=True,detail=True):
             'accuracy_percent':plain_accuracy(scored),
             'protocol_compliance_percent':pct(sum(r['protocol_compliant'] for r in rows),len(rows)),
             'empty':sum(r['empty'] for r in rows),'errors':sum(bool(r['error']) for r in rows),
-            'truncated':sum(r['truncated'] for r in rows),
+             'truncated':sum(r['truncated'] for r in rows),
+             'answered':sum(r.get('answer_status')=='answered' for r in rows),
+             'content_errors':sum(r.get('content_correct') is False for r in rows),
+             'budget_without_answer':sum(r.get('answer_status')=='budget_without_answer' for r in rows),
+             'unparseable':sum(r.get('answer_status')=='unparseable' for r in rows),
             'pending':sum(r['status'].startswith('pending') for r in rows),
             'mate_group':sum(r['status']=='mate_group' for r in rows),
             'cluster_95ci_percent':interval(scored,bootstrap) if ci else None}
@@ -221,7 +241,7 @@ def summarize(rows,config):
         blocks[block]={'tasks':names,'scored_tasks':len(values),
                        'mean_primary_percent':sum(values)/len(values) if values else None,
                        'by_piece_bin':bins,'role':config.get('block_roles',{}).get(block)}
-    auto=[v['accuracy_percent'] for k,v in tasks.items() if v['n'] and k not in ('legacy/M3','legacy/M4_M7')
+    auto=[v['accuracy_percent'] for k,v in tasks.items() if v['n'] and k not in ('legacy/M3','games/M3','legacy/M4_M7')
           and k not in config.get('combined_tasks',{})]
     legacy=[r for r in rows if r['suite']=='legacy']
     m1=[r for r in legacy if r['task'].startswith('M1_')]
@@ -233,7 +253,12 @@ def summarize(rows,config):
               'M3':accuracy(m3,config['bootstrap']) if m3 else None,
               'M4':None,'M5':None,'M6':None,'M7':None,'accepted_explanations_percent':None}
     if m3:document['M3']['legal_percent']=pct(sum(r.get('legal',False) for r in m3),len(m3))
+    coverage={'answered':sum(r.get('answer_status')=='answered' for r in rows),
+              'total':len(rows),'confirmed_wrong':sum(r.get('content_correct') is False for r in rows),
+              'budget_without_answer':sum(r.get('answer_status')=='budget_without_answer' for r in rows),
+              'unparseable':sum(r.get('answer_status')=='unparseable' for r in rows)}
     return {'by_block':blocks,'by_suite':suites,'by_task':tasks,'document_metrics':document,
+            'answer_coverage':coverage,
             'automatic_task_macro_percent':sum(auto)/len(auto) if auto else None,
             'automatic_macro_scope':config['aggregate'],
             'explanations_status':'pending_coach_review',

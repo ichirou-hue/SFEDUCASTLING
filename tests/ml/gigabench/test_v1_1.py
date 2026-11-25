@@ -67,7 +67,8 @@ class BalanceTests(unittest.TestCase):
         for r in rows:
             b=chess.Board(r['fen']);m=chess.Move.from_uci(r['params']['move'])
             truth={t:v for t,f,v in move_statements(b,m)};truth.update({f:not v for t,f,v in move_statements(b,m)})
-            body=r['prompt'].split(': ',1)[1].rsplit(' Ответь',1)[0]
+            body=r['prompt'].split(': ',1)[1].split('\n\n',1)[0]
+            body=re.split(r' (?:Ответь|Кратко ответь)',body,maxsplit=1)[0]
             options=dict(re.findall(r'([A-D])\) (.*?)(?= [A-D]\) |$)',body))
             self.assertEqual(len(options),4,r['id'])
             true=[k for k,text in options.items() if truth[text]]

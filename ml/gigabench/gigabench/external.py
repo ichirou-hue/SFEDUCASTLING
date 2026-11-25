@@ -7,12 +7,15 @@ manifest says so.
 import csv
 import json
 import random
+import time
 from pathlib import Path
+from tempfile import TemporaryDirectory
 import chess
 import chess.engine
 import chess.pgn
 from .generated import board_tasks, case
 from .oracles import mating_moves, position_key
+from .engine import EngineJudge
 
 BUCKETS=[('A','У белых решающий перевес',300,None),('B','У белых заметный перевес',100,300),
          ('C','У белых небольшой перевес',30,100),('D','Примерно равная позиция',-30,30),
@@ -145,10 +148,21 @@ def judgement_cases(engine_path,positions,config,profile):
     """
     settings=config['judgement'];per_bucket=settings['per_bucket'][profile]
     counts={b[0]:0 for b in BUCKETS};rows=[]
-    engine=chess.engine.SimpleEngine.popen_uci(str(engine_path))
+    work=TemporaryDirectory(prefix='gigabench-judgement-')
+    judge=None
+    started=time.monotonic()
     try:
-        for p in positions:
+        judge=EngineJudge(engine_path,config['engine'],work.name)
+        engine=judge.engine
+        engine_metadata={'id':judge.metadata['id'],'binary_sha256':judge.metadata['binary_sha256'],
+                         'networks':judge.metadata['networks'],
+                         'threads':config['engine']['threads'],'hash_mb':config['engine']['hash_mb'],
+                         'nodes':settings['nodes'],'recheck_factor':settings['recheck_factor']}
+        for index,p in enumerate(positions,1):
             if all(v>=per_bucket for v in counts.values()):break
+            if index==1 or index%10==0:
+                print(f"JUDGEMENT scanned={index-1} accepted={sum(counts.values())}/{7*per_bucket} "
+                      f"elapsed={time.monotonic()-started:.1f}s buckets={counts}",flush=True)
             board=p['board']
             scores=[]
             for nodes in (settings['nodes'],settings['nodes']*settings['recheck_factor']):
@@ -165,8 +179,12 @@ def judgement_cases(engine_path,positions,config,profile):
                 f'Кто лучше стоит в этой позиции и насколько? {options} Ответь только буквой A, B, C, D, E, F или G.',
                 'judgement',{'answer':letter,'cp_white':scores[1].score()},group,
                 {'strata':{'перевес':SIDE_OF[letter]},'nodes':[settings['nodes'],settings['nodes']*settings['recheck_factor']]},
-                p['provenance']))
-    finally:engine.quit()
+                dict(p['provenance'],judgement_engine=engine_metadata)))
+    finally:
+        if judge:judge.close()
+        work.cleanup()
+    print(f"JUDGEMENT accepted={sum(counts.values())}/{7*per_bucket} "
+          f"elapsed={time.monotonic()-started:.1f}s buckets={counts}",flush=True)
     if any(v<per_bucket for v in counts.values()):
         raise ValueError(f'Not enough stable positions per bucket: {counts}; supply more games')
     return rows

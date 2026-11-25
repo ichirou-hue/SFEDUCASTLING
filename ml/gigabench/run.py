@@ -16,12 +16,18 @@ def main():
         p=sub.add_parser(command)
         p.add_argument('--out',type=Path,required=True)
         p.add_argument('--profile',choices=['smoke','quick','standard'],default='standard')
+        if command in ('all','prepare'):
+            p.add_argument('--max-new-tokens',type=int,
+                            help='freeze an output budget for every query; Qwen defaults to 2048')
+            p.add_argument('--without-explanations',action='store_true',
+                           help='exclude expert M4-M7 cases; retain automatic tasks from every source')
         p.add_argument('--config',type=Path,default=ROOT/'config/default.json')
         p.add_argument('--legacy-source',type=Path,default=ROOT/'data/private/legacy_cases.jsonl')
         p.add_argument('--without-legacy',action='store_true')
         p.add_argument('--project-root',type=Path)
         p.add_argument('--adapter',type=Path)
-        p.add_argument('--backend',choices=['gigachess','mock'],default='gigachess')
+        p.add_argument('--backend',choices=['gigachess','qwen','mock'],default='gigachess')
+        p.add_argument('--model',default='Qwen/Qwen3-1.7B',help='Hugging Face model ID or local path for Qwen')
         p.add_argument('--stockfish',type=Path)
         p.add_argument('--stage',choices=['automatic','explanations'],default='automatic')
         p.add_argument('--rubrics',type=Path)
@@ -31,8 +37,8 @@ def main():
         p.add_argument('--games',type=Path,help='local PGN for real positions and extended M2/M3 (prepare)')
         p.add_argument('--puzzles',type=Path,help='local Lichess puzzle CSV, CC0 (prepare)')
         p.add_argument('--with-judgement',action='store_true',help='add position-judgement tasks; gold from --stockfish (prepare)')
-        p.add_argument('--input-profile',default='question_only',
-                       help='how a frozen query becomes model input: question_only, contract_v1_fen or file.py:function')
+        p.add_argument('--input-profile',
+                       help='input template: question_only, contract_v1_fen or file.py:function; Qwen defaults to contract_v1_fen')
     p=sub.add_parser('import-legacy')
     p.add_argument('--source',type=Path,required=True)
     p=sub.add_parser('rescore',help='recompute metrics of a finished run with the current scoring code')
@@ -68,8 +74,12 @@ def main():
         shutil.copyfile(args.source,target)
         print(f'Imported local data: {len(rows)} tasks. Excluded from public package.');return
     if args.limit is not None and args.limit<1:ap.error('--limit must be positive')
+    if getattr(args,'max_new_tokens',None) is not None and args.max_new_tokens<1:
+        ap.error('--max-new-tokens must be positive')
     if args.command in ('all','generate') and args.backend=='gigachess' and args.project_root is None:
         ap.error('--project-root required for GigaChess')
+    if args.command in ('all','generate') and args.backend=='qwen' and args.adapter is not None:
+        ap.error('--adapter is only supported by the GigaChess backend')
     if args.command=='all' and args.stage!='automatic':
         ap.error('Use generate --stage explanations after coach rubric approval')
     from gigabench.pipeline import prepare,generate,score,grade_coaches

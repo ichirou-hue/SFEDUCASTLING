@@ -12,6 +12,14 @@ class EngineJudge:
         self.workdir=Path(workdir)
         self.workdir.mkdir(parents=True,exist_ok=True)
         self.engine=chess.engine.SimpleEngine.popen_uci(str(Path(executable).resolve()))
+        try:
+            self._initialize(executable,config)
+        except BaseException:
+            try:self.close()
+            except Exception:pass
+            raise
+
+    def _initialize(self,executable,config):
         self.engine.configure({'Threads':config['threads'],'Hash':config['hash_mb']})
         self.metadata={'id':self.engine.id,'binary_sha256':sha(executable),'settings':config,'networks':{}}
         previous_path=self.workdir/'engine.json'
@@ -69,4 +77,6 @@ class EngineJudge:
 
     def close(self):
         if getattr(self,'engine',None):
-            self.engine.quit();self.engine=None
+            engine=self.engine
+            self.engine=None
+            engine.quit()

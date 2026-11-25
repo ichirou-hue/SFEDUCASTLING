@@ -62,6 +62,68 @@ class GigaChessAdapter:
                 'truncated':result['stop_reason']=='max_new_tokens'}
 
 
+def qwen_snapshot(model_name):
+    """Pin model and tokenizer to one snapshot, including local content for resume."""
+    path = Path(model_name)
+    if not path.is_dir():
+        from huggingface_hub import snapshot_download
+        path = Path(snapshot_download(model_name))
+    if (path / 'adapter_config.json').exists():
+        raise ValueError('Qwen baseline requires base weights, not a PEFT adapter')
+    fingerprint = {
+        str(p.relative_to(path)): sha(p) for p in sorted(path.rglob('*'))
+        if p.is_file() and not any(part.startswith('.') for part in p.relative_to(path).parts)
+    }
+    return path, fingerprint
+
+
+class QwenAdapter:
+    def __init__(self, model_name, profile):
+        import torch
+        import transformers
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+
+        self.build_input, profile_metadata = input_builder(profile)
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        dtype = torch.float32
+        if self.device.type == 'cuda':
+            dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
+        snapshot, fingerprint = qwen_snapshot(model_name)
+        self.tokenizer = AutoTokenizer.from_pretrained(snapshot, local_files_only=True)
+        self.model = AutoModelForCausalLM.from_pretrained(
+            snapshot, torch_dtype=dtype, use_safetensors=True, local_files_only=True,
+        ).to(self.device).eval()
+        if getattr(self.model, 'peft_config', None):
+            raise ValueError('Qwen baseline must not contain PEFT adapters')
+        self.metadata = {
+            'backend': 'qwen', 'model': model_name,
+            'model_files_sha256': fingerprint, 'adapters_loaded': False,
+            'revision': getattr(self.model.config, '_commit_hash', None),
+            'device': str(self.device), 'dtype': str(dtype),
+            'torch': torch.__version__, 'transformers': transformers.__version__,
+            'thinking': False, 'do_sample': False, 'num_beams': 1, 'training_performed': False,
+            **profile_metadata,
+        }
+
+    def predict(self, query):
+        prompt = self.build_input(query)
+        text = self.tokenizer.apply_chat_template(
+            [{'role': 'user', 'content': prompt}],
+            tokenize=False, add_generation_prompt=True, enable_thinking=False,
+        )
+        inputs = self.tokenizer(text, return_tensors='pt', add_special_tokens=False).to(self.device)
+        output = self.model.generate(
+            **inputs, max_new_tokens=query['max_new_tokens'], do_sample=False, num_beams=1,
+        )[0, inputs['input_ids'].shape[-1]:].tolist()
+        eos = self.model.generation_config.eos_token_id
+        stop_ids = {eos} if isinstance(eos, int) else set(eos or [])
+        return {
+            'text': self.tokenizer.decode(output, skip_special_tokens=True).strip(),
+            'raw': {'prompt': prompt, 'chat_prompt': text, 'output_ids': output},
+            'truncated': len(output) == query['max_new_tokens'] and output[-1] not in stop_ids,
+        }
+
+
 class MockAdapter:
     """Fixed invalid responses, NO access to gold. Not a model result."""
     metadata={'backend':'mock','not_a_model_evaluation':True,'training_performed':False}

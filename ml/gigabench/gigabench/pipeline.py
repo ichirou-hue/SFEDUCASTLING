@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 import chess
 from . import __version__
-from .adapters import GigaChessAdapter, MockAdapter
+from .adapters import GigaChessAdapter, MockAdapter, QwenAdapter
 from .cases import build
 from .coaches import pending_rubric, validate_rubrics, score_one
 from .engine import EngineJudge
@@ -30,6 +30,15 @@ def source_hashes():
 def prepare(args):
     out=Path(args.out)
     config=json.loads(Path(args.config).read_text(encoding='utf-8'))
+    token_budget=getattr(args,'max_new_tokens',None)
+    if token_budget is None:
+        token_budget=config['generation'].get('max_new_tokens')
+    if token_budget is None and getattr(args,'backend',None)=='qwen':
+        token_budget=2048
+    if token_budget is not None:
+        if not isinstance(token_budget,int) or isinstance(token_budget,bool) or token_budget<1:
+            raise ValueError('max_new_tokens must be a positive integer')
+        config['generation']['max_new_tokens']=token_budget
     legacy=None if args.without_legacy else Path(args.legacy_source)
     if legacy is not None and not legacy.is_file():
         raise FileNotFoundError('Import local 89 records first with import-legacy, or explicitly select --without-legacy')
@@ -39,8 +48,12 @@ def prepare(args):
     for path in (games,puzzles):
         if path is not None and not Path(path).is_file():raise FileNotFoundError(path)
     cases=build(config,args.profile,legacy,games,puzzles,judge)
+    excluded_explanations=0
+    if getattr(args,'without_explanations',False):
+        excluded_explanations=sum(c['score_type']=='explanation' for c in cases)
+        cases=[c for c in cases if c['score_type']!='explanation']
     out.mkdir(parents=True,exist_ok=False)
-    queries=[{'id':c['id'],'fen':c['fen'],'prompt':c['prompt'],'max_new_tokens':c['max_new_tokens']}
+    queries=[{'id':c['id'],'fen':c['fen'],'prompt':c['prompt'],'max_new_tokens':token_budget or c['max_new_tokens']}
              for c in cases if c['score_type']!='explanation']
     write_jsonl(out/'cases.jsonl',cases)
     write_jsonl(out/'queries.jsonl',queries)
@@ -48,9 +61,11 @@ def prepare(args):
     manifest={'version':__version__,'created_utc':now(),'profile':args.profile,'config':config,
               'code_sha256':source_hashes(),'cases_sha256':sha(out/'cases.jsonl'),
               'queries_sha256':sha(out/'queries.jsonl'),'case_count':len(cases),
-              'automatic_queries':len(queries),'explanation_cases':len(cases)-len(queries),
+               'automatic_queries':len(queries),'explanation_cases':len(cases)-len(queries),
+               'excluded_explanation_cases':excluded_explanations,
               'tasks':dict(Counter(c['suite']+'/'+c['task'] for c in cases)),
-              'contains_local_source_comments':bool(legacy),
+               'contains_local_source_comments':any('source_comment' in c['gold'] for c in cases),
+               'contains_private_cases':any(c.get('private',False) for c in cases),
               'source_legacy_sha256':sha(legacy) if legacy else None,
               'external_sources':{'games_pgn_sha256':sha(games) if games else None,
                                   'puzzles_csv_sha256':sha(puzzles) if puzzles else None,
@@ -97,9 +112,15 @@ def generate(args):
         existing=read_jsonl(response_path)
     by_id=unique(existing)
     if set(by_id)-{q['id'] for q in queries}:raise ValueError('Unexpected response IDs')
-    profile=getattr(args,'input_profile',None) or 'question_only'
-    adapter=(MockAdapter(profile) if args.backend=='mock' else
-             GigaChessAdapter(args.project_root,manifest['config']['generation'],args.adapter,profile))
+    profile=getattr(args,'input_profile',None)
+    adapter: QwenAdapter | MockAdapter | GigaChessAdapter
+    if args.backend=='qwen':
+        adapter=QwenAdapter(args.model,profile or 'contract_v1_fen')
+    elif args.backend=='mock':
+        adapter=MockAdapter(profile or 'question_only')
+    else:
+        adapter=GigaChessAdapter(args.project_root,manifest['config']['generation'],args.adapter,
+                                 profile or 'question_only')
     metadata={'backend':adapter.metadata,'started_utc':now(),'stage':args.stage,
               'manifest_sha256':sha(out/'manifest.json'),'rubrics_sha256':rubric_sha,
               'status':'running','python':platform.python_version()}
@@ -162,9 +183,10 @@ def score_rows(cases,raw,engine,config,previous=None):
     for i,c in enumerate(cases,1):
         if c['score_type']=='explanation':continue
         if c['id'] not in raw:
-            rows.append({'id':c['id'],'suite':c['suite'],'task':c['task'],'group_id':c['group_id'],
-                         'correct':None,'protocol_compliant':False,'empty':False,'error':None,
-                         'truncated':False,'status':'not_run','answer_class':None})
+            row=score_case(c,{'text':''},None,bins)
+            row.update(correct=None if c['score_type']=='engine_move' else False,
+                       content_correct=None,answer_status='not_run',status='not_run',empty=False)
+            rows.append(row)
             continue
         row=score_case(c,raw[c['id']],engine,bins)
         if engine is None and previous and c['id'] in previous:
@@ -172,6 +194,7 @@ def score_rows(cases,raw,engine,config,previous=None):
             if c['score_type']=='engine_move':
                 if old.get('predicted')!=row.get('predicted'):raise ValueError('Stored engine verdict belongs to another parsed move: '+c['id'])
                 row.update({k:old[k] for k in ('correct','engine','legal','status') if k in old})
+                if row.get('answer_status')=='answered':row['content_correct']=row['correct']
             elif c['score_type']=='human_move' and 'reference_quality' in old:
                 row['reference_quality']=old['reference_quality']
         rows.append(row)
@@ -206,6 +229,7 @@ def rescore(args):
     if sha(source/'cases.jsonl')!=manifest['cases_sha256'] or sha(source/'queries.jsonl')!=manifest['queries_sha256']:
         raise ValueError('Source dataset modified')
     run=json.loads((source/'run.json').read_text(encoding='utf-8'))
+    if run['manifest_sha256']!=sha(source/'manifest.json'):raise ValueError('Source run/manifest mismatch')
     if run['responses_sha256']!=sha(source/'responses.jsonl'):raise ValueError('Source responses modified')
     out.mkdir(parents=True,exist_ok=False)
     for name in ('cases.jsonl','queries.jsonl','responses.jsonl','run.json','manifest.json'):
@@ -222,13 +246,15 @@ def rescore(args):
     finally:
         if engine:engine.close()
     expected={c['id'] for c in cases if c['score_type']!='explanation'}
+    if set(raw)-expected:raise ValueError('Unknown response IDs')
     summary=summarize(rows,config)
     summary.update(manifest_sha256=sha(out/'manifest.json'),responses_sha256=sha(out/'responses.jsonl'),
                    is_mock=bool(run['backend'].get('not_a_model_evaluation')),
                    coverage={'completed':len(raw),'expected':len(expected),'complete':set(raw)==expected},
                    expert_cases=manifest['explanation_cases'],
                    upstream_comparability=manifest['upstream_comparability'],
-                   rescored={'source':str(source),'cases_version':manifest['version'],'scoring_version':__version__,
+                    rescored={'source':str(source),'cases_version':manifest['version'],'scoring_version':__version__,
+                              'scoring_code_sha256':source_hashes(),
                              'engine_verdicts':'пересчитаны движком' if engine else 'взяты из исходного прогона',
                              'note':'Same cases and responses as the source run; only metrics were recomputed.'})
     if not summary['coverage']['complete']:summary['automatic_task_macro_percent']=None
@@ -247,6 +273,11 @@ def render_report(out,s,config=None):
            f"Полный автоматический прогон: {s['coverage']['complete']}.",
            f"Статус объяснений: {s['explanations_status']}.",'']
     if s.get('rescored'):lines+=[f"Пересчёт метрик: {s['rescored']['note']} Оценки движка: {s['rescored']['engine_verdicts']}.",'']
+    if s.get('answer_coverage'):
+        a=s['answer_coverage']
+        lines+=[f"Распознано ответов: {a['answered']}/{a['total']}; подтверждённо неверных: {a['confirmed_wrong']}; "
+                f"лимит без распознанного ответа: {a['budget_without_answer']}; не разобрано завершённых: {a['unparseable']}.",
+                'Основной балл — подтверждённые успехи на полном наборе, не доля доказанных шахматных ошибок.','']
     lines+=['## Блоки','','| Блок | Роль | Среднее основной метрики % | Задач |','|---|---|---:|---:|']
     for block,v in s['by_block'].items():
         lines.append(f"| {names.get(block,block)} | {v['role'] or '—'} | {two(v['mean_primary_percent'])} | {v['scored_tasks']} |")

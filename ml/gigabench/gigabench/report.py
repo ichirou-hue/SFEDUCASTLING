@@ -3,6 +3,7 @@ import html
 import json
 from pathlib import Path
 from .io import read_jsonl
+from .parsing import parse_bool
 
 ROLE={'trained':'обучаемый блок','control':'контроль','diagnostic':'диагностика, мало примеров'}
 METRIC={'balanced_accuracy':'сбалансированная','accuracy':'точность'}
@@ -27,6 +28,8 @@ th{font-size:13px;color:var(--muted);font-weight:600}td.num,th.num{text-align:ri
 .chart svg{width:100%;height:auto;display:block}.legend{font-size:13px;color:var(--muted);margin:4px 0 0}
 .filters{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}select,input{font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink)}
 .answer{white-space:pre-wrap;max-width:420px}.prompt{max-width:360px;color:var(--muted)}
+.answers{table-layout:fixed;min-width:760px}.answers td{overflow-wrap:anywhere}
+.answers th:nth-child(1){width:12%}.answers th:nth-child(2){width:20%}.answers th:nth-child(3){width:18%}.answers th:nth-child(4){width:34%}.answers th:nth-child(5){width:16%}
 '''
 
 
@@ -75,6 +78,49 @@ def task_table(tasks,summary):
     return '<div class="scroll"><table>'+head+''.join(body)+'</table></div>'
 
 
+def expected_text(case):
+    gold=case['gold']
+    if case['score_type']=='piece':
+        label=gold['label']
+        pieces={'p':'пешка','n':'конь','b':'слон','r':'ладья','q':'ферзь','k':'король'}
+        answer='пусто' if label=='.' else ('белые: ' if label.isupper() else 'чёрные: ')+pieces.get(label.lower(),label)
+        return f"{gold['square']}: {answer}"
+    if 'answer' in gold:
+        answer=gold['answer']
+        return ('Да' if answer else 'Нет') if isinstance(answer,bool) else str(answer)
+    if 'moves' in gold:
+        return ', '.join(gold['moves']) or ('Нет матующего хода' if case['score_type']=='mate_move' else 'Нет легальных ходов')
+    return json.dumps(gold,ensure_ascii=False)
+
+
+def prediction_text(case,response,score):
+    if score.get('predicted') is not None:
+        return json.dumps(score['predicted'],ensure_ascii=False)
+    if score.get('status')=='not_run':return 'Не запускалось'
+    if score.get('status')=='pending_coach_ratings':return 'Ответ для экспертной оценки'
+    if response.get('error'):return 'Ошибка выполнения'
+    text=response.get('text','')
+    if case['score_type']=='mate_move' and parse_bool(text) is False:
+        return 'Нет матующего хода (ответ «нет»)'
+    if not text.strip():return 'Пустой ответ'
+    if score.get('truncated'):return 'Ответ не извлечён — достигнут лимит токенов'
+    return 'Не удалось однозначно извлечь ответ'
+
+
+def verdict_text(score):
+    if score.get('status')=='pending_engine':return 'ожидается оценка движка'
+    if score.get('status')=='pending_coach_ratings':return 'ожидается экспертная оценка'
+    if score.get('status')=='mate_group':return 'матовая группа: отдельно'
+    content=score.get('content_correct',score['correct'])
+    if content is True:return 'верно'
+    if content is False:return 'неверный ответ'
+    return {'budget_without_answer':'не оценено: лимит, ответ не разобран',
+            'unparseable':'не оценено: ответ не разобран',
+            'no_answer':'не оценено: пустой ответ',
+            'execution_error':'ошибка выполнения',
+            'not_run':'не запускалось'}.get(score.get('answer_status'),'не оценено')
+
+
 def render_html(out,summary,config):
     out=Path(out);names=config.get('block_names',{})
     cases={c['id']:c for c in read_jsonl(out/'cases.jsonl')}
@@ -87,8 +133,9 @@ def render_html(out,summary,config):
     for s in scores:
         c=cases[s['id']];r=responses.get(s['id'],{})
         records.append({'id':s['id'],'task':s['suite']+'/'+s['task'],'block':names.get(task_block.get(s['suite']+'/'+s['task']),''),
-                        'prompt':c['prompt'],'fen':c['fen'],'answer':r.get('text',''),'expected':json.dumps(c['gold'],ensure_ascii=False),
-                        'predicted':json.dumps(s.get('predicted'),ensure_ascii=False),'correct':s['correct'],
+                        'prompt':c['prompt'],'fen':c['fen'],'answer':r.get('text',''),'expected':expected_text(c),
+                        'predicted':prediction_text(c,r,s),'correct':s['correct'],
+                        'content_correct':s.get('content_correct',s['correct']),'verdict':verdict_text(s),
                         'truncated':s['truncated'],'format':s['protocol_compliant'],'pieces':s.get('piece_bin','')})
     parts=['<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">',
            '<title>Отчёт бенчмарка GigaChess</title><style>'+CSS+'</style></head><body><main>',
@@ -97,25 +144,53 @@ def render_html(out,summary,config):
     if summary.get('rescored'):
         rs=summary['rescored']
         parts.append(f"<p class='note'>Пересчёт метрик кодом {html.escape(rs['scoring_version'])} для прогона на задачах версии {html.escape(rs['cases_version'])}. Ответы модели те же, изменились только метрики. Оценки движка: {html.escape(rs['engine_verdicts'])}.</p>")
+    if (out/'run.json').exists():
+        run=json.loads((out/'run.json').read_text())
+        backend=run.get('backend',{})
+        model=backend.get('model','не указана') if isinstance(backend,dict) else backend
+        parts.append(f"<div class='card'><h3>Модель: {html.escape(str(model))}</h3>"
+                     f"<b>Начало: {html.escape(str(run.get('started_utc','не указано')))}</b><br>"
+                     f"<b>Окончание: {html.escape(str(run.get('completed_utc','не указано')))}</b>"
+                     "<div class='muted'>Время UTC (+00:00)</div></div>")
     cov=summary['coverage']
+    a=summary.get('answer_coverage')
+    if a:
+        earned=sum(s.get('content_correct',s['correct']) is True for s in scores)
+        total=a['total']
+        parts.append(f"<div class='card'><h2>Score</h2><div class='big'>{earned} / {total} — {pct(100*earned/total if total else None)}</div>"
+                     "<p>1 подтверждённо правильный ответ = 1 балл. Сравнивайте на одинаковом наборе.</p></div>")
     status=EXPLANATIONS.get(summary['explanations_status'],summary['explanations_status'])
     parts.append(f"<p class='muted'>Ответов: {cov['completed']} из {cov['expected']}. Объяснения: {html.escape(status)}.</p>")
+    parts.append('<p class="note">Правильность содержания и соблюдение формата оцениваются отдельно. '
+                 'Нераспознанный ответ не означает отсутствие текста модели. '
+                 'Если достигнут лимит токенов, модель могла не успеть сформулировать результат. '
+                 'Основной балл — доля подтверждённых успехов: неразобранные ответы не исключаются '
+                 'из знаменателя, но не называются доказанными шахматными ошибками.</p>')
+    if summary.get('answer_coverage'):
+        a=summary['answer_coverage']
+        parts.append(f"<p class='note'>Извлечён ответ: {a['answered']}/{a['total']}. "
+                     f"Подтверждённо неверных: {a['confirmed_wrong']}. "
+                     f"Лимит без распознанного ответа: {a['budget_without_answer']}. "
+                     f"Завершён, но не разобран: {a['unparseable']}.</p>")
     parts.append('<h2>Блоки</h2><div class="cards">')
     for block,v in summary['by_block'].items():
+        earned=sum(summary['by_task'][t]['correct'] for t in v['tasks'])
+        total=sum(summary['by_task'][t]['records'] for t in v['tasks'])
+        score=f"{earned} / {total} — {pct(100*earned/total)}" if total else 'Нет данных'
         bins=' · '.join(f"{html.escape(k)}: {pct(x)}" for k,x in v['by_piece_bin'].items())
         parts.append(f"<div class='card'><div class='tag'>{ROLE.get(v['role'],'')}</div><h3>{html.escape(names.get(block,block))}</h3>"
-                     f"<div class='big'>{pct(v['mean_primary_percent'])}</div><div class='muted'>среднее по {v['scored_tasks']} задачам</div>"
+                     f"<div class='big'>Score: {score}</div><div class='muted'>Основная macro-метрика: {pct(v['mean_primary_percent'])}; среднее по {v['scored_tasks']} задачам</div>"
                      f"<div class='muted' style='font-size:13px;margin-top:6px'>{bins}</div></div>")
-    parts.append('</div><p class="legend">Значение блока — среднее основной метрики его задач с равными весами. Ниже под каждым блоком: результат по числу фигур на доске.</p>')
+    parts.append('</div><p class="legend">Score — число подтверждённо правильных ответов / полный набор блока. Основная macro-метрика — среднее метрик задач с равными весами. Ниже под каждым блоком: результат по числу фигур на доске.</p>')
     for block,v in summary['by_block'].items():
         if not v['tasks']:continue
         parts.append(f"<h2>{html.escape(names.get(block,block))}</h2>")
         parts.append(chart(v['tasks'],summary));parts.append(task_table(v['tasks'],summary))
     parts.append('<h2>Все ответы</h2><div class="filters"><select id="fb"><option value="">Все блоки</option></select>'
                  '<select id="ft"><option value="">Все задачи</option></select><select id="fr"><option value="">Любой результат</option>'
-                 '<option value="1">Верно</option><option value="0">Неверно</option><option value="t">Обрезано</option><option value="f">Нарушен формат</option></select>'
+                 '<option value="1">Верно</option><option value="0">Неверный ответ</option><option value="u">Нет оценки содержания</option><option value="t">Обрезано</option><option value="f">Нарушен формат</option></select>'
                  '<input id="fq" type="search" placeholder="Поиск по тексту"></div><p class="muted" id="count"></p>'
-                 '<div class="scroll"><table><thead><tr><th>Задача</th><th>Вопрос</th><th>Ответ модели</th><th>Эталон</th><th>Распознано</th><th>Итог</th></tr></thead><tbody id="rows"></tbody></table></div>')
+                  '<div class="scroll"><table class="answers"><thead><tr><th>Задача</th><th>Вопрос</th><th>Эталон</th><th>Ответ модели</th><th>Итог</th></tr></thead><tbody id="rows"></tbody></table></div>')
     data=json.dumps(records,ensure_ascii=False).replace('</','<\\/')
     parts.append('<script>const D='+data+''';
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -123,10 +198,10 @@ const fb=document.getElementById('fb'),ft=document.getElementById('ft'),fr=docum
 [...new Set(D.map(d=>d.block))].filter(Boolean).sort().forEach(b=>fb.add(new Option(b,b)));
 [...new Set(D.map(d=>d.task))].sort().forEach(t=>ft.add(new Option(t,t)));
 function draw(){const q=fq.value.toLowerCase();const rows=D.filter(d=>(!fb.value||d.block==fb.value)&&(!ft.value||d.task==ft.value)&&
- (!fr.value||(fr.value=='1'&&d.correct===true)||(fr.value=='0'&&d.correct===false)||(fr.value=='t'&&d.truncated)||(fr.value=='f'&&!d.format))&&
+ (!fr.value||(fr.value=='1'&&d.content_correct===true)||(fr.value=='0'&&d.content_correct===false)||(fr.value=='u'&&d.content_correct===null)||(fr.value=='t'&&d.truncated)||(fr.value=='f'&&!d.format))&&
  (!q||(d.prompt+' '+d.answer+' '+d.id).toLowerCase().includes(q)));
  document.getElementById('count').textContent='Показано '+rows.length+' из '+D.length+(rows.length>500?'; выведены первые 500':'');
- document.getElementById('rows').innerHTML=rows.slice(0,500).map(d=>'<tr><td>'+esc(d.task)+'<div class="muted" style="font-size:12px">'+esc(d.id)+(d.pieces?' · '+esc(d.pieces):'')+'</div></td><td class="prompt">'+esc(d.prompt)+'<div style="font-size:12px">'+esc(d.fen)+'</div></td><td class="answer">'+esc(d.answer)+(d.truncated?' <span class="flag">[обрезано]</span>':'')+(d.format?'':' <span class="flag">[формат]</span>')+'</td><td>'+esc(d.expected)+'</td><td>'+esc(d.predicted)+'</td><td class="'+(d.correct===true?'ok':d.correct===false?'no':'muted')+'">'+(d.correct===true?'верно':d.correct===false?'неверно':'не оценено')+'</td></tr>').join('');}
+  document.getElementById('rows').innerHTML=rows.slice(0,500).map(d=>'<tr><td>'+esc(d.task)+'<div class="muted" style="font-size:12px">'+esc(d.id)+(d.pieces?' · '+esc(d.pieces):'')+'</div></td><td class="prompt">'+esc(d.prompt)+'<div style="font-size:12px">'+esc(d.fen)+'</div></td><td><b>'+esc(d.expected)+'</b></td><td class="answer">'+esc(d.answer)+(d.truncated?' <span class="flag">[обрезано]</span>':'')+(d.format?'':' <span class="flag">[формат]</span>')+'<details><summary>Как разобран ответ</summary>'+esc(d.predicted)+'</details></td><td class="'+(d.content_correct===true?'ok':d.content_correct===false?'no':'muted')+'"><b>'+esc(d.content_correct===true?'Верно':d.content_correct===false?'Неверно':'Не удалось оценить')+'</b><div>'+esc(d.verdict)+'</div></td></tr>').join('');}
 [fb,ft,fr].forEach(e=>e.onchange=draw);fq.oninput=draw;draw();
 </script></main></body></html>''')
     (out/'report.html').write_text(''.join(parts),encoding='utf-8')

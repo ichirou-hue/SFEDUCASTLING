@@ -6,6 +6,7 @@ from .io import read_jsonl, unique
 from .oracles import mating_moves, piece_at
 from .generated import build_generated
 from .external import game_cases, puzzle_cases, judgement_cases, judgement_positions
+from .prompts import apply_answer_protocol
 
 
 FIXTURES = [
@@ -125,4 +126,4 @@ def build(config,profile,legacy=None,games=None,puzzles=None,stockfish=None):
     unique(rows)
     for row in rows:
         if not 1<=row['max_new_tokens']<=64: raise ValueError(row['id'])
-    return rows
+    return apply_answer_protocol(rows,config.get('answer_protocol','legacy'))
