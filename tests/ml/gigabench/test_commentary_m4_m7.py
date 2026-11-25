@@ -323,7 +323,8 @@ class PreparationTests(unittest.TestCase):
             self.assertIn("Опиши этот ход", queries)
             cases = MODULE.read_jsonl(out / "cases.jsonl")
             self.assertTrue(cases[0]["private"])
-            self.assertEqual(cases[0]["gold"]["reference_answer"], CORRECT)
+            self.assertNotIn("reference_answer", cases[0]["gold"])
+            self.assertFalse(manifest["contains_reference_answers"])
             rubrics = MODULE.read_jsonl(out / "auto_rubrics.jsonl")
             self.assertEqual(rubrics[0]["version"], MODULE.CRITERIA_VERSION)
 
@@ -338,13 +339,59 @@ class PreparationTests(unittest.TestCase):
             self.assertEqual(summary["M6"], 0.0)
             self.assertTrue((out / "m4_m7_report.html").is_file())
 
+    def test_score_uses_frozen_suite_and_copies_its_queries(self):
+        with tempfile.TemporaryDirectory(dir=Path(__file__).parent) as tmp:
+            root = Path(tmp)
+            suite, run = root / "suite", root / "run"
+            suite.mkdir()
+            run.mkdir()
+            frozen_case = case()
+            frozen_case["gold"].pop("reference_answer")
+            query = {
+                "id": frozen_case["id"], "fen": frozen_case["fen"],
+                "prompt": frozen_case["prompt"],
+                "max_new_tokens": frozen_case["max_new_tokens"],
+            }
+            MODULE.write_jsonl(suite / "cases.jsonl", [frozen_case])
+            MODULE.write_jsonl(suite / "queries.jsonl", [query])
+            MODULE.write_json(suite / "manifest.json", {
+                "criteria_version": MODULE.CRITERIA_VERSION,
+                "suite_id": "test-suite",
+                "cases_sha256": MODULE.sha(suite / "cases.jsonl"),
+                "queries_sha256": MODULE.sha(suite / "queries.jsonl"),
+            })
+            MODULE.write_jsonl(run / "responses.jsonl", [{
+                "id": frozen_case["id"], "text": CORRECT, "truncated": False,
+            }])
+
+            summary = MODULE.score_run(argparse.Namespace(
+                run=run, suite=suite, allow_partial=False,
+            ))
+
+            self.assertEqual(summary["suite_id"], "test-suite")
+            self.assertEqual(summary["accepted"], 1)
+            self.assertEqual(MODULE.read_jsonl(run / "queries.jsonl"), [query])
+
+            MODULE.write_jsonl(suite / "queries.jsonl", [])
+            with self.assertRaisesRegex(ValueError, "queries hash"):
+                MODULE.score_run(argparse.Namespace(
+                    run=run, suite=suite, allow_partial=False,
+                ))
+
     def test_benchmark_input_matches_commentary_training_text(self):
         build_input, metadata = input_builder("contract_v1_fen")
-        query = {"fen": FEN, "prompt": "Опиши этот ход."}
+        queries = MODULE.read_jsonl(
+            ROOT / "data/commentary_m4_m7_auto_v1/queries.jsonl",
+        )
+        query = queries[0]
         self.assertEqual(
             build_input(query),
-            f"Позиция FEN: {FEN}\nОпиши этот ход.",
+            f"Позиция FEN: {query['fen']}\n{query['prompt']}",
         )
+        self.assertTrue(all("Факты движка:" in row["prompt"] for row in queries))
+        self.assertTrue(all(
+            "Предыдущий ход соперника:" in row["prompt"] for row in queries
+        ))
         self.assertEqual(metadata["input_profile"], "contract_v1_fen")
 
     def test_compare_refuses_different_inputs(self):
@@ -384,6 +431,38 @@ class PreparationTests(unittest.TestCase):
                     before_label="base", after_label="LoRA",
                 ))
 
+    def test_compare_refuses_different_scoring_cases(self):
+        with tempfile.TemporaryDirectory(dir=Path(__file__).parent) as tmp:
+            root = Path(tmp)
+            before, after = root / "before", root / "after"
+            before.mkdir()
+            after.mkdir()
+            summary = {
+                "n": 1, "expected": 1, "complete": True,
+                "criteria_version": MODULE.CRITERIA_VERSION,
+                "suite_id": "same-query-suite",
+                "M4": 100.0, "M5": 100.0, "M6": 0.0, "M7": 100.0,
+                "accepted_percent": 100.0,
+            }
+            MODULE.write_json(before / "m4_m7_summary.json", {
+                **summary, "cases_sha256": "rubric-set-a",
+            })
+            MODULE.write_json(after / "m4_m7_summary.json", {
+                **summary, "cases_sha256": "rubric-set-b",
+            })
+            queries = [{
+                "id": "commentary:test", "fen": FEN,
+                "prompt": "Опиши этот ход.", "max_new_tokens": 512,
+            }]
+            MODULE.write_jsonl(before / "queries.jsonl", queries)
+            MODULE.write_jsonl(after / "queries.jsonl", queries)
+
+            with self.assertRaisesRegex(ValueError, "different scoring cases"):
+                MODULE.compare_runs(argparse.Namespace(
+                    before=before, after=after, out=root / "comparison.html",
+                    before_label="base", after_label="LoRA",
+                ))
+
     def test_score_refuses_unknown_response_ids(self):
         with tempfile.TemporaryDirectory(dir=Path(__file__).parent) as tmp:
             run = Path(tmp)
@@ -394,6 +473,24 @@ class PreparationTests(unittest.TestCase):
             ])
             with self.assertRaisesRegex(ValueError, "unknown IDs"):
                 MODULE.score_run(argparse.Namespace(run=run, allow_partial=False))
+
+
+class FrozenSuiteTests(unittest.TestCase):
+    def test_checked_in_suite_is_complete_and_excludes_reference_comments(self):
+        suite = ROOT / "data/commentary_m4_m7_auto_v1"
+        manifest = json.loads((suite / "manifest.json").read_text(encoding="utf-8"))
+        cases = MODULE.read_jsonl(suite / "cases.jsonl")
+        queries = MODULE.read_jsonl(suite / "queries.jsonl")
+
+        self.assertEqual(manifest["criteria_version"], MODULE.CRITERIA_VERSION)
+        self.assertEqual(manifest["case_count"], 300)
+        self.assertEqual(len(cases), 300)
+        self.assertEqual(len(queries), 300)
+        self.assertEqual(manifest["cases_sha256"], MODULE.sha(suite / "cases.jsonl"))
+        self.assertEqual(manifest["queries_sha256"], MODULE.sha(suite / "queries.jsonl"))
+        self.assertFalse(manifest["contains_reference_answers"])
+        self.assertTrue(all("reference_answer" not in row["gold"] for row in cases))
+        self.assertEqual({row["id"] for row in cases}, {row["id"] for row in queries})
 
 
 if __name__ == "__main__":

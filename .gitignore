@@ -98,6 +98,7 @@ frontend/dist/version.json
 /ml/gigabench/**/.venv/
 /ml/gigabench/**/.env
 /ml/gigabench/data/private/
+!/ml/gigabench/data/commentary_m4_m7_auto_v1/*.jsonl
 /ml/gigabench/review20/draft/
 /ml/gigabench/review20/*.zip
 /ml/gigabench/**/runs/

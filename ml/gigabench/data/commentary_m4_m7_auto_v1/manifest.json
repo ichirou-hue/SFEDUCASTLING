@@ -1,0 +1,206 @@
+{
+  "version": "1.1.1-dev",
+  "profile": "commentary-auto",
+  "model_input_profile": "contract_v1_fen",
+  "model_input_template": "Позиция FEN: {fen}\n{prompt}",
+  "config": {
+    "version": "gigachess-unified-v1.1-dev",
+    "answer_protocol": "legacy",
+    "seed": 20261101,
+    "random_positions": {
+      "smoke": 2,
+      "quick": 12,
+      "standard": 200
+    },
+    "mate_two_positions": {
+      "smoke": 2,
+      "quick": 4,
+      "standard": 40
+    },
+    "generation": {
+      "profile": "candidate_rank_major_start7",
+      "precision": "bf16",
+      "seed": 20261101,
+      "max_new_tokens": 512
+    },
+    "engine": {
+      "nodes": 1000000,
+      "threads": 1,
+      "hash_mb": 128,
+      "tolerance_cp": 50
+    },
+    "bootstrap": {
+      "resamples": 2000,
+      "seed": 20261101
+    },
+    "aggregate": "Equal weight of automatic exact-accuracy tasks, excluding engine-quality and explanations; not an overall teaching score.",
+    "piece_bins": {
+      "мало фигур (2–10)": [
+        2,
+        10
+      ],
+      "средне (11–20)": [
+        11,
+        20
+      ],
+      "много (21–32)": [
+        21,
+        32
+      ]
+    },
+    "combined_tasks": {
+      "structural/cells": [
+        "structural/piece_occupied",
+        "structural/piece_empty"
+      ],
+      "legacy/M1": [
+        "legacy/M1_occupied",
+        "legacy/M1_empty"
+      ]
+    },
+    "blocks": {
+      "board_reading": [
+        "structural/cells",
+        "legacy/M1",
+        "structural/check",
+        "structural/square_control",
+        "structural/piece_protection",
+        "structural/state_tracking",
+        "structural/material_balance",
+        "structural/legal_count",
+        "structural/legal_moves_piece",
+        "random_chess/*"
+      ],
+      "rules": [
+        "rules/*",
+        "structural/move_legality"
+      ],
+      "tactics": [
+        "motifs/*",
+        "tactics/*"
+      ],
+      "move_choice": [
+        "legacy/M2",
+        "legacy/M3",
+        "games/*"
+      ],
+      "commentary": [
+        "structural/comment_fact_choice",
+        "commentary/*",
+        "legacy/M4_M7"
+      ],
+      "diagnostics": [
+        "fixtures/*"
+      ]
+    },
+    "block_names": {
+      "board_reading": "Чтение доски",
+      "rules": "Правила",
+      "tactics": "Тактика",
+      "move_choice": "Выбор хода",
+      "commentary": "Комментирование",
+      "diagnostics": "Ручные крайние случаи"
+    },
+    "block_roles": {
+      "board_reading": "trained",
+      "commentary": "trained",
+      "rules": "control",
+      "tactics": "control",
+      "move_choice": "control",
+      "diagnostics": "diagnostic"
+    },
+    "paraphrases": {
+      "smoke": 2,
+      "quick": 2,
+      "standard": 2
+    },
+    "generated_per_task": {
+      "smoke": 4,
+      "quick": 12,
+      "standard": 60
+    },
+    "full_move_positions": {
+      "smoke": 2,
+      "quick": 6,
+      "standard": 40
+    },
+    "game_positions": {
+      "smoke": 4,
+      "quick": 20,
+      "standard": 200
+    },
+    "puzzles_per_bin": {
+      "smoke": 2,
+      "quick": 10,
+      "standard": 50
+    },
+    "judgement": {
+      "nodes": 300000,
+      "recheck_factor": 4,
+      "margin_cp": 15,
+      "per_bucket": {
+        "smoke": 1,
+        "quick": 4,
+        "standard": 20
+      },
+      "candidates": {
+        "smoke": 60,
+        "quick": 400,
+        "standard": 4000
+      }
+    },
+    "diagnostic_note": "Hand-made fixtures are reported but too few for conclusions; they never enter trained or control block means.",
+    "puzzle_quality": {
+      "min_plays": 1000,
+      "max_rating_deviation": 80,
+      "min_popularity": 80
+    },
+    "frozen_sources": {
+      "games": 3000
+    }
+  },
+  "criteria_version": "m4-m7-auto-v1",
+  "suite_id": "commentary-test-a6fb780f-9e1f0fab",
+  "commentary_split": "test",
+  "case_count": 300,
+  "automatic_queries": 300,
+  "explanation_cases": 0,
+  "excluded_explanation_cases": 0,
+  "excluded_commentary_cases": 4,
+  "tasks": {
+    "commentary/move_commentary": 300
+  },
+  "code_sha256": {
+    "config/default.json": "54e5bc434142b504f115c29790743a6ac3db60bd3e3b45f80a19d185dc097901",
+    "gigabench/__init__.py": "11bd0e55e7307d591af7b18c0fc71b44d5718c5558898896848734c590df2454",
+    "gigabench/adapters.py": "81ecce63a137db12804fd16d19de34df3870ee47824701a20f7d1413da4d561e",
+    "gigabench/cases.py": "e774b5ac380b8e29fc01b1f6c44096f18c6e33b00401dbf8ffc5585da962e3a4",
+    "gigabench/coaches.py": "c712e58dc70e07059e9f2fb8c5a9af5451af13474891729ebd0b3bcef679c537",
+    "gigabench/comparison.py": "902dd506b9b9b360e93b079d27f8bd5c8504a1dc50ea2bde5e31ce7b448a2210",
+    "gigabench/engine.py": "e5257b18e6fcd35bc3dce23572d95f4458307d89f0922f095e83a8ba45373ee1",
+    "gigabench/external.py": "1c9dfffac795a5f4ec307d759826d578b4c82baa87f898d44baaf0eca4fa3fe4",
+    "gigabench/generated.py": "1e20cafd6f790674e0afb3c8cef665cecdda7bf25723ad15b51f9c51496e2724",
+    "gigabench/io.py": "f4be860467ccec031c487015f6272efe6313d0b218acef88556be5762bf26d64",
+    "gigabench/oracles.py": "8016b56071ee40dea55abdc9fb95b7fbde4d4b5709d7005f7b1364cfecfe0aa8",
+    "gigabench/parsing.py": "3965dd72f6bc84966d7c45eb61c3babe78c04953eef0a2558984cfef40480788",
+    "gigabench/pipeline.py": "0ccd3ba0137821b45d9a693fc7c2e5f457a8709f2223c67e212864dc8b9b73c4",
+    "gigabench/prompts.py": "751bf58e320a403ec5812008f278989d7f7962bad860de2dce01ff680eadd877",
+    "gigabench/publishing.py": "101c2af80261fa6f9a3c64e92a3ece497ad19ace4822e3fdf049aea4096ad0b9",
+    "gigabench/report.py": "b3a9b8f6f6e35d39f26cef777f6e305e29a6c07cdf85b395b0cfb07eac7b0f01",
+    "gigabench/scoring.py": "00874ec766ca38483da0ad45d0978364a16943523f90e643c5aa950b1b463156",
+    "run.py": "39a96259a518d9dcc7873f49b1f9c1dc681319fceab06f34d7a9ea39597acc53"
+  },
+  "cases_sha256": "a6fb780fbd621813a3595715ef1ae273fdfe69783aafa92d8acfbeb6b21b2e0a",
+  "queries_sha256": "9e1f0fab53267f1b91517449cd1eeccd6d37622c2cd5405841773f10da994e1d",
+  "source_commentary_sha256": "629bc1d1e097c610efb29fa3f6ecc656fe7cd908d1601f7ae3a45ad082a49000",
+  "source_facts_sha256": "27f1705e795153c2a971142ce770d4d6554474ac5424d60960ee143f3dd3b1c5",
+  "contains_local_source_comments": false,
+  "contains_reference_answers": false,
+  "contains_private_cases": true,
+  "source_legacy_sha256": null,
+  "external_sources": {},
+  "chess_version": "1.11.2",
+  "chess_module_sha256": "1fde6a8e932508d14b31f6a584497b49c2969fc3c7cdc675347f819f0d667a5b",
+  "gold_sources": "facts_v2 engine facts + python-chess; automatic M4-M7 rubric, not expert-approved",
+  "upstream_comparability": "Separate commentary block with automatic criteria; not the official GigaChess score"
+}

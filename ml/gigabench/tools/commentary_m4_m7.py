@@ -844,15 +844,12 @@ def commentary_cases(commentary, facts_path, split, budget, limit=None):
                 "fen_after": target.get("fen_after"),
                 "facts": facts_bundle,
                 "rubric": rubric,
-                "reference_answer": row.get("answer"),
             },
             "group_id": row.get("group_id") or row["id"],
-            "params": {"split": split, "rubric_version": CRITERIA_VERSION,
-                       "source": row.get("source")},
+            "params": {"split": split, "rubric_version": CRITERIA_VERSION},
             "max_new_tokens": budget,
             "private": True,
-            "provenance": {"source": "handoff-desc-v1", "record_id": row["id"],
-                           "source_ref": row.get("source")},
+            "provenance": {"source": "handoff-desc-v1", "record_id": row["id"]},
         })
     if limit:
         cases = cases[:limit]
@@ -886,6 +883,10 @@ def prepare_run(args):
         "model_input_template": "Позиция FEN: {fen}\n{prompt}",
         "config": config,
         "criteria_version": CRITERIA_VERSION,
+        "suite_id": (
+            f"commentary-{args.split}-{sha(out / 'cases.jsonl')[:8]}-"
+            f"{sha(out / 'queries.jsonl')[:8]}"
+        ),
         "commentary_split": args.split,
         "case_count": len(cases),
         "automatic_queries": len(queries),
@@ -898,7 +899,8 @@ def prepare_run(args):
         "queries_sha256": sha(out / "queries.jsonl"),
         "source_commentary_sha256": sha(args.commentary),
         "source_facts_sha256": sha(args.facts),
-        "contains_local_source_comments": True,
+        "contains_local_source_comments": False,
+        "contains_reference_answers": False,
         "contains_private_cases": True,
         "source_legacy_sha256": None,
         "external_sources": {},
@@ -913,7 +915,33 @@ def prepare_run(args):
 
 def score_run(args):
     run = Path(args.run)
-    cases = {c["id"]: c for c in read_jsonl(run / "cases.jsonl")}
+    suite_path = Path(args.suite) if getattr(args, "suite", None) else run
+    cases_path = suite_path / "cases.jsonl"
+    queries_path = suite_path / "queries.jsonl"
+    suite_manifest = None
+    if getattr(args, "suite", None):
+        suite_manifest = json.loads((suite_path / "manifest.json").read_text(encoding="utf-8"))
+        if suite_manifest.get("criteria_version") != CRITERIA_VERSION:
+            raise ValueError("suite uses a different criteria version")
+        if suite_manifest.get("cases_sha256") != sha(cases_path):
+            raise ValueError("frozen suite cases hash does not match manifest")
+        if suite_manifest.get("queries_sha256") != sha(queries_path):
+            raise ValueError("frozen suite queries hash does not match manifest")
+    case_rows = read_jsonl(cases_path)
+    cases = {c["id"]: c for c in case_rows}
+    if len(cases) != len(case_rows):
+        raise ValueError("suite contains duplicate case IDs")
+    if getattr(args, "suite", None):
+        queries = read_jsonl(queries_path)
+        query_ids = [q["id"] for q in queries]
+        if len(set(query_ids)) != len(query_ids) or set(query_ids) != set(cases):
+            raise ValueError("suite queries and scoring cases have different IDs")
+        run_queries_path = run / "queries.jsonl"
+        if run_queries_path.exists():
+            if read_jsonl(run_queries_path) != queries:
+                raise ValueError("run queries do not match the frozen suite")
+        else:
+            write_jsonl(run_queries_path, queries)
     responses = unique(read_jsonl(run / "responses.jsonl"))
     missing = sorted(set(cases) - set(responses))
     unexpected = sorted(set(responses) - set(cases))
@@ -933,6 +961,9 @@ def score_run(args):
     n = len(rows)
     summary = {
         "criteria_version": CRITERIA_VERSION,
+        "suite_id": suite_manifest.get("suite_id") if suite_manifest else None,
+        "cases_sha256": sha(cases_path),
+        "queries_sha256": sha(queries_path) if queries_path.is_file() else None,
         "n": n,
         "expected": len(cases),
         "complete": not missing,
@@ -1032,9 +1063,11 @@ def compare_runs(args):
     if before_queries != after_queries:
         raise ValueError("runs are not comparable: queries, FENs or generation budgets differ")
     if (before["criteria_version"] != after["criteria_version"]
+            or before.get("suite_id") != after.get("suite_id")
+            or before.get("cases_sha256") != after.get("cases_sha256")
             or not before.get("complete") or not after.get("complete")
             or before["n"] != before["expected"] or after["n"] != after["expected"]):
-        raise ValueError("runs are not comparable: incomplete runs or different criteria version")
+        raise ValueError("runs are not comparable: incomplete runs or different scoring cases")
     if before["n"] != after["n"] or before["n"] != len(before_queries):
         raise ValueError("runs are not comparable: different case counts")
     labels = (args.before_label or "до", args.after_label or "после")
@@ -1080,6 +1113,8 @@ def main():
     prepare.add_argument("--config", type=Path, default=ROOT / "config/default.json")
     score = sub.add_parser("score", help="score responses with automatic M4-M7 criteria")
     score.add_argument("--run", type=Path, required=True)
+    score.add_argument("--suite", type=Path,
+                       help="frozen suite directory; defaults to cases in --run")
     score.add_argument("--allow-partial", action="store_true")
     compare = sub.add_parser("compare", help="compare two M4-M7-auto summaries")
     compare.add_argument("--before", type=Path, required=True)
