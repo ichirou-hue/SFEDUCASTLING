@@ -7,7 +7,7 @@ import re
 import sys
 import unittest
 
-ROOT=Path(__file__).resolve().parents[3]/"ml/gigabench"
+ROOT=Path(__file__).resolve().parents[3]/"ml/benchmark"
 if not (ROOT/"config/default.json").is_file():
     ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))

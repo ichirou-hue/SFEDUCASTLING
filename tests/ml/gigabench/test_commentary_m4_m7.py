@@ -1,25 +1,19 @@
 """Automatic M4-M7 criteria stay separate from expert ratings and catch false facts."""
 import argparse
-import importlib.util
 import json
 import sys
 import tempfile
 import unittest
-from unittest.mock import patch
 from pathlib import Path
+from unittest.mock import patch
 
 PROJECT = Path(__file__).resolve().parents[3]
-ROOT = PROJECT / "ml/gigabench"
+ROOT = PROJECT / "ml/benchmark"
 sys.path.insert(0, str(ROOT))
 
 import chess  # noqa: E402
+from gigabench import commentary as MODULE  # noqa: E402, N812
 from gigabench.adapters import input_builder  # noqa: E402
-
-SCRIPT = ROOT / "tools/commentary_m4_m7.py"
-SPEC = importlib.util.spec_from_file_location("gigabench_commentary_m4_m7", SCRIPT)
-assert SPEC is not None and SPEC.loader is not None
-MODULE = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(MODULE)
 
 FEN = chess.STARTING_FEN
 MOVE = "e2e4"
@@ -145,6 +139,42 @@ class RubricTests(unittest.TestCase):
 
 
 class ScoringTests(unittest.TestCase):
+    def test_san_check_and_mate_suffixes_are_verified(self):
+        for san in ("e4+", "e4#"):
+            with self.subTest(san=san):
+                self.assertEqual(MODULE.score_response(f"Белые сыграли {san}.", case())["M6"], 1)
+        for san, fen, uci in (
+            ("Re8+", "7k/8/8/8/8/8/4R3/7K w - - 0 1", "e2e8"),
+            ("Qg7#", "7k/5Q2/6K1/8/8/8/8/8 w - - 0 1", "f7g7"),
+        ):
+            with self.subTest(san=san):
+                example = case()
+                example["gold"]["facts"]["before"]["fen"] = fen
+                example["gold"]["facts"]["delta"]["uci"] = uci
+                result = MODULE.score_response(f"Белые сыграли {san}.", example)
+                self.assertEqual((result["M4"], result["M6"]), (1.0, 0))
+
+    def test_explicit_played_claim_can_follow_a_threat(self):
+        result = MODULE.score_response(
+            "Пешка идёт с e2 на e4, угрожает занять центр, а сыгранный ход даёт шах. "
+            "Это точный ход.", case(),
+        )
+        self.assertEqual(result["M6"], 1)
+        self.assertTrue(any(claim["kind"] == "check" and claim["critical"] for claim in result["claims"]))
+
+    def test_threat_label_does_not_turn_a_hypothetical_move_into_a_fact(self):
+        result = MODULE.score_response(
+            CORRECT + " Не отражена угроза: пешка идёт с d2 на d4.", case(),
+        )
+        self.assertEqual(result["M6"], 0)
+
+    def test_legal_underpromotion_is_not_a_critical_recommendation(self):
+        example = case()
+        example["gold"]["facts"]["before"]["fen"] = "7k/P7/8/8/8/8/8/7K w - - 0 1"
+        result = MODULE.score_response("Лучше сыграть a7a8n.", example)
+        self.assertEqual(result["M6"], 0)
+        self.assertTrue(any(claim.get("promotion") == "n" for claim in result["claims"]))
+
     def test_correct_comment_is_accepted(self):
         result = MODULE.score_response(CORRECT, case())
         self.assertEqual(result["M4"], 1.0)

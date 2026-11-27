@@ -9,6 +9,7 @@ import chess
 from . import __version__
 from .adapters import GigaChessAdapter, MockAdapter, QwenAdapter
 from .cases import build
+from .commentary import CRITERIA_VERSION as AUTO_COMMENTARY_VERSION, load_frozen_suite
 from .coaches import pending_rubric, validate_rubrics, score_one
 from .engine import EngineJudge
 from .io import read_jsonl, write_jsonl, write_json, sha, digest, unique
@@ -23,7 +24,7 @@ def now():
 
 
 def source_hashes():
-    paths=list((PACKAGE/'gigabench').glob('*.py'))+[PACKAGE/'run.py',PACKAGE/'config/default.json']
+    paths=list((PACKAGE/'gigabench').rglob('*.py'))+[PACKAGE/'run.py',PACKAGE/'config/default.json']
     return {str(p.relative_to(PACKAGE)).replace('\\','/'):sha(p) for p in sorted(paths)}
 
 
@@ -48,6 +49,11 @@ def prepare(args):
     for path in (games,puzzles):
         if path is not None and not Path(path).is_file():raise FileNotFoundError(path)
     cases=build(config,args.profile,legacy,games,puzzles,judge)
+    commentary_manifest=None
+    if not getattr(args,'without_commentary_auto',False):
+        commentary_cases,commentary_manifest=load_frozen_suite()
+        cases.extend(commentary_cases)
+    unique(cases)
     excluded_explanations=0
     if getattr(args,'without_explanations',False):
         excluded_explanations=sum(c['score_type']=='explanation' for c in cases)
@@ -64,6 +70,13 @@ def prepare(args):
                'automatic_queries':len(queries),'explanation_cases':len(cases)-len(queries),
                'excluded_explanation_cases':excluded_explanations,
               'tasks':dict(Counter(c['suite']+'/'+c['task'] for c in cases)),
+               'commentary_auto':({
+                   'criteria_version':AUTO_COMMENTARY_VERSION,
+                   'suite_id':commentary_manifest['suite_id'],
+                   'case_count':commentary_manifest['case_count'],
+                   'cases_sha256':commentary_manifest['cases_sha256'],
+                   'queries_sha256':commentary_manifest['queries_sha256'],
+               } if commentary_manifest is not None else {}),
                'contains_local_source_comments':any('source_comment' in c['gold'] for c in cases),
                'contains_private_cases':any(c.get('private',False) for c in cases),
               'source_legacy_sha256':sha(legacy) if legacy else None,
@@ -121,6 +134,8 @@ def generate(args):
     else:
         adapter=GigaChessAdapter(args.project_root,manifest['config']['generation'],args.adapter,
                                  profile or 'question_only')
+    if getattr(args,'model_profile',None):
+        adapter.metadata['model_profile']=args.model_profile
     metadata={'backend':adapter.metadata,'started_utc':now(),'stage':args.stage,
               'manifest_sha256':sha(out/'manifest.json'),'rubrics_sha256':rubric_sha,
               'status':'running','python':platform.python_version()}
@@ -184,7 +199,7 @@ def score_rows(cases,raw,engine,config,previous=None):
         if c['score_type']=='explanation':continue
         if c['id'] not in raw:
             row=score_case(c,{'text':''},None,bins)
-            row.update(correct=None if c['score_type']=='engine_move' else False,
+            row.update(correct=None if c['score_type'] in ('engine_move','explanation_auto') else False,
                        content_correct=None,answer_status='not_run',status='not_run',empty=False)
             rows.append(row)
             continue
@@ -277,7 +292,7 @@ def render_report(out,s,config=None):
         a=s['answer_coverage']
         lines+=[f"Распознано ответов: {a['answered']}/{a['total']}; подтверждённо неверных: {a['confirmed_wrong']}; "
                 f"лимит без распознанного ответа: {a['budget_without_answer']}; не разобрано завершённых: {a['unparseable']}.",
-                'Основной балл — подтверждённые успехи на полном наборе, не доля доказанных шахматных ошибок.','']
+                'Score отражает успешное выполнение задач на полном наборе; для комментариев успех — принятие по порогам M4–M7-auto. Это не доля доказанных шахматных ошибок.','']
     lines+=['## Блоки','','| Блок | Роль | Среднее основной метрики % | Задач |','|---|---|---:|---:|']
     for block,v in s['by_block'].items():
         lines.append(f"| {names.get(block,block)} | {v['role'] or '—'} | {two(v['mean_primary_percent'])} | {v['scored_tasks']} |")
@@ -290,13 +305,23 @@ def render_report(out,s,config=None):
     lines+=['','Автоматический macro-балл: '+str(s['automatic_task_macro_percent'])+'%.',
             s['automatic_macro_scope'],'',
             '## Метрики из документа','',
-            'М4–М7 и общий процент принятых объяснений не заменяются сходством текстов или оценкой движка.']
+            'Экспертные М4–М7 не заменяются сходством текстов или оценкой движка. Автоматические M4–M7-auto показаны отдельно ниже.']
     for key,value in s['document_metrics'].items():
         if key=='M1_F1':
             lines.append(f"- Macro-F1 М1: {value['macro_f1_percent'] if value else 'не измерен'}.")
         elif isinstance(value,dict):
             lines.append(f"- {key}: {value['accuracy_percent']}%, {value['correct']}/{value['n']}; матовая группа: {value['mate_group']}.")
         else:lines.append(f'- {key}: {value if value is not None else "ожидает данных/экспертных оценок"}.')
+    auto=s.get('commentary_auto_metrics')
+    if auto:
+        lines+=['','## Автоматические M4–M7 для комментариев',
+                f"Критерии {auto['criteria_version']}; ответов {auto['n']}/{auto['expected']}; полный набор: {auto['complete']}.",
+                f"- M4-auto: {two(auto['M4'])}%; M5-auto: {two(auto['M5'])}%; "
+                f"M6-auto (ответы с критической ошибкой, меньше — лучше): {two(auto['M6'])}%; "
+                f"M7-auto: {two(auto['M7'])}%.",
+                f"- Принято по порогам: {two(auto['accepted_percent'])}%; "
+                f"ответов с критической ошибкой: {auto['critical_errors']}.",
+                'Это автоматические критерии, не экспертные оценки и не оценка педагогической пользы.']
     lines+=['','Это адаптированный диагностический набор, не официальный результат ChessQA или Random-Chess.',
             'Правильность формата, корректность содержания и качество объяснения — разные показатели.',
             'При ограниченном поиске Stockfish оценки не являются доказательством всех стратегических утверждений.',

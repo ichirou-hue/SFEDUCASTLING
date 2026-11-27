@@ -7,7 +7,7 @@ import sys
 import unittest
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[3] / "ml/gigabench"
+ROOT = Path(__file__).resolve().parents[3] / "ml/benchmark"
 sys.path.insert(0, str(ROOT))
 
 import chess  # noqa: E402 -- standalone unittest import path
@@ -75,7 +75,7 @@ class FrozenTokenBudgetTests(unittest.TestCase):
             self.assertTrue(queries)
             for query in queries:
                 self.assertEqual(query["max_new_tokens"], cases[query["id"]]["max_new_tokens"])
-            self.assertEqual({q["max_new_tokens"] for q in queries}, {32, 64})
+            self.assertEqual({q["max_new_tokens"] for q in queries}, {32, 64, 512})
             self.assertNotIn("max_new_tokens", manifest["config"]["generation"])
 
     def test_invalid_config_budgets_fail_before_artifacts_are_created(self):

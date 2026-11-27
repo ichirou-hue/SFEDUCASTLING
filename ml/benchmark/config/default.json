@@ -27,7 +27,7 @@
     "resamples": 2000,
     "seed": 20261101
   },
-  "aggregate": "Equal weight of automatic exact-accuracy tasks, excluding engine-quality and explanations; not an overall teaching score.",
+  "aggregate": "Equal weight of automatic task success rates, including M4-M7-auto commentary acceptance; excluding engine-quality and expert explanations; not an overall teaching score.",
   "piece_bins": {
     "мало фигур (2–10)": [
       2,

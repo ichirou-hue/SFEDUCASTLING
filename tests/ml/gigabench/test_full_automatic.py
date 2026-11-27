@@ -11,19 +11,81 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
-ROOT = Path(__file__).resolve().parents[3] / "ml/gigabench"
+ROOT = Path(__file__).resolve().parents[3] / "ml/benchmark"
 sys.path.insert(0, str(ROOT))
 
 import chess  # noqa: E402
 import chess.engine  # noqa: E402
 from gigabench.engine import EngineJudge  # noqa: E402
 from gigabench.external import judgement_cases  # noqa: E402
-from gigabench.io import read_jsonl, sha  # noqa: E402
-from gigabench.pipeline import prepare, verify  # noqa: E402
+from gigabench.io import read_jsonl, sha, write_jsonl  # noqa: E402
+from gigabench.pipeline import prepare, render_report, verify  # noqa: E402
 from gigabench.scoring import score_case, summarize  # noqa: E402
+from gigabench.commentary import CRITERIA_VERSION, load_frozen_suite  # noqa: E402
+from tools.qwen_vllm_numeric_trio import load_numeric_board, numeric_input  # noqa: E402
 
 
 class ExpertExclusionTests(unittest.TestCase):
+    def test_numeric_profile_uses_numeric_board_for_cells_and_commentary(self):
+        formatter = load_numeric_board(ROOT.parent / "pipelines/board_reading/numeric_board.py")
+        cell = {
+            "fen": chess.STARTING_FEN, "prompt": "Какая фигура находится на e2?",
+            "score_type": "piece", "task": "piece_occupied",
+        }
+        commentary = load_frozen_suite()[0][0]
+
+        cell_input = numeric_input(cell, formatter.format_cell_query, formatter.format_query)
+        commentary_input = numeric_input(
+            commentary, formatter.format_cell_query, formatter.format_query,
+        )
+
+        self.assertTrue(cell_input.startswith("Числовая доска."))
+        self.assertNotIn("Ходят ", cell_input)
+        self.assertTrue(commentary_input.startswith("Числовая доска."))
+        self.assertIn("Ходят ", commentary_input)
+        self.assertIn("Факты движка:", commentary_input)
+        self.assertIn("Предыдущий ход соперника:", commentary_input)
+
+    def test_auto_commentary_uses_general_scoring_and_summary(self):
+        config = json.loads((ROOT / "config/default.json").read_text())
+        config["bootstrap"]["resamples"] = 10
+        cases, _ = load_frozen_suite()
+        row = score_case(cases[0], {"text": ""})
+
+        self.assertEqual(row["criteria_version"], CRITERIA_VERSION)
+        self.assertFalse(row["accepted"])
+        self.assertEqual(row["M4_auto"], 0.0)
+        self.assertEqual(row["M5_auto"], 0.0)
+        self.assertEqual(row["M6_auto"], 0)
+        self.assertEqual(row["M7_auto"], 0.0)
+        self.assertIsNone(row["protocol_compliant"])
+
+        summary = summarize([row], config)
+        self.assertEqual(summary["by_task"]["commentary/move_commentary"]["n"], 1)
+        self.assertEqual(summary["by_task"]["commentary/move_commentary"]["correct"], 0)
+        self.assertEqual(summary["automatic_task_macro_percent"], 0.0)
+        self.assertEqual(summary["commentary_auto_metrics"]["n"], 1)
+        self.assertEqual(summary["commentary_auto_metrics"]["expected"], 1)
+        self.assertEqual(summary["commentary_auto_metrics"]["accepted_percent"], 0.0)
+
+        with tempfile.TemporaryDirectory(dir=Path(__file__).parent) as tmp:
+            run = Path(tmp)
+            write_jsonl(run / "cases.jsonl", [cases[0]])
+            write_jsonl(run / "responses.jsonl", [{"id": cases[0]["id"], "text": ""}])
+            write_jsonl(run / "scores.jsonl", [row])
+            summary.update(
+                coverage={"completed": 1, "expected": 1, "complete": True},
+                is_mock=False,
+                explanations_status="not_included",
+            )
+            render_report(run, summary, config)
+            markdown = (run / "REPORT_RU.md").read_text()
+            report = (run / "report.html").read_text()
+            self.assertIn("M4-auto", markdown)
+            self.assertIn("M4-auto", report)
+            self.assertNotIn("required_ideas", report)
+            self.assertNotIn(json.dumps(cases[0]["gold"], ensure_ascii=False), report)
+
     def test_exact_task_macro_excludes_public_and_private_engine_quality(self):
         config = json.loads((ROOT / "config/default.json").read_text())
         config["bootstrap"]["resamples"] = 10
@@ -70,6 +132,11 @@ class ExpertExclusionTests(unittest.TestCase):
                 self.assertEqual(frozen, manifest)
                 manifests.append(manifest)
                 rows.append(cases)
+                commentary = [c for c in cases if c["score_type"] == "explanation_auto"]
+                self.assertEqual(len(commentary), 300)
+                self.assertTrue(all(c["task"] == "move_commentary" for c in commentary))
+                self.assertEqual(manifest["commentary_auto"]["criteria_version"], CRITERIA_VERSION)
+                self.assertEqual(manifest["commentary_auto"]["case_count"], 300)
                 legacy = [c for c in cases if c["suite"] == "legacy"]
                 self.assertEqual(sum(c["score_type"] != "explanation" for c in legacy), 4)
                 self.assertTrue(all(c["private"] for c in legacy))

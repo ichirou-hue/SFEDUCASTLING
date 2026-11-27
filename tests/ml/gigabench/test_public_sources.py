@@ -8,7 +8,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[3] / "ml/gigabench"
+ROOT = Path(__file__).resolve().parents[3] / "ml/benchmark"
 sys.path.insert(0, str(ROOT))
 
 import chess  # noqa: E402
@@ -82,8 +82,12 @@ class PublicSourceTests(unittest.TestCase):
                 sum(c["score_type"] == "puzzle_move" for c in cases),
                 4 * config["puzzles_per_bin"]["smoke"],
             )
-            self.assertTrue(all(c.get("answer_protocol") == "answer_first_v1" for c in cases))
-            self.assertFalse(any(c["private"] or c["suite"] == "legacy" for c in cases))
+            protocol_cases = [c for c in cases if c["score_type"] != "explanation_auto"]
+            self.assertTrue(all(c.get("answer_protocol") == "answer_first_v1" for c in protocol_cases))
+            self.assertFalse(any(c["private"] or c["suite"] == "legacy" for c in protocol_cases))
+            commentary = [c for c in cases if c["score_type"] == "explanation_auto"]
+            self.assertEqual(len(commentary), 300)
+            self.assertTrue(all(c["private"] for c in commentary))
             queries = read_jsonl(out / "queries.jsonl")
             self.assertEqual(len(queries), len(cases))
             self.assertTrue(all(q["max_new_tokens"] == 2048 for q in queries))

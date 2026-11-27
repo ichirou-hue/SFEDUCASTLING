@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Download the public sources of v1.1 and freeze small subsets of them in data/sources/.
 
-    python ml/gigabench/tools/fetch_sources.py --work /tmp/gigabench_sources
+    python ml/benchmark/tools/fetch_sources.py --work /tmp/gigabench_sources
 
 Sources (all checked by SHA256 where the publisher gives one):
 - Lichess standard rated games, January 2013 (CC0);

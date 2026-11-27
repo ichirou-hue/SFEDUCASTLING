@@ -10,6 +10,8 @@ ROOT=Path(__file__).resolve().parent
 
 
 def main():
+    from gigabench.profiles import MODEL_PROFILES, resolve_profile
+
     ap=argparse.ArgumentParser(description=__doc__)
     sub=ap.add_subparsers(dest='command',required=True)
     for command in ['all','prepare','generate','score','grade']:
@@ -21,13 +23,18 @@ def main():
                             help='freeze an output budget for every query; Qwen defaults to 2048')
             p.add_argument('--without-explanations',action='store_true',
                            help='exclude expert M4-M7 cases; retain automatic tasks from every source')
+            p.add_argument('--without-commentary-auto',action='store_true',
+                           help='exclude the private frozen commentary suite (required for the public ZIP)')
         p.add_argument('--config',type=Path,default=ROOT/'config/default.json')
         p.add_argument('--legacy-source',type=Path,default=ROOT/'data/private/legacy_cases.jsonl')
         p.add_argument('--without-legacy',action='store_true')
         p.add_argument('--project-root',type=Path)
         p.add_argument('--adapter',type=Path)
-        p.add_argument('--backend',choices=['gigachess','qwen','mock'],default='gigachess')
-        p.add_argument('--model',default='Qwen/Qwen3-1.7B',help='Hugging Face model ID or local path for Qwen')
+        p.add_argument('--backend',choices=['gigachess','qwen','mock'])
+        p.add_argument('--model',help='Hugging Face model ID or local path for Qwen')
+        if command in ('all','generate'):
+            p.add_argument('--model-profile',choices=MODEL_PROFILES,
+                           help='model preset, independent of the smoke/quick/standard suite')
         p.add_argument('--stockfish',type=Path)
         p.add_argument('--stage',choices=['automatic','explanations'],default='automatic')
         p.add_argument('--rubrics',type=Path)
@@ -73,6 +80,12 @@ def main():
         if target.exists():raise FileExistsError(target)
         shutil.copyfile(args.source,target)
         print(f'Imported local data: {len(rows)} tasks. Excluded from public package.');return
+    try:
+        args.backend,args.model,args.input_profile=resolve_profile(
+            getattr(args,'model_profile',None),args.backend,args.model,args.input_profile,
+        )
+    except ValueError as exc:
+        ap.error(str(exc))
     if args.limit is not None and args.limit<1:ap.error('--limit must be positive')
     if getattr(args,'max_new_tokens',None) is not None and args.max_new_tokens<1:
         ap.error('--max-new-tokens must be positive')

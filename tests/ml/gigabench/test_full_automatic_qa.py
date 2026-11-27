@@ -10,7 +10,7 @@ from collections import Counter
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-ROOT = Path(__file__).resolve().parents[3] / "ml/gigabench"
+ROOT = Path(__file__).resolve().parents[3] / "ml/benchmark"
 sys.path.insert(0, str(ROOT))
 
 import chess  # noqa: E402
@@ -31,7 +31,7 @@ class AutomaticOnlyIndependentTests(unittest.TestCase):
         values.update(kwargs)
         return argparse.Namespace(**values)
 
-    def test_missing_flag_matches_explicit_false_and_comments_never_enter_automatic(self):
+    def test_missing_flag_matches_explicit_false_and_auto_comments_enter_automatic(self):
         source = {
             "id": "synthetic", "fen_before": chess.Board().fen(),
             "move": {"uci": "e2e4"}, "question": "EXPERT_QUESTION_SENTINEL",
@@ -62,7 +62,11 @@ class AutomaticOnlyIndependentTests(unittest.TestCase):
                     self.assertNotIn(sentinel, json.dumps(automatic))
                     self.assertNotIn(sentinel, (out / "queries.jsonl").read_text())
                 self.assertEqual({c["task"] for c in automatic},
-                                 {"M1_occupied", "M1_empty", "M2", "M3"})
+                                 {"M1_occupied", "M1_empty", "M2", "M3", "move_commentary"})
+                self.assertEqual(
+                    sum(c["score_type"] == "explanation_auto" for c in automatic),
+                    300,
+                )
                 self.assertEqual({q["max_new_tokens"] for q in read_jsonl(out / "queries.jsonl")},
                                  {2048})
                 self.assertEqual(manifest["excluded_explanation_cases"], int(index == 2))

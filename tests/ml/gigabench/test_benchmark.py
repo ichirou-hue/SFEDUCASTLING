@@ -2,6 +2,7 @@ import argparse
 import copy
 import json
 import os
+import subprocess
 from pathlib import Path
 import sys
 import tempfile
@@ -9,7 +10,7 @@ import unittest
 from zipfile import ZipFile
 from contextlib import contextmanager
 
-ROOT=Path(__file__).resolve().parents[3]/"ml/gigabench"
+ROOT=Path(__file__).resolve().parents[3]/"ml/benchmark"
 if not (ROOT/"config/default.json").is_file():
     ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
@@ -247,6 +248,30 @@ class PipelineTests(unittest.TestCase):
             with ZipFile(z) as archive:
                 self.assertFalse(any('/private/' in n or n.endswith(('.docx','.nnue','.safetensors')) or n.startswith('runs/') for n in archive.namelist()))
                 self.assertIn('PUBLIC_MANIFEST.json',archive.namelist())
+                docs = ROOT.parents[1] / 'docs/ml/benchmark'
+                for name in ('METRICS.md', 'PROVENANCE.md', 'VALIDATION.md', 'CHANGELOG.md'):
+                    self.assertEqual(archive.read(name), (docs / name).read_bytes())
+                self.assertNotIn('data/commentary_m4_m7_auto_v1/cases.jsonl', archive.namelist())
+                public = Path(tmp) / 'public'
+                archive.extractall(public)
+            run = Path(tmp) / 'public-smoke'
+            subprocess.run([
+                sys.executable, str(public / 'run.py'), 'prepare', '--out', str(run),
+                '--profile', 'smoke', '--backend', 'mock',
+                '--without-legacy', '--without-explanations', '--without-commentary-auto',
+            ], check=True, capture_output=True)
+            manifest = json.loads((run / 'manifest.json').read_bytes())
+            self.assertGreater(manifest['automatic_queries'], 0)
+            self.assertFalse(manifest['commentary_auto'])
+            self.assertFalse(manifest['contains_private_cases'])
+            root_requirements = (ROOT.parents[1] / 'requirements.txt').read_bytes().splitlines()
+            self.assertEqual((public / 'requirements.txt').read_bytes().splitlines(),
+                             [line for line in root_requirements if line.startswith(b'chess==')])
+            clone = Path(tmp) / 'public-clone.zip'
+            subprocess.run([sys.executable, str(public / 'run.py'), 'package', '--out', str(clone)],
+                           check=True, capture_output=True)
+            with ZipFile(z) as original, ZipFile(clone) as repacked:
+                self.assertEqual(original.read('PUBLIC_MANIFEST.json'), repacked.read('PUBLIC_MANIFEST.json'))
 
     @unittest.skipUnless((ROOT/'data/private/legacy_cases.jsonl').exists(),'Local corpus intentionally absent in public repository')
     def test_legacy_size_and_reference_types(self):

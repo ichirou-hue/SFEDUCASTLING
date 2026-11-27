@@ -1,26 +1,17 @@
 #!/usr/bin/env python3
-"""Automatic M4-M7 criteria for GigaChess move-commentary tasks.
-
-The frozen automatic GigaBench run stays untouched.  This tool creates a
-separate commentary run directory (cases/queries/auto rubrics) and scores its
-free-text answers with explicit, deterministic criteria.  It is not a
-replacement for the blinded expert protocol in METRICS.md.
-"""
+"""Frozen M4-M7-auto commentary suite and deterministic scoring helpers."""
 import argparse
 import html
 import json
 import re
-import sys
 from collections import Counter
 from pathlib import Path
 
 import chess
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
-from gigabench import __version__  # noqa: E402
-from gigabench.io import read_jsonl, sha, unique, write_json, write_jsonl  # noqa: E402
-from gigabench.pipeline import source_hashes  # noqa: E402
+from . import __version__  # noqa: E402
+from .io import read_jsonl, sha, unique, write_json, write_jsonl  # noqa: E402
 
 CRITERIA_VERSION = "m4-m7-auto-v1"
 DEFAULT_BUDGET = 512
@@ -75,14 +66,16 @@ MATE_THREAT_RE = re.compile(
 )
 FUTURE_RE = re.compile(
     r"\b(?:до хода|после хода|до него|после него|был|была|было|мог|могла|"
-    r"угрожа\w*|гроз(?:ит|ят|ил|ила|или)|отвеч\w*|ответ\w*|"
+    r"угрожа\w*|гроз(?:ит|ят|ил|ила|или)|отвеч\w*|ответ\w*|взамен|раньше|могли|"
+    r"не\s+отразил\w*\s+угроз\w*|не\s+отражен\w*\s+угроз\w*|угроз\w*(?=\s*:)|"
     r"следующ\w*|затем|потом|дальше|в варианте|если|профилактик\w*|"
     r"препятств\w*|не даёт|не дает|перестаёт|перестает|отход\w*|"
     r"продолжение|нацелен\w*|ловушк\w*)\b",
     re.I,
 )
 PLAYED_RE = re.compile(
-    r"\b(?:идет|идёт|сыгран\w*|сыграл\w*|сходил\w*|пошел|пошёл|объявляет|встает|"
+    r"\b(?:идет|идёт|сыгран\w*|сыграл\w*|сходил\w*|пошел|пошёл|пошл[аи]|"
+    r"продвинул(?:ся|ась|ись)|переместил(?:ся|ась|ись)|объявляет|встает|"
     r"встаёт|занимает|берет|берёт|бьет|бьёт|ставит|дает|даёт|отражает|созда[её]т|"
     r"берут|бьют|вынужден\w*|превращается|уходит|отходит)\b",
     re.I,
@@ -113,7 +106,7 @@ CAPTURE_DIRECT_RE = re.compile(CAPTURE_EXPLICIT + r"\s+(?P<square>[a-h][1-8])\b"
 CASTLING_RE = re.compile(r"\bрокировк\w*\b", re.I)
 CASTLING_CLAIM_RE = re.compile(
     r"\bрокировал\w*|\bрокировк[аи]\b|"
-    r"\b(?:сделал|сделана|делает)\s+(?:короткую|длинную)?\s*рокировк\w*",
+    r"\b(?:сделал[аи]?|сделана|делает|делают)\s+(?:короткую|длинную)?\s*рокировк\w*",
     re.I,
 )
 PROMOTION_RE = re.compile(r"\bпревращ\w*\b", re.I)
@@ -127,6 +120,21 @@ MOVE_RE = re.compile(
     r"(?:(?P<piece>пешк\w*|кон\w*|слон\w*|лад\w*|ферз\w*|корол\w*)\s+)?"
     r"(?:с\s+)?(?P<from>[a-h][1-8])\s*(?:на|в|->|→|-)\s*(?P<to>[a-h][1-8])",
     re.I,
+)
+PIECE_SUBJECT_RE = re.compile(
+    r"\b(пешка|конь|слон|ладья|ферзь|король)\s+"
+    r"(?:идет|пошел|пошла|продвинулся|продвинулась|переместился|переместилась|"
+    r"уходит|отходит|встает|занимает)\s*$"
+)
+PLAYED_SAN_RE = re.compile(
+    r"(?i:\b(?:сыграл[аи]?|сыгран(?:\s+ход)?)\s+)"
+    r"(?P<san>(?:[KQRBN]?[a-h]?[1-8]?x?[a-h][1-8](?:=[QRBN])?|"
+    r"O-O(?:-O)?)[+#]?)(?![\w+=#-])"
+)
+CURRENT_MOVE_RE = re.compile(r"^(?:а\s+)?(?:этот|сыгранный|сделанный)\s+ход\b")
+LINE_CONTINUATION_RE = re.compile(
+    r"^(?:а\s+)?(?:после\s+ответ\w*|после\s+ответного|затем|потом|в ответ|взамен|"
+    r"следующ\w*\s+ход\w*)\b"
 )
 CAPTURE_WITH_SQUARE_RE = re.compile(
     r"\b(?:бь[её]т|взял\w*|съел\w*|захват\w*)\b[^.!?\n]{0,24}?"
@@ -162,6 +170,17 @@ EVAL_UNCHANGED_RE = re.compile(
     r"\bоценк\w*\b[^.!?\n]{0,24}\b(?:не\s+меняется|почти\s+не\s+меняется|стабильн\w*)\b",
     re.I,
 )
+PLAYED_PASSIVE_RE = re.compile(r"\b(?:был[аи]?|быть)\s+(?:сыгран|сделан|выполнен)\w*\b", re.I)
+NEGATED_PREDICATE_RE = re.compile(r"\b(?:не|без)\s+(?:\w+\s+){0,3}$", re.I)
+NEG_CHECK_RE = re.compile(r"\bне\s+(?:\w+\s+){0,2}шах\w*|\bбез\s+шах\w*", re.I)
+NEG_MATE_RE = re.compile(r"\bне\s+(?:\w+\s+){0,2}мат\w*|\bбез\s+мат\w*", re.I)
+NEG_CAPTURE_RE = re.compile(
+    r"\bбез\s+(?:\w+\s+){0,2}взяти\w*|"
+    r"\bне\s+(?:\w+\s+){0,2}(?:бер[её]т|берут|взял\w*|съел\w*|захват\w*)",
+    re.I,
+)
+NEG_CASTLING_RE = re.compile(r"\bбез\s+рокировк\w*|\bне\s+(?:\w+\s+){0,2}рокиров\w*", re.I)
+NEG_PROMOTION_RE = re.compile(r"\bбез\s+превращени\w*|\bне\s+(?:\w+\s+){0,2}превраща\w*", re.I)
 
 
 def _norm(text):
@@ -189,6 +208,19 @@ def _verdict_group(text):
     return None
 
 
+def _asserted_verdicts(text):
+    """Return non-negated verdicts in text order; "не ошибка" asserts nothing."""
+    normalized = _norm(text)
+    found = []
+    for group, pattern in VERDICT_GROUPS:
+        for match in re.finditer(pattern, normalized):
+            prefix = normalized[max(0, match.start() - 30):match.start()]
+            if NEGATED_PREDICATE_RE.search(prefix):
+                continue
+            found.append((match.start(), group))
+    return [group for _, group in sorted(found)]
+
+
 HYPOTHETICAL_RE = re.compile(
     r"(?:угроз\w*|гроз\w*|не\s+отразил\w*|не\s+отражен\w*|взяти\w*|вместо|"
     r"мог\w*|ответ\w*|затем|потом|после|до хода|следующ\w*)\s*(?:[^.!?;:]{0,40})$",
@@ -205,9 +237,15 @@ def _last(pattern, text):
     return matches[-1] if matches else None
 
 
+def _negated(text, position, window=40):
+    return bool(NEGATED_PREDICATE_RE.search(text[max(0, position - window):position]))
+
+
 def _line_context(sentence):
     """True when a sentence describes a past/future line rather than the played move."""
     normalized = _norm(sentence)
+    if PLAYED_PASSIVE_RE.match(normalized):
+        return False
     if not FUTURE_RE.search(normalized):
         return False
     alternative = re.search(
@@ -312,7 +350,6 @@ def build_rubric(facts, target):
         ideas.append({"id": "effect", "kind": "effect", "effect": "castling", "text": "Рокировка"})
     elif delta.get("promotion"):
         ideas.append({"id": "effect", "kind": "effect", "effect": "promotion", "text": "Превращение"})
-    verdict_group = _verdict_group(_norm(verdict or ""))
     if verdict:
         ideas.append({"id": "verdict", "kind": "verdict", "verdict": verdict,
                       "text": f"Вердикт: {verdict}"})
@@ -374,7 +411,10 @@ def _critical_examples(delta, after):
 def _move_matches(claim, move):
     same_piece = (not claim.get("piece") or not move.get("piece")
                   or claim["piece"].upper() == move["piece"].upper())
-    return claim.get("from") == move.get("from") and claim.get("to") == move.get("to") and same_piece
+    same_promotion = (not claim.get("promotion") or not move.get("uci")
+                      or claim["promotion"] == move["uci"][4:])
+    return (claim.get("from") == move.get("from") and claim.get("to") == move.get("to")
+            and same_piece and same_promotion)
 
 
 def _claim(kind, text, **fields):
@@ -402,16 +442,26 @@ def _capture_target(sentence):
 
 
 def _claim_segments(sentence):
-    """Cut a future clause off when the played move is described first."""
-    if not _line_context(sentence):
-        return [sentence]
-    first = FUTURE_RE.search(sentence)
-    if not first:
-        return []
-    prefix = sentence[:first.start()].strip(" ,;:")
-    if len(prefix.split()) >= 3 and not _line_context(prefix):
-        return [prefix]
-    return []
+    """Drop unchecked continuations but retain explicit assertions about the actual move."""
+    in_line = False
+    for clause in re.split(r"[,;]\s*", sentence):
+        clause = clause.strip(" ,;:")
+        normalized = _norm(clause)
+        if CURRENT_MOVE_RE.match(normalized):
+            in_line = False
+        if not clause or in_line:
+            continue
+        if not _line_context(clause):
+            yield clause
+            continue
+        first = FUTURE_RE.search(normalized)
+        if first:
+            prefix = clause[:first.start()].strip(" ,;:")
+            if len(prefix.split()) >= 3 and not _line_context(prefix):
+                yield prefix
+            marker = normalized[first.start():]
+            in_line = bool(LINE_CONTINUATION_RE.match(marker) or marker.startswith(
+                ("угроз", "угрож", "гроз", "не отраз", "если", "в варианте")))
 
 
 def extract_claims(text, facts):
@@ -430,8 +480,9 @@ def extract_claims(text, facts):
 
     def add(claim):
         key = (claim["kind"], claim.get("from"), claim.get("to"), claim.get("square"),
-               claim.get("piece"), claim.get("verdict"), claim.get("side"),
-               claim.get("unchanged"), claim.get("text"))
+               claim.get("piece"), claim.get("san"), claim.get("verdict"), claim.get("side"),
+               claim.get("unchanged"), claim.get("promotion"), claim.get("expected"),
+               claim.get("text"))
         if key not in seen:
             seen.add(key)
             claims.append(claim)
@@ -445,11 +496,16 @@ def extract_claims(text, facts):
                 recommendation, is_played = _move_role(normalized, match.start())
                 if not recommendation and _hypothetical(normalized, match.start()):
                     continue
+                subject = PIECE_SUBJECT_RE.search(normalized[:match.start()])
                 add(_claim(
                     "move", segment, from_=match["from"], to=match["to"],
-                    piece=_piece_from_word(match["piece"] or ""),
+                    piece=_piece_from_word(match["piece"] or (subject[1] if subject else "")),
                     recommendation=recommendation, played=is_played,
                 ))
+            for match in PLAYED_SAN_RE.finditer(segment):
+                is_alternative, is_played = _move_role(normalized, match.start("san"))
+                if is_played and not is_alternative and not _negated(normalized, match.start("san")):
+                    add(_claim("move", segment, san=match["san"], recommendation=False, played=True))
             for match in UCI_RE.finditer(normalized):
                 recommendation, is_played = _move_role(normalized, match.start())
                 if not recommendation and _hypothetical(normalized, match.start()):
@@ -457,29 +513,42 @@ def extract_claims(text, facts):
                 uci = match[1].lower()
                 add(_claim(
                     "move", segment, from_=uci[:2], to=uci[2:4], piece=None,
+                    promotion=uci[4] if len(uci) > 4 else None,
                     recommendation=recommendation, played=is_played,
                 ))
             if recommendation:
                 # The move is the only checkable part of an alternative recommendation.
                 continue
-            if CASTLING_CLAIM_RE.search(normalized):
-                add(_claim("castling", segment, played=played))
-            if PROMOTION_CLAIM_RE.search(normalized):
-                add(_claim("promotion", segment, played=played))
+            castling_match = CASTLING_CLAIM_RE.search(normalized)
+            if castling_match and not _negated(normalized, castling_match.start()):
+                add(_claim("castling", segment, played=played, expected=True))
+            elif NEG_CASTLING_RE.search(normalized):
+                add(_claim("castling", segment, played=played, expected=False))
+            promotion_match = PROMOTION_CLAIM_RE.search(normalized)
+            if promotion_match and not _negated(normalized, promotion_match.start()):
+                add(_claim("promotion", segment, played=played, expected=True))
+            elif NEG_PROMOTION_RE.search(normalized):
+                add(_claim("promotion", segment, played=played, expected=False))
+            negative_capture = NEG_CAPTURE_RE.search(normalized)
             capture_match = CAPTURE_CLAIM_RE.search(normalized)
-            if capture_match and not _hypothetical(normalized, capture_match.start()):
+            if negative_capture and not capture_match:
+                add(_claim("capture", segment, square=None, piece=None,
+                           played=played, expected=False))
+            elif capture_match and not _negated(normalized, capture_match.start()):
                 square, piece = _capture_target(segment)
-                add(_claim("capture", segment, square=square, piece=piece, played=played))
+                add(_claim("capture", segment, square=square, piece=piece,
+                           played=played, expected=True))
             elif not capture_match:
                 square_matches = list(CAPTURE_WITH_SQUARE_RE.finditer(normalized))
                 for match in square_matches:
                     square = match["square"]
-                    if square in capture_squares and not _hypothetical(normalized, match.start()):
+                    if (square in capture_squares and not _hypothetical(normalized, match.start())
+                            and not _negated(normalized, match.start())):
                         add(_claim("capture", segment, square=square,
                                    piece=_piece_from_word(match["piece"] or ""), played=played))
                 piece_match = _last(CAPTURE_PIECE_RE, normalized)
-                if not square_matches and piece_match and re.search(r"\bбь[её]т\b", normalized):
-                    verb = re.search(r"\bбь[её]т\b", normalized)
+                verb = re.search(r"\bбь[её]т\b", normalized)
+                if not square_matches and piece_match and verb:
                     between = normalized[verb.end():piece_match.start("piece")]
                     actual_capture = delta.get("captured") or {}
                     actual_piece = actual_capture.get("piece") if isinstance(actual_capture, dict) else None
@@ -491,17 +560,21 @@ def extract_claims(text, facts):
                             and not _hypothetical(normalized, verb.start())):
                         add(_claim("capture", segment, square=None,
                                    piece=claimed_piece, played=played))
-            negative_check = bool(re.search(r"\bне\s+шах\b|\bбез\s+шах\w*", normalized))
+            negative_check = bool(NEG_CHECK_RE.search(normalized))
             check_match = CHECK_RE.search(normalized)
-            if (check_match and not MATE_THREAT_RE.search(normalized)
-                    and not _hypothetical(normalized, check_match.start())):
-                add(_claim("check", segment, expected=not negative_check, played=played))
             mate_match = MATE_RE.search(normalized)
+            if (check_match and not MATE_THREAT_RE.search(normalized)
+                    and not negative_check and not _hypothetical(normalized, check_match.start())
+                    and not _negated(normalized, check_match.start())):
+                add(_claim("check", segment, expected=True, played=played))
+            elif negative_check and not mate_match and not MATE_THREAT_RE.search(normalized):
+                add(_claim("check", segment, expected=False, played=played))
             if (mate_match and not MATE_THREAT_RE.search(normalized)
                     and not _hypothetical(normalized, mate_match.start())):
-                add(_claim("mate", segment, expected=True, played=played))
-            verdict = _verdict_group(normalized)
-            if verdict and not re.search(r"\bне\s+ошибк\w*", normalized):
+                expected_mate = not bool(NEG_MATE_RE.search(normalized)) and not _negated(
+                    normalized, mate_match.start())
+                add(_claim("mate", segment, expected=expected_mate, played=played))
+            for verdict in _asserted_verdicts(normalized):
                 add(_claim("verdict", segment, verdict=verdict, played=played))
             if "материал" in normalized:
                 continue
@@ -531,17 +604,38 @@ def _verify_move(claim, facts):
     actual = facts["delta"]
     if claim["recommendation"]:
         board = chess.Board(facts["before"]["fen"])
+        uci = claim["from"] + claim["to"] + (claim.get("promotion") or "")
         try:
-            move = chess.Move.from_uci(claim["from"] + claim["to"])
+            move = chess.Move.from_uci(uci)
         except ValueError:
             return "incorrect", True
         if move not in board.legal_moves:
+            if claim.get("promotion") is None and any(
+                candidate.from_square == move.from_square and candidate.to_square == move.to_square
+                and candidate.promotion for candidate in board.legal_moves
+            ):
+                return "unconfirmed", False
             return "incorrect", True
         best = facts["engine"].get("best_move_before") or {}
-        return ("confirmed" if (claim["from"], claim["to"]) == (best.get("from"), best.get("to"))
+        return ("confirmed" if uci == best.get("uci")
                 else "unconfirmed"), False
     if not claim.get("played"):
         return "unconfirmed", False
+    if claim.get("san"):
+        board = chess.Board(facts["before"]["fen"])
+        try:
+            move = board.parse_san(claim["san"])
+        except chess.AmbiguousMoveError:
+            return "unconfirmed", False
+        except ValueError:
+            return "incorrect", True
+        if move.uci() != actual.get("uci"):
+            return "incorrect", True
+        board.push(move)
+        if ((claim["san"].endswith("#") and not board.is_checkmate())
+                or (claim["san"].endswith("+") and not board.is_check())):
+            return "incorrect", True
+        return "confirmed", False
     if _move_matches(claim, actual):
         return "confirmed", False
     return "incorrect", True
@@ -554,11 +648,15 @@ def _verify_claim(claim, facts, rubric):
     if kind == "move":
         return _verify_move(claim, facts)
     if kind == "capture":
+        expected = claim.get("expected", True)
+        actual_capture = bool(delta.get("is_capture"))
+        if expected != actual_capture:
+            return "incorrect", True
+        if not expected:
+            return "confirmed", False
         captured = delta.get("captured") or {}
         actual_square = captured.get("square") if isinstance(captured, dict) else None
         actual_piece = captured.get("piece") if isinstance(captured, dict) else None
-        if not delta.get("is_capture"):
-            return "incorrect", True
         if claim.get("square") and claim["square"] != (actual_square or delta.get("to")):
             return "incorrect", True
         if claim.get("piece") and actual_piece and claim["piece"].upper() != actual_piece.upper():
@@ -571,7 +669,9 @@ def _verify_claim(claim, facts, rubric):
         actual = bool(after.get("is_checkmate"))
         return ("confirmed", False) if claim["expected"] == actual else ("incorrect", True)
     if kind in ("castling", "promotion"):
-        return ("confirmed", False) if bool(delta.get(kind)) else ("incorrect", True)
+        expected = claim.get("expected", True)
+        actual = bool(delta.get(kind))
+        return ("confirmed", False) if expected == actual else ("incorrect", True)
     if kind == "verdict":
         actual = _verdict_group(_norm(rubric["allowed_facts"].get("verdict") or ""))
         if actual is None:
@@ -763,6 +863,7 @@ def score_response(text, case, truncated=False):
         "claims": [], "idea_scores": [0] * len(rubric["required_ideas"]),
         "criteria": {"goal": False, "position_link": False, "clarity": False, "actionable": False},
         "empty": not text.strip(), "truncated": bool(truncated),
+        "critical_error": False,
     }
     if not text.strip() or truncated:
         return base
@@ -856,7 +957,54 @@ def commentary_cases(commentary, facts_path, split, budget, limit=None):
     return cases, excluded
 
 
+def load_frozen_suite(path=None):
+    suite = Path(path) if path else ROOT / "data/commentary_m4_m7_auto_v1"
+    manifest = json.loads((suite / "manifest.json").read_text(encoding="utf-8"))
+    if manifest.get("criteria_version") != CRITERIA_VERSION:
+        raise ValueError("frozen commentary suite uses another criteria version")
+    for filename, hash_key in (
+        ("cases.jsonl", "cases_sha256"),
+        ("queries.jsonl", "queries_sha256"),
+    ):
+        if manifest.get(hash_key) != sha(suite / filename):
+            raise ValueError(f"frozen commentary suite {filename} hash mismatch")
+
+    cases = read_jsonl(suite / "cases.jsonl")
+    queries = read_jsonl(suite / "queries.jsonl")
+    rubrics = read_jsonl(suite / "auto_rubrics.jsonl")
+    audit = read_jsonl(suite / "audit.jsonl")
+    if len(cases) != manifest.get("case_count") or not cases:
+        raise ValueError("frozen commentary suite case count mismatch")
+    if len(audit) != manifest.get("excluded_commentary_cases"):
+        raise ValueError("frozen commentary suite audit count mismatch")
+    unique(cases)
+    if len({query["id"] for query in queries}) != len(queries):
+        raise ValueError("frozen commentary suite has duplicate query IDs")
+    expected_queries = [
+        {"id": case["id"], "fen": case["fen"], "prompt": case["prompt"],
+         "max_new_tokens": case["max_new_tokens"]}
+        for case in cases
+    ]
+    if queries != expected_queries:
+        raise ValueError("frozen commentary suite queries differ from its cases")
+    expected_rubrics = [
+        {"id": case["id"], **case["gold"]["rubric"]} for case in cases
+    ]
+    if rubrics != expected_rubrics:
+        raise ValueError("frozen commentary suite rubrics differ from its cases")
+    if any(
+        case["score_type"] != "explanation_auto"
+        or case["params"].get("rubric_version") != CRITERIA_VERSION
+        or "reference_answer" in case["gold"]
+        for case in cases
+    ):
+        raise ValueError("frozen commentary suite contains invalid or reference cases")
+    return cases, manifest
+
+
 def prepare_run(args):
+    from .pipeline import source_hashes
+
     config = json.loads(Path(args.config).read_text(encoding="utf-8"))
     budget = args.max_new_tokens or DEFAULT_BUDGET
     if budget < 1:
@@ -927,6 +1075,15 @@ def score_run(args):
             raise ValueError("frozen suite cases hash does not match manifest")
         if suite_manifest.get("queries_sha256") != sha(queries_path):
             raise ValueError("frozen suite queries hash does not match manifest")
+    if suite_manifest is None and (run / "manifest.json").is_file():
+        run_manifest = json.loads((run / "manifest.json").read_text(encoding="utf-8"))
+        if run_manifest.get("criteria_version") != CRITERIA_VERSION:
+            raise ValueError("run uses a different criteria version")
+        if run_manifest.get("cases_sha256") != sha(cases_path):
+            raise ValueError("run cases hash does not match manifest")
+        if (run / "queries.jsonl").is_file() and run_manifest.get("queries_sha256") != sha(
+                run / "queries.jsonl"):
+            raise ValueError("run queries hash does not match manifest")
     case_rows = read_jsonl(cases_path)
     cases = {c["id"]: c for c in case_rows}
     if len(cases) != len(case_rows):
@@ -1125,12 +1282,12 @@ def main():
     args = parser.parse_args()
     if args.command == "prepare":
         manifest, excluded = prepare_run(args)
-        print(json.dumps({"cases": manifest["case_count"], "excluded": excluded,
+        print(json.dumps({"cases": manifest["case_count"], "excluded": excluded,  # noqa: T201
                           "out": str(args.out)}, ensure_ascii=False))
     elif args.command == "score":
-        print(json.dumps(score_run(args), ensure_ascii=False, indent=2))
+        print(json.dumps(score_run(args), ensure_ascii=False, indent=2))  # noqa: T201
     else:
-        print(compare_runs(args))
+        print(compare_runs(args))  # noqa: T201
 
 
 if __name__ == "__main__":

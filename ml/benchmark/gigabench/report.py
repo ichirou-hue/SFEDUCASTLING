@@ -80,6 +80,8 @@ def task_table(tasks,summary):
 
 def expected_text(case):
     gold=case['gold']
+    if case['score_type']=='explanation_auto':
+        return 'Принятие по автоматическим M4–M7'
     if case['score_type']=='piece':
         label=gold['label']
         pieces={'p':'пешка','n':'конь','b':'слон','r':'ладья','q':'ферзь','k':'король'}
@@ -94,6 +96,15 @@ def expected_text(case):
 
 
 def prediction_text(case,response,score):
+    if case['score_type']=='explanation_auto':
+        if score.get('status')=='not_run':return 'Не запускалось'
+        if response.get('error'):return 'Ошибка выполнения'
+        if score.get('empty'):return 'Пустой ответ'
+        return ('Принято' if score.get('accepted') else 'Не принято')+(
+            f"; M4={100*score['M4_auto']:.0f}%, "
+            f"M5={100*score['M5_auto']:.0f}%, "
+            f"M6={score['M6_auto']}, M7={4*score['M7_auto']:.0f}/4"
+        )
     if score.get('predicted') is not None:
         return json.dumps(score['predicted'],ensure_ascii=False)
     if score.get('status')=='not_run':return 'Не запускалось'
@@ -111,6 +122,8 @@ def verdict_text(score):
     if score.get('status')=='pending_engine':return 'ожидается оценка движка'
     if score.get('status')=='pending_coach_ratings':return 'ожидается экспертная оценка'
     if score.get('status')=='mate_group':return 'матовая группа: отдельно'
+    if score.get('criteria_version')=='m4-m7-auto-v1':
+        return 'принято по M4–M7-auto' if score.get('accepted') else 'не принято по M4–M7-auto'
     content=score.get('content_correct',score['correct'])
     if content is True:return 'верно'
     if content is False:return 'неверный ответ'
@@ -158,20 +171,41 @@ def render_html(out,summary,config):
         earned=sum(s.get('content_correct',s['correct']) is True for s in scores)
         total=a['total']
         parts.append(f"<div class='card'><h2>Score</h2><div class='big'>{earned} / {total} — {pct(100*earned/total if total else None)}</div>"
-                     "<p>1 подтверждённо правильный ответ = 1 балл. Сравнивайте на одинаковом наборе.</p></div>")
+                     "<p>1 успешно выполненная задача = 1 балл; для комментариев успех определяется порогами M4–M7-auto. Сравнивайте на одинаковом наборе.</p></div>")
     status=EXPLANATIONS.get(summary['explanations_status'],summary['explanations_status'])
     parts.append(f"<p class='muted'>Ответов: {cov['completed']} из {cov['expected']}. Объяснения: {html.escape(status)}.</p>")
     parts.append('<p class="note">Правильность содержания и соблюдение формата оцениваются отдельно. '
                  'Нераспознанный ответ не означает отсутствие текста модели. '
                  'Если достигнут лимит токенов, модель могла не успеть сформулировать результат. '
-                 'Основной балл — доля подтверждённых успехов: неразобранные ответы не исключаются '
-                 'из знаменателя, но не называются доказанными шахматными ошибками.</p>')
+                 'Нераспознанные ответы не исключаются из знаменателя. M4–M7-auto — автоматические критерии, '
+                 'не экспертная оценка и не суждение о педагогической пользе.</p>')
     if summary.get('answer_coverage'):
         a=summary['answer_coverage']
         parts.append(f"<p class='note'>Извлечён ответ: {a['answered']}/{a['total']}. "
                      f"Подтверждённо неверных: {a['confirmed_wrong']}. "
                      f"Лимит без распознанного ответа: {a['budget_without_answer']}. "
                      f"Завершён, но не разобран: {a['unparseable']}.</p>")
+    auto=summary.get('commentary_auto_metrics')
+    if auto:
+        parts.append(
+            f"<h2>M4-auto–M7-auto: комментарии</h2><p class='muted'>"
+            f"{html.escape(auto['criteria_version'])}; ответов {auto['n']} из {auto['expected']}."
+            f" Это автоматические критерии, не экспертные оценки.</p><div class='cards'>"
+        )
+        for key,label in (
+            ('M4','Проверяемые утверждения'),
+            ('M5','Обязательные идеи'),
+            ('M6','Критические ошибки'),
+            ('M7','Структура объяснения'),
+            ('accepted_percent','Принято по порогам'),
+        ):
+            suffix=' · меньше — лучше' if key=='M6' else ''
+            parts.append(
+                f"<div class='card'><div class='tag'>{html.escape(key+'-auto' if key!='accepted_percent' else 'Результат')}</div>"
+                f"<h3>{html.escape(label)}</h3><div class='big'>{pct(auto[key])}</div>"
+                f"<div class='muted'>{suffix}</div></div>"
+            )
+        parts.append('</div>')
     parts.append('<h2>Блоки</h2><div class="cards">')
     for block,v in summary['by_block'].items():
         earned=sum(summary['by_task'][t]['correct'] for t in v['tasks'])
@@ -198,10 +232,10 @@ const fb=document.getElementById('fb'),ft=document.getElementById('ft'),fr=docum
 [...new Set(D.map(d=>d.block))].filter(Boolean).sort().forEach(b=>fb.add(new Option(b,b)));
 [...new Set(D.map(d=>d.task))].sort().forEach(t=>ft.add(new Option(t,t)));
 function draw(){const q=fq.value.toLowerCase();const rows=D.filter(d=>(!fb.value||d.block==fb.value)&&(!ft.value||d.task==ft.value)&&
- (!fr.value||(fr.value=='1'&&d.content_correct===true)||(fr.value=='0'&&d.content_correct===false)||(fr.value=='u'&&d.content_correct===null)||(fr.value=='t'&&d.truncated)||(fr.value=='f'&&!d.format))&&
+ (!fr.value||(fr.value=='1'&&d.content_correct===true)||(fr.value=='0'&&d.content_correct===false)||(fr.value=='u'&&d.content_correct===null)||(fr.value=='t'&&d.truncated)||(fr.value=='f'&&d.format===false))&&
  (!q||(d.prompt+' '+d.answer+' '+d.id).toLowerCase().includes(q)));
  document.getElementById('count').textContent='Показано '+rows.length+' из '+D.length+(rows.length>500?'; выведены первые 500':'');
-  document.getElementById('rows').innerHTML=rows.slice(0,500).map(d=>'<tr><td>'+esc(d.task)+'<div class="muted" style="font-size:12px">'+esc(d.id)+(d.pieces?' · '+esc(d.pieces):'')+'</div></td><td class="prompt">'+esc(d.prompt)+'<div style="font-size:12px">'+esc(d.fen)+'</div></td><td><b>'+esc(d.expected)+'</b></td><td class="answer">'+esc(d.answer)+(d.truncated?' <span class="flag">[обрезано]</span>':'')+(d.format?'':' <span class="flag">[формат]</span>')+'<details><summary>Как разобран ответ</summary>'+esc(d.predicted)+'</details></td><td class="'+(d.content_correct===true?'ok':d.content_correct===false?'no':'muted')+'"><b>'+esc(d.content_correct===true?'Верно':d.content_correct===false?'Неверно':'Не удалось оценить')+'</b><div>'+esc(d.verdict)+'</div></td></tr>').join('');}
+  document.getElementById('rows').innerHTML=rows.slice(0,500).map(d=>'<tr><td>'+esc(d.task)+'<div class="muted" style="font-size:12px">'+esc(d.id)+(d.pieces?' · '+esc(d.pieces):'')+'</div></td><td class="prompt">'+esc(d.prompt)+'<div style="font-size:12px">'+esc(d.fen)+'</div></td><td><b>'+esc(d.expected)+'</b></td><td class="answer">'+esc(d.answer)+(d.truncated?' <span class="flag">[обрезано]</span>':'')+(d.format===false?' <span class="flag">[формат]</span>':'')+'<details><summary>Как разобран ответ</summary>'+esc(d.predicted)+'</details></td><td class="'+(d.content_correct===true?'ok':d.content_correct===false?'no':'muted')+'"><b>'+esc(d.content_correct===true?'Верно':d.content_correct===false?'Неверно':'Не удалось оценить')+'</b><div>'+esc(d.verdict)+'</div></td></tr>').join('');}
 [fb,ft,fr].forEach(e=>e.onchange=draw);fq.oninput=draw;draw();
 </script></main></body></html>''')
     (out/'report.html').write_text(''.join(parts),encoding='utf-8')

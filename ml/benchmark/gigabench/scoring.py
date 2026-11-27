@@ -1,6 +1,7 @@
 import random
 from collections import defaultdict
 import chess
+from .commentary import CRITERIA_VERSION as AUTO_COMMENTARY_VERSION, score_response
 from .parsing import parse_bool, parse_move, parse_piece, parse_set, parse_scalar, compliant, final_answers, first_answer_fragment
 
 
@@ -31,7 +32,7 @@ def score_case(case,response,engine=None,bins=None):
     answer_first=case.get('answer_protocol')=='answer_first_v1' and kind!='explanation'
     if answer_first:text=first_answer_fragment(case,text,bool(response.get('truncated')))
     result={'id':case['id'],'suite':case['suite'],'task':case['task'],'group_id':case['group_id'],
-            'correct':False,'protocol_compliant':compliant(kind,text),
+            'correct':False,'protocol_compliant':None if kind=='explanation_auto' else compliant(kind,text),
             'empty':not original_text.strip(),'error':response.get('error'),
             'truncated':bool(response.get('truncated')),'status':'scored',
             'answer_class':answer_class(case)}
@@ -83,6 +84,23 @@ def score_case(case,response,engine=None,bins=None):
                           engine=e,legal=e['legal'],status='scored' if e['ordinary'] else 'mate_group')
     elif kind=='explanation':
         result.update(correct=None,status='pending_coach_ratings')
+    elif kind=='explanation_auto':
+        auto=score_response(text,case,truncated=bool(response.get('truncated')))
+        recognized=bool(text.strip()) and not response.get('truncated') and not response.get('error')
+        result.update(
+            correct=auto['accepted'],
+            predicted=auto['accepted'] if recognized else None,
+            accepted=auto['accepted'],
+            M4_auto=auto['M4'],
+            M5_auto=auto['M5'],
+            M6_auto=auto['M6'],
+            M7_auto=auto['M7'],
+            critical_error=auto.get('critical_error',False),
+            claims=auto['claims'],
+            idea_scores=auto['idea_scores'],
+            criteria=auto['criteria'],
+            criteria_version=AUTO_COMMENTARY_VERSION,
+        )
     else:
         raise ValueError('Unknown score type '+kind)
     recognized=(result.get('predicted') is not None or (kind=='mate_move' and parse_bool(text) is False)
@@ -136,9 +154,10 @@ def interval(rows,config,metric=plain_accuracy):
 
 def accuracy(rows,bootstrap,ci=True,detail=True):
     scored=[r for r in rows if r['correct'] is not None]
+    protocol_rows=[r for r in rows if isinstance(r.get('protocol_compliant'),bool)]
     result={'records':len(rows),'n':len(scored),'correct':sum(bool(r['correct']) for r in scored),
             'accuracy_percent':plain_accuracy(scored),
-            'protocol_compliance_percent':pct(sum(r['protocol_compliant'] for r in rows),len(rows)),
+            'protocol_compliance_percent':pct(sum(r['protocol_compliant'] for r in protocol_rows),len(protocol_rows)),
             'empty':sum(r['empty'] for r in rows),'errors':sum(bool(r['error']) for r in rows),
              'truncated':sum(r['truncated'] for r in rows),
              'answered':sum(r.get('answer_status')=='answered' for r in rows),
@@ -252,12 +271,31 @@ def summarize(rows,config):
               'M2':accuracy(m2,config['bootstrap']) if m2 else None,
               'M3':accuracy(m3,config['bootstrap']) if m3 else None,
               'M4':None,'M5':None,'M6':None,'M7':None,'accepted_explanations_percent':None}
+    commentary=[r for r in rows if r.get('criteria_version')==AUTO_COMMENTARY_VERSION]
+    evaluated_commentary=[r for r in commentary if r.get('status')!='not_run']
+    commentary_auto_metrics=None
+    if commentary:
+        n=len(evaluated_commentary)
+        mean=lambda key:100*sum(r[key] for r in evaluated_commentary)/n if n else None
+        commentary_auto_metrics={
+            'criteria_version':AUTO_COMMENTARY_VERSION,
+            'n':n,
+            'expected':len(commentary),
+            'complete':n==len(commentary),
+            'M4':mean('M4_auto'),
+            'M5':mean('M5_auto'),
+            'M6':mean('M6_auto'),
+            'M7':mean('M7_auto'),
+            'accepted_percent':100*sum(r['accepted'] for r in evaluated_commentary)/n if n else None,
+            'critical_errors':sum(bool(r.get('critical_error')) for r in evaluated_commentary),
+        }
     if m3:document['M3']['legal_percent']=pct(sum(r.get('legal',False) for r in m3),len(m3))
     coverage={'answered':sum(r.get('answer_status')=='answered' for r in rows),
               'total':len(rows),'confirmed_wrong':sum(r.get('content_correct') is False for r in rows),
               'budget_without_answer':sum(r.get('answer_status')=='budget_without_answer' for r in rows),
               'unparseable':sum(r.get('answer_status')=='unparseable' for r in rows)}
     return {'by_block':blocks,'by_suite':suites,'by_task':tasks,'document_metrics':document,
+            'commentary_auto_metrics':commentary_auto_metrics,
             'answer_coverage':coverage,
             'automatic_task_macro_percent':sum(auto)/len(auto) if auto else None,
             'automatic_macro_scope':config['aggregate'],

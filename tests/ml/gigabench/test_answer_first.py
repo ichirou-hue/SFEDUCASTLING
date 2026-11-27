@@ -4,7 +4,7 @@ import sys
 import unittest
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[3] / "ml/gigabench"
+ROOT = Path(__file__).resolve().parents[3] / "ml/benchmark"
 sys.path.insert(0, str(ROOT))
 
 import chess  # noqa: E402

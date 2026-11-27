@@ -8,7 +8,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[3] / "ml/gigabench"
+ROOT = Path(__file__).resolve().parents[3] / "ml/benchmark"
 sys.path.insert(0, str(ROOT))
 
 import chess  # noqa: E402
@@ -168,7 +168,8 @@ class PrepareAnswerFirstIndependentTests(unittest.TestCase):
             self.assertEqual(frozen["config"]["answer_protocol"], "answer_first_v1")
             self.assertEqual(frozen["config"]["generation"]["max_new_tokens"], 128)
             self.assertIn("gigabench/prompts.py", frozen["code_sha256"])
-            self.assertTrue(all(row.get("answer_protocol") == "answer_first_v1" for row in rows))
+            protocol_rows = [row for row in rows if row["score_type"] != "explanation_auto"]
+            self.assertTrue(all(row.get("answer_protocol") == "answer_first_v1" for row in protocol_rows))
             queries = read_jsonl(output / "queries.jsonl")
             self.assertEqual(len(queries), len(rows))
             self.assertTrue(all(q["max_new_tokens"] == 128 for q in queries))

@@ -8,7 +8,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-SCRIPT = Path(__file__).resolve().parents[3] / "ml/gigabench/tools/compare_reports.py"
+SCRIPT = Path(__file__).resolve().parents[3] / "ml/benchmark/tools/compare_reports.py"
 SPEC = importlib.util.spec_from_file_location("gigabench_compare_reports", SCRIPT)
 assert SPEC is not None and SPEC.loader is not None
 REPORT = importlib.util.module_from_spec(SPEC)
@@ -63,6 +63,39 @@ class ComparisonTests(unittest.TestCase):
             subprocess.run([*command, "--out", str(target)], check=True, capture_output=True)
             self.assertEqual(target.read_bytes(), original)
 
+    def test_cli_accepts_three_runs_with_first_as_baseline(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            runs = [
+                self.create_run(root, "base", (20, 16, 40)),
+                self.create_run(root, "lora-handoff-desc-v1", (25, 10, 40)),
+                self.create_run(root, "lora-pilot-cells-v1", (10, 20, 50)),
+            ]
+            for path in runs:
+                data = REPORT.load(path / "run.json")
+                data["backend"].update({
+                    "model": "Qwen/Qwen3-1.7B",
+                    "training_performed": False,
+                    "adapter": None if path.name == "base" else f"/adapters/{path.name}/adapter",
+                })
+                save(path / "run.json", data)
+
+            subprocess.run(
+                [sys.executable, str(SCRIPT), *(str(path) for path in runs),
+                 "--out-dir", tmp],
+                check=True, capture_output=True,
+            )
+            target = root / (
+                "qwen-qwen3-1.7b--base--none__vs__"
+                "qwen-qwen3-1.7b--lora--handoff-desc-v1__vs__"
+                "qwen-qwen3-1.7b--lora--pilot-cells-v1.html"
+            )
+            self.assertTrue(target.is_file())
+            page = target.read_text(encoding="utf-8")
+            self.assertIn("handoff-desc-v1", page)
+            self.assertIn("pilot-cells-v1", page)
+            self.assertIn("−10,00 п. п.", page)
+
     def create_run(self, root, name, scores, query="{}"):
         path = root / name
         path.mkdir()
@@ -94,10 +127,54 @@ class ComparisonTests(unittest.TestCase):
             before = self.create_run(root, "base", (20, 16, 40))
             after = self.create_run(root, "lora", (25, 10, 40))
             page = REPORT.compare(before / "report.html", after / "summary.json")
-        for expected in ('class="up">+5,00 п. п.', 'class="down">−6,00 п. п.',
-                         'class="flat">0,00 п. п.', 'class="na">Нет данных',
+        for expected in ('class="up">(Δ +5,00 п. п.)', 'class="down">(Δ −6,00 п. п.)',
+                         'class="flat">(Δ 0,00 п. п.)', 'class="na">(Δ Нет данных)',
                          "&lt;base&gt;", "76 / 300", "75 / 300"):
             self.assertIn(expected, page)
+
+    def test_three_run_report_uses_first_baseline_and_shows_auto_criteria(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            runs = [
+                self.create_run(root, "base", (20, 16, 40)),
+                self.create_run(root, "handoff", (25, 10, 40)),
+                self.create_run(root, "pilot", (10, 20, 50)),
+            ]
+            metrics = (
+                {"M4": 20, "M5": 30, "M6": 50, "M7": 60, "accepted_percent": 10},
+                {"M4": 80, "M5": 70, "M6": 20, "M7": 90, "accepted_percent": 35},
+                {"M4": 50, "M5": 40, "M6": 30, "M7": 70, "accepted_percent": 15},
+            )
+            for path, values in zip(runs, metrics, strict=True):
+                summary = REPORT.load(path / "summary.json")
+                summary["commentary_auto_metrics"] = {
+                    "criteria_version": "m4-m7-auto-v1", "n": 300, "expected": 300,
+                    "complete": True, **values,
+                }
+                save(path / "summary.json", summary)
+
+            page = REPORT.compare(*runs, labels=("base", "handoff", "pilot"))
+
+        for expected in (
+            "base", "handoff", "pilot", "(Δ −10,00 п. п.)",
+            "M4-auto", "M5-auto", "M6-auto", "M7-auto",
+            "(Δ +60,00 п. п.)", "(Δ −30,00 п. п.)", "(Δ +25,00 п. п.)",
+        ):
+            self.assertIn(expected, page)
+        self.assertNotIn("<td></td>", page)
+        self.assertNotIn("Δ к базе</th>", page)
+        self.assertEqual(page.count('<col style="width:25.0000%">'), 4)
+
+    def test_three_run_report_rejects_incompatible_later_run(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            runs = [self.create_run(root, name, (20, 16, 40))
+                    for name in ("base", "lora-a", "lora-b")]
+            data = REPORT.load(runs[2] / "run.json")
+            data["backend"]["input_profile"] = "fen"
+            save(runs[2] / "run.json", data)
+            with self.assertRaisesRegex(ValueError, "input"):
+                REPORT.compare(*runs)
 
     def test_changed_prompts_are_rejected(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -131,6 +208,23 @@ class ComparisonTests(unittest.TestCase):
             (after / "summary.json").write_bytes((before / "summary.json").read_bytes())
             with self.assertRaisesRegex(ValueError, "responses.jsonl"):
                 REPORT.compare(before, after)
+
+    def test_model_preset_name_is_not_input_identity(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            before = self.create_run(root, "base", (20, 16, 40))
+            after = self.create_run(root, "lora", (25, 10, 40))
+            run = REPORT.load(after / "run.json")
+            run["backend"]["model_profile"] = "qwen-v1"
+            save(after / "run.json", run)
+            REPORT.compare(before, after)
+            for key in ("template", "numeric_inputs_sha256"):
+                with self.subTest(key=key):
+                    run["backend"][key] = "different"
+                    save(after / "run.json", run)
+                    with self.assertRaisesRegex(ValueError, "input"):
+                        REPORT.compare(before, after)
+                    del run["backend"][key]
 
     def test_incompatible_profiles_and_engine_are_rejected(self):
         with tempfile.TemporaryDirectory() as tmp:

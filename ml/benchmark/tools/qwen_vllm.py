@@ -13,6 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from gigabench.adapters import input_builder, qwen_snapshot
 from gigabench.io import read_jsonl, sha, unique
 from gigabench.pipeline import now, verify
+from gigabench.profiles import qwen, resolve_profile
 from qwen_batch import save_metadata
 
 
@@ -94,8 +95,10 @@ def read_existing(out, query_ids):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out', type=Path, required=True)
-    parser.add_argument('--model', default='Qwen/Qwen3-1.7B')
-    parser.add_argument('--input-profile', default='contract_v1_fen',
+    parser.add_argument('--model')
+    parser.add_argument('--model-profile', choices=[qwen.NAME],
+                        help='Qwen preset for this vLLM runner')
+    parser.add_argument('--input-profile',
                         help='Input profile name or path.py:function')
     parser.add_argument('--max-num-seqs', type=int, default=16)
     parser.add_argument('--max-model-len', type=int, default=4096)
@@ -105,6 +108,9 @@ def main():
     parser.add_argument('--limit', type=int)
     parser.add_argument('--ids', type=Path, help='JSON list of IDs, or audit20.json with cases')
     args = parser.parse_args()
+    _, args.model, args.input_profile = resolve_profile(
+        args.model_profile, qwen.BACKEND, args.model, args.input_profile,
+    )
     if min(args.max_num_seqs, args.max_model_len) < 1:
         parser.error('sequence and context limits must be positive')
     if args.limit is not None and args.limit < 1:
@@ -174,6 +180,8 @@ def main():
             'thinking': False, 'do_sample': False, 'training_performed': False,
             'runner_sha256': sha(__file__), 'engine': engine_config, **profile,
         }
+        if args.model_profile:
+            identity['model_profile'] = args.model_profile
         if previous is not None and previous['backend'] != identity:
             raise ValueError('Cannot resume with another model, engine or generation policy')
         metadata = previous or {
