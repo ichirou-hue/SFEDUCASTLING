@@ -5,7 +5,7 @@ from pathlib import Path
 
 import chess
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "ml/dataset_gen/gigachess_data"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "ml/pipelines/gigachess_data"))
 
 from gcdata import keys  # noqa: E402
 from gcdata.keys import Line  # noqa: E402

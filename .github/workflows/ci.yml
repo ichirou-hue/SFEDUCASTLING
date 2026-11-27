@@ -118,7 +118,10 @@ jobs:
             --exclude=frontend/node_modules --exclude=.env \
             --exclude='*.db' --exclude='*.db-*' \
             --exclude=outputs --exclude=dataset --exclude=old_data \
-            --exclude=ml/synthesis_pipeline/data \
+            --exclude=ml/pipelines/commenting/data --exclude=ml/datasets \
+            --exclude=ml/benchmark/runs --exclude=ml/benchmark/data/private \
+            --exclude='ml/training/*/runs' --exclude=ml/training/runs \
+            --exclude=docs/ml/private --exclude='docs/ml/*/private' \
             --exclude=dataset.jsonl --exclude=dataset_readable.json \
             .
 

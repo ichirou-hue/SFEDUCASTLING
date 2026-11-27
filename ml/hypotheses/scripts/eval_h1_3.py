@@ -26,7 +26,7 @@ H1_3_HAS_EVAL_COUNT = Gauge(
 )
 
 BENCHMARK_PATH = Path("dataset_h1_3.json")
-MERGED_MODEL_PATH = Path("../Qwen3-chess-coach/outputs/merged").resolve()
+MERGED_MODEL_PATH = Path(__file__).resolve().parents[2] / "training/qwen3_chess_coach/outputs/merged"
 ADAPTER_CONFIG_PATH = Path("../Qwen3-chess-coach/outputs/adapter_config.json").resolve()
 
 SYSTEM_INSTRUCTION = "Ты - шахматный аналитик и тренер."

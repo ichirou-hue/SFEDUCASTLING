@@ -2,7 +2,7 @@ import sys
 import unittest
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "ml/dataset_gen/gigachess_data"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "ml/pipelines/gigachess_data"))
 
 from gcdata.checks import check_polished  # noqa: E402
 from gcdata.facts import all_facts  # noqa: E402

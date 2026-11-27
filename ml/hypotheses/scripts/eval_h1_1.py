@@ -22,7 +22,7 @@ H1_1_HAS_EVAL_COUNT = Gauge('chess_h1_1_has_eval_count', 'Количество �
 H1_1_HAS_TERM_COUNT = Gauge('chess_h1_1_has_term_count', 'Количество ответов с термином (Term)', ['model'])
 
 BENCHMARK_PATH = Path("benchmark.json")
-MERGED_MODEL_PATH = Path("../Qwen3-chess-coach/outputs/merged").resolve()
+MERGED_MODEL_PATH = Path(__file__).resolve().parents[2] / "training/qwen3_chess_coach/outputs/merged"
 ADAPTER_CONFIG_PATH = Path("../Qwen3-chess-coach/outputs/adapter_config.json").resolve()
 
 # Общий стандартный системный промпт

@@ -1,7 +1,9 @@
+from pathlib import Path
+
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-MODEL_PATH = "./outputs/merged"
+MODEL_PATH = Path(__file__).resolve().parents[2] / "training/qwen3_chess_coach/outputs/merged"
 
 def run_inference(fen: str, move: str, eval_score: str, best_move: str, show_thinking: bool = False) -> str:
     print(f"Загрузка модели из {MODEL_PATH}...")

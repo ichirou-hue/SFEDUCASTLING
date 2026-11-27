@@ -4,7 +4,7 @@ import sys
 import math
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
-pipeline_root = str(Path(__file__).resolve().parents[4] / "ml/synthesis_pipeline")
+pipeline_root = str(Path(__file__).resolve().parents[4] / "ml/pipelines/commenting")
 rag_dir = os.path.join(pipeline_root, "rag_module_chessclip")
 
 if rag_dir not in sys.path:

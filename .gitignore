@@ -1,6 +1,7 @@
 # IDE и редакторы
 .idea/
 .vscode/
+.DS_Store
 
 # Python и виртуальные окружения
 __pycache__/
@@ -109,6 +110,31 @@ frontend/dist/version.json
 /ml/gigabench/**/*.pth
 /ml/gigabench/**/*.docx
 /ml/gigabench/**/*.log
+
+# ML local artifacts. Commit dataset manifests and explicit benchmark fixtures,
+# not corpora, generated evaluations, credentials or model checkpoints.
+/ml/**/.env*
+!/ml/**/.env.example
+/ml/benchmark/data/private/
+!/ml/benchmark/data/commentary_m4_m7_auto_v1/*.jsonl
+/ml/benchmark/runs/
+/ml/benchmark/dist/
+/ml/benchmark/review20/draft/
+/ml/benchmark/review20/*.zip
+/ml/benchmark/**/*.nnue
+/ml/pipelines/**/data/
+/ml/pipelines/**/engines/
+/ml/pipelines/**/evidence/
+/ml/pipelines/**/work*/
+/ml/pipelines/**/out*/
+/ml/pipelines/**/handoff*/
+/ml/pipelines/**/*.zip
+/ml/training/**/base/
+/ml/training/**/runs/
+/ml/training/**/checkpoint-*/
+/ml/**/wandb/
+/ml/datasets/**/*audit.json
+/ml/datasets/**/benchmark-exclusions.json
 
 # Rules from ml/synthesis_pipeline/rag_module_chessclip/chessclip/src/training
 /ml/synthesis_pipeline/rag_module_chessclip/chessclip/src/training/**/logs/

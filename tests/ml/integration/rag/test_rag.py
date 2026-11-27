@@ -3,7 +3,7 @@ import os
 import sys
 import time
 
-BASE_DIR = str(Path(__file__).resolve().parents[4] / "ml/rag_system_v1")
+BASE_DIR = str(Path(__file__).resolve().parents[4] / "ml/rag_system")
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
 

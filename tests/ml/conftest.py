@@ -16,4 +16,4 @@ def pytest_ignore_collect(collection_path, config):
 # Shared imports for the relocated ChessCLIP integration suite.
 sys.path.insert(0, str(Path(__file__).resolve().parent / "integration/chessclip"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] /
-                       "ml/synthesis_pipeline/rag_module_chessclip/chessclip/src"))
+                       "ml/pipelines/commenting/rag_module_chessclip/chessclip/src"))
