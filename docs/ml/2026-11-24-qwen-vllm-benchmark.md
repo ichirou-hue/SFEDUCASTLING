@@ -38,14 +38,14 @@ export VLLM_WORKER_MULTIPROC_METHOD=spawn
 export TORCHINDUCTOR_COMPILE_THREADS=2 MAX_JOBS=2
 export VLLM_NO_USAGE_STATS=1 DO_NOT_TRACK=1
 
-python ml/gigabench/run.py prepare --backend qwen --profile standard \
+python ml/benchmark/run.py prepare --backend qwen --profile standard \
   --without-legacy --max-new-tokens 2048 \
-  --games ml/gigabench/data/sources/games_v1_1.json \
-  --puzzles ml/gigabench/data/sources/puzzles_v1_1.json \
-  --out ml/gigabench/runs/NEW_RUN
-python ml/gigabench/tools/qwen_vllm.py --out ml/gigabench/runs/NEW_RUN \
+  --games ml/benchmark/data/sources/games_v1_1.json \
+  --puzzles ml/benchmark/data/sources/puzzles_v1_1.json \
+  --out ml/benchmark/runs/NEW_RUN
+python ml/benchmark/tools/qwen_vllm.py --out ml/benchmark/runs/NEW_RUN \
   --max-num-seqs 32 --gpu-memory-utilization 0.90 --cuda-graphs
-python ml/gigabench/run.py score --out ml/gigabench/runs/NEW_RUN \
+python ml/benchmark/run.py score --out ml/benchmark/runs/NEW_RUN \
   --stockfish "$STOCKFISH_EXECUTABLE"
 ```
 
@@ -63,7 +63,7 @@ CLI-параметры `--games`/`--puzzles` также принимают PGN/C
 ### Подготовленный публичный набор
 
 На Mac и ПК подготовлен
-`ml/gigabench/runs/qwen3-1.7b-answer-first-public-prepared-20261124/`.
+`ml/benchmark/runs/qwen3-1.7b-answer-first-public-prepared-20261124/`.
 В нём **7871 автоматический запрос**:
 4071 предыдущая задача сохранена без изменений, добавлено 3800 задач.
 Добавления: 3200 вопросов по позициям реальных партий,
@@ -89,13 +89,13 @@ CLI-параметры `--games`/`--puzzles` также принимают PGN/C
 
 ```sh
 export STOCKFISH_EXECUTABLE=/home/mark-twen/.cache/gigabench-tools/stockfish-local/usr/games/stockfish
-python ml/gigabench/run.py prepare --backend qwen --profile standard \
+python ml/benchmark/run.py prepare --backend qwen --profile standard \
   --max-new-tokens 2048 --without-explanations \
-  --legacy-source ml/gigabench/data/private/legacy_cases.jsonl \
-  --games ml/gigabench/data/sources/games_v1_1.json \
-  --puzzles ml/gigabench/data/sources/puzzles_v1_1.json \
+  --legacy-source ml/benchmark/data/private/legacy_cases.jsonl \
+  --games ml/benchmark/data/sources/games_v1_1.json \
+  --puzzles ml/benchmark/data/sources/puzzles_v1_1.json \
   --with-judgement --stockfish "$STOCKFISH_EXECUTABLE" \
-  --out ml/gigabench/runs/NEW_FULL_AUTOMATIC_RUN
+  --out ml/benchmark/runs/NEW_FULL_AUTOMATIC_RUN
 ```
 
 Целевой состав: **8357 автоматических запросов** — публичные 7871,
@@ -153,32 +153,35 @@ Greedy HF/vLLM и разные формы батча не гарантируют
 время отдельного ответа включает ожидание очереди, а не только его GPU-вычисления.
 
 Актуальный результат:
-[Полный автоматический прогон — 2237 / 8357](../../ml/gigabench/runs/qwen3-1.7b-vllm-full-auto-answer-first-2048-20261124/report.html).
+[Полный автоматический прогон — 2237 / 8357](../../ml/benchmark/runs/qwen3-1.7b-vllm-full-auto-answer-first-2048-20261124/report.html).
 Формат новых запросов:
 `docs/ml/2026-11-24-answer-first-benchmark.md`.
 
-## Сравнение двух отчётов
+## Сравнение отчётов
 
 ```sh
-python3 ml/gigabench/tools/compare_reports.py \
-  /path/to/before/report.html /path/to/after/report.html \
-  --before-training base --after-training lora \
-  --after-dataset pilot-cells-v1 --out-dir .
+python3 ml/benchmark/tools/compare_reports.py \
+  /path/to/base/report.html \
+  /path/to/handoff-desc-v1/report.html \
+  /path/to/pilot-cells-v1/report.html \
+  --out-dir .
 ```
 
 Можно передать каталоги прогонов вместо `report.html`. Скрипту нужны
 соседние артефакты прогона; HTML без них недостаточно. Поддерживаются обычные
 замороженные прогоны и каталоги `base`/`lora` одного парного прогона.
-Несопоставимые или неполные результаты отклоняются. Отчёт показывает
-подтверждённо правильные ответы на полном знаменателе и дельту в процентных
-пунктах. Существующий файл результата не перезаписывается.
+Первый аргумент — базовый прогон; каждый последующий сравнивается именно с
+ним. Несопоставимые или неполные результаты отклоняются. Отчёт показывает
+подтверждённо правильные ответы по блокам и дельты в процентных пунктах.
+Если в каждом прогоне есть полный набор `M4-auto–M7-auto`, он также выводится
+отдельно; для M6-auto меньшее значение лучше. Экспертные оценки не подменяются
+автоматическими. Существующий файл результата не перезаписывается.
 
-Имя отчёта: `<модель-до>__vs__<модель-после>.html`.
+Имя отчёта: `<база>__vs__<модель-2>__vs__<модель-N>.html`.
 Каждый идентификатор: `<базовая-модель>--<тип-обучения>--<датасет>`.
-У исходных весов используется `base--none`. Имя тренировочного датасета
-задаётся нами через `--before-dataset`/`--after-dataset` или хранится в
+У исходных весов используется `base--none`. Идентичность можно хранить в
 `run.json` в необязательном `model_identity` с полями `base_model`,
-`training_type`, `dataset`. Для старых отчётов можно переопределить ID
-через `--before-base`/`--after-base`, а тип — через `--before-training`/
-`--after-training`. `--out-dir` выбирает существующий каталог, не имя файла;
-`--out` принимает только путь с каноническим именем.
+`training_type`, `dataset`; для адаптеров также распознаётся каталог
+`lora-<имя-датасета>`. Флаги `--before-*` и `--after-*` сохранены для
+двухаргументного вызова. `--out-dir` выбирает существующий каталог, не имя
+файла; `--out` принимает только путь с каноническим именем.
