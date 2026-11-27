@@ -1,0 +1,22 @@
+{
+  "seed": 43721,
+  "source": "synthetic_legal_play",
+  "heldout_placements": 4805,
+  "benchmark_cases_sha256": "26fc95d6b172e82d74e35f65fef3c765c7f6a5d42da4fad3695212f68edb8409",
+  "splits": {
+    "train": {
+      "n": 3600,
+      "sha256": "f4b989a6155b12219c3ab902981a816cb0b092f399bdb98a87184c5795288088"
+    },
+    "validation": {
+      "n": 450,
+      "sha256": "3db85403e39716298f657b2929368657d15408b5cd904af473fde797e71cdc99"
+    },
+    "test": {
+      "n": 450,
+      "sha256": "78fd30eec79dd14e24f3ffd14a458bf437341c1aadd50e22fd0c7aa7119eea61"
+    }
+  },
+  "input_format": "numeric",
+  "formatter_sha256": "63ba93ce2b03a48bc884fc5319eaedab7d89851dac73500ca92bb860d6b1750a"
+}

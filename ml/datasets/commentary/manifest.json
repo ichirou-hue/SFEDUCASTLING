@@ -1,0 +1,75 @@
+{
+  "name": "commentary",
+  "input_format": "fen_with_original_engine_facts",
+  "benchmark_cases_sha256": "26fc95d6b172e82d74e35f65fef3c765c7f6a5d42da4fad3695212f68edb8409",
+  "source_datasets": {
+    "handoff-desc-v1": {
+      "manifest_sha256": "7ebefa0aef3569d5151c09cab8c58e0e777628a5ec3c8ff2c18210b8b3adba2a",
+      "splits": {
+        "train": {
+          "n": 3563,
+          "sha256": "a6dd3a3d6eac4b6bf890ccec10d36f95c503d33326fa3255c8403624da898cb4",
+          "tasks": {
+            "move_commentary": 2497,
+            "free_square": 525,
+            "piece_on_square": 541
+          }
+        },
+        "validation": {
+          "n": 383,
+          "sha256": "0f0dfd764a656efde713e33a22aaf3b8bc58a8e374377a0821dab7387efcceab",
+          "tasks": {
+            "move_commentary": 273,
+            "piece_on_square": 57,
+            "free_square": 53
+          }
+        },
+        "test": {
+          "n": 446,
+          "sha256": "18efccd29e409bb3b6608def508cf126d39585d8cc7bc765b0178ab062724e90",
+          "tasks": {
+            "move_commentary": 304,
+            "piece_on_square": 81,
+            "free_square": 61
+          }
+        }
+      }
+    }
+  },
+  "split_audit_sha256": "f209f2b6538835752ae6e0e95d4eb9b5acc5f9241571f4e273c78eea2c6bc42c",
+  "splits": {
+    "train": {
+      "n": 2469,
+      "sha256": "62e1f1114c6fa4e4e7f994cb596077ce6461db8043e022e1f83f6807cd920c75",
+      "tasks": {
+        "move_commentary": 2469
+      },
+      "sources": {
+        "handoff-desc-v1": 2469
+      }
+    },
+    "validation": {
+      "n": 270,
+      "sha256": "1e58de5eeeaa9d6e8ad6d473bfcb1b6888b499e5be19e37145ffc45e971c77c6",
+      "tasks": {
+        "move_commentary": 270
+      },
+      "sources": {
+        "handoff-desc-v1": 270
+      }
+    },
+    "test": {
+      "n": 300,
+      "sha256": "97cf834d3d8f248d58dbae82c4448d75fb8c5a3d2703ad63e16d1e910055d685",
+      "tasks": {
+        "move_commentary": 300
+      },
+      "sources": {
+        "handoff-desc-v1": 300
+      }
+    }
+  },
+  "facts_sha256": "27f1705e795153c2a971142ce770d4d6554474ac5424d60960ee143f3dd3b1c5",
+  "benchmark_exclusions_sha256": "d5b4101e8e2d40a2dc2ce8eeb6cf3f63822a5dd4da8f493d00a30e9098152587",
+  "commentary_benchmark_cases_sha256": "a6fb780fbd621813a3595715ef1ae273fdfe69783aafa92d8acfbeb6b21b2e0a"
+}

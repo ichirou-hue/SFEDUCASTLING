@@ -1,0 +1,55 @@
+{
+  "name": "mixed",
+  "input_format": "preserve_source_messages",
+  "benchmark_cases_sha256": "26fc95d6b172e82d74e35f65fef3c765c7f6a5d42da4fad3695212f68edb8409",
+  "commentary_benchmark_cases_sha256": "a6fb780fbd621813a3595715ef1ae273fdfe69783aafa92d8acfbeb6b21b2e0a",
+  "source_manifests_sha256": {
+    "commentary": "16e63bad801c84031f78df01ddbe11bc99df1966dc6ba35c3956b4f0b0edf76a",
+    "cell-questions": "ec540337d666f1dc1f7e52f8bdf8f66dff17fa98731ed474850703afddd6c2f8"
+  },
+  "mix_order": "sha256(mixed-43721:<id>) within original split",
+  "splits": {
+    "train": {
+      "n": 4725,
+      "sha256": "0cd24191af1c67d181d18dfce6fdd502ee73c5b58a4aed6e291312dd64d62d15",
+      "tasks": {
+        "piece_on_square": 538,
+        "cell": 1200,
+        "move_commentary": 2469,
+        "free_square": 518
+      },
+      "sources": {
+        "commentary": 2469,
+        "cell-questions": 2256
+      }
+    },
+    "validation": {
+      "n": 678,
+      "sha256": "8f036402b03568a0d67c2277e1e3aced7eae109a2e44a3abf5b4f95306c5a17a",
+      "tasks": {
+        "move_commentary": 270,
+        "cell": 300,
+        "piece_on_square": 57,
+        "free_square": 51
+      },
+      "sources": {
+        "commentary": 270,
+        "cell-questions": 408
+      }
+    },
+    "test": {
+      "n": 741,
+      "sha256": "64f0642ac2657c0fa7667df9e84b741da2fe136d54588ac8b3b6eee98e6d501b",
+      "tasks": {
+        "cell": 300,
+        "move_commentary": 300,
+        "piece_on_square": 81,
+        "free_square": 60
+      },
+      "sources": {
+        "commentary": 300,
+        "cell-questions": 441
+      }
+    }
+  }
+}
